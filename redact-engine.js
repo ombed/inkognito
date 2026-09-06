@@ -356,6 +356,10 @@ const KIN=new Set(("אמא אבא אמו אביו אמה אביה הורי הו�
  "גיסתנו דודה דוד סבתא סבא אשתו בעלה גרושתו בת-זוגו").split(" "));
 const CARE=new Set(("תמיכה תמיכת טיפול טיפולה ליווי עזרה סיוע מעקב קשר "+
  "פגישה מפגש דאגה אחריות השמה").split(" "));
+// מילות מילוי שעומדות לבדן בשורה בתמלול, ונראות בדיוק כמו שורת דובר
+const FILLER=new Set(("טוב בסדר כן לא נכון בטח אוקיי אוקי רגע שנייה יודעת יודע מבינה מבין "+
+ "בדיוק ברור מצוין יופי אה אהה אמ בטוח נו הנה אז ואז כאילו ממש לגמרי בכלל הכול הכל "+
+ "תודה סליחה שלום ביי מה איך למה מתי איפה מי כמה אולי בטוחה מסכימה מסכים").split(" "));
 const REL=new Set(["שהוא","שהיא","שהם","שהן","אשר"]);
 const ROLE2=("עובדת סוציאלית|עובד סוציאלי|מנהלת בית הספר|מנהל בית הספר|"+
  "מנהלת המחלקה|מנהל המחלקה|יועצת חינוכית|קצינת מבחן|קצין מבחן|"+
@@ -1608,18 +1612,28 @@ function discover(blocks){
   // discover החזיר אפס מועמדים. פסקה קצרה בלי פיסוק בסוף, שאחריה פסקה של ממש, היא דובר.
   const extra=[];
   for(let bi=0;bi<blocks.length;bi++){
-    const t=trimEdges(blocks[bi].text||""), w=t.split(/s+/).filter(Boolean);
+    const t=trimEdges(blocks[bi].text||""), w=t.split(/\s+/).filter(Boolean);
     const nxt=blocks[bi+1]&&trimEdges(blocks[bi+1].text||"");
     if(!t||w.length>3||t.length>25||/[.,?!:;]$/.test(t))continue;
-    if(!nxt||nxt.split(/s+/).length<4)continue;
+    if(!nxt||nxt.split(/\s+/).length<4)continue;
     const c=cleanName(t); if(!c||!anchorOK(c))continue;
-    if(!c.split(/s+/).every(x=>x.length>=2))continue;
+    if(!c.split(/\s+/).every(x=>x.length>=2))continue;
+    // תמלול מלא בשורות קצרות שאינן שמות: "הבנתי", "טוב", "יודעת". הן נראות בדיוק
+    // כמו שורת דובר, ושתיים מהן אף חזרו ולכן קיבלו ביטחון גבוה ומילוי אוטומטי.
+    if(c.split(/\s+/).some(x=>FILLER.has(norm(x))||/(?:תי|נו)$/.test(norm(x))))continue;
+    // תווית דובר היא שם חשוף: בלי פיסוק בתוכה, בלי רבים ובלי שייכות.
+    // "תראי, עקרונים", "לטפל בפצעים", "הפצעים נקרות", "מניסיון שלך" נראו כמו שורת דובר.
+    if(/[,;:"'()׳״]/.test(t))continue;
+    if(c.split(/\s+/).some(x=>/(?:ים|ות|יים|יות)$/.test(norm(x))&&!KNOWN_FIRST.has(norm(x))))continue;
+    if(c.split(/\s+/).some(x=>/^של[ךכםןנהוי]?$/.test(norm(x))))continue;
     const s0=blocks[bi].text.indexOf(c); if(s0<0)continue;
     extra.push({b:blocks[bi],h:{text:c,s:s0,e:s0+c.length,why:"פסקה שכולה שם, ואחריה דיבור",anchor:"speakerline",g:null,role:null}});
   }
   for(const {b,h} of extra){
     const r=found[h.text]||(found[h.text]={count:0,why:new Set(),conf:"medium",ctx:"",role:null,g:null,gf:0,gm:0});
-    r.count++;r.why.add(h.why);r.spk=(r.spk||0)+1; if(r.spk>=2)r.conf="high";
+    // בניגוד לתור דיבור עם נקודתיים, שורה בודדת היא רמז חלש: היא נשארת הצעה
+    // בהקשה אחת ולעולם לא מתמלאת מעצמה, גם כשהיא חוזרת.
+    r.count++;r.why.add(h.why);r.spk=(r.spk||0)+1;
     if(!r.ctx)r.ctx=ctxHTML(b.text,h.s,h.e);
   }
   for(const b of blocks) for(const h of anchored(b.text)){
