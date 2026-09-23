@@ -1,7 +1,7 @@
 const { test, expect } = require("./base");
 const H = require("./helpers");
 
-/* Working from the text (Q1) and marks that read without color (Q2).
+/* Working from the text (Q1 of release 3, CHANGELOG v33) and marks that read without color (release 3 Q2).
 
    Working from the text is easier than from the side panel, and on some
    marks were too faint to tell apart. A click on a marked word now opens an
