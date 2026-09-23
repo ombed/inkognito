@@ -43,6 +43,8 @@
 | Her 5 docs | 33 | 32 | 1 | 3 | 3 | 81 | 27–29 (to be recomputed) |
 | Model off (synthetic / hers) | | 210 / 26 | 58 / 7 | 74 / 9 | 4 / 1 | 29 / 54 | – |
 
+A private set of real documents is also measured (results not published).
+
 **What each set can prove:**
 - **The private documents are biased by how they were made.** The tool produced them with the model on, so every name the baseline found has already been replaced. What is left is pseudonyms plus what the baseline missed.
   - We use them only for the **safety** and **user-time** checks, never as evidence that a candidate reads Hebrew better.
