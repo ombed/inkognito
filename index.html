@@ -970,12 +970,11 @@ button:disabled{opacity:.55;cursor:not-allowed}
             <div style="padding:0 15px 14px;border-top:1px solid var(--line2)">
               <div style="margin-top:12px;padding:10px 12px;border-radius:10px;border:1px solid var(--line2);font-size:12.5px;line-height:1.55">
                 <b style="font-weight:500">שליחה לבדיקה</b>
-                <p style="margin:4px 0 8px;color:var(--ink2)">יומן הסשן רושם זמנים ולחיצות בלי טקסט — איפה הלכה הדקה. חבילת הבדיקה מורידה את המסמך הנקי עם היומן ודוח הדליפה לקובץ אחד ופותחת מייל; שום דבר לא נשלח מעצמו.</p>
+                <p style="margin:4px 0 8px;color:var(--ink2)">יומן הסשן רושם זמנים ולחיצות בלי טקסט — איפה הלכה הדקה. חבילת הבדיקה מורידה את היומן ודוח הדליפה לקובץ אחד, בלי המסמך. שום דבר לא נשלח מעצמו; את המסמך שולחים בנפרד, רק אם רוצים.</p>
                 <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
                   <button onClick="{{ onCopyLog }}" style="padding:7px 12px;border-radius:9px;border:1px solid var(--line);font-size:12.5px;font-weight:500">{{ logCopyLabel }}</button>
-                  <button onClick="{{ onPackage }}" title="{{ packageTitle }}" style="padding:7px 12px;border-radius:9px;border:1px solid var(--line);font-size:12.5px;font-weight:500">חבילת בדיקה + מייל</button>
+                  <button onClick="{{ onPackage }}" style="padding:7px 12px;border-radius:9px;border:1px solid var(--line);font-size:12.5px;font-weight:500">הורדת חבילת בדיקה</button>
                 </div>
-                <input value="{{ feedbackMail }}" onChange="{{ onFeedbackMail }}" placeholder="כתובת המייל לשליחת קבצי בדיקה (ריק = בלי מייל)" style="width:100%;margin-top:8px;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-size:12.5px;direction:ltr;text-align:left">
               </div>
               <sc-if value="{{ hasLeaks }}">
                 <div style="margin-top:12px;padding:10px 12px;border-radius:10px;background:var(--warn-soft);font-size:12.5px;line-height:1.55">
@@ -1164,7 +1163,7 @@ class Component extends DCLogic {
     copyLabel:"העתקה ל-AI", busyT:"מעבד…", err:"",
     geo:null, geoV:0, geoNames:[], geoExtra:[], geoEdits:{}, popup:null, tip:null, repDraft:"", sent:{}, peoKept:[], peoNotSame:[], inline:null, inlineDraft:"",
     // הפרופיל של התיק נשמר בדפדפן אחרי כל שינוי; lastProfile הוא מה שנמצא בכניסה
-    caseName:"", lastProfile:null, profileDirty:false, removed:[], leaks:[], cases:[], copied:false, feedbackMail:"", logCopyLabel:""
+    caseName:"", lastProfile:null, profileDirty:false, removed:[], leaks:[], cases:[], copied:false, logCopyLabel:""
   };
 
   async componentDidMount(){
@@ -1211,8 +1210,8 @@ class Component extends DCLogic {
     // יומן הסשן (PLAN-v18 Q16): זמנים ואירועים בלי טקסט, בדפדפן בלבד, מיוצא בכפתור ליד דוח הדליפה
     const ver=((document.getElementById("ver")||{}).textContent||"").replace(/[^v\d]/g,"");
     this.log=window.PL?window.PL.sessionLog(ver):{add(){},export(){return "{}"}};
-    let feedbackMail=""; try{ feedbackMail=localStorage.getItem("redact-feedback-mail")||""; }catch(_){}
-    this.setState({feedbackMail});
+    // עד v56 החבילה פתחה מייל לכתובת ששמורה כאן; החבילה כבר לא נשלחת, והכתובת לא נשארת במחשב שלה
+    try{ localStorage.removeItem("redact-feedback-mail"); }catch(_){}
     this.applyProps();
     this._resize = () => { const n = innerWidth < 1120; if(n!==this.state.narrow) this.setState({narrow:n}); };
     this._resize();
@@ -2630,27 +2629,22 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     const n=this.pendingReview().blocking;
     if(n) this.setState({err:`הועתק, אבל ${n===1?"פריט אחד":n+" פריטים"} בלי החלטה — הם יגיעו ל-AI כמו שהם.`});
   };
-  // חבילת בדיקה (PLAN-v18 Q9): המסמך הנקי, יומן הסשן ודוח הדליפה בקובץ zip אחד, ואז
-  // מייל שנפתח אצלה עם הכתובת מלאה. בלי שרת: היא מצרפת את הקובץ ולוחצת שלח.
+  // חבילת בדיקה (PLAN-v18 Q9): יומן הסשן ודוח הדליפה בקובץ zip אחד, בלי טקסט מהמסמך.
+  // עד v56 היא הכילה גם את המסמך הנקי ופתחה מייל. עכשיו רק הורדה: היא שולחת אותה בעצמה, ואת
+  // המסמך בנפרד, רק כשהיא מחליטה.
   sendPackage = async () => {
     const RES=this.state.res, E=this.state.E; if(!RES) return;
     if(this.tourBlocks("package")) return;
     this.log.add("package",{});
     try{
       const enc=new TextEncoder(); const files=[];
-      // בתוך החבילה שנשלחת אלינו: שם ASCII, שכל תוכנת פריסה קוראת נכון
-      files.push({name:"redacted-"+new Date().toISOString().slice(0,10)+".docx", data:new Uint8Array(await RES.blob.arrayBuffer())});
       files.push({name:"session-log.json", data:enc.encode(this.log.export())});
       if(this.state.leaks.length&&window.PL) files.push({name:"leak-report.json", data:enc.encode(window.PL.leakReport(this.state.leaks,{version:this.log.v}))});
-      files.push({name:"README.txt", data:enc.encode("paintItBlack "+this.log.v+"\nחבילת בדיקה: המסמך אחרי ההשחרה, יומן סשן בלי טקסט, ודוח דליפה אם סומנו שמות ביד.\n")});
+      files.push({name:"README.txt", data:enc.encode("paintItBlack "+this.log.v+"\nחבילת בדיקה: יומן סשן בלי טקסט, ודוח דליפה אם סומנו שמות ביד. המסמך עצמו לא בחבילה.\n")});
       const blob=await E.zip(files);
       const u=URL.createObjectURL(blob), a=document.createElement("a");
       a.href=u; a.download="paintItBlack-package-"+new Date().toISOString().slice(0,10)+".zip"; document.body.appendChild(a); a.click(); a.remove();
       setTimeout(()=>URL.revokeObjectURL(u), 4000);
-      if(this.state.feedbackMail){
-        const subj=encodeURIComponent("paintItBlack "+this.log.v+" — חבילת בדיקה"), body=encodeURIComponent("מצורפת חבילת הבדיקה שירדה עכשיו (paintItBlack-package-*.zip).\nמה היה לא בסדר:\n");
-        setTimeout(()=>{ location.href="mailto:"+this.state.feedbackMail+"?subject="+subj+"&body="+body; }, 600);
-      }
     }catch(e){ this.setState({err:"הכנת החבילה נכשלה: "+(e.message||e)}); }
   };
   download = () => {
@@ -3610,8 +3604,6 @@ const KIND_NAME={NAME:"אדם", ORG:"גוף", PLACE:"מקום"};
       hasLeaks:S.leaks.length>0, leakCount:S.leaks.length, leakCopyLabel:S.leakCopyLabel||"העתקת דוח הדליפה",
       logCopyLabel:S.logCopyLabel||"העתקת יומן הסשן",
       onCopyLog:()=>{ try{ this.copyTo(this.log.export(), "logCopyLabel", "העתקת יומן הסשן"); }catch(e){ this.setState({err:String(e.message||e)}); } },
-      feedbackMail:S.feedbackMail, onFeedbackMail:e=>{ const v=e.target.value.trim(); this.setState({feedbackMail:v}); try{ localStorage.setItem("redact-feedback-mail", v); }catch(_){} },
-      packageTitle:S.feedbackMail?"מוריד חבילה ופותח מייל אל "+S.feedbackMail:"מוריד חבילה; בלי כתובת לא נפתח מייל",
       onPackage:()=>this.sendPackage(),
       onCopyLeaks:()=>{ try{ this.copyTo(window.PL.leakReport(S.leaks,{version:((document.getElementById("ver")||{}).textContent||"").replace(/[^v\d]/g,"")}), "leakCopyLabel", "העתקת דוח הדליפה"); }catch(e){ this.setState({err:String(e.message||e)}); } },
       addV:S.addV, addR:S.addR,
