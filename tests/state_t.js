@@ -56,7 +56,7 @@ const SESSION = {
   nerMsg: "progress text, rewritten by every scan", nerPct: "the same", nerBox: "the same", scanning: "the same", busyT: "the same",
   open: "which rail sections are open, set by every run", pane: "which pane is showing, set by every run",
   rvCopyLabel: "a button label", logCopyLabel: "a button label",
-  feedbackMail: "where she sends packages", numStyle: "a setting",
+  numStyle: "a setting",
 };
 
 console.log("\n— every state key is cleared by 'new document' or is named as the session's —");

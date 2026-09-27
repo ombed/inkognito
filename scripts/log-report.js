@@ -14,9 +14,10 @@ const path = require("path");
 
 const SRC = { m: "model", h: "header", s: "speaker", p: "profile", t: "typed by her", b: "body scan", w: "sweep", x: "pattern", n: "near spelling", "-": "unknown" };
 
-/* A package is the zip she sends (often saved without an extension): the redacted document,
-   session-log.json and, when she marked a name by hand, leak-report.json. Both are read in
-   memory; nothing is unpacked to disk. */
+/* A package is the zip the user sends (often saved without an extension): session-log.json and,
+   when a name was marked by hand, leak-report.json. Packages up to v56 also carried the
+   redacted document; it is never read here. Both are read in memory; nothing is unpacked to
+   disk. */
 function readPackage(file) {
   const buf = fs.readFileSync(file);
   // under four bytes readUInt32LE threw a bare RangeError (outside review, nit 9). No file

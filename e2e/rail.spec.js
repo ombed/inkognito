@@ -52,6 +52,22 @@ test("the bundle export is its own section, open, and says what it is", async ({
   await expect(page.getByRole("button", { name: /שליחת הסשן אלינו/ })).toBeVisible();
 });
 
+/* Up to v56 the package also held the redacted document and opened a mail to an address kept
+   in the browser. The user now sends the package herself and the document separately, only
+   when she decides to, so the package carries no document and no address is kept. */
+test("the check package holds the log only, and no mail address is kept", async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.setItem("redact-feedback-mail", "someone@example.com"); } catch (_) {} });
+  await toCheckScreen(page);
+  expect(await page.evaluate(() => localStorage.getItem("redact-feedback-mail"))).toBeNull();
+  await expect(page.getByPlaceholder(/כתובת המייל/)).toHaveCount(0);
+
+  const dl = page.waitForEvent("download");
+  await page.getByRole("button", { name: /חבילת בדיקה/ }).click();
+  const zip = require("fs").readFileSync(await (await dl).path());
+  const names = require("../scripts/harvest-shapes.js").unzip(zip).map((f) => f.name).sort();
+  expect(names).toEqual(["README.txt", "session-log.json"]);
+});
+
 test("the bottom bar never covers the document", async ({ page }) => {
   await toCheckScreen(page);
   const gap = await page.evaluate(() => {
