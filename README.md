@@ -1,3 +1,35 @@
+# paintItBlack
+
+paintItBlack removes identifying details (people, places, organisations, ID and phone numbers) from Hebrew Word and PDF documents before they are pasted into an AI tool.
+Each detail is replaced with a consistent substitute, and when the AI answers, the tool puts the real names back into the answer.
+Everything runs in the browser. There is no server, and the document never leaves the computer.
+It was built for a real client, a lawyer, and shaped by her feedback and her session logs, which record timings and clicks but never text.
+The interface is in Hebrew; the Hebrew documentation follows this section.
+
+**Live:** https://ombed.github.io/paintItBlack/ · **Demo (36 s):** [docs/demo/demo.mp4](docs/demo/demo.mp4), on an invented court transcript from the benchmark corpus
+
+![Demo: load a document, review the people found, redact, paste an AI answer, get the real names back](docs/demo/demo.gif)
+
+<img src="docs/demo/1-people.png" width="32%" alt="The people found in the document"> <img src="docs/demo/2-redacted.png" width="32%" alt="The redacted document, with substitutes marked"> <img src="docs/demo/3-restored.png" width="32%" alt="The AI answer with the real names restored">
+
+## How I know it works
+
+- **Benchmark** ([bench/results.md](bench/results.md)): 43 invented documents with 332 keyed entities, built to cover the hard cases (prefix letters, nikud, transcription typos, look-alike surnames, names hidden in headers, footnotes and alt text). With the model on: 2 missed, 2 leaked, 5 false positives.
+- It scores **the whole pipeline**, not the model alone: it runs the same chain as the page and checks the output file a user would send, so a leak in any layer counts.
+- A **blocking CI gate** ([bench/gate.js](bench/gate.js)) runs the deterministic layers on every change and compares each entity with itself in the committed baseline; any entity that gets worse fails the build. The model-on run downloads the weights, so it is run by hand.
+- **Model choice** ([docs/model-eval/](docs/model-eval/README.md)): 16 configurations of 9 local Hebrew models, with the decision rule written and committed before any run. Only one passed: DictaBERT-parse's NER head with a corrected tokenizer, which now ships.
+- **A real document:** on a public Knesset committee transcript ([tests/protocol.txt](tests/protocol.txt), 1,431 words), the people list opens with 6 of the 10 participants the test checks, read from the header. Once the other four are typed in, all ten are found everywhere they appear, including two misspellings of one name, and two people nobody listed are flagged for review (`npm run report`).
+
+## How it's built
+
+- Vanilla JavaScript, no framework and no build step for the page; the engine is plain files concatenated into one script.
+- Name recognition: the NER head of DictaBERT-parse, exported to ONNX, quantized to 8 bits and run in the browser with transformers.js. It is served from this site and checked against a pinned SHA-256 before use.
+- Rules, Hebrew prefix handling and a gazetteer run alongside the model; the model only adds suggestions.
+- Tests: about 3,000 Node checks and over 200 Playwright browser tests in CI, plus the benchmark gate above.
+- Developed with Claude Code as the coding agent. The design decisions are mine, and I can explain each one.
+
+---
+
 # השחרת מסמכים
 
 כלי להסרת פרטים מזהים ממסמכי Word לפני שליחה לכלי AI, ולהחזרת השמות
