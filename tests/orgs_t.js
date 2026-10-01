@@ -1,7 +1,7 @@
 /* Organisations by head-word rules, not by a closed list.
 
-   On the real session "חסידות ברסלב" was offered as an organisation to fake,
-   and "ברסלב" alone turned into a person's name. Her rule, in her words: a
+   A group such as "חסידות נורבין" (invented) was offered as an organisation to
+   fake, and "נורבין" alone turned into a person's name. The rule: a
    broad group (a Hasidic court, a movement, a party, a stream, a community)
    is not an identifier and is never offered; an institution with a type
    word (עמותת, מעון, בית ספר, מרפאת…) is offered and the fake keeps the type
@@ -12,11 +12,11 @@ let pass = 0, fail = 0;
 const ok = (c, m) => { c ? pass++ : (fail++, console.log("  ✗ " + m)); };
 
 console.log("\n— head words —");
-for (const v of ["חסידות ברסלב", "חסידי גור", "תנועת הנוער", "מפלגת העבודה", "עדת הבוכרים", "קהילת יוצאי צרפת"])
+for (const v of ["חסידות נורבין", "חסידי גור", "תנועת הנוער", "מפלגת העבודה", "עדת הבוכרים", "קהילת יוצאי צרפת"])
   ok(C.GROUP_HEADS.test(C.norm(v)), "group, never offered: " + v);
 for (const [v, head] of [["עמותת שביל הלב", "עמותת"], ["מעון נעמת", "מעון"], ["בית ספר אורט", "בית ספר"], ["מרפאת טיפת חלב", "מרפאת"], ["קופת חולים מכבי", "קופת חולים"], ['ביה"ס רמות', 'ביה"ס']])
   ok(C.orgHead(v) === head, "institution head of " + v + ": " + C.orgHead(v));
-for (const v of ["ברסלב", "שביל הלב", "פנים מאירות"])
+for (const v of ["נורבין", "שביל הלב", "פנים מאירות"])
   ok(C.orgHead(v) === null && !C.GROUP_HEADS.test(v), "no head, review: " + v);
 
 console.log("\n— fake keeps the type word, and is stable —");
@@ -42,17 +42,17 @@ console.log("\n— fake keeps the type word, and is stable —");
 
 console.log("\n— the model's ORG candidates: group dropped, headless flagged —");
 {
-  const TEXT = "האם שייכת לחסידות ברסלב. הילד לומד בבית ספר אורט. עמותת שביל הלב ליוותה. ברסלב מנהלת את המקום. משרד הרווחה השיב.";
+  const TEXT = "התורם שייך לחסידות נורבין. השיעור נערך בבית ספר אורט. עמותת שביל הלב ליוותה. נורבין מנהלת את המקום. משרד הרווחה השיב.";
   const E = (surface, type, score) => ({ s: TEXT.indexOf(surface), e: TEXT.indexOf(surface) + surface.length, type, score });
   const out = C.nerClean([
-    E("חסידות ברסלב", "ORG", 0.99), E("בית ספר אורט", "ORG", 0.98),
-    E("עמותת שביל הלב", "ORG", 0.99), E("ברסלב", "ORG", 0.9), E("משרד הרווחה", "ORG", 0.99),
+    E("חסידות נורבין", "ORG", 0.99), E("בית ספר אורט", "ORG", 0.98),
+    E("עמותת שביל הלב", "ORG", 0.99), E("נורבין", "ORG", 0.9), E("משרד הרווחה", "ORG", 0.99),
   ], TEXT);
   const val = s => out.find(x => x.value === s);
-  ok(!val("חסידות ברסלב"), "group is dropped   (got: " + out.map(x => x.value).join(", ") + ")");
+  ok(!val("חסידות נורבין"), "group is dropped   (got: " + out.map(x => x.value).join(", ") + ")");
   ok(val("בית ספר אורט") && !val("בית ספר אורט").review, "institution offered as usual");
   ok(val("עמותת שביל הלב") && !val("עמותת שביל הלב").review, "עמותת offered as usual");
-  ok(val("ברסלב") && val("ברסלב").review === true, "headless name flagged for review");
+  ok(val("נורבין") && val("נורבין").review === true, "headless name flagged for review");
   ok(!val("משרד הרווחה"), "public body still never offered");
   // "המוסד לביטוח לאומי": the head-word peel took the ה off and turned a public
   // body into a private-looking "מוסד לביטוח לאומי" (three new false positives on the bench)

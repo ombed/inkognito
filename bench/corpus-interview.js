@@ -1,23 +1,23 @@
-/* Three interview documents, added after a real session leaked a teacher's name.
+/* Three interview documents.
 
-   The genre the corpus did not have: a spoken conversation with a child,
-   transcribed from a recording. Short turns, no speaker labels, questions
+   The genre the corpus did not have: a spoken conversation, transcribed from
+   a recording. Short turns, no speaker labels, questions
    answered with one word, names dropped in passing with no title beside
-   them. Two leak shapes came out of the real document, and the generator
+   them. Two leak shapes belong to this genre, and the generator
    wants every category in at least three documents, so each shape appears
    three times across these:
 
      P_ROLE_TEACHER  a foreign female first name that appears only after a
                      care or teaching role word ("למורה X", "הגננת X"), never
-                     with a surname, never before a speech verb. The model
-                     found the real one seven times at full confidence and it
-                     left the tool anyway; the deterministic layers never saw it.
+                     with a surname, never before a speech verb. The
+                     deterministic layers did not see this shape; only the
+                     model did.
 
      P_WORD_VERB     a first name that is also an everyday word, standing
                      before a speech verb ("שלום אמר"). The verb layer rejected
                      it as a stop word, and the model does not tag it either.
 
-   Invented text and invented people; nothing here is from the real file.
+   Invented text and invented people; nothing here is from a real file.
    The word-like names are by design known to the lexicons, like P_WORD. */
 module.exports = function interview(Doc, C) {
   const docs = [];

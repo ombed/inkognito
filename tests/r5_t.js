@@ -1,10 +1,10 @@
-/* Release 5, engine side: what the client's third session showed (16.9, v35).
+/* Release 5, engine side (v35). All texts below are invented.
 
    - A rejected span went to the allow list and shielded a listed name inside
-     it: her client's full name stayed in clear in section 1.
+     it: the listed first name stayed in clear inside the longer span.
    - "same person" from a short or prefixed form inserted the full pseudonym
      at every occurrence and dropped the prefix letter.
-   - "מרים להידחות": an infinitive after a first name was taken as a surname.
+   - "אסתר להידחות": an infinitive after a first name was taken as a surname.
    - "טל:" as a phone label was replaced by a person's pseudonym.
    - A deleted street address left "מ," and the postal code behind. */
 const C = require("./core.js");
@@ -22,15 +22,15 @@ function apply(text, subs, allow, opt) {
 
 console.log("\n— an allow entry blocks only its own token, never a listed name inside a longer span —");
 {
-  const t = "לגב' מרים אלון אסולין (להלן: מרים) ביום. נפגשה הח\"מ עם מרים בביתה. למרים סדר יום.";
-  const subs = [{ value: "מרים", kind: "NAME", replacement: "בתיה" }];
-  const a = apply(t, subs, ["מרים אלון אסולין"]);
-  ok(a.includes("בתיה אלון אסולין"), "the listed first name is replaced inside the rejected span: " + a);
-  ok(!a.includes("מרים"), "no מרים left anywhere: " + a);
-  const b = apply(t, subs, ["מרים"]);
+  const t = "לגב' אסתר גבאי ברזילי (להלן: אסתר) ביום. נפגש הח\"מ עם אסתר במשרד. לאסתר סדר יום.";
+  const subs = [{ value: "אסתר", kind: "NAME", replacement: "בתיה" }];
+  const a = apply(t, subs, ["אסתר גבאי ברזילי"]);
+  ok(a.includes("בתיה גבאי ברזילי"), "the listed first name is replaced inside the rejected span: " + a);
+  ok(!a.includes("אסתר"), "no אסתר left anywhere: " + a);
+  const b = apply(t, subs, ["אסתר"]);
   ok(!b.includes("בתיה"), "allowing the value itself still keeps it, prefixed forms included: " + b);
-  const c = apply(t, subs, ["למרים"]);
-  ok(c.includes("למרים סדר") && c.includes("עם בתיה"), "allowing one prefixed form keeps that form only: " + c);
+  const c = apply(t, subs, ["לאסתר"]);
+  ok(c.includes("לאסתר סדר") && c.includes("עם בתיה"), "allowing one prefixed form keeps that form only: " + c);
 }
 
 console.log("\n— same person from a short or prefixed form takes the matching part of the pseudonym —");
@@ -49,26 +49,26 @@ console.log("\n— same person from a short or prefixed form takes the matching 
 console.log("\n— an infinitive after a first name is not a surname —");
 {
   const blocks = [
-    { part: "w", text: "מהאמור לעיל סבורה הח\"מ כי דין הבקשה למינוי אפוטרופוס למרים להידחות. לא הובאו תימוכין." },
-    { part: "w", text: "מרים ציינה כי היא מבינה. מרים חזרה על כך." },
+    { part: "w", text: "מהאמור לעיל סבור הח\"מ כי דין הדרישה ששלח הספק לאסתר להידחות. לא הובאו תימוכין." },
+    { part: "w", text: "אסתר ציינה כי היא מבינה. אסתר חזרה על כך." },
     { part: "w", text: "המורה יעל לביא אמרה שהכול בסדר. יעל לביא הוסיפה דברים." },
   ];
   const got = C.bodyNames(blocks, new Set()).map((c) => c.value);
-  ok(!got.includes("מרים להידחות"), "no מרים להידחות: " + got.join(", "));
-  ok(got.includes("מרים"), "מרים alone is still found: " + got.join(", "));
+  ok(!got.includes("אסתר להידחות"), "no אסתר להידחות: " + got.join(", "));
+  ok(got.includes("אסתר"), "אסתר alone is still found: " + got.join(", "));
   ok(got.includes("יעל לביא"), "a surname that starts with ל is kept: " + got.join(", "));
   ok(C.verbTail("להידחות") && C.verbTail("להגיש") && !C.verbTail("לביא") && !C.verbTail("לוי") && !C.verbTail("לנדאו"), "verbTail: infinitives yes, surnames no");
-  // once מרים is listed, a suggestion containing it is not a new person
-  const got2 = C.bodyNames(blocks, ["מרים"]).map((c) => c.value);
-  ok(!got2.some((v) => /מרים/.test(v)), "no suggestion contains a listed value: " + got2.join(", "));
+  // once אסתר is listed, a suggestion containing it is not a new person
+  const got2 = C.bodyNames(blocks, ["אסתר"]).map((c) => c.value);
+  ok(!got2.some((v) => /אסתר/.test(v)), "no suggestion contains a listed value: " + got2.join(", "));
 }
 
 console.log("\n— a model span glued to an infinitive is trimmed —");
 {
-  const text = "דין הבקשה למינוי אפוטרופוס למרים להידחות. מרים ציינה.";
-  const s = text.indexOf("למרים"), e = text.indexOf("להידחות") + "להידחות".length;
+  const text = "דין הדרישה ששלח הספק לאסתר להידחות. אסתר ציינה.";
+  const s = text.indexOf("לאסתר"), e = text.indexOf("להידחות") + "להידחות".length;
   const got = C.nerClean([{ type: "PER", score: 0.99, s, e }], text, {}).map((x) => x.value);
-  ok(got.length === 1 && got[0] === "מרים", "PER span 'למרים להידחות' → מרים: " + JSON.stringify(got));
+  ok(got.length === 1 && got[0] === "אסתר", "PER span 'לאסתר להידחות' → אסתר: " + JSON.stringify(got));
 }
 
 console.log("\n— טל: as a phone label is not the person טל —");

@@ -224,7 +224,7 @@ function diff(goldSet, predA, predB, opt) {
 
 /* Command-line plumbing, shared with sweep.js (PLAN.md section 6).
    - A file that cannot be read or parsed is named by its argument, never quoted: Node's
-     JSON.parse error repeats the start of the file, which for her gold is her text.
+     JSON.parse error repeats the start of the file, which for a private gold is private text.
    - A run is private when --private is given, any path argument is under a private-bench
      folder, or the gold set says licence "private". A private run needs privacy.js: its
      console lines go through safeLog, a file written outside private-bench goes through
@@ -281,7 +281,7 @@ if (require.main === module) cli(process.argv.slice(2), (io) => {
   const bo = { resamples: Number(io.arg("resamples", "2000")), seed: Number(io.arg("seed", "1")) };
   S.ci95 = { r: B.ci(units, B.METRICS.r, bo).ci, f2: B.ci(units, B.METRICS.f2, bo).ci };
   const out = io.arg("out");
-  // her scores outside private-bench: the FORMATS.md Scores shape only (no per-document rows),
+  // private scores outside private-bench: the FORMATS.md Scores shape only (no per-document rows),
   // which is also what the gate can read
   if (out) io.write(out, io.private && !isPrivatePath(out) ? { model: S.model, set: S.set, stage: S.stage, threshold: S.threshold, match: S.match,
     micro: S.micro, perType: Object.fromEntries(Object.entries(S.perType).map(([t, x]) => [t, { n: x.n, tp: x.tp, fp: x.fp, fn: x.fn, p: x.p, r: x.r, f1: x.f1, f2: x.f2 }])),

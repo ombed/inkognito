@@ -15,8 +15,8 @@
 
    The same harvester then reads what our checks cover: the synthetic corpus
    (bench/corpus + bench/key.json), the typographic shapes (tests/shape-lib.js)
-   and the Word structures (tests/structure-lib.js). A shape her documents have
-   and our checks don't is reported and fails the run.
+   and the Word structures (tests/structure-lib.js). A shape the private documents
+   have and our checks don't is reported and fails the run.
 
    Nothing here leaves the machine. The report is written next to the fixtures,
    and a guard refuses to print or write anything that holds three Hebrew
@@ -238,7 +238,7 @@ function main() {
     console.log(`${dim.padEnd(10)} ${row}`);
   }
   const n = Object.values(report.uncovered).reduce((s, m) => s + Object.keys(m).length, 0);
-  console.log(n ? `\n${n} shape value(s) her documents have and our checks don't (✗). Report: ${path.join(PRIVATE, "shapes-report.json")}` : "\nevery shape in her documents is covered by our checks");
+  console.log(n ? `\n${n} shape value(s) the private documents have and our checks don't (✗). Report: ${path.join(PRIVATE, "shapes-report.json")}` : "\nevery shape in the private documents is covered by our checks");
   if (n) process.exitCode = 1;
 }
 

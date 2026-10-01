@@ -7,8 +7,8 @@
    compare: now leaks, now missed, fp changed, and the reverse). An entity that flips in any
    pair is in the band. Written where each set may live:
      synthetic  bench/model-eval/noise-band.json         (invented names; committed)
-     hers       private-bench/model-eval/noise-band.json (her entity ids never leave it)
-   Her part prints counts only, through the privacy gate. */
+     private    private-bench/model-eval/noise-band.json (its entity ids never leave it)
+   The private part prints counts only, through the privacy gate. */
 const fs = require("fs");
 const path = require("path");
 const { compare } = require("../gate.js");

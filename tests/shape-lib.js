@@ -31,7 +31,7 @@ const SHAPES = {
   asterisks: (x) => `המורה *${x}* אמרה.`,
   underscores: (x) => `המורה _${x}_ אמרה.`,
   "footnote digit after": (x) => `המורה ${x}2 אמרה.`,
-  // seen in her documents (layer 4): a right-to-left embedding mark before a name, and a
+  // seen in real documents (layer 4): a right-to-left embedding mark before a name, and a
   // bracket straight after one
   "RLE and PDF around": (x) => `המורה ‫${x}‬ אמרה.`,
   "bracket straight after": (x) => `המורה ${x}[1] אמרה.`,

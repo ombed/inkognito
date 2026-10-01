@@ -3,8 +3,8 @@ const H = require("./helpers");
 
 /* UX #2: the 185 MB model download started on "המשך" without a word, phones
    included. On a phone, or with data saver on, the tool now asks first, with
-   two equal answers. On a computer nothing changed: the client works on a
-   computer, her main complaint is names the tool missed, and the model is
+   two equal answers. On a computer nothing changed: the work is done on a
+   computer, the main risk is names the tool missed, and the model is
    what finds them. */
 
 const DOC = ["פרוטוקול", "דני כהן: שלום לכולם.", "רונית לוי: שלום.", "דני כהן: נתחיל."].join("\n");

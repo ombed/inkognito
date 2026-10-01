@@ -1,16 +1,15 @@
 const { test, expect } = require("./base");
 const H = require("./helpers");
 
-/* Four complaints about the check screen, from a real session.
+/* Four complaints about the check screen, from real use.
 
    The manual add-a-replacement card was hard-coded below all five accordions
    and was the only card that could not be collapsed, so it sat about a screen
-   below the fold exactly when she had just spotted a missed value.
+   below the fold exactly when the user had just spotted a missed value.
 
    The audit bundle lived in the fifth and last section, collapsed, under a
    heading about what was cleaned from the file, inside a sub-box called
-   sending for review. Her words: if I searched and did not find it, she would
-   never find it.
+   sending for review: hard to find even when looking for it.
 
    And the bottom bar floated over the document and the rail, with the space
    left for it hardcoded in three places that nothing tied to its real height.
@@ -53,7 +52,7 @@ test("the bundle export is its own section, open, and says what it is", async ({
 });
 
 /* Up to v56 the package also held the redacted document and opened a mail to an address kept
-   in her browser. She sends the package herself (by WhatsApp) and the document separately, only
+   in the browser. The user now sends the package herself and the document separately, only
    when she decides to, so the package carries no document and no address is kept. */
 test("the check package holds the log only, and no mail address is kept", async ({ page }) => {
   await page.addInitScript(() => { try { localStorage.setItem("redact-feedback-mail", "someone@example.com"); } catch (_) {} });

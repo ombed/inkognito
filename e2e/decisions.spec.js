@@ -1,7 +1,7 @@
 const { test, expect } = require("./base");
 const H = require("./helpers");
 
-/* Two things she reported from a real file. A name she removed on the
+/* Two things reported from real use. A name she removed on the
    people screen came back at the check screen as a suggestion, because
    removal was not remembered as a decision. And the replacement arrows
    pointed sideways and jumped from wherever the cursor last was, not from

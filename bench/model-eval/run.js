@@ -9,7 +9,7 @@
    --tok faithful: the tokenizer as the model was trained (tokfix.js, RESULTS.md); the run is
    named <key>-ft, so it sits beside the product run in every table.
 
-   --private (her documents, PLAN.md section 6):
+   --private (the private set, PLAN.md section 6):
      - the output must be under private-bench/model-eval/ (the default there), nowhere else;
      - no network: every model file must already be cached;
      - the console gets numbers and allowlisted words only, through privacy.js, and any
@@ -114,7 +114,7 @@ if (require.main === module) {
   const priv = process.argv.includes("--private");
   Promise.resolve().then(main).catch((err) => {
     // a usage error is this file's own fixed text; anything else in a private run can carry
-    // a chunk of her text, so only its class and frames are printed
+    // a chunk of private text, so only its class and frames are printed
     if (err && err.usage) console.error(err.message);
     else if (priv) console.error(privacy ? privacy.sanitise(err).stack : "run failed (message withheld)");
     else console.error(err && err.stack || err);

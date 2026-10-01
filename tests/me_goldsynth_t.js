@@ -217,13 +217,13 @@ const ent = (kind, cat, must, canonical, surfaces) => ({ kind, cat, must, canoni
     ok(bad === 0, "every mention's offsets land on its surface, at word ends: " + bad + " off");
     ok(pfx === 0, "a letter glued before a mention is always a recorded prefix");
     ok(core === 0, "every core lies inside its mention");
-    const leak = K.cases.filter((c) => c.group === "leak-16.9");
-    ok(leak.length === 20, "20 variants of the 16.9 shape: " + leak.length);
+    const leak = K.cases.filter((c) => c.group === "leak-shape");
+    ok(leak.length === 20, "20 variants of the short-name leak shape: " + leak.length);
     ok(leak.every((c) => { const w = new Set(c.mentions.map((m) => m.surface)); const [n] = w; return w.size === 1 && n.length === 4 && !/\s/.test(n) && c.mentions.length >= 5; }),
       "each is one four-letter word, five times or more");
     ok(new Set(leak.map((c) => c.mentions[0].surface)).size === 20, "twenty different names");
     for (const g of ["false-positive", "script", "control", "leak"]) ok(K.cases.some((c) => c.group === g), "group present: " + g);
-    ok(K.cases.filter((c) => c.control).map((c) => c.id).sort().join() === "r4-town-variants,r5-two-letter-prefix", "r4 and r5 are the controls");
+    ok(K.cases.filter((c) => c.control).map((c) => c.id).sort().join() === "town-variants,two-letter-prefix", "the town variants and the two-letter name are the controls");
     // the Word files hand the model exactly the case text
     for (const c of K.cases.slice(0, 40)) {
       const back = (await E.readBlocks(KC.docxOf(c.text))).map((b) => b.text).join("\n");

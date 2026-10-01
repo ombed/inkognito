@@ -447,7 +447,7 @@ test("L19: the restore box has a label, and the version chip sits in a landmark"
 
 /* Found by CI on the review batches: "a valid file clears the error" failed now and then because
    its first file arrived before the engine module had loaded, and load() returned on !E without a
-   word. For her, on a slow line, a file chosen right after the page opened did nothing at all. A
+   word. On a slow line, a file chosen right after the page opened did nothing at all. A
    file that arrives early is now held and read once the engine is there. */
 test("a file chosen before the engine has loaded is read once it has", async ({ page }) => {
   await H.serveEngineWithStub(page);

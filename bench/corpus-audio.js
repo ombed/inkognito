@@ -1,11 +1,11 @@
-/* Transcribed audio: the shape of the documents she actually works on daily,
-   and the one shape the corpus did not have.
+/* Transcribed audio: a common kind of document, and the one shape the
+   corpus did not have.
 
-   Her two real transcripts returned zero candidates from the deterministic
+   Transcripts like these return zero candidates from the deterministic
    layer. They are speech typed up from a recording, so there are no "NAME:"
    turns, no titles, no case header. The speaker is written on a line of its
    own, twice in a file, and the rest is continuous utterances. They also carry
-   the thing the near-miss layer exists for and the corpus never had: real
+   the thing the near-miss layer exists for and the corpus never had:
    transcription errors, where the same person is typed two different ways.
 
    These four documents reproduce that shape with invented names. They are the

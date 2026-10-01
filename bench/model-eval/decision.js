@@ -3,15 +3,15 @@
      node bench/model-eval/decision.js [--finalists=a,b]
 
    - rule 1, safety: the whole chain (product.js --tag=full[-ft]) against today's run
-     (base-q8:a), entity by entity with gate.js's compare, on the synthetic set and on hers;
+     (base-q8:a), entity by entity with gate.js's compare, on the synthetic set and on the private set;
      only a new leak or miss outside the baseline's noise band counts, and total leaks and
      misses must not go up;
    - rule 2a, better reading: the pooled held-out recall gain from compare.md (or
      compare-finalists.md for the finalists, at 97.5%);
-   - rule 2b, her time: model-only suggestions in the whole chain on her documents, less the
+   - rule 2b, user time: model-only suggestions in the whole chain on the private set, less the
      ones judged real names (judge.js labels), against today's model;
    - size from the registry, Node scan time per 1k words from the BMC run, the known cases.
-   Her part is counts only. Writes out/full/decision.md and prints it. */
+   The private set's part is counts only. Writes out/full/decision.md and prints it. */
 const fs = require("fs");
 const path = require("path");
 const E = require("../engine.js");
@@ -37,7 +37,7 @@ function safety(dir, bandFile, file) {
   return { t, newBad: newBad.size, pass: newBad.size === 0 && t.leaked <= b.leaked && t.missed <= b.missed };
 }
 
-// model-only whole-chain suggestions on her documents, less those judged real names
+// model-only whole-chain suggestions on the private set, less those judged real names
 function junk(file) {
   const items = read(path.join(PRIV, "judge", "items.json")), labels = read(path.join(PRIV, "judge", "labels.json"));
   const vals = read(path.join(PRIV, "judge", "labels-values.json")).values;
@@ -83,7 +83,7 @@ function main() {
   }
   const bs = safety(pdir, "", "base-q8-a.json"), bh = safety(path.join(PRIV, "product"), "", "base-q8-a.json");
   const L = [];
-  L.push("| Model | Synthetic found / missed / leaked / fp | New leaks outside the band | Hers found / missed / leaked / fp | New leaks outside the band | 1. Safety | 2a. Held-out recall gain, untyped [interval] | 2b. Her model-only junk (today " + baseJunk.junk + ") | Known cases | MB | Node ms / 1k words |");
+  L.push("| Model | Synthetic found / missed / leaked / fp | New leaks outside the band | Private set found / missed / leaked / fp | New leaks outside the band | 1. Safety | 2a. Held-out recall gain, untyped [interval] | 2b. Private set model-only junk (today " + baseJunk.junk + ") | Known cases | MB | Node ms / 1k words |");
   L.push("|---|---|---|---|---|---|---|---|---|---|---|");
   const tt = (t) => `${t.found} / ${t.missed} / ${t.leaked} / ${t.fp}`;
   L.push(`| base-q8 (today) | ${tt(bs.t)} | – | ${tt(bh.t)} | – | – | – | ${baseJunk.junk} | ${known["base-q8"] ? known["base-q8"].passed + "/" + known["base-q8"].cases : "–"} | 185 | ${baseSpeed ?? "–"} |`);

@@ -4,10 +4,10 @@
 
 **Owner's decisions (2026-09-23), which override anything below that says otherwise:**
 1. The section 1 rule is accepted as written, including that a "net safety gain" is blocked and decided by the owner at checkpoint 3.
-2. **Claude judges** the model suggestions on her documents (section 4.4), not the owner. Her documents already passed her check and were already sent to AI models. Nothing from them leaves the machine: no repo, commit, PR, doc, artifact or memory. Reports are counts only. Identifying information she missed is removed from the local fixture; the one known case, a real name in r5, is replaced with an invented name of the same shape, so the leak test case keeps its shape.
-3. Download ceiling: ≤ 250 MB without asking her; 250–450 MB only with the owner's OK and a first-run warning; > 450 MB not shipped.
+2. **Claude judges** the model suggestions on the private set of real documents (section 4.4), not the owner. Nothing from that set leaves the machine: no repo, commit, PR, doc, artifact or memory. Reports are counts only, and its results are not published. Identifying text found in a local fixture is replaced there with invented text of the same shape, so any leak test case keeps its shape.
+3. Download ceiling: ≤ 250 MB without asking the user; 250–450 MB only with the owner's OK and a first-run warning; > 450 MB not shipped.
 4. `tests/protocol.txt` gets a blind key committed to the repo. NEMO, BMC and Knesset UD stay outside the repo in `paintItBlack/public-bench/`; only aggregate scores are committed.
-5. Two corrections to the draft: a branch push does not deploy (only merges to `main` do); timing numbers here are from this PC, not her laptop.
+5. Two corrections to the draft: a branch push does not deploy (only merges to `main` do); timing numbers here are from this PC, not the user's machine.
 
 ## In short
 
@@ -17,12 +17,12 @@
   - Score each row two ways:
     - **Model level:** precision, recall, F1 and F2 for each type.
     - **Product level:** found, missed, leaked, false positives and junk, scored the way `bench/lib.js` does today.
-  - Use four kinds of text: our synthetic set, her 5 documents (reported as counts only), public Knesset text, and three public Hebrew answer keys.
+  - Use four kinds of text: our synthetic set, a private set of real documents (results not published), public Knesset text, and three public Hebrew answer keys.
 - **How we'll decide:** the rule in section 1 is written down before any number exists.
   - The rule is strict about safety. **The most likely result is that we keep today's model.** That's acceptable: if we keep it, we'll know why.
 - **What it costs:**
   - About **7–9 working days** of my time.
-  - About **2–4 hours** of yours. That covers three checkpoints plus judging model suggestions on her documents, in a tool that runs only on your screen. The judging range gets fixed after the smoke test.
+  - About **2–4 hours** of yours. That covers three checkpoints plus spot-checks of the judging, in a tool that runs only on your screen. The judging range gets fixed after the smoke test.
   - Nothing is deployed. The work stays on a local branch, and the engine is not touched until you decide to switch.
 
 **Correction to the research notes:** `tests/protocol.txt` is 14,247 bytes, not 14,247 words. That is about 1,430 words (8,048 characters). It is quick to annotate, but it is a small sample.
@@ -33,22 +33,20 @@
 
 **What we're protecting:**
 - **A missed name is a leak.** It can't be undone.
-- **A false suggestion costs her a tap.** In the 16.9 session she overrode the tool 11–14 times per document and spent 80–85% of her time on the check screen. False suggestions are her biggest time cost, but they are never a legal risk.
+- **A false suggestion costs the user a tap.** False suggestions are the user's biggest time cost on the check screen, but they are never a legal risk.
 
 **Today's numbers (model on):**
 
 | Set | Scored | Found | Missed | Leaked | FP | Junk | Model-only junk |
 |---|---|---|---|---|---|---|---|
 | Synthetic (43 docs) | 268 | 262 | 6 | 7 | 4 | 31 | 2 |
-| Her 5 docs | 33 | 32 | 1 | 3 | 3 | 81 | 27–29 (to be recomputed) |
-| Model off (synthetic / hers) | | 210 / 26 | 58 / 7 | 74 / 9 | 4 / 1 | 29 / 54 | – |
+| Model off (synthetic) | | 210 | 58 | 74 | 4 | 29 | – |
 
-Her junk is now **79**, not 81: the real name she missed was replaced in the r5 fixture (23.9), and two of the model's suggestions were that name. Today's loader and the model-eval loader both give 79, with the same entities (RESULTS.md, parity).
+A private set of real documents is also measured (results not published).
 
 **What each set can prove:**
-- **Her documents are biased by how they were made.** The tool produced them with the model on, so every name the baseline found has already been replaced. What is left is pseudonyms plus what the baseline missed.
-  - We use them only for the **safety** and **her-time** checks, never as evidence that a candidate reads Hebrew better.
-  - Only one of her three leaks (the r3 bank name) is something a different model could fix.
+- **The private set of real documents is biased by how it was made.** The tool produced it with the model on, so every name the baseline found has already been replaced. What is left is pseudonyms plus what the baseline missed.
+  - We use it only for the **safety** and **user-time** checks, never as evidence that a candidate reads Hebrew better.
 - **The baseline was tuned on the synthetic set.** Its 0.6 floor, the `nerClean` rules and the corpus categories were all fitted to it. So the synthetic set can show a candidate is *not worse*.
 - **Only `protocol.txt` and the public keys can show that a candidate is *better*.**
 
@@ -58,15 +56,15 @@ A candidate replaces today's model only if **all five** hold:
 
 1. **No new leaks.**
    - Before any candidate is judged, we measure the **baseline's own noise band**: the entities that flip between two Node runs, between Node and the browser, and between q8 and uint8.
-   - On the synthetic set and her documents, a candidate must not leak or miss any must-redact entity that the baseline catches, apart from entities in that noise band.
+   - On the synthetic set and the private set, a candidate must not leak or miss any must-redact entity that the baseline catches, apart from entities in that noise band.
    - Total leaks and total misses must not go up.
    - If a candidate closes more leaks than it opens, it still fails this rule. It is reported as "net safety gain, blocked", and you decide it explicitly at checkpoint 3, looking at each opened leak by category.
 2. **A real benefit: at least one of (a) or (b).**
    - **(a) Better reading.** Look at recall with overlapping spans on the held-out sets (`protocol.txt`, Knesset UD, NEMO test, BMC split 1), with PER and untyped as the headline. The paired 95% interval of the gain over the baseline must be entirely above zero, and no single set may be significantly worse.
      - The synthetic test half counts only as a "not worse" check.
      - Significance is tested only for the ≤2 finalists, with 97.5% intervals (Bonferroni for two), so running ~11 candidates doesn't create a false winner.
-   - **(b) Her time.** Model false positives on her documents fall by at least 25%, using the adjudicated counts from 4.4. At the same time, the paired interval for held-out recall must not be significantly negative. This replaces the draft's "1 percentage point" test, which was smaller than the noise.
-3. **Fits the budget.** Scan time is given per 1,000 words, relative to today's model. Her documents run from 576 to 5,200 words. Today's model takes about 55 s on r3 with 1 thread, so a flat per-document limit would fail today's model too.
+   - **(b) User time.** Model false positives on the private set fall by at least 25%, using the adjudicated counts from 4.4. At the same time, the paired interval for held-out recall must not be significantly negative. This replaces the draft's "1 percentage point" test, which was smaller than the noise.
+3. **Fits the budget.** Scan time is given per 1,000 words, relative to today's model. Real documents vary several-fold in length, so a flat per-document limit would fail today's model too.
 
    | | Green | Amber (your explicit OK) | Red |
    |---|---|---|---|
@@ -74,8 +72,8 @@ A candidate replaces today's model only if **all five** hold:
    | Browser scan, 1 thread, per 1k words (today about 10.5 s on this PC) | ≤ 1.3× today | ≤ 2× today | > 2×, unless a separate Worker-plus-threads project is taken on |
    | Peak tab memory | ≤ 1.5 GB | ≤ 2.2 GB | more |
 
-   Her laptop is unknown (see open question 5). The 52 s she spent on the people screen was measured on **her** machine. The scan times are from **this** PC, so the two can't be compared directly.
-4. **Licence clearly allows her use:** CC-BY-4.0, Apache-2.0 or MIT, with attribution. Models with no licence can be measured but can't ship.
+   The user's machine is unknown (see open question 5). The scan times are from **this** PC.
+4. **Licence clearly allows the user's use:** CC-BY-4.0, Apache-2.0 or MIT, with attribution. Models with no licence can be measured but can't ship.
 5. **The browser gives the same answers as Node.** We first measure how far the baseline itself drifts between Node and the browser. A candidate may drift no more than that plus 1 on found and on leaked.
 
 **Tie-break:** higher F2 wins. F2 is computed on the cleaned output, at each model's own chosen cut-off, pooled over the held-out sets. After that, the smaller model wins, then the faster one. A tie means we keep today's model.
@@ -182,7 +180,7 @@ We also score **each exported candidate at fp32 in Node** (the export produces f
   - **model-only junk**;
   - **junk per 1,000 words**;
   - the **per-entity diff against the baseline, keyed by `cat`**;
-  - **adjudicated model false positives** on her documents (4.4).
+  - **adjudicated model false positives** on the private set (4.4).
 - For the finalists, the bench also runs `foldEvidence`, `tokPieces` and `guardModel`. The bench skips these today, and they depend on the tokenizer, so skipping them would treat non-WordPiece models unevenly.
 
 ### 3.3 Span boundaries
@@ -194,7 +192,7 @@ We also score **each exported candidate at fp32 in Node** (the export produces f
 | Measure | Rows |
 |---|---|
 | Download (weights + tokenizer), load time, Node scan per 1k words, Node memory, max tokens per chunk | all |
-| **Scan time on the longest real document** (r3, 5,200 words), Node | all |
+| **Scan time on a long real document**, Node | all |
 | Browser (1-thread WASM, and 4 threads): load, scan per 1k words, peak tab memory, longest main-thread block, token agreement with Node | finalists plus baseline |
 
 ### 3.5 Calibration
@@ -211,7 +209,7 @@ We also score **each exported candidate at fp32 in Node** (the export produces f
   - synthetic: by document;
   - Knesset UD: by its `newdoc` documents (15 after the IAHLT overlap is dropped, 19 before; dev and test together);
   - NEMO/BMC: blocks of 20 sentences. The files mark no article boundaries, so we state that these intervals are optimistic.
-- Her documents are reported per document, with no intervals.
+- The private set is reported per document, with no intervals (results not published).
 - The baseline is run twice to confirm the runs repeat exactly.
 
 ### 3.7 Why F1 does not decide
@@ -233,8 +231,8 @@ F-scores decide which models earn a product run, and they explain why a model wi
 | Known cases (4.5) | ~25 named cases, all made-up text | Pass or fail per model | None |
 | NEMO test | PER 267, ORG 408, GPE 195, LOC 41, FAC 11 | Held-out, headline public score | msperka, aleph, joint and parse trained on NEMO; whether the test split was held out is **unknown** for joint and parse; the baseline is unknown |
 | BMC split 1 test | PER 373, LOC 318, ORG 273 | Held-out public score | `hebert` trained on BMC (not counted for it) |
-| Knesset UD dev+test, minus the 56 sentences also in IAHLT NER | 465 sentences, 7,402 words | Spoken register, closest to her transcripts | joint and parse **possibly** contaminated (trained on IAHLT UD) |
-| Her fixtures r1–r5 | ~10,450 words, 33 must | Safety and her-time checks only; **counts only** | Created by the baseline itself (see section 1) |
+| Knesset UD dev+test, minus the 56 sentences also in IAHLT NER | 465 sentences, 7,402 words | Spoken register, closest to interview transcripts | joint and parse **possibly** contaminated (trained on IAHLT UD) |
+| Private set of real documents | not published | Safety and user-time checks only; **counts only**, results not published | Created by the baseline itself (see section 1) |
 
 **Not used for the decision:**
 - **IAHLT NER data.** The baseline's labels match IAHLT's (inferred, not documented), and joint, parse and iahlt were trained on it. It could serve as a held-out set for msperka, aleph, hebert and golem, but it can't be compared fairly with the baseline, so it is an optional diagnostic at most.
@@ -266,9 +264,9 @@ F-scores decide which models earn a product run, and they explain why a model wi
 - Tokens are converted to text using a written rule for spacing around punctuation, geresh and gershayim.
 - Every report includes a contamination table.
 
-### 4.4 Her documents: judging
+### 4.4 Private set: judging
 
-- Claude judges every unmatched prediction on her documents (owner's decision 2): name / place / org / public body / noise / unsure, reading the local fixture.
+- Claude judges every unmatched prediction on the private set (owner's decision 2): name / place / org / public body / noise / unsure, reading the local fixture.
 - Judgements are saved under `private-bench/model-eval/`, keyed by fixture and position, never committed.
 - Reports and commits carry counts per model and per judgement class only.
 - The same judgement is reused for every model that makes the same prediction, so the judging is consistent across rows.
@@ -279,11 +277,11 @@ F-scores decide which models earn a product run, and they explain why a model wi
 Each case is rebuilt with **made-up text**, keyed blind, and gets a pass or fail per model.
 
 - **Leaks:**
-  - the r3 bank pseudonym pattern (the one leak a better model could fix);
-  - the r4 town spelling variants and the r5 two-letter name with a prefix, as **controls no model should fix**;
+  - a pseudonym inside a bank name (the one leak shape a better model could fix);
+  - town spelling variants and a two-letter name with a prefix, as **controls no model should fix**;
   - v28 (a name found at full confidence that leaked downstream);
   - v39 (a glued span that allow-listed a surname).
-- **16.9 leak shape** (one word, 4 letters, many occurrences), in 20 variants. **Pass = an exact span, or a span cut only by a prefix letter. Glued = fail.** That session's failure was the span edge, not the coverage.
+- **Short-name leak shape** (one word, 4 letters, many occurrences), in 20 variants. **Pass = an exact span, or a span cut only by a prefix letter. Glued = fail.** The failure this shape models was the span edge, not the coverage.
 - **The five false-positive types:** a discourse word glued to a name, a role word, a verb read as a first name, a public body with a prefix letter, and a bare number read as ORG.
 - **Nikud and Latin-capital names.**
 - The `ner_t.js` text gets a blind key. Its current key is DictaBERT's own 27 spans, which favours DictaBERT.
@@ -332,7 +330,7 @@ Each case is rebuilt with **made-up text**, keyed blind, and gets a pass or fail
    - **Recipe check:** re-export `dictabert-ner` with this recipe. It must agree with the onnx-community q8 on at least 99.5% of token labels.
 
 **Order of runs:**
-1. **parity:** `base-q8` must reproduce 262/6/7/4/31 and 32/1/3/3/81.
+1. **parity:** `base-q8` must reproduce 262/6/7/4/31 on the synthetic set, and today's counts on the private set.
 2. **noise band:** the baseline run twice, plus uint8.
 3. **smoke:** `t1`, `f1` and `protocol.txt` on all tier-1 rows. All health checks and tokenizer parity must pass.
 4. **full run.**
@@ -365,9 +363,9 @@ Compute time is under an hour. **Downloads come to about 5.8 GB**: about 50 minu
 - For leak shapes, the harness opens **only `leak-report.json`** inside the zips (in memory). It never opens the redacted docx, the session logs or the case profile.
 - **Models:** pinned revision plus sha256 on every load; no `trust_remote_code`; `.bin` files loaded with `weights_only=True`.
 - **Public datasets** stay outside the repo.
-- **Commits, PRs, logs and memory:** no client text. Every report is checked against the allowlist before it is committed.
+- **Commits, PRs, logs and memory:** no text from real documents. Every report is checked against the allowlist before it is committed.
 - **Freeze:** the branch stays local and is not pushed until the freeze is lifted (`pages.yml` deploys the site). No merge, no deploy.
-- **r5 held a real full name that she missed.** It is replaced in the local fixture with an invented name of the same shape (decision 2).
+- **Identifying text found in a local fixture** is replaced there with invented text of the same shape (decision 2).
 
 ---
 
@@ -418,13 +416,13 @@ Compute time is under an hour. **Downloads come to about 5.8 GB**: about 50 minu
 
 *Blocking Phase 0, in this order:*
 1. Accept the section 1 rule, including that a "net safety gain" is decided by you rather than passed automatically? *Recommend: yes.*
-2. Are you authorised to view r2–r5 (r5 holds a real full name), and will you do the judging in your own terminal? *Recommend: yes, you, locally.*
-3. Largest first download without asking her? *Recommend: 250 MB; up to 450 MB with your OK and a warning.*
+2. Are you authorised to view the private set, and will the judging run locally? *Recommend: yes, locally.*
+3. Largest first download without asking the user? *Recommend: 250 MB; up to 450 MB with your OK and a warning.*
 4. May I annotate `protocol.txt` and the public sets, and commit the protocol key? *Recommend: yes; NEMO, BMC and UD stay outside the repo.*
 
 *Later:*
 
-5. Her laptop model and RAM (ask the CSM once)?
+5. The user's machine and RAM?
 6. Measure models with no licence? *Recommend: yes, marked "not shippable".*
 7. Run the zero-shot rows only if no Hebrew-trained model beats the baseline?
 8. Add the two-model union row?

@@ -12,12 +12,12 @@
    its shipped 0.6 (and at its tune optimum, so both are visible), every other model at its
    best F2 on the tune half, ties to the lower value (PLAN.md 3.5).
 
-   A rule whose inputs do not exist yet (product runs, the noise band, the browser, her
+   A rule whose inputs do not exist yet (product runs, the noise band, the browser, the private set's
    adjudicated false positives) is PENDING, with what it waits for; a report never passes a rule
    it could not check. Intervals are paired bootstrap by the caller's units (doc.unit, else the
    document), at 95%, narrowed by Bonferroni over the named finalists (97.5% for two).
 
-   --private: her documents. Category-level counts only (no document ids, no positions, no
+   --private: the private set of real documents. Category-level counts only (no document ids, no positions, no
    per-mention rows), in words the privacy gate knows, and everything written or printed goes
    through bench/model-eval/privacy.js; without it nothing is written. */
 const fs = require("fs");
@@ -200,7 +200,7 @@ function build(inp, opt) {
     const negHeld = held.filter(({ r }) => r.gainR.diff.ci[1] < 0).map((x) => x.set);
     if (R.pooled && R.pooled.u.diff.ci[1] < 0) negHeld.push("the pooled held-out sets");
     R.r2b = negHeld.length ? { st: "FAIL", why: "held-out recall significantly negative on " + negHeld.join(", ") }
-      : { st: "PENDING", why: "needs the adjudicated model false positives on her documents (PLAN.md 4.4)" + (held.length ? "; held-out recall is not significantly negative" : "") };
+      : { st: "PENDING", why: "needs the adjudicated model false positives on the private set (PLAN.md 4.4)" + (held.length ? "; held-out recall is not significantly negative" : "") };
     R.r2 = R.r2a.st === "PASS" || R.r2b.st === "PASS" ? { st: "PASS", why: R.r2a.st === "PASS" ? "via (a)" : "via (b)" }
       : R.r2a.st === "FAIL" && R.r2b.st === "FAIL" ? { st: "FAIL", why: "neither (a) nor (b)" }
       : { st: "PENDING", why: "(a) " + R.r2a.st + ", (b) " + R.r2b.st };
@@ -241,7 +241,7 @@ function renderPublic(M) {
     L.push("| Rule | " + models.join(" | ") + " |", "|---|" + models.map(() => "---|").join(""));
     const line = (label, k) => L.push(`| ${label} | ` + models.map((m) => rules[m][k].st).join(" | ") + " |");
     line("Harness health", "health"); line("1. No new leaks", "r1"); line("2. Real benefit", "r2");
-    line("  2a. Better reading", "r2a"); line("  2b. Her time", "r2b"); line("3. Budget", "r3"); line("4. Licence", "r4");
+    line("  2a. Better reading", "r2a"); line("  2b. Private set time", "r2b"); line("3. Budget", "r3"); line("4. Licence", "r4");
     line("5. Browser = Node", "r5");
     L.push("| **Verdict** | " + models.map((m) => "**" + rules[m].verdict + "**").join(" | ") + " |", "");
     L.push("PENDING means an input is not available yet; it is never read as a pass. A net safety gain is decided by the owner at checkpoint 3.", "");
@@ -322,7 +322,7 @@ function renderPublic(M) {
   return L.join("\n") + "\n";
 }
 
-/* Her documents: counts per category and per model, in words privacy.js lets through. No set
+/* The private set: counts per category and per model, in words privacy.js lets through. No set
    is a held-out set here, so there are no intervals (PLAN.md 3.6). */
 function renderPrivate(M) {
   const { sets } = M;
@@ -371,7 +371,7 @@ function renderPrivate(M) {
 function compare(inp, opt) {
   const o = Object.assign({}, opt || {});
   if (o.private && !(o.privacy && typeof o.privacy.allow === "function")) throw new Error("compare --private needs bench/model-eval/privacy.js");
-  // the public report prints set tables without the gate, so her sets never reach it
+  // the public report prints set tables without the gate, so private sets never reach it
   if (!o.private && (inp.golds || []).some((g) => g && g.licence === "private")) throw new Error("a gold set with licence private needs --private");
   if (o.private) inp = Object.assign({}, inp, { scores: [] }); // score files may carry per-document rows
   const M = build(inp, o);

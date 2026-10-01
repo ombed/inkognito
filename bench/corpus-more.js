@@ -318,7 +318,7 @@ module.exports = function more(Doc, C) {
     docs.push(d);
   }
 
-  // ── position papers: the shape of a real filing that broke the anchors ──
+  // ── position papers: a filing shape that broke the anchors ──
   // Parties by role and colon, form labels with colons, "the undersigned" before
   // verbs, a word ending in ת before a word starting with ז, a discourse word
   // before the minor's name, role words the model calls names.

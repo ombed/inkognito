@@ -382,7 +382,7 @@ console.log("\n— review: rule 2a decided by the numbers —");
   ok(Math.abs(three.level - (1 - 0.05 / 3)) < 1e-12, "three finalists: Bonferroni over three, not capped at two");
 }
 
-console.log("\n— review: compare never lets her sets into the public report —");
+console.log("\n— review: compare never lets private sets into the public report —");
 {
   const fs = require("fs"), os = require("os"), path = require("path");
   const T = "דני אמר.";

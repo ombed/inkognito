@@ -130,7 +130,7 @@ button:disabled{opacity:.55;cursor:not-allowed}
 </div></div>
 <script>
 (function(){
-  console.log("השחרת מסמכים — גרסה v57");
+  console.log("השחרת מסמכים — גרסה v58");
   var stuck=setTimeout(function(){
     var b=document.getElementById("boot"); if(!b) return;
     b.className="stuck";
@@ -168,9 +168,9 @@ button:disabled{opacity:.55;cursor:not-allowed}
         var v=ev.data && ev.data.sw; if(!v) return;
         var served=v.replace("hedact-","");
         console.log("עובד שירות: "+served);
-        if(served==="v57") return;
+        if(served==="v58") return;
         var el=document.getElementById("ver"); if(!el) return;
-        el.innerHTML='גרסה v57 · <b style="color:var(--warn)">מוגש '+served+
+        el.innerHTML='גרסה v58 · <b style="color:var(--warn)">מוגש '+served+
           ' — רענון בלי מטמון</b>';
       });
       sw.ready.then(function(){ if(sw.controller) sw.controller.postMessage("version") });
@@ -1144,7 +1144,7 @@ button:disabled{opacity:.55;cursor:not-allowed}
 
 </div>
 </x-dc>
-<footer><div id="ver">גרסה v57</div></footer>
+<footer><div id="ver">גרסה v58</div></footer>
 <script type="text/x-dc" data-dc-script data-props="{&quot;accent&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;forest&quot;,&quot;ink&quot;,&quot;plum&quot;],&quot;default&quot;:&quot;forest&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;עיצוב&quot;},
 &quot;docFont&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;serif&quot;,&quot;sans&quot;],&quot;default&quot;:&quot;serif&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;עיצוב&quot;},
 &quot;railWidth&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:340,&quot;max&quot;:500,&quot;step&quot;:4,&quot;default&quot;:404,&quot;unit&quot;:&quot;px&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;עיצוב&quot;}}">
@@ -1210,7 +1210,7 @@ class Component extends DCLogic {
     // יומן הסשן (PLAN-v18 Q16): זמנים ואירועים בלי טקסט, בדפדפן בלבד, מיוצא בכפתור ליד דוח הדליפה
     const ver=((document.getElementById("ver")||{}).textContent||"").replace(/[^v\d]/g,"");
     this.log=window.PL?window.PL.sessionLog(ver):{add(){},export(){return "{}"}};
-    // עד v56 החבילה פתחה מייל לכתובת ששמורה כאן; החבילה כבר לא נשלחת, והכתובת לא נשארת במחשב שלה
+    // עד v56 החבילה פתחה מייל לכתובת ששמורה כאן; החבילה כבר לא נשלחת, והכתובת לא נשארת במחשב
     try{ localStorage.removeItem("redact-feedback-mail"); }catch(_){}
     this.applyProps();
     this._resize = () => { const n = innerWidth < 1120; if(n!==this.state.narrow) this.setState({narrow:n}); };
@@ -1328,7 +1328,7 @@ class Component extends DCLogic {
     removeEventListener("scroll", this._follow, true); removeEventListener("resize", this._follow); removeEventListener("animationend", this._follow, true); removeEventListener("transitionend", this._follow, true);
     removeEventListener("scroll", this._scNudge, {capture:true}); removeEventListener("resize", this._scNudge); if(this._scT) clearTimeout(this._scT); removeEventListener("storage", this._storage); removeEventListener("error", this._pageErr); removeEventListener("unhandledrejection", this._pageErr);
     if(this._barObs) this._barObs.disconnect(); }
-  /* ביומן של הסשן האמיתי 347 מתוך 375 האירועים היו "screen" — אותו מסך, שוב ושוב,
+  /* ביומן רוב האירועים היו "screen" — אותו מסך, שוב ושוב,
      בכל רינדור. הארגומנט הראשון של ההוק הוא ה-props הקודמים, לא ה-state הקודם, ולכן
      prev.screen היה undefined תמיד, ההשוואה תמיד "השתנה", ושדה from נעלם מהיומן.
      המסך האחרון נשמר על המופע ולא נלקח מההוק. */
@@ -1548,7 +1548,7 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
   };
 
   /* UX #2: טלפון או "חיסכון בנתונים" — לא מורידים 185MB בלי שאלה.
-     במחשב נשאר כמו שהיה: המשתמשת עובדת במחשב, והתלונה העיקרית שלה היא שמות
+     במחשב נשאר כמו שהיה: העבודה נעשית במחשב, והבעיה העיקרית היא שמות
      שלא נמצאו, והמודל הוא מה שמוצא אותם. לכן גם בטלפון אין ברירת מחדל שקטה
      של "בלי מודל" — שואלים, עם שתי תשובות שוות. */
   phoneLike(){
@@ -1698,7 +1698,7 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
       const list=[...this.state.peo]; let added=0; const sug=[...this.state.peoSug];
       for(const f of found){
         if(list.some(p=>E.norm(p.value)===E.norm(f.value))) continue;
-        // גוף בלי מילת סוג ("ברסלב", "שביל הלב" לבדו) אינו נכנס לרשימה מעצמו:
+        // גוף בלי מילת סוג ("נורבין", "שביל הלב" לבדו) אינו נכנס לרשימה מעצמו:
         // הוא מוצע לאישור, כי בלי הראש אין לדעת אם זה מזהה או מילה מהעולם.
         if(f.review){ if(!sug.some(x=>E.norm(x.value)===E.norm(f.value))) sug.push({value:f.value, why:"גוף בלי מילת סוג — לאישור", count:f.n, kind:f.kind}); continue; }
         // הוסר בתיק ונמצא שוב: מוצע לה ראשון, לא נכנס מעצמו ולא מדולג בשקט (H11)
@@ -1814,8 +1814,8 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
   // מחיקה מהרשימה היא החלטה: השם נכנס ל"אל תחליף", אחרת שכבת הפעלים והמודל מציעים
   // אותו שוב במסך הבדיקה. שם שנוסף ביד ונמחק אינו החלטה על המסמך.
   /* ה-✕ על שבב היה מחיקה שקטה: השם נכנס ל"אל תחליף" לתמיד, בלי שום סימן על המסך,
-     בלי דרך חזרה במסך הזה, ובלי רישום ביומן. על תיק אמיתי שם שהמודל מצא שבע
-     פעמים יצא בסוף מהכלי, והיומן לא יכול היה לומר אם זה מה שקרה. עכשיו המחיקה
+     בלי דרך חזרה במסך הזה, ובלי רישום ביומן. שם שהמודל מצא כמה
+     פעמים יכול היה לצאת בסוף מהכלי, והיומן לא יכול היה לומר אם זה מה שקרה. עכשיו המחיקה
      גלויה — רצועת "נשארים כמו שהם" עם ↩ — ונרשמת. */
   delPeo = i => { const list=[...this.state.peo]; const [p]=list.splice(i,1);
     if(!p) return;
@@ -1919,7 +1919,7 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
       const excluded = all.filter(n=>on.has(E.norm(n).trim()));
       // יעד למפה אינו יישוב שמופיע במסמך, גם לא כזה שנשאר מחוץ למפה (H4), ולא
       // שם שאחת ממילותיו בטקסט. אותם גבולות משמשים גם את "קבוצה אחרת" ואת ↩.
-      /* מסך היישובים הוא המקום היחיד שמחליט מה יישוב נהיה (20.9): מה שמוצג כאן הוא מה שנכתב לכללים.
+      /* מסך היישובים הוא המקום היחיד שמחליט מה יישוב נהיה: מה שמוצג כאן הוא מה שנכתב לכללים.
          יישוב שכבר יש לו תחליף — מהתיק, ממסמך קודם — מוצג עם התחליף הזה ולא עם ניחוש חדש, ותחליף
          כזה אינו מוצע ליישוב אחר. */
       const have=this.placeReps(rules);
@@ -2129,8 +2129,8 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
       // תאריך: מוזז כברירת מחדל (Q5 בגרסה 3); בחירה אחרת (Q1 בגרסה 5) נשמרת בפרופיל התיק
       styles:{"*":this.state.o.numStyle||"blank", DATE:this.state.o.dateStyle||"name"}};
   }
-  /* ההבטחה שהתיק האמיתי הפר: שם שהמודל מצא פעמיים ומעלה אינו יוצא מהכלי בלי
-     שהיא החליטה עליו. הזיהוי היה מושלם — שבע פעמים בביטחון מלא — והשם יצא, כי
+  /* ההבטחה: שם שהמודל מצא פעמיים ומעלה אינו יוצא מהכלי בלי
+     שהוחלט עליו. גם כשהזיהוי מושלם — כמה פעמים בביטחון מלא — השם יכול לצאת, כי
      בין המודל לרשימה יש כמה דרכים לאבד אותו, ולא כולן נרשמות. לכן הבדיקה
      נעשית אחרי כל ריצה, מול הרשימה ורשימת ההיתר, ולא מול הזיכרון של המסך:
      שם כזה שאינו בשתיהן נכנס ל"לבדיקה" כהצעה, והסרגל אדום עד שהיא עונה. */
@@ -2238,8 +2238,8 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
   undo = () => this.stepHistory(true);
   redo = () => this.stepHistory(false);
 
-  /* יומן עשיר (נוסף ב-v48, לקראת הסשן שלה): כל תיקון שלה נרשם עם מה שגרם לו, כדי שנבין למה היא
-     מתקנת בלי לראות מה. רק קודים, מספרים ודגלים — אף מילה מהמסמך, והשומר של היומן דוחה
+  /* יומן עשיר (נוסף ב-v48): כל תיקון של המשתמש/ת נרשם עם מה שגרם לו, כדי שנבין למה
+     מתקנים בלי לראות מה. רק קודים, מספרים ודגלים — אף מילה מהמסמך, והשומר של היומן דוחה
      כל מילה עברית בכל מקרה.
        src  — מי הציע את הערך: m מודל · h כותרת · s דובר · p פרופיל התיק · t היא הוסיפה ·
               b סריקת הגוף · w אחידות (חלק של שם) · x דפוס (מספר, תאריך) · n כתיב קרוב
@@ -2344,7 +2344,7 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
   // מוסיף מקטע לפתוחים בלי לסגור אחרים
   openWith = k => { const o=Array.isArray(this.state.open)?this.state.open:[]; return o.includes(k)?o:[...o,k]; };
   // מחיקה מרשימת הפרופיל היא החלטה כמו כל אחרת (M7 בביקורת השנייה): צעד ביטול משלה, ושורה שאומרת מה קרה
-  /* הסרה נזכרת בתיק (ביקורת H11, והחלטה מ-20.9): "לא שם" נשמר בהיתר ולכן לא חזר, אבל הסרה רגילה
+  /* הסרה נזכרת בתיק (ביקורת H11): "לא שם" נשמר בהיתר ולכן לא חזר, אבל הסרה רגילה
      נשכחה — המסמך הבא בתיק החזיר את הכלל בשקט, עם הכינוי הישן. הערך נרשם ב-removed, נשמר
      בפרופיל התיק, ואינו חוזר מעצמו. אם הוא מופיע במסמך הבא הוא מוצע לה לאישור, לא מדולג בשקט. */
   dropRule = v => { this.pushHistory(); this.log.add("drop-rule",this.logFacts(v)); this.setState({removed:this.state.removed.includes(v)?this.state.removed:[...this.state.removed, v], rules:this.state.rules.filter(r=>r.value!==v), notice:`«${v}» הוסר מהרשימה, והטקסט המקורי חזר.`}, ()=>this.rerun()); };
@@ -2352,7 +2352,7 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
   notAName = (base, v) => { this.pushHistory(); this.log.add("not-a-name",this.logFacts(v, base)); return this.setState({allow:this.state.allow.includes(v)?this.state.allow:[...this.state.allow, v],
     rules:this.state.rules.filter(r=>r.value!==base && r.value!==v)}, ()=>this.rerun()); };
   /* החלטה חדשה שסותרת ישנה (Q6 בגרסה 3): החדשה מנצחת, הישנה מוסרת, ושורה אחת
-     אומרת מה הוחלף — עם ביטול. בפרופיל אמיתי ישב "קפדן" גם ככלל (נמחק) וגם בהיתר. */
+     אומרת מה הוחלף — עם ביטול. בלי זה אותה מילה יכלה לשבת בפרופיל גם ככלל (נמחק) וגם בהיתר. */
   addAllow = v => { if(this.state.allow.includes(v)) return; this.pushHistory(); this.log.add("allow",this.logFacts(v));
     const E=this.state.E, n=x=>E.norm(String(x||"")).trim();
     const gone=this.state.rules.filter(r=>n(r.value)===n(v));
@@ -2371,7 +2371,7 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     const prev=r.style||null; r.style=style; const facts=this.logFacts(v, base);
     this.setState({rules}, ()=>this.rerun().then(()=>this.log.add("set-style",{...facts, style, from:prev||"default", changed:prev!==style, kind:r.kind})));
   };
-  /* שמונה עריכות של תחליף בסשן אמיתי, ואף אחת לא שינתה דבר. הכרטיס מציג את הערך
+  /* עריכות של תחליף לא שינו דבר. הכרטיס מציג את הערך
      כפי שנמצא, והכלל יושב לפעמים תחת הצורה המלאה ("תמר גולדשמיט" כשהכרטיס אומר
      "גולדשמיט"), ולפעמים בכתיב אחר. חיפוש לפי שוויון מחרוזות לא מצא אותו, ואז נוסף
      כלל חדש מסוג OTHER שהמנוע לא הכיר. עכשיו מחפשים לפי הצורה המנורמלת ולפי הבסיס,
@@ -2512,11 +2512,11 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
      של המקור — ועל צורה עם אות שימוש ("לארסן") לא היה כלל כזה, אז נוסף כלל חדש
      לצורה עצמה ולא קרה כלום. עכשיו שני הכללים נשארים, והמקור מקבל sameAs ליעד:
      אותו מנגנון של הצעת המיזוג במסך השמות, ואותו כינוי לשניהם. */
-  /* קיצוץ שם למילים שנבחרו (Q2 בגרסה 5): "מרים להידחות" נתפס כשם של שתי מילים, והיא
-     לא יכלה להשאיר את "מרים" ולוותר על "להידחות" — הסרה הסירה את שתיהן, החלפה בלעה
-     את המילה הקריטית בכינוי. כל מילה בשם של שתי מילים ומעלה היא כפתור; הסרתה
+  /* קיצוץ שם למילים שנבחרו (Q2 בגרסה 5): "אסתר להידחות" (דוגמה בדויה) נתפס כשם של שתי
+     מילים, ואי אפשר היה להשאיר את "אסתר" ולוותר על "להידחות" — הסרה הסירה את שתיהן,
+     החלפה בלעה את המילה החשובה בכינוי. כל מילה בשם של שתי מילים ומעלה היא כפתור; הסרתה
      כותבת את הכלל מחדש על המילים שנשארו. הכינוי הולך עם השם: "ליאת נחמיאס" של
-     "מרים להידחות" נעשה "ליאת" של "מרים", כדי שמה שכבר הועתק ל-AI עדיין יחזור. */
+     "אסתר להידחות" נעשה "ליאת" של "אסתר", כדי שמה שכבר הועתק ל-AI עדיין יחזור. */
   trimTo(value, keepIdx){
     const E=this.state.E, n=v=>E.norm(String(v||"")).trim();
     const words=String(value||"").trim().split(/\s+/);
@@ -2829,7 +2829,7 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     // מסך שנכנס מחליק 6 פיקסלים (rise); מדידה באמצע התנועה השאירה את הזרקור נמוך מהיעד עד שינוי
     // גודל (L1). סוף אנימציה ושינוי גודל של היעד עצמו (מפה שנפתחה) מודדים שוב.
     document.addEventListener("animationend", this._onSpot, true);
-    /* לחיצה בעכבר מחוץ ליעד של הצעד נעצרת (דיווח המשתמש, 18.9): החוסמים סביב הזרקור לא הספיקו,
+    /* לחיצה בעכבר מחוץ ליעד של הצעד נעצרת: החוסמים סביב הזרקור לא הספיקו,
        כי כשהמסמך נגלל אל מתחת לכותרת העליונה, האזור המואר כולל את הכותרת וכפתור "‹ רשימת השמות"
        שבה שבר את הסיור. מותר: היעד עצמו, כרטיס הסיור, חלונית העריכה וחלוניות שנפתחו ממנו.
        גם הפעלה מהמקלדת (Enter על כפתור, detail 0) נעצרת: עד ביקורת M32 היא עברה, ו-Enter על
@@ -2849,7 +2849,7 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     this._spotRO=typeof ResizeObserver==="function"?new ResizeObserver(this._onSpot):null;
   };
   // הזרקור: מלבן סביב מה שהצעד מדבר עליו, והשאר מוחשך. אינו חוסם לחיצות.
-  /* הזרקור בגלילה (דיווח המשתמש, 18.9): הוא נע במעבר של רבע שנייה ועודכן דרך state, ולכן
+  /* הזרקור בגלילה: הוא נע במעבר של רבע שנייה ועודכן דרך state, ולכן
      נגרר אחרי כל גלילה ובטלפון ברח מהמסך; ומחוץ לאזור המואר אפשר היה ללחוץ ולשבור את
      הסיור. עכשיו בגלילה הוא מוצב ישירות, בלי מעבר, באותו פריים; המעבר נשאר רק בין צעדים.
      וארבעה חוסמים שקופים סביב האזור המואר מחזירים לחיצה בחוץ להודעה בכרטיס. */
@@ -3076,7 +3076,7 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
   };
   /* עריכה במקום (Q1 בגרסה 3): לחיצה על סימון במסמך פותחת ליד המילה את כל הפעולות
      של הכרטיס — תחליף עם תצוגה מקדימה של המשפט, שלוש הבחירות, "אותו אדם כמו",
-     "אל תחליף", "לא שם". היא אמרה שהיא מעדיפה לעבוד מתוך הטקסט ולא מהצד. הפאנל
+     "אל תחליף", "לא שם". כך אפשר לעבוד מתוך הטקסט ולא מהצד. הפאנל
      נשאר כמו שהיה; כל פעולה כאן היא אותה פעולה, נרשמת ביומן עם origin:"inline". */
   /* בדיקה עצמית (docs/QUALITY-PLAN.md, שכבה 2). ההבטחות של המוצר, נבדקות על המסך שבו
      המשתמשת נמצאת עכשיו, בלי קשר למה שהבדיקה שהגיעה לכאן בדקה:
@@ -3404,7 +3404,7 @@ const KIND_NAME={NAME:"אדם", ORG:"גוף", PLACE:"מקום"};
       // בקו איטי ההורדה הראשונה לוקחת דקות; השמות מהכותרת כבר על המסך. הסריקה
       // הזאת מבוטלת (כמו מסמך שהוחלף באמצע), המודל ממשיך לרדת ברקע למסמך הבא.
       /* "להמשיך בלי לחכות" קידם את מונה הסריקה, ולכן כשהמודל סיים — תוצאתו נזרקה
-         כולה: שמות שנמצאו שבע פעמים בביטחון מלא לא הגיעו לשום מקום. עכשיו הסריקה
+         כולה: שמות שנמצאו כמה פעמים בביטחון מלא לא הגיעו לשום מקום. עכשיו הסריקה
          ממשיכה ברקע; כשהיא נגמרת השמות נכנסים לכללים ולא לרשימה שכבר עזבה. */
       /* "לא לחכות למודל" (UX #7): עד כאן הכפתור קפץ ישר למסך היישובים, ורשימת
          "נמצאו גם" לא הוצגה לעולם — המקום היחיד שבו הוספת אדם חסר היא הקשה אחת.
@@ -3529,7 +3529,7 @@ const KIND_NAME={NAME:"אדם", ORG:"גוף", PLACE:"מקום"};
       geoQuality:S.geo?(S.geo.err<2?"דיוק מצוין":S.geo.err<5?"דיוק טוב":"דיוק סביר"):"",
       geoRows:(S.geo?S.geo.map:[]).map((m,i)=>({
         from:m.from, to:S.geoEdits[i] ?? m.to,
-        // מה משותף ומה שונה בין היישוב לתחליפו, לפי הטבלה שלה (docs/atlas-tags-he.md)
+        // מה משותף ומה שונה בין היישוב לתחליפו, לפי הטבלה (docs/atlas-tags-he.md)
         tagNote:(()=>{ if(!S.E.atlasTags) return ""; const t=S.E.atlasTags(m.to), d=S.E.atlasDiff?S.E.atlasDiff(m.from,m.to):[];
           const same=["סוג","אוכלוסייה","דת","גודל"].filter(k=>!d.includes(k)).map(k=>t[k]).join(" · ");
           return (same?same:"")+(d.length?(same?"  ·  ":"")+"שונה: "+d.map(k=>k+" ("+S.E.atlasTags(m.from)[k]+" ← "+t[k]+")").join(", "):""); })(),

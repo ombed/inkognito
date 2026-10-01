@@ -1,15 +1,14 @@
 /* Private regression fixtures: real documents that must never enter the repo.
 
    The synthetic corpus is public and lives under bench/corpus. Real documents
-   from real sessions are the only thing that has exposed a leak the corpus
-   was blind to, and they cannot be published: even after redaction they hold
-   a child's school placement, a family's affiliation, a court decision. So
+   are the only thing that has exposed a leak the corpus was blind to, and they
+   cannot be published: even after redaction they hold real client details. So
    they live in a sibling folder OUTSIDE the repository:
 
        paintItBlack/
          repo-clone/        <- this repository
          private-bench/     <- fixtures; not a subfolder, so no `git add -f`
-           r1-interview-2026-09-09/
+           r1-sample-2000-01-01/
              document.docx
              key.json       <- same schema as bench/key.json, hand-annotated
 

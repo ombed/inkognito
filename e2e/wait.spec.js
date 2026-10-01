@@ -2,12 +2,12 @@ const { test, expect } = require("./base");
 const H = require("./helpers");
 
 /* On a slow line the first model download takes minutes while the names
-   from the header are already on screen. She can continue without waiting.
+   from the header are already on screen. The user can continue without waiting.
 
    This test used to assert that a late model result "must not land
    anywhere", and the tool obliged: continuing bumped the scan counter and the
-   result was discarded whole. On a real case file that is exactly how a
-   teacher's name, found seven times at full confidence, left the tool. A late
+   result was discarded whole. That is exactly how a name, found several
+   times at full confidence, could leave the tool. A late
    result now lands in the rules and the document is processed again. The
    session log records it all, with counts and never text. */
 

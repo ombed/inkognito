@@ -4,16 +4,16 @@
           [--loader=today] [--tok=product|faithful]
 
    Runs bench/lib.js runAll, unchanged, on the synthetic corpus and, when they are present,
-   on her fixtures, with the model loaded through the model-eval loader (pinned revision,
+   on the private fixtures, with the model loaded through the model-eval loader (pinned revision,
    own cache, sha256 checked). Prints PLAN.md's row: scored, found, missed, leaked, fp, junk.
 
    Rows are written where they may live, never to bench/results* or private-bench/results*:
      synthetic  bench/model-eval/out/product/<model>-<tag>.json   (invented text; gitignored)
-     hers       private-bench/model-eval/product/<model>-<tag>.json
+     private    private-bench/model-eval/product/<model>-<tag>.json
 
    --against compares entity by entity with gate.js's compare: "baseline" is the committed
    bench/results.json and private-bench/results.json (today's loader, model on); a tag is an
-   earlier run of this script with the same model, <model>:<tag> one with another model. Her
+   earlier run of this script with the same model, <model>:<tag> one with another model. The private
    part prints counts only, through the privacy gate. */
 const fs = require("fs");
 const path = require("path");
@@ -76,7 +76,7 @@ const readJson = (f) => (fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, "utf8"
     }
   }
 
-  // her fixtures: rows stay beside them; the console gets numbers only
+  // the private fixtures: rows stay beside them; the console gets numbers only
   const priv = PRIVATE.load();
   if (!priv.docs.length) return;
   await privacy.wrapErrors(async () => {
