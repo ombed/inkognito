@@ -1,7 +1,7 @@
 const { test, expect } = require("./base");
 const H = require("./helpers");
 
-/* Three reports from a real session.
+/* Three reports from real use.
 
    The places screen only ever offered towns from the 200-entry atlas that
    were not also ordinary words, because that is what the distance-preserving

@@ -183,8 +183,8 @@ Facts, listed because they belong to the privacy lens:
   Current, model off: 71 leaks, 55 missed, 4 false positives.
   Model on: about 6 leaks.
 - **Private bench**: a private set of real documents in `../private-bench/`,
-  the same runner, results written beside the fixtures. Model on: 3 leaks
-  across the five.
+  scored by the same runner, results written beside the fixtures and not
+  published.
 - **Shape harvest**: `npm run shapes` records the structural shape of each
   keyed occurrence in those documents and fails if a shape they have is not
   covered by our checks.

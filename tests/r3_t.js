@@ -1,7 +1,7 @@
-/* Release 3 engine rules, from the second real session (14.9 and 15.9).
+/* Release 3 engine rules (v33).
    Every Q number in this file is one of release 3's questions (CHANGELOG v33).
 
-   Short names: "לשי" survived four times because a two-letter name's prefixed
+   Short names: "לשי" survived because a two-letter name's prefixed
    forms only waited for review (Q3). Prefixed chips: "שגורגן" got its own fake
    name beside "גורגן" (Q4). Dates: a deleted date made the AI say "the date is
    missing" (Q5). Places: "ירושלים" became a kibbutz from the untagged pool (Q7).
@@ -59,7 +59,7 @@ const DOPT = { ...OPT, on: new Set(["DATE"]) };
     const out4 = [mk("רון"), mk("שרון", true)];
     await C.foldEvidence({}, out4, TEXT);
     ok(out4[1].fold === "no" && /position|listed/.test(out4[1].foldWhy), "speaker position or the list blocks: " + out4[1].foldWhy);
-    ok(C.namePosition("[14.9, 12:22] שרון: כן", "שרון"), "speaker after a timestamp");
+    ok(C.namePosition("[3.4, 12:22] שרון: כן", "שרון"), "speaker after a timestamp");
     ok(C.namePosition("אמר ד\"ר שטרן כי", "שטרן"), "after a title");
     ok(!C.namePosition("הלכתי לשרון בבוקר", "שרון"), "mid-sentence is not a name position");
   }
@@ -103,7 +103,7 @@ const DOPT = { ...OPT, on: new Set(["DATE"]) };
     ok(f2 !== "חיפה", "לחיפה in the document rules out חיפה: " + f2);
   }
 
-  console.log("\n— anchors from the private transcripts: 'שמי X', and a possessive after a role —");
+  console.log("\n— transcript anchors: 'שמי X', and a possessive after a role —");
   {
     const an = (t) => C.anchored(t).map((a) => a.text + "/" + a.anchor);
     ok(an("בוקר טוב לכולם. אז שמי ולנטינה.").includes("ולנטינה/self"), "שמי X: " + an("בוקר טוב לכולם. אז שמי ולנטינה."));

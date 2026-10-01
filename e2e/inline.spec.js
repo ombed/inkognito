@@ -4,7 +4,7 @@ const H = require("./helpers");
 /* Working from the text (Q1 of release 3, CHANGELOG v33) and marks that read without color (release 3 Q2).
 
    Working from the text is easier than from the side panel, and on some
-   marks were too faint to tell apart. A click on a marked word now opens an
+   screens the marks were too faint to tell apart. A click on a marked word now opens an
    editor at the word with every action of the card, a live preview of the
    sentence, and the marks carry a shape: solid underline for replaced, dashed
    plus "?" for waiting, ∅ for deleted, with a legend above the document. */

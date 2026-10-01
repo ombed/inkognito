@@ -50,7 +50,7 @@ one carries:
 - **High** — a wrong result the user would not notice, a real security or privacy
   weakness, or a measurement that is telling us something false.
 - **Medium** — makes the product or the code materially worse: a slow path the
-  will feel, a structure that will keep producing bugs, a test that passes for
+  user will feel, a structure that will keep producing bugs, a test that passes for
   the wrong reason.
 - **Low** — worth knowing, cheap to fix, no user-visible effect.
 
@@ -222,8 +222,8 @@ versions are in `docs/review/SOURCES.md`.
   construction. That is textbook leakage. Trace the terms.
 - **How many times has this benchmark been scored?** Each re-use of the same
   holdout erodes how much the latest number means.
-- **The freshness gap.** Compare the synthetic score with the score on the five
-  real documents, which were produced by a different process. The gap is the
+- **The freshness gap.** Compare the synthetic score with the score on the
+  private set of real documents, which were produced by a different process. The gap is the
   measure of overfit.
 - **Per entity type, not aggregate.** Recall and precision side by side, with
   false negatives listed one by one. In a redaction tool a miss is the only
@@ -234,7 +234,7 @@ versions are in `docs/review/SOURCES.md`.
 - Does the gate protect anything: what change would it catch, what change would
   it miss, and can it be satisfied by editing the baseline.
 - Do the reported categories mean what their names say.
-- The private bench: five redacted outputs, not originals. What does that
+- The private bench: redacted outputs, not originals. What does that
   invalidate.
 - Does any number in `docs/measurements.md` still hold at v48.
 
@@ -332,7 +332,7 @@ into the repository:
 The maintainer reproduces each finding, fixes one per commit with a test, and
 answers the reviewer in three lists: fixed, rejected with the reason, needs the
 user's decision. Anything that is not Critical waits until after the next real
-session on about 2026-09-22.
+session.
 
 ## 9. Conflict of interest
 

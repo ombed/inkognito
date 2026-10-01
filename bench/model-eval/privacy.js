@@ -83,7 +83,7 @@ const BIG_FIELDS = new Set(["loadMs", "scanMs", "words", "tokens", "bytes"]);
 // A looser pattern let "COHEN_DANA" through (reviewer's finding).
 const CATEGORY = /^[A-Z]_[A-Z0-9]+(?:_[A-Z0-9]+)*$/;               // P_ARABIC, S_ALT, I_ID
 // the shape, and then the actual folder list: "r1-dana-2026-01-01" has the shape of a fixture name
-const FIXTURE_SHAPE = /^r[0-9]+-[a-z]+-\d{4}-\d{2}-\d{2}$/;       // r3-interview-2026-09-16
+const FIXTURE_SHAPE = /^r[0-9]+-[a-z]+-\d{4}-\d{2}-\d{2}$/;       // r1-sample-2000-01-01
 let fixtureNames = null;
 const FIXTURE = { test: (t) => {
   if (!FIXTURE_SHAPE.test(t)) return false;

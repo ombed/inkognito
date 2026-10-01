@@ -40,15 +40,13 @@
 | Set | Scored | Found | Missed | Leaked | FP | Junk | Model-only junk |
 |---|---|---|---|---|---|---|---|
 | Synthetic (43 docs) | 268 | 262 | 6 | 7 | 4 | 31 | 2 |
-| Her 5 docs | 33 | 32 | 1 | 3 | 3 | 81 | 27–29 (to be recomputed) |
-| Model off (synthetic / hers) | | 210 / 26 | 58 / 7 | 74 / 9 | 4 / 1 | 29 / 54 | – |
+| Model off (synthetic) | | 210 | 58 | 74 | 4 | 29 | – |
 
 A private set of real documents is also measured (results not published).
 
 **What each set can prove:**
-- **The private documents are biased by how they were made.** The tool produced them with the model on, so every name the baseline found has already been replaced. What is left is pseudonyms plus what the baseline missed.
-  - We use them only for the **safety** and **user-time** checks, never as evidence that a candidate reads Hebrew better.
-  - Only one of her three leaks (the r3 bank name) is something a different model could fix.
+- **The private set of real documents is biased by how it was made.** The tool produced it with the model on, so every name the baseline found has already been replaced. What is left is pseudonyms plus what the baseline missed.
+  - We use it only for the **safety** and **user-time** checks, never as evidence that a candidate reads Hebrew better.
 - **The baseline was tuned on the synthetic set.** Its 0.6 floor, the `nerClean` rules and the corpus categories were all fitted to it. So the synthetic set can show a candidate is *not worse*.
 - **Only `protocol.txt` and the public keys can show that a candidate is *better*.**
 
@@ -194,7 +192,7 @@ We also score **each exported candidate at fp32 in Node** (the export produces f
 | Measure | Rows |
 |---|---|
 | Download (weights + tokenizer), load time, Node scan per 1k words, Node memory, max tokens per chunk | all |
-| **Scan time on the longest real document** (r3, 5,200 words), Node | all |
+| **Scan time on a long real document**, Node | all |
 | Browser (1-thread WASM, and 4 threads): load, scan per 1k words, peak tab memory, longest main-thread block, token agreement with Node | finalists plus baseline |
 
 ### 3.5 Calibration
@@ -279,11 +277,11 @@ F-scores decide which models earn a product run, and they explain why a model wi
 Each case is rebuilt with **made-up text**, keyed blind, and gets a pass or fail per model.
 
 - **Leaks:**
-  - the r3 bank pseudonym pattern (the one leak a better model could fix);
-  - the r4 town spelling variants and the r5 two-letter name with a prefix, as **controls no model should fix**;
+  - a pseudonym inside a bank name (the one leak shape a better model could fix);
+  - town spelling variants and a two-letter name with a prefix, as **controls no model should fix**;
   - v28 (a name found at full confidence that leaked downstream);
   - v39 (a glued span that allow-listed a surname).
-- **16.9 leak shape** (one word, 4 letters, many occurrences), in 20 variants. **Pass = an exact span, or a span cut only by a prefix letter. Glued = fail.** That session's failure was the span edge, not the coverage.
+- **Short-name leak shape** (one word, 4 letters, many occurrences), in 20 variants. **Pass = an exact span, or a span cut only by a prefix letter. Glued = fail.** The failure this shape models was the span edge, not the coverage.
 - **The five false-positive types:** a discourse word glued to a name, a role word, a verb read as a first name, a public body with a prefix letter, and a bare number read as ORG.
 - **Nikud and Latin-capital names.**
 - The `ner_t.js` text gets a blind key. Its current key is DictaBERT's own 27 spans, which favours DictaBERT.
@@ -332,7 +330,7 @@ Each case is rebuilt with **made-up text**, keyed blind, and gets a pass or fail
    - **Recipe check:** re-export `dictabert-ner` with this recipe. It must agree with the onnx-community q8 on at least 99.5% of token labels.
 
 **Order of runs:**
-1. **parity:** `base-q8` must reproduce 262/6/7/4/31 and 32/1/3/3/81.
+1. **parity:** `base-q8` must reproduce 262/6/7/4/31 on the synthetic set, and today's counts on the private set.
 2. **noise band:** the baseline run twice, plus uint8.
 3. **smoke:** `t1`, `f1` and `protocol.txt` on all tier-1 rows. All health checks and tokenizer parity must pass.
 4. **full run.**
@@ -418,7 +416,7 @@ Compute time is under an hour. **Downloads come to about 5.8 GB**: about 50 minu
 
 *Blocking Phase 0, in this order:*
 1. Accept the section 1 rule, including that a "net safety gain" is decided by you rather than passed automatically? *Recommend: yes.*
-2. Are you authorised to view r2–r5 (r5 holds a real full name), and will you do the judging in your own terminal? *Recommend: yes, you, locally.*
+2. Are you authorised to view the private set, and will the judging run locally? *Recommend: yes, locally.*
 3. Largest first download without asking the user? *Recommend: 250 MB; up to 450 MB with your OK and a warning.*
 4. May I annotate `protocol.txt` and the public sets, and commit the protocol key? *Recommend: yes; NEMO, BMC and UD stay outside the repo.*
 

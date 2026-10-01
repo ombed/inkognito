@@ -3,7 +3,8 @@
 The story and the map of everything are in [README.md](README.md). The plan and the decision rule are in
 [PLAN.md](PLAN.md); the file shapes are in [FORMATS.md](FORMATS.md). The files this page names under
 `bench/model-eval/out/` were copied unchanged to `data/` (README.md, "The data").
-The private documents appear here as counts only. The private entity ids stay in `private-bench/model-eval/`.
+A private set of real documents was also measured; its results are not published, and its entity ids stay in
+`private-bench/model-eval/`.
 
 ## Phase 1: harness
 
@@ -16,12 +17,8 @@ today's bench loader, the whole chain (`bench/lib.js` `runAll`, unchanged):
 |---|---|---|---|---|---|---|---|---|
 | Synthetic (43 docs) | model-eval | 268 | 262 | 6 | 7 | 4 | 31 | 0 against the committed `bench/results.json` |
 | Synthetic | today's | 268 | 262 | 6 | 7 | 4 | 31 | 0 against model-eval |
-| Her 5 docs | model-eval | 33 | 32 | 1 | 3 | 3 | 79 | 0 against the committed baseline |
-| Her 5 docs | today's | 33 | 32 | 1 | 3 | 3 | 79 | 0 against model-eval |
 
-The plan's 81 junk for the private documents predates the r5 name replacement. The committed baseline file
-still lists the two suggestions that were that name. Both loaders now give 79, and they give the same
-suggestions.
+On the private set of real documents both loaders also agree entity for entity (results not published).
 
 The harness's own predict path matches `modelSuggest` on 43 of 43 synthetic documents (`parity.js`).
 
@@ -31,18 +28,16 @@ Entities whose outcome flips between baseline runs that should agree. The rule d
 candidate for these (PLAN.md section 1).
 
 | Pair | Synthetic: entities (worse / better) |
-|---|---|---|
-| q8, run twice (two loaders) | 0 (0 / 0) | 0 (0 / 0) |
-| q8 against uint8 | 5 (6 flips worse / 1 better) | 2 (1 / 1) |
+|---|---|
+| q8, run twice (two loaders) | 0 (0 / 0) |
+| q8 against uint8 | 5 (6 flips worse / 1 better) |
 
 - **Node against Node is exact.** ONNX Runtime on the CPU gives the same result every run, so
   "run twice" adds nothing.
 - **The whole band comes from uint8.** It is a different quantisation of the same weights.
-- **uint8's totals:**
-  - synthetic 268 / 260 / 8 / 9 / 5 / 30;
-  - private 33 / 32 / 1 / 2 / 4 / 86.
-- The synthetic entities are listed in `bench/model-eval/noise-band.json` (invented names). Private ones are
-  in `private-bench/model-eval/noise-band.json`.
+- **uint8's totals:** synthetic 268 / 260 / 8 / 9 / 5 / 30.
+- The synthetic entities are listed in `bench/model-eval/noise-band.json` (invented names). The
+  private set's band is in `private-bench/model-eval/noise-band.json` (not published).
 - Node against the browser is measured for the finalists only (PLAN.md, browser check).
 
 To rerun:
@@ -94,8 +89,6 @@ RegExp wrapper (the harness), after the page's `fixTokJSON` (the browser), as pu
 |---|---|---|---|---|---|---|---|
 | Synthetic | product (today's) | 268 | 262 | 6 | 7 | 4 | 31 |
 | Synthetic | faithful | 268 | 264 | 4 | 5 | 4 | 33 |
-| Her 5 docs | product (today's) | 33 | 32 | 1 | 3 | 3 | 79 |
-| Her 5 docs | faithful | 33 | 33 | 0 | 1 | 4 | 91 |
 
 **Entity by entity against today's run.**
 - **Synthetic: 4 entities better (7 changes: found, no longer leaking), 3 worse.**
@@ -104,10 +97,7 @@ RegExp wrapper (the harness), after the page's `fixTokJSON` (the browser), as pu
     flags the surname standing alone after a full stop.
   - This is a model-level trade, not a bug in the rewrite. Under the rule's strict reading it
     blocks.
-- **Private: 2 entities better (3 changes), 1 worse.**
-  - The worse is one more false positive, on an entity inside her noise band.
-  - The better include the r3 bank name (O_FAKE_BANK), found and no longer leaking. That is the
-    one leak of the private set the plan said only a better model could close.
+- **The private set of real documents** was compared the same way (results not published).
 
 **What this means for the evaluation.**
 - Every DictaBERT-family candidate has been read through the same wrong split, today's model
@@ -174,41 +164,40 @@ whole chain on the synthetic set and the private set (`product.js` through `wrap
 today's model). Every step ran. The comparison is `compare.js`. The finalists' intervals are at
 97.5% (Bonferroni for two).
 
-**Judging (decision 2):** 637 suggestions on the private documents matched nothing in the private key.
-- 319 were a second span on a keyed name.
-- Claude judged the other 318, plus 12 whole-chain values, by the key's own categories:
+**Judging (decision 2):** suggestions on the private set that matched nothing in its key, and were
+not a second span on a keyed name, were judged by Claude by the key's own categories:
   - pseudonyms count as names;
   - banks and private organisations count as names;
   - insurers and public bodies are not names (the key's traps);
   - when unsure, not a name.
 - Labels and the text stay in `private-bench/model-eval/judge/`.
 
-**The table** (`decision.js`). The noise band is from run order 2. Her counts only.
+**The table** (`decision.js`). The noise band is from run order 2. The private set's columns are
+not published; its pass or fail is folded into the safety column and the notes below.
 
 | Model | Synthetic found / missed / leaked / fp | New leaks outside the band | 1. Safety | 2a. Held-out recall gain, untyped [interval] | Known cases | MB | Node ms / 1k words |
-|---|---|---|---|---|---|---|---|---|---|---|
-| base-q8 (today) | 262 / 6 / 7 / 4 | – | 32 / 1 / 3 / 3 | – | – | – | 4 | 26/33 | 185 | 761 |
-| parse-base-ft | 265 / 3 / 3 / 5 | 0 | 33 / 0 / 0 / 4 | 0 | PASS | +0.123 [0.100, 0.146] at 97.5% | 14 (FAIL) | 29/33 | 185 | 906 |
-| tiny-parse-ft | 262 / 6 / 7 / 7 | 2 | 33 / 0 / 2 / 4 | 0 | FAIL | +0.116 [0.093, 0.139] at 95.0% | 30 (FAIL) | 28/33 | 45 | 114 |
-| parse-base | 263 / 5 / 6 / 4 | 2 | 33 / 0 / 0 / 4 | 0 | FAIL | +0.111 [0.092, 0.130] at 95.0% | 6 (FAIL) | 29/33 | 185 | 882 |
-| aleph | 264 / 4 / 4 / 6 | 1 | 33 / 0 / 3 / 4 | 1 | FAIL | +0.100 [0.079, 0.119] at 95.0% | 15 (FAIL) | 28/33 | 127 | 951 |
-| msperka-dicta-ft | 261 / 7 / 9 / 4 | 5 | 33 / 0 / 1 / 4 | 0 | FAIL | +0.100 [0.078, 0.121] at 95.0% | 14 (FAIL) | 29/33 | 185 | 883 |
-| tiny-parse | 264 / 4 / 4 / 6 | 1 | 31 / 2 / 2 / 5 | 2 | FAIL | +0.098 [0.079, 0.117] at 95.0% | 23 (FAIL) | 28/33 | 45 | 117 |
-| joint-base-ft | 263 / 5 / 4 / 4 | 0 | 31 / 2 / 2 / 4 | 1 | FAIL | +0.091 [0.069, 0.113] at 97.5% | 12 (FAIL) | 29/33 | 185 | 881 |
-| msperka-dicta | 261 / 7 / 9 / 4 | 5 | 33 / 0 / 1 / 4 | 0 | FAIL | +0.085 [0.062, 0.107] at 95.0% | 11 (FAIL) | 29/33 | 185 | 868 |
-| base-q8-ft | 264 / 4 / 5 / 4 | 1 | 33 / 0 / 1 / 4 | 0 | FAIL | +0.078 [0.063, 0.096] at 95.0% | 12 (FAIL) | 27/33 | 185 | 770 |
-| joint-base | 262 / 6 / 5 / 4 | 2 | 31 / 2 / 2 / 4 | 1 | FAIL | +0.076 [0.060, 0.093] at 95.0% | 5 (FAIL) | 29/33 | 185 | 874 |
-| large-q8-ft | 264 / 4 / 4 / 6 | 1 | 30 / 3 / 5 / 3 | 2 | FAIL | +0.066 [0.049, 0.085] at 95.0% | 13 (FAIL) | 28/33 | 437 | 2824 |
-| iahlt-base-ft | 265 / 3 / 4 / 6 | 1 | 33 / 0 / 1 / 5 | 0 | FAIL | +0.037 [0.015, 0.058] at 95.0% | 15 (FAIL) | 28/33 | 185 | 864 |
-| iahlt-base | 263 / 5 / 8 / 4 | 5 | 32 / 1 / 2 / 4 | 0 | FAIL | +0.028 [0.008, 0.050] at 95.0% | 15 (FAIL) | 28/33 | 185 | 861 |
-| large-q8 | 257 / 11 / 12 / 5 | 9 | 32 / 1 / 3 / 3 | 1 | FAIL | +0.005 [-0.010, 0.018] at 95.0% | 11 (FAIL) | 26/33 | 437 | 2829 |
-| golem | 258 / 10 / 17 / 8 | 11 | 32 / 1 / 4 / 3 | 1 | FAIL | -0.382 [-0.419, -0.347] at 95.0% | 24 (FAIL) | 21/33 | 279 | 1512 |
+|---|---|---|---|---|---|---|---|
+| base-q8 (today) | 262 / 6 / 7 / 4 | – | – | – | 26/33 | 185 | 761 |
+| parse-base-ft | 265 / 3 / 3 / 5 | 0 | PASS | +0.123 [0.100, 0.146] at 97.5% | 29/33 | 185 | 906 |
+| tiny-parse-ft | 262 / 6 / 7 / 7 | 2 | FAIL | +0.116 [0.093, 0.139] at 95.0% | 28/33 | 45 | 114 |
+| parse-base | 263 / 5 / 6 / 4 | 2 | FAIL | +0.111 [0.092, 0.130] at 95.0% | 29/33 | 185 | 882 |
+| aleph | 264 / 4 / 4 / 6 | 1 | FAIL | +0.100 [0.079, 0.119] at 95.0% | 28/33 | 127 | 951 |
+| msperka-dicta-ft | 261 / 7 / 9 / 4 | 5 | FAIL | +0.100 [0.078, 0.121] at 95.0% | 29/33 | 185 | 883 |
+| tiny-parse | 264 / 4 / 4 / 6 | 1 | FAIL | +0.098 [0.079, 0.117] at 95.0% | 28/33 | 45 | 117 |
+| joint-base-ft | 263 / 5 / 4 / 4 | 0 | FAIL | +0.091 [0.069, 0.113] at 97.5% | 29/33 | 185 | 881 |
+| msperka-dicta | 261 / 7 / 9 / 4 | 5 | FAIL | +0.085 [0.062, 0.107] at 95.0% | 29/33 | 185 | 868 |
+| base-q8-ft | 264 / 4 / 5 / 4 | 1 | FAIL | +0.078 [0.063, 0.096] at 95.0% | 27/33 | 185 | 770 |
+| joint-base | 262 / 6 / 5 / 4 | 2 | FAIL | +0.076 [0.060, 0.093] at 95.0% | 29/33 | 185 | 874 |
+| large-q8-ft | 264 / 4 / 4 / 6 | 1 | FAIL | +0.066 [0.049, 0.085] at 95.0% | 28/33 | 437 | 2824 |
+| iahlt-base-ft | 265 / 3 / 4 / 6 | 1 | FAIL | +0.037 [0.015, 0.058] at 95.0% | 28/33 | 185 | 864 |
+| iahlt-base | 263 / 5 / 8 / 4 | 5 | FAIL | +0.028 [0.008, 0.050] at 95.0% | 28/33 | 185 | 861 |
+| large-q8 | 257 / 11 / 12 / 5 | 9 | FAIL | +0.005 [-0.010, 0.018] at 95.0% | 26/33 | 437 | 2829 |
+| golem | 258 / 10 / 17 / 8 | 11 | FAIL | -0.382 [-0.419, -0.347] at 95.0% | 21/33 | 279 | 1512 |
 
 - **Safety (rule 1):** only **parse-base-ft** has no new leak or miss outside the noise band on
-  both sets, and its totals go down on both.
+  both the synthetic set and the private set, and its totals go down on both.
   - Synthetic: leaked 7 → 3, missed 6 → 3.
-  - Private: leaked 3 → 0, missed 1 → 0.
-  - joint-base-ft opens one of her entities (a surname in speech).
+  - joint-base-ft opens one entity on the private set.
   - base-q8-ft opens one synthetic surname (c3).
   - Every other row opens more.
 - **Better reading (rule 2a):** parse-base-ft passes at 97.5%. Pooled untyped gain +0.123
@@ -284,7 +273,7 @@ outputs through the whole Node chain:
 
 | Rule | parse-base-ft | base-q8-ft |
 |---|---|---|
-| 1. No new leaks (noise band incl. q8/uint8 and Node/browser) | **PASS**: 0 new on either set; leaked 7 → 3 and 3 → 0, missed 6 → 3 and 1 → 0 | **FAIL, net safety gain**: c3's surname newly leaks on the synthetic set; leaked 7 → 5 and 3 → 1 |
+| 1. No new leaks (noise band incl. q8/uint8 and Node/browser) | **PASS**: 0 new on either set; synthetic leaked 7 → 3, missed 6 → 3 (private set: results not published) | **FAIL, net safety gain**: c3's surname newly leaks on the synthetic set; synthetic leaked 7 → 5 |
 | 2a. Better reading (97.5%) | **PASS**: +0.123 [0.100, 0.146] untyped, +0.073 [0.047, 0.101] PER | not a significance finalist until the owner lifts rule 1 (95%: +0.078 [0.063, 0.096]) |
 | 2b. User time | FAIL (private set, results not published) | FAIL (private set, results not published) |
 | 3. Budget | **PASS**: 185 MB, 1.01× browser time, memory 1.08× | **PASS**: same weights as today, 1.02×, 1.08× |

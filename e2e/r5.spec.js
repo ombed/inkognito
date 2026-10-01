@@ -34,36 +34,36 @@ async function manualAdd(page, value) {
 
 const DOC = [
   "פרוטוקול",
-  "מרים לוין: אני מבקשת לפתוח. הפגישה נקבעה ל-14.3.2026.",
-  "מרים לוין: למרים יש טענות, ומרים תגיש אותן. שלחתי מכתב למרים לוין.",
-  "דוד כהן: אני מסכים עם מרים.",
+  "אסתר לוין: אני מבקשת לפתוח. הפגישה נקבעה ל-14.3.2026.",
+  "אסתר לוין: לאסתר יש טענות, ואסתר תגיש אותן. שלחתי מכתב לאסתר לוין.",
+  "דוד כהן: אני מסכים עם אסתר.",
   "דוד כהן: נמשיך.",
 ].join("\n");
 
 test("one card per person: the prefixed forms are chips, and one form can be kept alone", async ({ page }) => {
   await toWork(page, DOC);
-  // one card for מרים לוין, none for "למרים לוין"
-  await expect.poll(() => titles(page)).toContain("מרים לוין");
+  // one card for אסתר לוין, none for "לאסתר לוין"
+  await expect.poll(() => titles(page)).toContain("אסתר לוין");
   const ts = await titles(page);
-  expect(ts.filter((t) => t === "מרים לוין")).toHaveLength(1);
-  expect(ts).not.toContain("למרים לוין");
-  const card = cards(page).filter({ hasText: "מרים לוין" }).first();
+  expect(ts.filter((t) => t === "אסתר לוין")).toHaveLength(1);
+  expect(ts).not.toContain("לאסתר לוין");
+  const card = cards(page).filter({ hasText: "אסתר לוין" }).first();
   const forms = card.locator("[data-forms] [data-form]");
   expect(await forms.count()).toBeGreaterThanOrEqual(2);
   // the prefixed form shows its letter apart from the name
-  const lForm = forms.filter({ hasText: "למרים לוין" }).first();
+  const lForm = forms.filter({ hasText: "לאסתר לוין" }).first();
   await expect(lForm.locator("span").first()).toHaveText("ל");
   // keep only that form
   await lForm.click();
   await card.locator("[data-form-act]").getByRole("button", { name: "אל תחליף" }).click();
-  await expect.poll(() => sheet(page).innerText(), { timeout: 15000 }).toContain("למרים לוין");
+  await expect.poll(() => sheet(page).innerText(), { timeout: 15000 }).toContain("לאסתר לוין");
   const text = await sheet(page).innerText();
-  expect(text).not.toMatch(/(^|[^ל])מרים לוין/);
+  expect(text).not.toMatch(/(^|[^ל])אסתר לוין/);
 });
 
 test("the prefix letter is shown apart from the name in the text and in the editor, and the box holds the name only", async ({ page }) => {
   await toWork(page, DOC);
-  const mark = page.locator('[data-mark][data-val="למרים לוין"]').first();
+  const mark = page.locator('[data-mark][data-val="לאסתר לוין"]').first();
   await expect(mark).toBeVisible();
   await expect(mark.locator("[data-pre]")).toHaveText("ל");
   const rep = (await mark.innerText()).trim();
@@ -118,9 +118,9 @@ test("the dates choice is one setting, and it is kept with the case", async ({ p
 
 test("an unambiguous first name of a listed full name is replaced without review", async ({ page }) => {
   await toWork(page, DOC);
-  // "דוד" alone is the first name of דוד כהן, who is listed; "מרים" alone of מרים לוין
+  // "דוד" alone is the first name of דוד כהן, who is listed; "אסתר" alone of אסתר לוין
   const text = await sheet(page).innerText();
-  expect(text).not.toMatch(/(^|[^א-ת])מרים($|[^א-ת])/);
+  expect(text).not.toMatch(/(^|[^א-ת])אסתר($|[^א-ת])/);
   await expect(page.locator("[data-bar]")).not.toContainText("ממתינים להחלטה");
 });
 
@@ -168,7 +168,7 @@ test("trim on the card: the extra word goes back to the text, the pseudonym keep
   const text = await sheet(page).innerText();
   expect(text).toContain(fake.split(" ")[0] + " להידחות");
   expect(text).not.toContain(fake);
-  expect(text).not.toMatch(/(^|[^א-ת])מרים($|[^א-ת])/);
+  expect(text).not.toMatch(/(^|[^א-ת])אסתר($|[^א-ת])/);
 });
 
 test("trim from the inline editor", async ({ page }) => {
@@ -178,7 +178,7 @@ test("trim from the inline editor", async ({ page }) => {
   await ed.locator("[data-inline-words] [data-word]", { hasText: "להידחות" }).click();
   await expect(ed).toHaveCount(0);
   await expect.poll(() => sheet(page).innerText(), { timeout: 15000 }).toMatch(/ להידחות/);
-  expect(await sheet(page).innerText()).not.toMatch(/(^|[^א-ת])מרים($|[^א-ת])/);
+  expect(await sheet(page).innerText()).not.toMatch(/(^|[^א-ת])אסתר($|[^א-ת])/);
 });
 
 test("trim on the people screen chip", async ({ page }) => {
@@ -196,7 +196,7 @@ test("trim on the people screen chip", async ({ page }) => {
   await row.getByRole("button", { name: "קיצור השם" }).click();
   await page.locator("[data-trim-row] [data-word]", { hasText: "להידחות" }).click();
   const names = await H.listedNames(page);
-  expect(names).toContain("מרים");
+  expect(names).toContain("אסתר");
   expect(names).not.toContain("אסתר להידחות");
   await expect(page.locator("[data-trim-row]")).toHaveCount(0);
 });

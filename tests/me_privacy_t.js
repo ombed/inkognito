@@ -6,7 +6,7 @@
 const fs = require("fs"), os = require("os"), path = require("path");
 const { allow, safeLog, safeWrite, wrapErrors, PrivacyError, sanitise, setFixtureNames } = require("../bench/model-eval/privacy.js");
 // the fixture names this test uses; the gate lets through only names in the list, not any name of that shape
-setFixtureNames(["r3-interview-2026-09-16", "r5-court-2026-09-16", "r12-meeting-2026-10-01"]);
+setFixtureNames(["r3-alpha-2000-01-02", "r5-beta-2000-01-02", "r12-gamma-2000-02-01"]);
 
 let pass = 0, fail = 0;
 const ok = (c, m) => { c ? pass++ : (fail++, console.log("  ✗ " + m)); };
@@ -21,15 +21,15 @@ const refused = (v, reason, m) => { const r = refusal(v); ok(r === reason, `${m}
   for (const s of ["PER", "ORG", "PLACE", "O", "B-PER", "I-GPE", "BIOES", "B_only"]) passes(s, `the label ${s}`);
   for (const s of ["base-q8", "large-q8", "hebert", "union-joint-base"]) passes(s, `the model key ${s}`);
   for (const s of ["P_ARABIC", "S_ALT", "I_ID", "L_NEIGHBOURHOOD"]) passes(s, `the category ${s}`);
-  passes("r3-interview-2026-09-16", "a fixture folder name");
-  passes("r12-meeting-2026-10-01 base-q8 found 7 missed 2 leaked 0", "a log line of a fixture's counts");
+  passes("r3-alpha-2000-01-02", "a fixture folder name");
+  passes("r12-gamma-2000-02-01 base-q8 found 7 missed 2 leaked 0", "a log line of a fixture's counts");
   for (const s of ["tp", "fp", "fn", "f1", "f2", "found", "missed", "leaked", "junk", "Recall"]) passes(s, `the metric ${s}`);
   passes(true, "a boolean"); passes(null, "null");
   passes({ model: "base-q8", set: "protocol", stage: "raw", threshold: 0.6, match: "overlap-untyped",
     micro: { tp: 262, fp: 6, fn: 7, p: 0.978, r: 0.974, f1: 0.976, f2: 0.975 },
     perType: { PER: { tp: 120, fp: 2, fn: 3 } }, ci95: { r: [0.95, 0.99], f2: [0.94, 0.99] } }, "a scores object");
   const table = [
-    "## r5-court-2026-09-16",
+    "## r5-beta-2000-01-02",
     "",
     "| model | cat | found | missed | leaked | f2 |",
     "|:---|:---|---:|---:|---:|---:|",
@@ -61,10 +61,10 @@ const refused = (v, reason, m) => { const r = refusal(v); ok(r === reason, `${m}
   refused("dana.levi@example.com", "email", "an email address");
   refused("see https://example.org/x", "url", "a URL");
   refused("www.example.org", "url", "a URL without a scheme");
-  refused("C:/Users/someone/private-bench/r3-interview-2026-09-16/key.json", "path", "a file path");
+  refused("C:/Users/someone/private-bench/r3-alpha-2000-01-02/key.json", "path", "a file path");
   refused("private-bench\\notes", "path", "a Windows path");
   refused("document.docx", "word", "a file name");
-  ok(refusal("r3-Interview-2026-09-16x") !== "", "a near-miss of a fixture name is refused");
+  ok(refusal("r3-Alpha-2000-01-02x") !== "", "a near-miss of a fixture name is refused");
   refused(NaN, "non-finite-number", "NaN");
   refused(Infinity, "non-finite-number", "Infinity");
   refused(Buffer.from("abc"), "type bytes", "raw bytes");
@@ -82,7 +82,7 @@ const refused = (v, reason, m) => { const r = refusal(v); ok(r === reason, `${m}
   refused("050 – 123 4567", "id-or-phone", "a phone with a spaced dash");
   refused("123456789.5", "id-or-phone", "an ID with a fraction on it");
   passes("found 262 6 7 4 31", "a list of small counts");
-  passes("| r3-interview-2026-09-16 | 12 | 345 |", "a fixture row whose date sits next to counts");
+  passes("| r3-alpha-2000-01-02 | 12 | 345 |", "a fixture row whose date sits next to counts");
   // Objects that walk as one thing and print as another.
   refused(new String("123456789"), "type object", "a boxed string (walks as single digits)");
   refused({ tp: new Number(123456789) }, "type object", "a boxed number (walks as {})");

@@ -10,7 +10,7 @@ Baseline `base-q8`. Finalists: `parse-base-ft`, `joint-base-ft`; intervals at 97
 | 1. No new leaks | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING |
 | 2. Real benefit | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PASS | PENDING | PENDING | PENDING | PENDING | PENDING | PASS | PENDING | PENDING |
 |   2a. Better reading | n/a | n/a | n/a | n/a | n/a | n/a | PASS | n/a | n/a | n/a | n/a | n/a | PASS | n/a | n/a |
-|   2b. User time | PENDING | PENDING | FAIL | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING |
+|   2b. Private set time | PENDING | PENDING | FAIL | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING |
 | 3. Budget | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING |
 | 4. Licence | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
 | 5. Browser = Node | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING |
@@ -23,7 +23,7 @@ PENDING means an input is not available yet; it is never read as a pass. A net s
 - Health: **FAIL**: 2 prediction file(s) lose 0.5% or more of gold-entity tokens in alignment, 0.5 points or more beyond the baseline on the same set
 - Rule 1: **PENDING**: needs the product-level runs (found/missed/leaked per must entity) and the baseline noise band; model level, raw: 2 entities the baseline finds and this model misses, 18 the other way
 - Rule 2a: **n/a**: not a finalist, so not tested (PLAN.md 1.2a); pooled gain untyped +0.100 [0.077, 0.122], PER +0.057 [0.020, 0.089] at 97.5% over bmc-test1, knesset-ud, nemo-test, protocol
-- Rule 2b: **PENDING**: needs the adjudicated model false positives on the private documents (PLAN.md 4.4); held-out recall is not significantly negative
+- Rule 2b: **PENDING**: needs the adjudicated model false positives on the private set (PLAN.md 4.4); held-out recall is not significantly negative
 - Rule 3: **PENDING**: download 127 MB, green; browser scan per 1k words and peak memory come from Phase 5
 - Rule 4: **PASS**: Apache-2.0
 - Rule 5: **PENDING**: browser drift vs Node is measured in Phase 5 (baseline drift first)
@@ -33,7 +33,7 @@ PENDING means an input is not available yet; it is never read as a pass. A net s
 - Health: **PASS**: no unmapped labels, over-long chunks or chunk errors, and no alignment loss beyond the baseline's; 8 prediction file(s) share the baseline's own loss of 0.5% or more (the engine's, reported in the health table)
 - Rule 1: **PENDING**: needs the product-level runs (found/missed/leaked per must entity) and the baseline noise band; model level, raw: 0 entities the baseline finds and this model misses, 15 the other way
 - Rule 2a: **n/a**: not a finalist, so not tested (PLAN.md 1.2a); pooled gain untyped +0.078 [0.060, 0.098], PER +0.053 [0.033, 0.073] at 97.5% over bmc-test1, knesset-ud, nemo-test, protocol
-- Rule 2b: **PENDING**: needs the adjudicated model false positives on the private documents (PLAN.md 4.4); held-out recall is not significantly negative
+- Rule 2b: **PENDING**: needs the adjudicated model false positives on the private set (PLAN.md 4.4); held-out recall is not significantly negative
 - Rule 3: **PENDING**: download 185 MB, green; browser scan per 1k words and peak memory come from Phase 5
 - Rule 4: **PASS**: CC-BY-4.0
 - Rule 5: **PENDING**: browser drift vs Node is measured in Phase 5 (baseline drift first)
@@ -53,7 +53,7 @@ PENDING means an input is not available yet; it is never read as a pass. A net s
 - Health: **PASS**: no unmapped labels, over-long chunks or chunk errors, and no alignment loss beyond the baseline's; 8 prediction file(s) share the baseline's own loss of 0.5% or more (the engine's, reported in the health table)
 - Rule 1: **PENDING**: needs the product-level runs (found/missed/leaked per must entity) and the baseline noise band; model level, raw: 4 entities the baseline finds and this model misses, 15 the other way
 - Rule 2a: **n/a**: not a finalist, so not tested (PLAN.md 1.2a); pooled gain untyped +0.028 [0.005, 0.052], PER +0.010 [-0.023, 0.044] at 97.5% over bmc-test1, knesset-ud, nemo-test, protocol
-- Rule 2b: **PENDING**: needs the adjudicated model false positives on the private documents (PLAN.md 4.4); held-out recall is not significantly negative
+- Rule 2b: **PENDING**: needs the adjudicated model false positives on the private set (PLAN.md 4.4); held-out recall is not significantly negative
 - Rule 3: **PENDING**: download 185 MB, green; browser scan per 1k words and peak memory come from Phase 5
 - Rule 4: **PASS**: CC-BY-4.0
 - Rule 5: **PENDING**: browser drift vs Node is measured in Phase 5 (baseline drift first)
@@ -63,7 +63,7 @@ PENDING means an input is not available yet; it is never read as a pass. A net s
 - Health: **PASS**: no unmapped labels, over-long chunks or chunk errors, and no alignment loss beyond the baseline's; 8 prediction file(s) share the baseline's own loss of 0.5% or more (the engine's, reported in the health table)
 - Rule 1: **PENDING**: needs the product-level runs (found/missed/leaked per must entity) and the baseline noise band; model level, raw: 2 entities the baseline finds and this model misses, 15 the other way
 - Rule 2a: **n/a**: not a finalist, so not tested (PLAN.md 1.2a); pooled gain untyped +0.037 [0.011, 0.062], PER +0.019 [-0.013, 0.052] at 97.5% over bmc-test1, knesset-ud, nemo-test, protocol
-- Rule 2b: **PENDING**: needs the adjudicated model false positives on the private documents (PLAN.md 4.4); held-out recall is not significantly negative
+- Rule 2b: **PENDING**: needs the adjudicated model false positives on the private set (PLAN.md 4.4); held-out recall is not significantly negative
 - Rule 3: **PENDING**: download 185 MB, green; browser scan per 1k words and peak memory come from Phase 5
 - Rule 4: **PASS**: CC-BY-4.0
 - Rule 5: **PENDING**: browser drift vs Node is measured in Phase 5 (baseline drift first)
@@ -73,7 +73,7 @@ PENDING means an input is not available yet; it is never read as a pass. A net s
 - Health: **PASS**: no unmapped labels, over-long chunks or chunk errors, and no alignment loss beyond the baseline's; 8 prediction file(s) share the baseline's own loss of 0.5% or more (the engine's, reported in the health table)
 - Rule 1: **PENDING**: needs the product-level runs (found/missed/leaked per must entity) and the baseline noise band; model level, raw: 5 entities the baseline finds and this model misses, 13 the other way
 - Rule 2a: **n/a**: not a finalist, so not tested (PLAN.md 1.2a); pooled gain untyped +0.076 [0.057, 0.096], PER +0.050 [0.026, 0.075] at 97.5% over bmc-test1, knesset-ud, nemo-test, protocol
-- Rule 2b: **PENDING**: needs the adjudicated model false positives on the private documents (PLAN.md 4.4); held-out recall is not significantly negative
+- Rule 2b: **PENDING**: needs the adjudicated model false positives on the private set (PLAN.md 4.4); held-out recall is not significantly negative
 - Rule 3: **PENDING**: download 185 MB, green; browser scan per 1k words and peak memory come from Phase 5
 - Rule 4: **PASS**: CC-BY-4.0
 - Rule 5: **PENDING**: browser drift vs Node is measured in Phase 5 (baseline drift first)
@@ -83,7 +83,7 @@ PENDING means an input is not available yet; it is never read as a pass. A net s
 - Health: **PASS**: no unmapped labels, over-long chunks or chunk errors, and no alignment loss beyond the baseline's; 8 prediction file(s) share the baseline's own loss of 0.5% or more (the engine's, reported in the health table)
 - Rule 1: **PENDING**: needs the product-level runs (found/missed/leaked per must entity) and the baseline noise band; model level, raw: 2 entities the baseline finds and this model misses, 15 the other way
 - Rule 2a: **PASS**: pooled gain untyped +0.091 [0.069, 0.113], PER +0.070 [0.043, 0.096] at 97.5% over bmc-test1, knesset-ud, nemo-test, protocol
-- Rule 2b: **PENDING**: needs the adjudicated model false positives on the private documents (PLAN.md 4.4); held-out recall is not significantly negative
+- Rule 2b: **PENDING**: needs the adjudicated model false positives on the private set (PLAN.md 4.4); held-out recall is not significantly negative
 - Rule 3: **PENDING**: download 185 MB, green; browser scan per 1k words and peak memory come from Phase 5
 - Rule 4: **PASS**: CC-BY-4.0
 - Rule 5: **PENDING**: browser drift vs Node is measured in Phase 5 (baseline drift first)
@@ -93,7 +93,7 @@ PENDING means an input is not available yet; it is never read as a pass. A net s
 - Health: **PASS**: no unmapped labels, over-long chunks or chunk errors, and no alignment loss beyond the baseline's; 8 prediction file(s) share the baseline's own loss of 0.5% or more (the engine's, reported in the health table)
 - Rule 1: **PENDING**: needs the product-level runs (found/missed/leaked per must entity) and the baseline noise band; model level, raw: 14 entities the baseline finds and this model misses, 13 the other way
 - Rule 2a: **n/a**: not a finalist, so not tested (PLAN.md 1.2a); pooled gain untyped +0.005 [-0.013, 0.020], PER -0.010 [-0.035, 0.014] at 97.5% over bmc-test1, knesset-ud, nemo-test, protocol
-- Rule 2b: **PENDING**: needs the adjudicated model false positives on the private documents (PLAN.md 4.4); held-out recall is not significantly negative
+- Rule 2b: **PENDING**: needs the adjudicated model false positives on the private set (PLAN.md 4.4); held-out recall is not significantly negative
 - Rule 3: **PENDING**: download 437 MB, amber (owner's OK and a first-run warning); browser scan per 1k words and peak memory come from Phase 5
 - Rule 4: **PASS**: CC-BY-4.0
 - Rule 5: **PENDING**: browser drift vs Node is measured in Phase 5 (baseline drift first)
@@ -103,7 +103,7 @@ PENDING means an input is not available yet; it is never read as a pass. A net s
 - Health: **PASS**: no unmapped labels, over-long chunks or chunk errors, and no alignment loss beyond the baseline's; 8 prediction file(s) share the baseline's own loss of 0.5% or more (the engine's, reported in the health table)
 - Rule 1: **PENDING**: needs the product-level runs (found/missed/leaked per must entity) and the baseline noise band; model level, raw: 2 entities the baseline finds and this model misses, 16 the other way
 - Rule 2a: **n/a**: not a finalist, so not tested (PLAN.md 1.2a); pooled gain untyped +0.066 [0.046, 0.088], PER +0.043 [0.017, 0.071] at 97.5% over bmc-test1, knesset-ud, nemo-test, protocol
-- Rule 2b: **PENDING**: needs the adjudicated model false positives on the private documents (PLAN.md 4.4); held-out recall is not significantly negative
+- Rule 2b: **PENDING**: needs the adjudicated model false positives on the private set (PLAN.md 4.4); held-out recall is not significantly negative
 - Rule 3: **PENDING**: download 437 MB, amber (owner's OK and a first-run warning); browser scan per 1k words and peak memory come from Phase 5
 - Rule 4: **PASS**: CC-BY-4.0
 - Rule 5: **PENDING**: browser drift vs Node is measured in Phase 5 (baseline drift first)
@@ -113,7 +113,7 @@ PENDING means an input is not available yet; it is never read as a pass. A net s
 - Health: **PASS**: no unmapped labels, over-long chunks or chunk errors, and no alignment loss beyond the baseline's; 8 prediction file(s) share the baseline's own loss of 0.5% or more (the engine's, reported in the health table)
 - Rule 1: **PENDING**: needs the product-level runs (found/missed/leaked per must entity) and the baseline noise band; model level, raw: 0 entities the baseline finds and this model misses, 16 the other way
 - Rule 2a: **n/a**: not a finalist, so not tested (PLAN.md 1.2a); pooled gain untyped +0.085 [0.059, 0.109], PER +0.067 [0.038, 0.096] at 97.5% over bmc-test1, knesset-ud, nemo-test, protocol
-- Rule 2b: **PENDING**: needs the adjudicated model false positives on the private documents (PLAN.md 4.4); held-out recall is not significantly negative
+- Rule 2b: **PENDING**: needs the adjudicated model false positives on the private set (PLAN.md 4.4); held-out recall is not significantly negative
 - Rule 3: **PENDING**: download 185 MB, green; browser scan per 1k words and peak memory come from Phase 5
 - Rule 4: **PASS**: CC-BY-4.0
 - Rule 5: **PENDING**: browser drift vs Node is measured in Phase 5 (baseline drift first)
@@ -123,7 +123,7 @@ PENDING means an input is not available yet; it is never read as a pass. A net s
 - Health: **PASS**: no unmapped labels, over-long chunks or chunk errors, and no alignment loss beyond the baseline's; 8 prediction file(s) share the baseline's own loss of 0.5% or more (the engine's, reported in the health table)
 - Rule 1: **PENDING**: needs the product-level runs (found/missed/leaked per must entity) and the baseline noise band; model level, raw: 4 entities the baseline finds and this model misses, 16 the other way
 - Rule 2a: **n/a**: not a finalist, so not tested (PLAN.md 1.2a); pooled gain untyped +0.100 [0.075, 0.124], PER +0.076 [0.049, 0.104] at 97.5% over bmc-test1, knesset-ud, nemo-test, protocol
-- Rule 2b: **PENDING**: needs the adjudicated model false positives on the private documents (PLAN.md 4.4); held-out recall is not significantly negative
+- Rule 2b: **PENDING**: needs the adjudicated model false positives on the private set (PLAN.md 4.4); held-out recall is not significantly negative
 - Rule 3: **PENDING**: download 185 MB, green; browser scan per 1k words and peak memory come from Phase 5
 - Rule 4: **PASS**: CC-BY-4.0
 - Rule 5: **PENDING**: browser drift vs Node is measured in Phase 5 (baseline drift first)
@@ -133,7 +133,7 @@ PENDING means an input is not available yet; it is never read as a pass. A net s
 - Health: **PASS**: no unmapped labels, over-long chunks or chunk errors, and no alignment loss beyond the baseline's; 8 prediction file(s) share the baseline's own loss of 0.5% or more (the engine's, reported in the health table)
 - Rule 1: **PENDING**: needs the product-level runs (found/missed/leaked per must entity) and the baseline noise band; model level, raw: 3 entities the baseline finds and this model misses, 15 the other way
 - Rule 2a: **n/a**: not a finalist, so not tested (PLAN.md 1.2a); pooled gain untyped +0.111 [0.089, 0.133], PER +0.061 [0.035, 0.086] at 97.5% over bmc-test1, knesset-ud, nemo-test, protocol
-- Rule 2b: **PENDING**: needs the adjudicated model false positives on the private documents (PLAN.md 4.4); held-out recall is not significantly negative
+- Rule 2b: **PENDING**: needs the adjudicated model false positives on the private set (PLAN.md 4.4); held-out recall is not significantly negative
 - Rule 3: **PENDING**: download 185 MB, green; browser scan per 1k words and peak memory come from Phase 5
 - Rule 4: **PASS**: CC-BY-4.0
 - Rule 5: **PENDING**: browser drift vs Node is measured in Phase 5 (baseline drift first)
@@ -143,7 +143,7 @@ PENDING means an input is not available yet; it is never read as a pass. A net s
 - Health: **PASS**: no unmapped labels, over-long chunks or chunk errors, and no alignment loss beyond the baseline's; 8 prediction file(s) share the baseline's own loss of 0.5% or more (the engine's, reported in the health table)
 - Rule 1: **PENDING**: needs the product-level runs (found/missed/leaked per must entity) and the baseline noise band; model level, raw: 0 entities the baseline finds and this model misses, 15 the other way
 - Rule 2a: **PASS**: pooled gain untyped +0.123 [0.100, 0.146], PER +0.073 [0.047, 0.101] at 97.5% over bmc-test1, knesset-ud, nemo-test, protocol
-- Rule 2b: **PENDING**: needs the adjudicated model false positives on the private documents (PLAN.md 4.4); held-out recall is not significantly negative
+- Rule 2b: **PENDING**: needs the adjudicated model false positives on the private set (PLAN.md 4.4); held-out recall is not significantly negative
 - Rule 3: **PENDING**: download 185 MB, green; browser scan per 1k words and peak memory come from Phase 5
 - Rule 4: **PASS**: CC-BY-4.0
 - Rule 5: **PENDING**: browser drift vs Node is measured in Phase 5 (baseline drift first)
@@ -153,7 +153,7 @@ PENDING means an input is not available yet; it is never read as a pass. A net s
 - Health: **PASS**: no unmapped labels, over-long chunks or chunk errors, and no alignment loss beyond the baseline's; 8 prediction file(s) share the baseline's own loss of 0.5% or more (the engine's, reported in the health table)
 - Rule 1: **PENDING**: needs the product-level runs (found/missed/leaked per must entity) and the baseline noise band; model level, raw: 3 entities the baseline finds and this model misses, 15 the other way
 - Rule 2a: **n/a**: not a finalist, so not tested (PLAN.md 1.2a); pooled gain untyped +0.098 [0.076, 0.120], PER +0.043 [0.021, 0.066] at 97.5% over bmc-test1, knesset-ud, nemo-test, protocol
-- Rule 2b: **PENDING**: needs the adjudicated model false positives on the private documents (PLAN.md 4.4); held-out recall is not significantly negative
+- Rule 2b: **PENDING**: needs the adjudicated model false positives on the private set (PLAN.md 4.4); held-out recall is not significantly negative
 - Rule 3: **PENDING**: download 45 MB, green; browser scan per 1k words and peak memory come from Phase 5
 - Rule 4: **PASS**: CC-BY-4.0
 - Rule 5: **PENDING**: browser drift vs Node is measured in Phase 5 (baseline drift first)
@@ -163,7 +163,7 @@ PENDING means an input is not available yet; it is never read as a pass. A net s
 - Health: **PASS**: no unmapped labels, over-long chunks or chunk errors, and no alignment loss beyond the baseline's; 8 prediction file(s) share the baseline's own loss of 0.5% or more (the engine's, reported in the health table)
 - Rule 1: **PENDING**: needs the product-level runs (found/missed/leaked per must entity) and the baseline noise band; model level, raw: 3 entities the baseline finds and this model misses, 17 the other way
 - Rule 2a: **n/a**: not a finalist, so not tested (PLAN.md 1.2a); pooled gain untyped +0.116 [0.090, 0.141], PER +0.058 [0.035, 0.084] at 97.5% over bmc-test1, knesset-ud, nemo-test, protocol
-- Rule 2b: **PENDING**: needs the adjudicated model false positives on the private documents (PLAN.md 4.4); held-out recall is not significantly negative
+- Rule 2b: **PENDING**: needs the adjudicated model false positives on the private set (PLAN.md 4.4); held-out recall is not significantly negative
 - Rule 3: **PENDING**: download 45 MB, green; browser scan per 1k words and peak memory come from Phase 5
 - Rule 4: **PASS**: CC-BY-4.0
 - Rule 5: **PENDING**: browser drift vs Node is measured in Phase 5 (baseline drift first)
@@ -669,7 +669,7 @@ Recall per category (overlap untyped):
 | control | 7 | 3 (42.9%) | 7 (100.0%) | 7 (100.0%) | 7 (100.0%) | 7 (100.0%) | 7 (100.0%) | 7 (100.0%) | 2 (28.6%) | 1 (14.3%) | 7 (100.0%) | 7 (100.0%) | 7 (100.0%) | 7 (100.0%) | 7 (100.0%) | 7 (100.0%) | 7 (100.0%) | 7 (100.0%) | 6 (85.7%) | 7 (100.0%) | 6 (85.7%) | 5 (71.4%) | 3 (42.9%) | 7 (100.0%) | 3 (42.9%) | 7 (100.0%) | 5 (71.4%) | 7 (100.0%) | 7 (100.0%) | 7 (100.0%) | 5 (71.4%) | 7 (100.0%) | 7 (100.0%) | 7 (100.0%) |
 | false-positive | 4 | 4 (100.0%) | 4 (100.0%) | 4 (100.0%) | 4 (100.0%) | 4 (100.0%) | 4 (100.0%) | 4 (100.0%) | 4 (100.0%) | 4 (100.0%) | 4 (100.0%) | 4 (100.0%) | 4 (100.0%) | 4 (100.0%) | 4 (100.0%) | 4 (100.0%) | 4 (100.0%) | 4 (100.0%) | 4 (100.0%) | 4 (100.0%) | 4 (100.0%) | 4 (100.0%) | 4 (100.0%) | 4 (100.0%) | 4 (100.0%) | 4 (100.0%) | 4 (100.0%) | 4 (100.0%) | 4 (100.0%) | 4 (100.0%) | 4 (100.0%) | 4 (100.0%) | 4 (100.0%) | 4 (100.0%) |
 | leak | 17 | 15 (88.2%) | 17 (100.0%) | 12 (70.6%) | 14 (82.4%) | 12 (70.6%) | 13 (76.5%) | 13 (76.5%) | 15 (88.2%) | 9 (52.9%) | 15 (88.2%) | 17 (100.0%) | 15 (88.2%) | 17 (100.0%) | 15 (88.2%) | 17 (100.0%) | 15 (88.2%) | 17 (100.0%) | 15 (88.2%) | 16 (94.1%) | 12 (70.6%) | 13 (76.5%) | 15 (88.2%) | 17 (100.0%) | 15 (88.2%) | 17 (100.0%) | 15 (88.2%) | 17 (100.0%) | 15 (88.2%) | 17 (100.0%) | 15 (88.2%) | 17 (100.0%) | 15 (88.2%) | 17 (100.0%) |
-| leak-16.9 | 109 | 106 (97.2%) | 104 (95.4%) | 106 (97.2%) | 99 (90.8%) | 101 (92.7%) | 89 (81.7%) | 92 (84.4%) | 87 (79.8%) | 55 (50.5%) | 106 (97.2%) | 106 (97.2%) | 106 (97.2%) | 100 (91.7%) | 109 (100.0%) | 108 (99.1%) | 109 (100.0%) | 105 (96.3%) | 105 (96.3%) | 98 (89.9%) | 100 (91.7%) | 83 (76.1%) | 109 (100.0%) | 108 (99.1%) | 109 (100.0%) | 100 (91.7%) | 109 (100.0%) | 109 (100.0%) | 109 (100.0%) | 104 (95.4%) | 109 (100.0%) | 105 (96.3%) | 109 (100.0%) | 95 (87.2%) |
+| leak-shape | 109 | 106 (97.2%) | 104 (95.4%) | 106 (97.2%) | 99 (90.8%) | 101 (92.7%) | 89 (81.7%) | 92 (84.4%) | 87 (79.8%) | 55 (50.5%) | 106 (97.2%) | 106 (97.2%) | 106 (97.2%) | 100 (91.7%) | 109 (100.0%) | 108 (99.1%) | 109 (100.0%) | 105 (96.3%) | 105 (96.3%) | 98 (89.9%) | 100 (91.7%) | 83 (76.1%) | 109 (100.0%) | 108 (99.1%) | 109 (100.0%) | 100 (91.7%) | 109 (100.0%) | 109 (100.0%) | 109 (100.0%) | 104 (95.4%) | 109 (100.0%) | 105 (96.3%) | 109 (100.0%) | 95 (87.2%) |
 | script | 13 | 7 (53.8%) | 5 (38.5%) | 7 (53.8%) | 3 (23.1%) | 7 (53.8%) | 3 (23.1%) | 3 (23.1%) | 3 (23.1%) | 8 (61.5%) | 7 (53.8%) | 6 (46.2%) | 7 (53.8%) | 6 (46.2%) | 7 (53.8%) | 3 (23.1%) | 7 (53.8%) | 3 (23.1%) | 7 (53.8%) | 3 (23.1%) | 7 (53.8%) | 3 (23.1%) | 7 (53.8%) | 6 (46.2%) | 7 (53.8%) | 6 (46.2%) | 7 (53.8%) | 3 (23.1%) | 7 (53.8%) | 3 (23.1%) | 7 (53.8%) | 3 (23.1%) | 7 (53.8%) | 3 (23.1%) |
 
 ## nemo-test (held out)

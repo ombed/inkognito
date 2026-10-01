@@ -31,15 +31,15 @@ console.log("\n— per-kind default: numbers and dates blank, people get names �
 
 console.log("\n— a rule's own style wins over the default —");
 {
-  const txt = "אליעזר המתמלל רשם. אליעזר לוי נכח.";
+  const txt = "נחום המזכיר רשם. נחום לוי נכח.";
   const out = run(txt, [
-    { value: "אליעזר המתמלל", kind: "NAME", replacement: "", style: "blank" },
-    { value: "אליעזר לוי", kind: "NAME", replacement: "" },
+    { value: "נחום המזכיר", kind: "NAME", replacement: "", style: "blank" },
+    { value: "נחום לוי", kind: "NAME", replacement: "" },
   ], base({}));
-  const phrase = out.find((x) => x.h.text === "אליעזר המתמלל");
-  const person = out.find((x) => x.h.text === "אליעזר לוי");
+  const phrase = out.find((x) => x.h.text === "נחום המזכיר");
+  const person = out.find((x) => x.h.text === "נחום לוי");
   ok(phrase && phrase.rep === "", "the phrase is blanked");
-  ok(person && person.rep !== "" && !/^\[/.test(person.rep), "the other Eliezer keeps a fake name");
+  ok(person && person.rep !== "" && !/^\[/.test(person.rep), "the other Nahum keeps a fake name");
 }
 {
   const txt = "רונית לוי הגישה בקשה.";

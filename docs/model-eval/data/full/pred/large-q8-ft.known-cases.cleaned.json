@@ -6,7 +6,7 @@
  "tok": "faithful",
  "docs": [
   {
-   "id": "r3-bank-pseudonym",
+   "id": "bank-pseudonym",
    "spans": [
     {
      "s": 32,
@@ -29,7 +29,7 @@
    ]
   },
   {
-   "id": "r4-town-variants",
+   "id": "town-variants",
    "spans": [
     {
      "s": 13,
@@ -58,7 +58,7 @@
    ]
   },
   {
-   "id": "r5-two-letter-prefix",
+   "id": "two-letter-prefix",
    "spans": [
     {
      "s": 21,
@@ -75,7 +75,7 @@
    ]
   },
   {
-   "id": "v28-teacher",
+   "id": "v28-foreign-name",
    "spans": [
     {
      "s": 25,
@@ -162,7 +162,7 @@
    ]
   },
   {
-   "id": "leak169-01",
+   "id": "leak-shape-01",
    "spans": [
     {
      "s": 0,
@@ -197,7 +197,7 @@
    ]
   },
   {
-   "id": "leak169-02",
+   "id": "leak-shape-02",
    "spans": [
     {
      "s": 6,
@@ -232,7 +232,7 @@
    ]
   },
   {
-   "id": "leak169-03",
+   "id": "leak-shape-03",
    "spans": [
     {
      "s": 0,
@@ -273,7 +273,7 @@
    ]
   },
   {
-   "id": "leak169-04",
+   "id": "leak-shape-04",
    "spans": [
     {
      "s": 0,
@@ -314,7 +314,7 @@
    ]
   },
   {
-   "id": "leak169-05",
+   "id": "leak-shape-05",
    "spans": [
     {
      "s": 4,
@@ -349,7 +349,7 @@
    ]
   },
   {
-   "id": "leak169-06",
+   "id": "leak-shape-06",
    "spans": [
     {
      "s": 0,
@@ -384,7 +384,7 @@
    ]
   },
   {
-   "id": "leak169-07",
+   "id": "leak-shape-07",
    "spans": [
     {
      "s": 16,
@@ -425,7 +425,7 @@
    ]
   },
   {
-   "id": "leak169-08",
+   "id": "leak-shape-08",
    "spans": [
     {
      "s": 13,
@@ -466,7 +466,7 @@
    ]
   },
   {
-   "id": "leak169-09",
+   "id": "leak-shape-09",
    "spans": [
     {
      "s": 0,
@@ -507,7 +507,7 @@
    ]
   },
   {
-   "id": "leak169-10",
+   "id": "leak-shape-10",
    "spans": [
     {
      "s": 14,
@@ -542,7 +542,7 @@
    ]
   },
   {
-   "id": "leak169-11",
+   "id": "leak-shape-11",
    "spans": [
     {
      "s": 0,
@@ -577,7 +577,7 @@
    ]
   },
   {
-   "id": "leak169-12",
+   "id": "leak-shape-12",
    "spans": [
     {
      "s": 0,
@@ -612,7 +612,7 @@
    ]
   },
   {
-   "id": "leak169-13",
+   "id": "leak-shape-13",
    "spans": [
     {
      "s": 0,
@@ -653,7 +653,7 @@
    ]
   },
   {
-   "id": "leak169-14",
+   "id": "leak-shape-14",
    "spans": [
     {
      "s": 0,
@@ -688,7 +688,7 @@
    ]
   },
   {
-   "id": "leak169-15",
+   "id": "leak-shape-15",
    "spans": [
     {
      "s": 4,
@@ -723,7 +723,7 @@
    ]
   },
   {
-   "id": "leak169-16",
+   "id": "leak-shape-16",
    "spans": [
     {
      "s": 6,
@@ -758,7 +758,7 @@
    ]
   },
   {
-   "id": "leak169-17",
+   "id": "leak-shape-17",
    "spans": [
     {
      "s": 8,
@@ -793,7 +793,7 @@
    ]
   },
   {
-   "id": "leak169-18",
+   "id": "leak-shape-18",
    "spans": [
     {
      "s": 0,
@@ -828,7 +828,7 @@
    ]
   },
   {
-   "id": "leak169-19",
+   "id": "leak-shape-19",
    "spans": [
     {
      "s": 0,
@@ -839,7 +839,7 @@
    ]
   },
   {
-   "id": "leak169-20",
+   "id": "leak-shape-20",
    "spans": [
     {
      "s": 0,

@@ -12,7 +12,7 @@ invented ones, so the text can go to an AI and come back with the real names
 restored. It was built for a real client, a lawyer. Three earlier QA rounds and
 every automated test passed while the user still found bugs, because the rounds
 walked the straight path on clean documents. Your job is to use the tool the way
-and find what breaks.
+a real user does and find what breaks.
 
 You do not change the repository. No edits, commits, branches, pushes or
 deploys. You write one report to `qa-audit/<run-name>/report.md` in the checkout
@@ -94,14 +94,12 @@ could not run must never read as "found nothing".
 
 ## 3. The persona
 
-A fast, experienced lawyer. Hebrew, right to left, Chrome or Edge on a
-Windows laptop, a mouse and keyboard shortcuts. She does not read instructions
-twice and she does not wait for things to finish before clicking. Real
-sessions took many minutes per document, most of it on the
-check screen. Per document she changed 14–15 pseudonyms, pressed "אל תחליף" or
-"לא שם" 11–14 times, changed the style (name / blank / ███) 4–8 times, and
-added only 3 names by hand. The cost is overriding the tool, so that is where
-you spend your time.
+A fast, experienced lawyer. Hebrew, right to left, Chrome or Edge, a mouse and
+keyboard shortcuts. Does not read instructions twice and does not wait for
+things to finish before clicking. In real use most of the time goes to the
+check screen: changing pseudonyms, pressing "אל תחליף" or "לא שם", changing the
+style (name / blank / ███), and adding only a few names by hand. The cost is
+overriding the tool, so that is where you spend your time.
 
 **Per document pair, one case, two documents in a row:**
 
@@ -161,7 +159,7 @@ Keep a table per document of every real name, ID, phone, date and place you put
 in the document, and what the tool showed as its replacement.
 
 1. **Consistent across the case.** A person has one pseudonym in every form
-   ("מרים", "למרים", "ומרים") in the check screen, the copied text and the Word
+   ("דינה", "לדינה", "ודינה") in the check screen, the copied text and the Word
    file, and the same one in the second document of the case. Two people never
    share one.
 2. **Nothing leaks from the file.** Unzip every downloaded .docx (and the docx
@@ -197,7 +195,7 @@ or any document from a real case. Use only:
 Build each pair as two documents of one invented case: the same parties, a
 lawyer, a child, a town or two, an ID, a phone, a date, an organisation. Give
 them the typography real documents have: names in "…" and '…' quotes, gershayim
-(עו"ד, תלה"מ), a geresh name (ברקוביץ׳), a maqaf, prefix letters, a footnote
+(עו"ד, מנכ"ל), a geresh name (ברקוביץ׳), a maqaf, prefix letters, a footnote
 digit glued to a name, a right-to-left mark before a name, a bold first name
 and a plain surname, the same person by first name alone and by full name. Save
 your generator script beside the report so every document can be rebuilt.
@@ -206,9 +204,9 @@ your generator script beside the report so every document can be rebuilt.
 
 - **Critical**: breaks a promise. A real value in the output or the copied text,
   restore returning the wrong person, or the user's decisions or document lost
-  warning.
+  without warning.
 - **High**: a wrong result the user would not notice, or a check that reports
-  when it could not run.
+  clean when it could not run.
 - **Medium**: a result the user would notice and have to work around, or a
   workflow that costs the user real time.
 - **Low**: cosmetic or cheap, no effect on the output.

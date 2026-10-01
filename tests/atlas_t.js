@@ -1,6 +1,6 @@
 /* Places by kind, and the reviewed taxonomy matched before distance.
 
-   In one session a neighbourhood came out as "[מקום א׳]" and a town
+   In real use a neighbourhood came out as "[מקום א׳]" and a town
    could be swapped for any town at the right distance. The decisions (Q11 of release 2, CHANGELOG v29):
    a place keeps its kind (a neighbourhood gets a neighbourhood name, a
    street a street name, a moshav a moshav), a generic town is the fallback

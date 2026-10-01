@@ -2,9 +2,9 @@
    node bench/model-eval/known-cases.js
 
    bench/model-eval/gold/known-cases.json holds the cases, every one in invented
-   text: the leaks the tool has had (r3, v28, v39 and the 16.9 shape in 20
-   variants), the two leaks no model is expected to close (r4, r5, marked
-   control), the five false-positive types, and names in nikud or Latin capitals.
+   text: the leaks the tool has had (a bank pseudonym, v28, v39 and the short-name
+   shape in 20 variants), the two leaks no model is expected to close (town
+   spelling variants and a two-letter name, marked control), the five false-positive types, and names in nikud or Latin capitals.
    Each case says how a model passes it (passRules in the same file).
 
    This writes, under bench/model-eval/out/ (gitignored):

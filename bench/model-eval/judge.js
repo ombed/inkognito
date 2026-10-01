@@ -9,7 +9,7 @@
                                                 -> judge/scores.json; the console gets counts only
 
    items.json carries private text (the span and a few words around it) and stays beside the
-   documents. labels.json is written by the judge. */
+   private documents. labels.json is written by the judge. */
 const fs = require("fs");
 const path = require("path");
 const S = require("./score-spans.js");

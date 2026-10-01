@@ -1,7 +1,7 @@
 const { test, expect } = require("./base");
 const H = require("./helpers");
 
-/* Found by the user on 18.9, after three QA rounds missed them.
+/* Found by the user, after three QA rounds missed them.
 
    Quotation marks: a name or a school written inside quotes ("אלונים") was never
    replaced, its card said "not in the document", and a second card appeared for

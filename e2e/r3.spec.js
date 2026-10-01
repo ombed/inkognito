@@ -1,10 +1,10 @@
 const { test, expect } = require("./base");
 const H = require("./helpers");
 
-/* Release 3, from the second real session.
+/* Release 3 (v33).
 
-   A conflicting decision used to coexist with the old one ("קפדן" was both a
-   rule and allowed). Removing a town from the places screen recomputed the
+   A conflicting decision used to coexist with the old one (the same word was
+   both a rule and allowed). Removing a town from the places screen recomputed the
    map and changed the others; with one town left the map dissolved and the
    leftover got a random gazetteer name. "Same person as" on the card copied a
    fake name instead of linking the names. Dates were deleted, and the AI

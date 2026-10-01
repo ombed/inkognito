@@ -17,8 +17,9 @@ evidence is; in short:
   on; the corpus has grown since, so a re-run today gives different numbers.
 - *Span boundaries*, the benchmark rows, and the gate: `bench/spans.js`, `bench/run.js` and
   `bench/gate.js` are here and re-run on the current corpus.
-- *Anything measured on real documents*: not reproducible by design. Her files never
-  enter the repo; only shapes and counts are recorded.
+- *Anything measured on real documents*: not reproducible by design. A private set of real
+  documents from the user never enters the repo; only failure shapes are recorded here, and
+  results on that set are not published.
 
 ## Model size and quantization, 2026-09-05
 
@@ -86,22 +87,22 @@ A name that appears in the document only in its corrupted form, never cleanly. T
 
 **Finding.** There was: the uniformity sweep marked any part of three letters or fewer as word-like (`p.length<=3`), which limits it to standalone occurrences with review, so "וסבג" and "לסבג" stayed in the text. Commit 507a0c5 (PR #5) lowered that to two. The threshold that remained is the sweep's entry rule, which drops parts shorter than a minimum outright: it was 3, so a two-letter surname ("כץ", "נץ") was never swept at all. A probe confirmed it: "סבג" and "דהן" alone and behind every prefix letter are replaced today; "כץ" leaked five times. The sweep put the minimum at 2 at no cost, and two-letter parts stay review-only through the word-like rule. So the number was 3, it was wrong for two-letter surnames, and it is now 2.
 
-## A real filing, 2026-09-06
+## A real filing
 
 **Question.** The corpus is synthetic. What does the chain do on a real document?
 
 **Method.** A real legal filing from the user, already de-identified by the user, run through the product chain locally with the model on. The file was not committed and is not quoted here; the failure shapes are, with invented examples. Results on it are not published.
 
-**Finding.** No ID numbers, phones or digit runs remained. The two parties, introduced by role and colon, were found. But discover produced 23 candidates, of which 21 were not names, and 5 of those were high confidence and would have been auto-filled and replaced:
+**Finding.** No ID numbers, phones or digit runs remained. The two parties, introduced by role and colon, were found. But discover produced mostly candidates that were not names, and some of those were high confidence and would have been auto-filled and replaced:
 
 | anchor | what it matched | why |
 |---|---|---|
-| "right before ת"ז" (high) | three sentence fragments ending mid-word | a word ending in ת followed by a word starting with ז read as the label "ת ז"; the name pattern had no end boundary |
-| speaker turn (high) | two form labels ("מועד אחרון לתגובה:") | two words made a single occurrence high |
+| "right before ת"ז" (high) | sentence fragments ending mid-word | a word ending in ת followed by a word starting with ז read as the label "ת ז"; the name pattern had no end boundary |
+| speaker turn (high) | form labels (invented example: "תאריך הדיון:") | two words made a single occurrence high |
 | after a title, after "הח"מ", after "בפני" (medium) | verbs and phrases | in a filing the parties are role words and "the undersigned" is the lawyer speaking; a name almost never follows |
 | model | invented examples: "כאמור אליעזר", "יוסי אפטרופא", "אפוטרופא" | discourse word glued to the name; role word taken as a name |
 
-**Fix and measure.** The ID anchor requires a whole label and a word-boundary end. A speaker is high only when it recurs. Every anchor rejects candidates containing a verb, a common word, a role word, a form label or a two-letter pronoun; bare "הח"מ" is no longer an anchor. The cleaner strips a leading discourse word and role words in any spelling. Three position papers with these traps joined the corpus (categories T_FORMLABEL, T_TZSPLIT, T_UNDERSIGNED, O_ROLEWORD, P_ROLE_COLON, P_AFTER_LEAD). On the document: candidates 23 → 2, replacements 95 → 28, no fragment replaced. On the corpus: junk suggestions 42 → 23, leaks unchanged at 4, the new position papers 13 found, 0 missed, 0 leaked.
+**Fix and measure.** The ID anchor requires a whole label and a word-boundary end. A speaker is high only when it recurs. Every anchor rejects candidates containing a verb, a common word, a role word, a form label or a two-letter pronoun; bare "הח"מ" is no longer an anchor. The cleaner strips a leading discourse word and role words in any spelling. Three synthetic filings with these traps joined the corpus (categories T_FORMLABEL, T_TZSPLIT, T_UNDERSIGNED, O_ROLEWORD, P_ROLE_COLON, P_AFTER_LEAD). On the corpus: junk suggestions 42 → 23, leaks unchanged at 4, the new filings 13 found, 0 missed, 0 leaked.
 
 **What remains on the document.** Towns named in passing (the user left them), a verb the model reads as a first name because the same letters are a common name ("שמשה" as ש+משה), and the ambiguous town word "אזור", flagged for review as designed. Each is one tap.
 
@@ -109,15 +110,15 @@ A name that appears in the document only in its corrupted form, never cleanly. T
 
 **Question.** Three more files from the user, already cleaned: two transcripts of recorded conversations and one filing. What does the chain do on them?
 
-**Method.** Run locally through the product chain, model on. The files were not committed and are not quoted here; only shapes and counts.
+**Method.** Run locally through the product chain, model on. The files were not committed and are not quoted here; only failure shapes, with invented examples. Results are not published.
 
-**Findings, in order of size.**
+**Findings.**
 
 1. **Transcripts give the deterministic layer nothing.** `discover` returned zero candidates on both. They are audio transcribed to text: no "NAME:" turns, no titles, no case header. The speaker is written on a line of its own. Everything found came from the model. A standalone short line followed by a paragraph of speech is now a speaker anchor, which recovers those names when the model is off.
 2. **A public body was replaced.** The model returned "לכנסת" as an organisation and the chain redacted it. `PUBLIC_ORG` matched "הכנסת" but not the bare "כנסת" left after stripping the prefix letter.
-3. **The gazetteer added in v18 was worse than useless at one word.** Across the four real documents its one-word entries produced twelve wrong hits ("קדימה", "לשם", "חבר", "מתן", "דברת", "גבעות", "אורה", "חוסן", "עלי", "מיטב", "חמרה", "שקף") and zero right ones. Four were replaced outright, not flagged.
+3. **The gazetteer added in v18 was worse than useless at one word.** On the real documents its one-word entries produced only wrong hits, ordinary words that are also locality names (for example "קדימה", "עלי"), and no right ones. Some were replaced outright, not flagged.
 4. **"בפני" is a preposition.** A sentence of the shape "הציג בפני תוכנית שאינה ברורה" (invented) made "תוכנית שאינה" a person, which was replaced, and then seeded near-miss items from its parts. The anchor now requires a title after it.
-5. **A bare number became an organisation.** The model returned "33" as ORG and it was replaced.
+5. **A bare number became an organisation.** The model returned a number as ORG and it was replaced.
 
 **The benchmark was flattering the gazetteer.** Dropping one-word localities made the corpus look eleven leaks worse. The per-entity diff shows why: the gazetteer had been "catching" people whose names coincide with village names — a minor called לביא, a minor called גפן, "מתן צח", "עלמה כץ", "עמיחי אלמגור", "מכון שורשים" — and replacing them with *place* pseudonyms. "הקטין לביא" became "הקטין [יישוב א׳]". Thirteen corpus surfaces are localities in the list. So the 56 was not a real 56, and the honest number after the correction is 67 on the deterministic run. The baseline is re-seeded in the same commit, which is what the blocking gate exists to make visible.
 
@@ -127,13 +128,11 @@ A name that appears in the document only in its corrupted form, never cleanly. T
 
 **On the real documents after the fixes** (results not published): the public body, the wrongly replaced localities, the invented person and the number are all gone, and with them the near-miss items their parts had seeded.
 
-### Second pass on the same four files: the review noise
+### Second pass on the same files: the review noise
 
-The five bugs above were corruption. What was left was noise: things she has
-to dismiss. Counting distinct items (the interface groups repeats of one
-value into one card), the four documents produced 44 at the start of the
-day, 34 after the corruption fixes, and 28 after this pass. Three changes,
-each measured against the corpus with the gate blocking:
+The five bugs above were corruption. What was left was noise: things the user
+has to dismiss (the interface groups repeats of one value into one card).
+Three changes, each measured against the corpus with the gate blocking:
 
 1. **A short name is only "too word-like to replace behind a prefix" when it
    really is a word in this document.** The guard existed for names like רון,
@@ -144,7 +143,7 @@ each measured against the corpus with the gate blocking:
    common-word list.
 2. **An adjective after an institution word is not the institution's name.**
    Phrases of the shape "המרכז שהינו קהילתי", "בצד המזרחי", "רמה מקצועית"
-   items. A one-word candidate ending in the adjective suffixes ־י or ־ית, or
+   (invented) produced review items. A one-word candidate ending in the adjective suffixes ־י or ־ית, or
    a word the same passage uses with the definite article, is rejected. The
    first attempt also rejected plural endings and cost a neighbourhood whose
    name is a plural ("הדקלים"); the gate caught it.
@@ -158,23 +157,22 @@ Also fixed: a name that appears only behind a prefix letter was flagged for
 review **and** reported as "not in this document at all" — two contradictory
 statements about the same name on the same screen.
 
-**What is left, and why.** Of the 28, six are the same two prefixed forms of
-one name, which the tool asks about by design and the interface shows as two
-cards. Two are ambiguous towns from the coordinate list. The rest are the
-verb layer offering word pairs that are not names, in one dense legal
-document. That layer earns its place elsewhere: it is what finds a name that
-appears only in prose. Tuning it further needs the same treatment as the
-near-miss layer, a keyed real document, and the real transcripts are now the
-place to get one.
+**What is left, and why.** Some are prefixed forms of one name, which the tool
+asks about by design and the interface shows as separate cards. Some are
+ambiguous towns from the coordinate list. The rest are the verb layer
+offering word pairs that are not names, in dense legal prose. That layer
+earns its place elsewhere: it is what finds a name that appears only in
+prose. Tuning it further needs the same treatment as the near-miss layer, a
+keyed real document, and real transcripts are the place to get one.
 
-### A fifth file: a public official replaced by a name
+### Another real document: a public official replaced by a name
 
 A filing with a public office as respondent. Two corruptions:
 
-1. **The Attorney General became a woman.** "המשיבה: היועץ המשפט לממשלה" — the
+1. **The Attorney General became a person.** On a respondent line written with
+   the office title one letter short ("היועץ המשפט" for "היועץ המשפטי"), the
    role-and-colon anchor took "היועץ" at high confidence, auto-filled it and
-   replaced it. The public-body guard knows "היועץ המשפטי" and the document
-   writes "היועץ המשפט", one letter short. The guard now accepts both, plus
+   replaced it. The public-body guard knew only the full spelling. The guard now accepts both, plus
    the other office titles a filing names, and office titles are role words
    that are never a person on their own.
 2. **The case caption's "versus"**, written as three spaced letters between
@@ -186,10 +184,10 @@ Plus noise: after a role word in running prose comes a verb far more often
 than a name. A single word beginning with ה that is not a known first name is
 rejected for that anchor; הדס, הילה and הלל are in the lists and still pass.
 
-On the document: replaced values 21 to 16, all of them real entities; review
-items 6 to 2; verification passes; no digits left. The corpus is unchanged.
+On the document every remaining replaced value is a real entity and
+verification passes (counts not published). The corpus is unchanged.
 
-**What the five files have taught, together.** Every one of them broke
+**What the real documents have taught, together.** Every one of them broke
 something the 33-document synthetic corpus did not: transcripts with no
 structure, a public body behind a prefix, a preposition read as an anchor, a
 gazetteer that replaced people with place names, an office title taken for a
@@ -217,14 +215,14 @@ looks for the pattern across every shipped file and fails the suite.
 
 **With it running.** Five speaker lines in the corpus, all found, none missed,
 none leaked, with and without the model. On real transcripts it first
-produced seven candidates of which two were names, and two of the junk ones
+produced mostly junk candidates, and two of the junk ones
 ("הבנתי", "טוב") recurred and were therefore promoted to high confidence,
 which means auto-filled and replaced. Three changes: a line-based speaker is
 never promoted to high, because unlike a turn with a colon it is a weak
 signal; a list of the words that stand alone on a transcript line
 ("טוב", "בסדר", "יודעת", "בדיוק"); and a speaker label is a bare name, so no
 internal punctuation, no plural ending, no possessive. On the real transcripts
-yield one candidate each, and both are the speakers.
+only the speakers remain as candidates.
 
 **The near-miss parameters are still flat, and now we know why.** With the new
 documents the sweep still reports every confusable pair, every matres
