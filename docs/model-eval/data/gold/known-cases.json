@@ -10,12 +10,12 @@
  },
  "docs": [
   {
-   "id": "r3-bank-pseudonym",
+   "id": "bank-pseudonym",
    "genre": "leak",
-   "text": "ההעברות החודשיות מגיעות לחשבון בבנק רמת ארזים, והאם מושכת מהן את דמי המזונות.\nלפי דפי החשבון של בנק רמת ארזים, ההפקדה האחרונה נעשתה לפני שבועיים.\nהמבקשת מסרה שבנק רמת ארזים סירב לפרוס את החוב, ולכן פנתה לגישור.",
+   "text": "ההעברות החודשיות מגיעות לחשבון בבנק רמת ארזים, והיא מושכת מהן את דמי השכירות.\nלפי דפי החשבון של בנק רמת ארזים, ההפקדה האחרונה נעשתה לפני שבועיים.\nהמבקשת מסרה שבנק רמת ארזים סירב לפרוס את החוב, ולכן פנתה לייעוץ.",
    "pass": "covers-core",
    "control": false,
-   "what": "A bank whose name is a place's head word and a place, like the r3 leak: the one real leak a better model could close.",
+   "what": "A bank whose name is a place's head word and a place: the one leak shape a better model could close.",
    "mentions": [
     {
      "s": 32,
@@ -29,7 +29,7 @@
      },
      "prefix": "ב",
      "cat": "leak",
-     "ent": "r3-bank-pseudonym#must"
+     "ent": "bank-pseudonym#must"
     },
     {
      "s": 96,
@@ -42,7 +42,7 @@
       "e": 109
      },
      "cat": "leak",
-     "ent": "r3-bank-pseudonym#must"
+     "ent": "bank-pseudonym#must"
     },
     {
      "s": 159,
@@ -56,17 +56,17 @@
      },
      "prefix": "ש",
      "cat": "leak",
-     "ent": "r3-bank-pseudonym#must"
+     "ent": "bank-pseudonym#must"
     }
    ]
   },
   {
-   "id": "r4-town-variants",
+   "id": "town-variants",
    "genre": "control",
    "text": "המשפחה עברה לקריית אלונה בקיץ שעבר.\nבית הספר בקרית אלונה קיבל את הילד באמצע השנה.\nהאם עובדת בקריית אלונה, ליד הבית, והאב נשאר בקרית אלונה עד החורף.",
    "pass": "exact-or-prefix-cut",
    "control": true,
-   "what": "A small town written in two spellings, like the r4 leak. The leak was in matching the variant, not in finding the town.",
+   "what": "A small town written in two spellings. The leak this models was in matching the variant, not in finding the town.",
    "mentions": [
     {
      "s": 13,
@@ -76,7 +76,7 @@
      "surface": "קריית אלונה",
      "prefix": "ל",
      "cat": "control",
-     "ent": "r4-town-variants#must"
+     "ent": "town-variants#must"
     },
     {
      "s": 46,
@@ -86,7 +86,7 @@
      "surface": "קרית אלונה",
      "prefix": "ב",
      "cat": "control",
-     "ent": "r4-town-variants#must"
+     "ent": "town-variants#must"
     },
     {
      "s": 93,
@@ -96,7 +96,7 @@
      "surface": "קריית אלונה",
      "prefix": "ב",
      "cat": "control",
-     "ent": "r4-town-variants#must"
+     "ent": "town-variants#must"
     },
     {
      "s": 127,
@@ -106,17 +106,17 @@
      "surface": "קרית אלונה",
      "prefix": "ב",
      "cat": "control",
-     "ent": "r4-town-variants#must"
+     "ent": "town-variants#must"
     }
    ]
   },
   {
-   "id": "r5-two-letter-prefix",
+   "id": "two-letter-prefix",
    "genre": "control",
    "text": "האם מסרה שהיא הסבירה לרז את ההסדר החדש.\nאחר כך נסעו האב ורז לבית הסבתא.\nאמרתי לרז שנתראה שוב בשבוע הבא.",
    "pass": "exact-or-prefix-cut",
    "control": true,
-   "what": "A two-letter first name seen only with a prefix letter, like the r5 leak. The leak was in the rules for short names.",
+   "what": "A two-letter first name seen only with a prefix letter. The leak this models was in the rules for short names.",
    "mentions": [
     {
      "s": 22,
@@ -126,7 +126,7 @@
      "surface": "רז",
      "prefix": "ל",
      "cat": "control",
-     "ent": "r5-two-letter-prefix#must"
+     "ent": "two-letter-prefix#must"
     },
     {
      "s": 57,
@@ -136,7 +136,7 @@
      "surface": "רז",
      "prefix": "ו",
      "cat": "control",
-     "ent": "r5-two-letter-prefix#must"
+     "ent": "two-letter-prefix#must"
     },
     {
      "s": 79,
@@ -146,17 +146,17 @@
      "surface": "רז",
      "prefix": "ל",
      "cat": "control",
-     "ent": "r5-two-letter-prefix#must"
+     "ent": "two-letter-prefix#must"
     }
    ]
   },
   {
-   "id": "v28-teacher",
+   "id": "v28-foreign-name",
    "genre": "leak",
-   "text": "מי המורה שלך השנה?\nהמורה אוקסנה.\nומה אוקסנה אומרת על השיעורים?\nאוקסנה אומרת שאני משתדלת. לפעמים אוקסנה כועסת.\nעל מי היא כועסת?\nעל הבנים. אוקסנה אמרה להם לשבת בשקט.\nואת אוהבת את אוקסנה?\nכן. סיפרתי לאוקסנה על הכלב שלנו.",
+   "text": "מי השכנה שלך השנה?\nהשכנה אוקסנה.\nומה אוקסנה אומרת על התיקונים?\nאוקסנה אומרת שאני משתדלת. לפעמים אוקסנה כועסת.\nעל מי היא כועסת?\nעל הבנים. אוקסנה אמרה להם לשחק בשקט.\nואת אוהבת את אוקסנה?\nכן. סיפרתי לאוקסנה על הכלב שלנו.",
    "pass": "exact-or-prefix-cut",
    "control": false,
-   "what": "A teacher's foreign first name in a child's transcript, every occurrence found at full confidence and then lost downstream (v28). The model part: every occurrence, exact.",
+   "what": "A foreign first name in a question-and-answer transcript, every occurrence found at full confidence and then lost downstream (v28). The model part: every occurrence, exact.",
    "mentions": [
     {
      "s": 25,
@@ -165,7 +165,7 @@
      "must": true,
      "surface": "אוקסנה",
      "cat": "leak",
-     "ent": "v28-teacher#must"
+     "ent": "v28-foreign-name#must"
     },
     {
      "s": 37,
@@ -174,7 +174,7 @@
      "must": true,
      "surface": "אוקסנה",
      "cat": "leak",
-     "ent": "v28-teacher#must"
+     "ent": "v28-foreign-name#must"
     },
     {
      "s": 63,
@@ -183,7 +183,7 @@
      "must": true,
      "surface": "אוקסנה",
      "cat": "leak",
-     "ent": "v28-teacher#must"
+     "ent": "v28-foreign-name#must"
     },
     {
      "s": 96,
@@ -192,7 +192,7 @@
      "must": true,
      "surface": "אוקסנה",
      "cat": "leak",
-     "ent": "v28-teacher#must"
+     "ent": "v28-foreign-name#must"
     },
     {
      "s": 137,
@@ -201,7 +201,7 @@
      "must": true,
      "surface": "אוקסנה",
      "cat": "leak",
-     "ent": "v28-teacher#must"
+     "ent": "v28-foreign-name#must"
     },
     {
      "s": 177,
@@ -210,7 +210,7 @@
      "must": true,
      "surface": "אוקסנה",
      "cat": "leak",
-     "ent": "v28-teacher#must"
+     "ent": "v28-foreign-name#must"
     },
     {
      "s": 197,
@@ -220,17 +220,17 @@
      "surface": "אוקסנה",
      "prefix": "ל",
      "cat": "leak",
-     "ent": "v28-teacher#must"
+     "ent": "v28-foreign-name#must"
     }
    ]
   },
   {
    "id": "v39-glued-full-name",
    "genre": "leak",
-   "text": "הבקשה הוגשה בעניינה של גב' נחמה ברקת אלמוג (להלן: נחמה) ביום ראשון.\nנפגשה הח\"מ עם נחמה בביתה, בנוכחות בתה.\nנחמה ברקת אלמוג מסרה כי היא מבינה את ההליך ומסכימה לו.",
+   "text": "הבקשה הוגשה בעניינה של גב' נחמה ברקת אלמוג (להלן: נחמה) ביום ראשון.\nשוחחה הח\"מ עם נחמה בבוקר, בנוכחות בנה.\nנחמה ברקת אלמוג מסרה כי היא מבינה את ההליך ומסכימה לו.",
    "pass": "exact-or-prefix-cut",
    "control": false,
-   "what": "A client's full name that the model glued to the next word (v39): rejecting the span allow-listed the name inside it. Glued fails.",
+   "what": "A full name that the model glued to the next word (v39): rejecting the span allow-listed the name inside it. Glued fails.",
    "mentions": [
     {
      "s": 27,
@@ -273,7 +273,7 @@
   {
    "id": "v39-infinitive",
    "genre": "leak",
-   "text": "מהאמור לעיל סבורה הח\"מ כי דין הבקשה למינוי אפוטרופוס לנחמה להידחות.\nנחמה ציינה כי היא מבינה את ההחלטה. נחמה חזרה על כך פעמיים.",
+   "text": "בשים לב לכך סבורה הח\"מ כי דין הבקשה לקביעת דיון חוזר לנחמה להידחות.\nנחמה ציינה כי היא מבינה את ההחלטה. נחמה חזרה על כך פעמיים.",
    "pass": "exact-or-prefix-cut",
    "control": false,
    "what": "An infinitive after a prefixed first name taken as a surname (v39): the word that decides the sentence is swallowed.",
@@ -318,12 +318,12 @@
    ]
   },
   {
-   "id": "leak169-01",
-   "genre": "leak-16.9",
+   "id": "leak-shape-01",
+   "genre": "leak-shape",
    "text": "דליה אמרה שהיא לא מרוצה מההסדר.\nאחר כך דליה סיפרה על הלילה ההוא.\nדליה ביקשה לדבר עם העובדת לבד.\nכשסיימנו דליה הודתה שהיא עייפה.\nדליה הוסיפה שהיא תבוא שוב.",
    "pass": "exact-or-prefix-cut",
    "control": false,
-   "what": "The 16.9 leak shape: one four-letter word as a name, many occurrences; before speech verbs.",
+   "what": "The short-name leak shape: one four-letter word as a name, many occurrences; before speech verbs.",
    "mentions": [
     {
      "s": 0,
@@ -331,8 +331,8 @@
      "type": "PER",
      "must": true,
      "surface": "דליה",
-     "cat": "leak-16.9",
-     "ent": "leak169-01#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-01#must"
     },
     {
      "s": 39,
@@ -340,8 +340,8 @@
      "type": "PER",
      "must": true,
      "surface": "דליה",
-     "cat": "leak-16.9",
-     "ent": "leak169-01#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-01#must"
     },
     {
      "s": 65,
@@ -349,8 +349,8 @@
      "type": "PER",
      "must": true,
      "surface": "דליה",
-     "cat": "leak-16.9",
-     "ent": "leak169-01#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-01#must"
     },
     {
      "s": 105,
@@ -358,8 +358,8 @@
      "type": "PER",
      "must": true,
      "surface": "דליה",
-     "cat": "leak-16.9",
-     "ent": "leak169-01#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-01#must"
     },
     {
      "s": 128,
@@ -367,18 +367,18 @@
      "type": "PER",
      "must": true,
      "surface": "דליה",
-     "cat": "leak-16.9",
-     "ent": "leak169-01#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-01#must"
     }
    ]
   },
   {
-   "id": "leak169-02",
-   "genre": "leak-16.9",
+   "id": "leak-shape-02",
+   "genre": "leak-shape",
    "text": "כאמור נאוה לא הגיעה לפגישה הקודמת.\nמשכך נאוה ביקשה מועד חדש.\nלדבריה נאוה לא קיבלה את ההזמנה.\nלפיכך נאוה תוזמן בשנית.\nעם זאת נאוה מסרה את מספר הטלפון שלה.",
    "pass": "exact-or-prefix-cut",
    "control": false,
-   "what": "The 16.9 leak shape: one four-letter word as a name, many occurrences; after discourse words.",
+   "what": "The short-name leak shape: one four-letter word as a name, many occurrences; after discourse words.",
    "mentions": [
     {
      "s": 6,
@@ -386,8 +386,8 @@
      "type": "PER",
      "must": true,
      "surface": "נאוה",
-     "cat": "leak-16.9",
-     "ent": "leak169-02#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-02#must"
     },
     {
      "s": 40,
@@ -395,8 +395,8 @@
      "type": "PER",
      "must": true,
      "surface": "נאוה",
-     "cat": "leak-16.9",
-     "ent": "leak169-02#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-02#must"
     },
     {
      "s": 68,
@@ -404,8 +404,8 @@
      "type": "PER",
      "must": true,
      "surface": "נאוה",
-     "cat": "leak-16.9",
-     "ent": "leak169-02#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-02#must"
     },
     {
      "s": 99,
@@ -413,8 +413,8 @@
      "type": "PER",
      "must": true,
      "surface": "נאוה",
-     "cat": "leak-16.9",
-     "ent": "leak169-02#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-02#must"
     },
     {
      "s": 124,
@@ -422,18 +422,18 @@
      "type": "PER",
      "must": true,
      "surface": "נאוה",
-     "cat": "leak-16.9",
-     "ent": "leak169-02#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-02#must"
     }
    ]
   },
   {
-   "id": "leak169-03",
-   "genre": "leak-16.9",
+   "id": "leak-shape-03",
+   "genre": "leak-shape",
    "text": "רונה הגיעה מוקדם.\nהסברתי לרונה מה יקרה בדיון.\nהאב ורונה ישבו בחוץ.\nהילד ביקש שרונה תישאר.\nקיבלנו מכתב מרונה ביום שני.\nהפגישה עם רונה נמשכה שעה.",
    "pass": "exact-or-prefix-cut",
    "control": false,
-   "what": "The 16.9 leak shape: one four-letter word as a name, many occurrences; with one prefix letter.",
+   "what": "The short-name leak shape: one four-letter word as a name, many occurrences; with one prefix letter.",
    "mentions": [
     {
      "s": 0,
@@ -441,8 +441,8 @@
      "type": "PER",
      "must": true,
      "surface": "רונה",
-     "cat": "leak-16.9",
-     "ent": "leak169-03#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-03#must"
     },
     {
      "s": 26,
@@ -451,8 +451,8 @@
      "must": true,
      "surface": "רונה",
      "prefix": "ל",
-     "cat": "leak-16.9",
-     "ent": "leak169-03#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-03#must"
     },
     {
      "s": 51,
@@ -461,8 +461,8 @@
      "must": true,
      "surface": "רונה",
      "prefix": "ו",
-     "cat": "leak-16.9",
-     "ent": "leak169-03#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-03#must"
     },
     {
      "s": 78,
@@ -471,8 +471,8 @@
      "must": true,
      "surface": "רונה",
      "prefix": "ש",
-     "cat": "leak-16.9",
-     "ent": "leak169-03#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-03#must"
     },
     {
      "s": 103,
@@ -481,8 +481,8 @@
      "must": true,
      "surface": "רונה",
      "prefix": "מ",
-     "cat": "leak-16.9",
-     "ent": "leak169-03#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-03#must"
     },
     {
      "s": 128,
@@ -490,18 +490,18 @@
      "type": "PER",
      "must": true,
      "surface": "רונה",
-     "cat": "leak-16.9",
-     "ent": "leak169-03#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-03#must"
     }
    ]
   },
   {
-   "id": "leak169-04",
-   "genre": "leak-16.9",
+   "id": "leak-shape-04",
+   "genre": "leak-shape",
    "text": "סיגל מתגוררת עם הילדים.\nהאם ולסיגל יש הסכם בעל פה.\nכשסיגל חזרה, הילדים כבר ישנו.\nומסיגל לא התקבלה תשובה.\nהבית שסיגל שכרה קטן מדי.\nסיגל חתמה על הטופס.",
    "pass": "exact-or-prefix-cut",
    "control": false,
-   "what": "The 16.9 leak shape: one four-letter word as a name, many occurrences; with two prefix letters.",
+   "what": "The short-name leak shape: one four-letter word as a name, many occurrences; with two prefix letters.",
    "mentions": [
     {
      "s": 0,
@@ -509,8 +509,8 @@
      "type": "PER",
      "must": true,
      "surface": "סיגל",
-     "cat": "leak-16.9",
-     "ent": "leak169-04#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-04#must"
     },
     {
      "s": 30,
@@ -519,8 +519,8 @@
      "must": true,
      "surface": "סיגל",
      "prefix": "ול",
-     "cat": "leak-16.9",
-     "ent": "leak169-04#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-04#must"
     },
     {
      "s": 53,
@@ -529,8 +529,8 @@
      "must": true,
      "surface": "סיגל",
      "prefix": "כש",
-     "cat": "leak-16.9",
-     "ent": "leak169-04#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-04#must"
     },
     {
      "s": 83,
@@ -539,8 +539,8 @@
      "must": true,
      "surface": "סיגל",
      "prefix": "ומ",
-     "cat": "leak-16.9",
-     "ent": "leak169-04#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-04#must"
     },
     {
      "s": 111,
@@ -549,8 +549,8 @@
      "must": true,
      "surface": "סיגל",
      "prefix": "ש",
-     "cat": "leak-16.9",
-     "ent": "leak169-04#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-04#must"
     },
     {
      "s": 130,
@@ -558,18 +558,18 @@
      "type": "PER",
      "must": true,
      "surface": "סיגל",
-     "cat": "leak-16.9",
-     "ent": "leak169-04#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-04#must"
     }
    ]
   },
   {
-   "id": "leak169-05",
-   "genre": "leak-16.9",
+   "id": "leak-shape-05",
+   "genre": "leak-shape",
    "text": "האם אילה מסרה את גרסתה.\nהמטפלת אילה המליצה על טיפול רגשי.\nהעובדת הסוציאלית אילה ביקרה בבית.\nהשכנה אילה שמעה צעקות.\nאילה לא הוסיפה דבר.",
    "pass": "exact-or-prefix-cut",
    "control": false,
-   "what": "The 16.9 leak shape: one four-letter word as a name, many occurrences; after role words.",
+   "what": "The short-name leak shape: one four-letter word as a name, many occurrences; after role words.",
    "mentions": [
     {
      "s": 4,
@@ -577,8 +577,8 @@
      "type": "PER",
      "must": true,
      "surface": "אילה",
-     "cat": "leak-16.9",
-     "ent": "leak169-05#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-05#must"
     },
     {
      "s": 31,
@@ -586,8 +586,8 @@
      "type": "PER",
      "must": true,
      "surface": "אילה",
-     "cat": "leak-16.9",
-     "ent": "leak169-05#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-05#must"
     },
     {
      "s": 75,
@@ -595,8 +595,8 @@
      "type": "PER",
      "must": true,
      "surface": "אילה",
-     "cat": "leak-16.9",
-     "ent": "leak169-05#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-05#must"
     },
     {
      "s": 98,
@@ -604,8 +604,8 @@
      "type": "PER",
      "must": true,
      "surface": "אילה",
-     "cat": "leak-16.9",
-     "ent": "leak169-05#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-05#must"
     },
     {
      "s": 115,
@@ -613,18 +613,18 @@
      "type": "PER",
      "must": true,
      "surface": "אילה",
-     "cat": "leak-16.9",
-     "ent": "leak169-05#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-05#must"
     }
    ]
   },
   {
-   "id": "leak169-06",
-   "genre": "leak-16.9",
+   "id": "leak-shape-06",
+   "genre": "leak-shape",
    "text": "מירב הגיעה עם בנה.\nאמרתי למירב שהדיון נדחה.\nהאב ומירב לא דיברו מאז.\nמירב טוענת שהיא לא קיבלה הודעה.\nביקשנו ממירב מסמכים נוספים.",
    "pass": "exact-or-prefix-cut",
    "control": false,
-   "what": "The 16.9 leak shape: one four-letter word as a name, many occurrences; a name that starts with a prefix letter (מ).",
+   "what": "The short-name leak shape: one four-letter word as a name, many occurrences; a name that starts with a prefix letter (מ).",
    "mentions": [
     {
      "s": 0,
@@ -632,8 +632,8 @@
      "type": "PER",
      "must": true,
      "surface": "מירב",
-     "cat": "leak-16.9",
-     "ent": "leak169-06#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-06#must"
     },
     {
      "s": 26,
@@ -642,8 +642,8 @@
      "must": true,
      "surface": "מירב",
      "prefix": "ל",
-     "cat": "leak-16.9",
-     "ent": "leak169-06#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-06#must"
     },
     {
      "s": 49,
@@ -652,8 +652,8 @@
      "must": true,
      "surface": "מירב",
      "prefix": "ו",
-     "cat": "leak-16.9",
-     "ent": "leak169-06#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-06#must"
     },
     {
      "s": 68,
@@ -661,8 +661,8 @@
      "type": "PER",
      "must": true,
      "surface": "מירב",
-     "cat": "leak-16.9",
-     "ent": "leak169-06#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-06#must"
     },
     {
      "s": 108,
@@ -671,18 +671,18 @@
      "must": true,
      "surface": "מירב",
      "prefix": "מ",
-     "cat": "leak-16.9",
-     "ent": "leak169-06#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-06#must"
     }
    ]
   },
   {
-   "id": "leak169-07",
-   "genre": "leak-16.9",
+   "id": "leak-shape-07",
+   "genre": "leak-shape",
    "text": "הילדים נשארו עם גליה.\nגליה, כך נמסר, לא ידעה על כך.\nנכחו בפגישה האב והסבתא (גליה).\nהאם שאלה: \"איפה גליה?\"\nהכול נאמר לגליה; היא לא הגיבה.\nהבית שייך לגליה!",
    "pass": "exact-or-prefix-cut",
    "control": false,
-   "what": "The 16.9 leak shape: one four-letter word as a name, many occurrences; before punctuation and at sentence ends.",
+   "what": "The short-name leak shape: one four-letter word as a name, many occurrences; before punctuation and at sentence ends.",
    "mentions": [
     {
      "s": 16,
@@ -690,8 +690,8 @@
      "type": "PER",
      "must": true,
      "surface": "גליה",
-     "cat": "leak-16.9",
-     "ent": "leak169-07#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-07#must"
     },
     {
      "s": 22,
@@ -699,8 +699,8 @@
      "type": "PER",
      "must": true,
      "surface": "גליה",
-     "cat": "leak-16.9",
-     "ent": "leak169-07#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-07#must"
     },
     {
      "s": 76,
@@ -708,8 +708,8 @@
      "type": "PER",
      "must": true,
      "surface": "גליה",
-     "cat": "leak-16.9",
-     "ent": "leak169-07#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-07#must"
     },
     {
      "s": 99,
@@ -717,8 +717,8 @@
      "type": "PER",
      "must": true,
      "surface": "גליה",
-     "cat": "leak-16.9",
-     "ent": "leak169-07#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-07#must"
     },
     {
      "s": 117,
@@ -727,8 +727,8 @@
      "must": true,
      "surface": "גליה",
      "prefix": "ל",
-     "cat": "leak-16.9",
-     "ent": "leak169-07#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-07#must"
     },
     {
      "s": 148,
@@ -737,18 +737,18 @@
      "must": true,
      "surface": "גליה",
      "prefix": "ל",
-     "cat": "leak-16.9",
-     "ent": "leak169-07#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-07#must"
     }
    ]
   },
   {
-   "id": "leak169-08",
-   "genre": "leak-16.9",
+   "id": "leak-shape-08",
+   "genre": "leak-shape",
    "text": "הילד קרא לה \"יפעת\" ולא אמא.\nלדבריו, \"יפעת תמיד מאחרת\".\nבהודעה נכתב: ״יפעת תאסוף אותם״.\nיפעת אישרה את הדברים.\nהוא חזר ואמר \"יפעת, יפעת\" כשבכה.",
    "pass": "exact-or-prefix-cut",
    "control": false,
-   "what": "The 16.9 leak shape: one four-letter word as a name, many occurrences; inside quotation marks.",
+   "what": "The short-name leak shape: one four-letter word as a name, many occurrences; inside quotation marks.",
    "mentions": [
     {
      "s": 13,
@@ -756,8 +756,8 @@
      "type": "PER",
      "must": true,
      "surface": "יפעת",
-     "cat": "leak-16.9",
-     "ent": "leak169-08#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-08#must"
     },
     {
      "s": 37,
@@ -765,8 +765,8 @@
      "type": "PER",
      "must": true,
      "surface": "יפעת",
-     "cat": "leak-16.9",
-     "ent": "leak169-08#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-08#must"
     },
     {
      "s": 69,
@@ -774,8 +774,8 @@
      "type": "PER",
      "must": true,
      "surface": "יפעת",
-     "cat": "leak-16.9",
-     "ent": "leak169-08#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-08#must"
     },
     {
      "s": 87,
@@ -783,8 +783,8 @@
      "type": "PER",
      "must": true,
      "surface": "יפעת",
-     "cat": "leak-16.9",
-     "ent": "leak169-08#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-08#must"
     },
     {
      "s": 123,
@@ -792,8 +792,8 @@
      "type": "PER",
      "must": true,
      "surface": "יפעת",
-     "cat": "leak-16.9",
-     "ent": "leak169-08#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-08#must"
     },
     {
      "s": 129,
@@ -801,18 +801,18 @@
      "type": "PER",
      "must": true,
      "surface": "יפעת",
-     "cat": "leak-16.9",
-     "ent": "leak169-08#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-08#must"
     }
    ]
   },
   {
-   "id": "leak169-09",
-   "genre": "leak-16.9",
+   "id": "leak-shape-09",
+   "genre": "leak-shape",
    "text": "עינב: אני לא מסכימה עם זה.\nהעובדת: למה?\nעינב: כי הוא לא מגיע בזמן.\nהעובדת: ומה עינב מציעה?\nעינב: שיאסוף אותם בשבת בבוקר.\nהעובדת: תודה, עינב.\nעינב: בבקשה.",
    "pass": "exact-or-prefix-cut",
    "control": false,
-   "what": "The 16.9 leak shape: one four-letter word as a name, many occurrences; as a speaker at the start of a line.",
+   "what": "The short-name leak shape: one four-letter word as a name, many occurrences; as a speaker at the start of a line.",
    "mentions": [
     {
      "s": 0,
@@ -820,8 +820,8 @@
      "type": "PER",
      "must": true,
      "surface": "עינב",
-     "cat": "leak-16.9",
-     "ent": "leak169-09#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-09#must"
     },
     {
      "s": 40,
@@ -829,8 +829,8 @@
      "type": "PER",
      "must": true,
      "surface": "עינב",
-     "cat": "leak-16.9",
-     "ent": "leak169-09#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-09#must"
     },
     {
      "s": 79,
@@ -838,8 +838,8 @@
      "type": "PER",
      "must": true,
      "surface": "עינב",
-     "cat": "leak-16.9",
-     "ent": "leak169-09#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-09#must"
     },
     {
      "s": 91,
@@ -847,8 +847,8 @@
      "type": "PER",
      "must": true,
      "surface": "עינב",
-     "cat": "leak-16.9",
-     "ent": "leak169-09#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-09#must"
     },
     {
      "s": 135,
@@ -856,8 +856,8 @@
      "type": "PER",
      "must": true,
      "surface": "עינב",
-     "cat": "leak-16.9",
-     "ent": "leak169-09#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-09#must"
     },
     {
      "s": 141,
@@ -865,18 +865,18 @@
      "type": "PER",
      "must": true,
      "surface": "עינב",
-     "cat": "leak-16.9",
-     "ent": "leak169-09#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-09#must"
     }
    ]
   },
   {
-   "id": "leak169-10",
-   "genre": "leak-16.9",
+   "id": "leak-shape-10",
+   "genre": "leak-shape",
    "text": "המבקשת (להלן: רעות) הגישה את הבקשה ביום 3.4.\nרעות, 34, עובדת במשמרות.\nביום 15 רעות לא הגיעה.\nרעות (האם) שילמה 400 ש\"ח.\nסעיף 7 חל על רעות בלבד.",
    "pass": "exact-or-prefix-cut",
    "control": false,
-   "what": "The 16.9 leak shape: one four-letter word as a name, many occurrences; beside numbers and parentheses.",
+   "what": "The short-name leak shape: one four-letter word as a name, many occurrences; beside numbers and parentheses.",
    "mentions": [
     {
      "s": 14,
@@ -884,8 +884,8 @@
      "type": "PER",
      "must": true,
      "surface": "רעות",
-     "cat": "leak-16.9",
-     "ent": "leak169-10#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-10#must"
     },
     {
      "s": 45,
@@ -893,8 +893,8 @@
      "type": "PER",
      "must": true,
      "surface": "רעות",
-     "cat": "leak-16.9",
-     "ent": "leak169-10#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-10#must"
     },
     {
      "s": 78,
@@ -902,8 +902,8 @@
      "type": "PER",
      "must": true,
      "surface": "רעות",
-     "cat": "leak-16.9",
-     "ent": "leak169-10#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-10#must"
     },
     {
      "s": 93,
@@ -911,8 +911,8 @@
      "type": "PER",
      "must": true,
      "surface": "רעות",
-     "cat": "leak-16.9",
-     "ent": "leak169-10#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-10#must"
     },
     {
      "s": 132,
@@ -920,18 +920,18 @@
      "type": "PER",
      "must": true,
      "surface": "רעות",
-     "cat": "leak-16.9",
-     "ent": "leak169-10#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-10#must"
     }
    ]
   },
   {
-   "id": "leak169-11",
-   "genre": "leak-16.9",
+   "id": "leak-shape-11",
+   "genre": "leak-shape",
    "text": "שקמה ביקשה לדחות את הדיון.\nהצעתי לשקמה להגיש תצהיר.\nביקשתי משקמה להתייצב בזמן.\nלשקמה לא היה עורך דין.\nשקמה הסכימה.",
    "pass": "exact-or-prefix-cut",
    "control": false,
-   "what": "The 16.9 leak shape: one four-letter word as a name, many occurrences; a name that starts with ש, before an infinitive.",
+   "what": "The short-name leak shape: one four-letter word as a name, many occurrences; a name that starts with ש, before an infinitive.",
    "mentions": [
     {
      "s": 0,
@@ -939,8 +939,8 @@
      "type": "PER",
      "must": true,
      "surface": "שקמה",
-     "cat": "leak-16.9",
-     "ent": "leak169-11#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-11#must"
     },
     {
      "s": 34,
@@ -949,8 +949,8 @@
      "must": true,
      "surface": "שקמה",
      "prefix": "ל",
-     "cat": "leak-16.9",
-     "ent": "leak169-11#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-11#must"
     },
     {
      "s": 60,
@@ -959,8 +959,8 @@
      "must": true,
      "surface": "שקמה",
      "prefix": "מ",
-     "cat": "leak-16.9",
-     "ent": "leak169-11#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-11#must"
     },
     {
      "s": 80,
@@ -969,8 +969,8 @@
      "must": true,
      "surface": "שקמה",
      "prefix": "ל",
-     "cat": "leak-16.9",
-     "ent": "leak169-11#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-11#must"
     },
     {
      "s": 102,
@@ -978,18 +978,18 @@
      "type": "PER",
      "must": true,
      "surface": "שקמה",
-     "cat": "leak-16.9",
-     "ent": "leak169-11#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-11#must"
     }
    ]
   },
   {
-   "id": "leak169-12",
-   "genre": "leak-16.9",
+   "id": "leak-shape-12",
+   "genre": "leak-shape",
    "text": "ענבר אמא של שני ילדים.\nענבר בעלת הדירה ביקשה לפנות אותה.\nענבר מורה בבית ספר יסודי.\nלדברי ענבר אחות של האב, הילדים מוזנחים.\nענבר דודה של הקטין.",
    "pass": "exact-or-prefix-cut",
    "control": false,
-   "what": "The 16.9 leak shape: one four-letter word as a name, many occurrences; before a word that could be read as a surname.",
+   "what": "The short-name leak shape: one four-letter word as a name, many occurrences; before a word that could be read as a surname.",
    "mentions": [
     {
      "s": 0,
@@ -997,8 +997,8 @@
      "type": "PER",
      "must": true,
      "surface": "ענבר",
-     "cat": "leak-16.9",
-     "ent": "leak169-12#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-12#must"
     },
     {
      "s": 23,
@@ -1006,8 +1006,8 @@
      "type": "PER",
      "must": true,
      "surface": "ענבר",
-     "cat": "leak-16.9",
-     "ent": "leak169-12#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-12#must"
     },
     {
      "s": 57,
@@ -1015,8 +1015,8 @@
      "type": "PER",
      "must": true,
      "surface": "ענבר",
-     "cat": "leak-16.9",
-     "ent": "leak169-12#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-12#must"
     },
     {
      "s": 89,
@@ -1024,8 +1024,8 @@
      "type": "PER",
      "must": true,
      "surface": "ענבר",
-     "cat": "leak-16.9",
-     "ent": "leak169-12#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-12#must"
     },
     {
      "s": 123,
@@ -1033,18 +1033,18 @@
      "type": "PER",
      "must": true,
      "surface": "ענבר",
-     "cat": "leak-16.9",
-     "ent": "leak169-12#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-12#must"
     }
    ]
   },
   {
-   "id": "leak169-13",
-   "genre": "leak-16.9",
+   "id": "leak-shape-13",
+   "genre": "leak-shape",
    "text": "יונה סירבה להגיע.\nההודעה נשלחה ל-יונה ביום חמישי.\nהאב ו-יונה לא נפגשו.\nהזימון נמסר ל־יונה ביד.\nיונה חתמה על קבלתו.",
    "pass": "exact-or-prefix-cut",
    "control": false,
-   "what": "The 16.9 leak shape: one four-letter word as a name, many occurrences; after a hyphen or a maqaf.",
+   "what": "The short-name leak shape: one four-letter word as a name, many occurrences; after a hyphen or a maqaf.",
    "mentions": [
     {
      "s": 0,
@@ -1052,8 +1052,8 @@
      "type": "PER",
      "must": true,
      "surface": "יונה",
-     "cat": "leak-16.9",
-     "ent": "leak169-13#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-13#must"
     },
     {
      "s": 33,
@@ -1062,8 +1062,8 @@
      "must": true,
      "surface": "יונה",
      "prefix": "ל-",
-     "cat": "leak-16.9",
-     "ent": "leak169-13#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-13#must"
     },
     {
      "s": 56,
@@ -1072,8 +1072,8 @@
      "must": true,
      "surface": "יונה",
      "prefix": "ו-",
-     "cat": "leak-16.9",
-     "ent": "leak169-13#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-13#must"
     },
     {
      "s": 85,
@@ -1082,8 +1082,8 @@
      "must": true,
      "surface": "יונה",
      "prefix": "ל־",
-     "cat": "leak-16.9",
-     "ent": "leak169-13#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-13#must"
     },
     {
      "s": 95,
@@ -1091,18 +1091,18 @@
      "type": "PER",
      "must": true,
      "surface": "יונה",
-     "cat": "leak-16.9",
-     "ent": "leak169-13#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-13#must"
     }
    ]
   },
   {
-   "id": "leak169-14",
-   "genre": "leak-16.9",
+   "id": "leak-shape-14",
+   "genre": "leak-shape",
    "text": "זיוה\nהגיעה לפגישה בשעה תשע.\nהעובדת שוחחה עם זיוה\nזיוה\nלא הוסיפה דבר.\nבסוף הפגישה נפרדנו מזיוה\nזיוה",
    "pass": "exact-or-prefix-cut",
    "control": false,
-   "what": "The 16.9 leak shape: one four-letter word as a name, many occurrences; alone on a line, at line starts and ends.",
+   "what": "The short-name leak shape: one four-letter word as a name, many occurrences; alone on a line, at line starts and ends.",
    "mentions": [
     {
      "s": 0,
@@ -1110,8 +1110,8 @@
      "type": "PER",
      "must": true,
      "surface": "זיוה",
-     "cat": "leak-16.9",
-     "ent": "leak169-14#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-14#must"
     },
     {
      "s": 44,
@@ -1119,8 +1119,8 @@
      "type": "PER",
      "must": true,
      "surface": "זיוה",
-     "cat": "leak-16.9",
-     "ent": "leak169-14#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-14#must"
     },
     {
      "s": 49,
@@ -1128,8 +1128,8 @@
      "type": "PER",
      "must": true,
      "surface": "זיוה",
-     "cat": "leak-16.9",
-     "ent": "leak169-14#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-14#must"
     },
     {
      "s": 89,
@@ -1138,8 +1138,8 @@
      "must": true,
      "surface": "זיוה",
      "prefix": "מ",
-     "cat": "leak-16.9",
-     "ent": "leak169-14#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-14#must"
     },
     {
      "s": 94,
@@ -1147,18 +1147,18 @@
      "type": "PER",
      "must": true,
      "surface": "זיוה",
-     "cat": "leak-16.9",
-     "ent": "leak169-14#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-14#must"
     }
    ]
   },
   {
-   "id": "leak169-15",
-   "genre": "leak-16.9",
+   "id": "leak-shape-15",
+   "genre": "leak-shape",
    "text": "גב' תמרה הגיעה לבדה.\nב\"כ גב' תמרה לא התייצב.\nעו\"ד תמרה ייצגה את האם בדיון הקודם.\nד\"ר תמרה בדקה את הילד.\nתמרה אישרה את הדברים.",
    "pass": "exact-or-prefix-cut",
    "control": false,
-   "what": "The 16.9 leak shape: one four-letter word as a name, many occurrences; after a title.",
+   "what": "The short-name leak shape: one four-letter word as a name, many occurrences; after a title.",
    "mentions": [
     {
      "s": 4,
@@ -1166,8 +1166,8 @@
      "type": "PER",
      "must": true,
      "surface": "תמרה",
-     "cat": "leak-16.9",
-     "ent": "leak169-15#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-15#must"
     },
     {
      "s": 29,
@@ -1175,8 +1175,8 @@
      "type": "PER",
      "must": true,
      "surface": "תמרה",
-     "cat": "leak-16.9",
-     "ent": "leak169-15#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-15#must"
     },
     {
      "s": 50,
@@ -1184,8 +1184,8 @@
      "type": "PER",
      "must": true,
      "surface": "תמרה",
-     "cat": "leak-16.9",
-     "ent": "leak169-15#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-15#must"
     },
     {
      "s": 85,
@@ -1193,8 +1193,8 @@
      "type": "PER",
      "must": true,
      "surface": "תמרה",
-     "cat": "leak-16.9",
-     "ent": "leak169-15#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-15#must"
     },
     {
      "s": 104,
@@ -1202,18 +1202,18 @@
      "type": "PER",
      "must": true,
      "surface": "תמרה",
-     "cat": "leak-16.9",
-     "ent": "leak169-15#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-15#must"
     }
    ]
   },
   {
-   "id": "leak169-16",
-   "genre": "leak-16.9",
+   "id": "leak-shape-16",
+   "genre": "leak-shape",
    "text": "נכחו: חגית, האב והסבתא.\nחגית, האב והילדים ישבו יחד.\nהאב ביקש שחגית, הסבתא והדוד לא יגיעו.\nהוזמנו הסבתא וחגית.\nחגית הגיעה ראשונה.",
    "pass": "exact-or-prefix-cut",
    "control": false,
-   "what": "The 16.9 leak shape: one four-letter word as a name, many occurrences; in a list.",
+   "what": "The short-name leak shape: one four-letter word as a name, many occurrences; in a list.",
    "mentions": [
     {
      "s": 6,
@@ -1221,8 +1221,8 @@
      "type": "PER",
      "must": true,
      "surface": "חגית",
-     "cat": "leak-16.9",
-     "ent": "leak169-16#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-16#must"
     },
     {
      "s": 24,
@@ -1230,8 +1230,8 @@
      "type": "PER",
      "must": true,
      "surface": "חגית",
-     "cat": "leak-16.9",
-     "ent": "leak169-16#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-16#must"
     },
     {
      "s": 62,
@@ -1240,8 +1240,8 @@
      "must": true,
      "surface": "חגית",
      "prefix": "ש",
-     "cat": "leak-16.9",
-     "ent": "leak169-16#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-16#must"
     },
     {
      "s": 104,
@@ -1250,8 +1250,8 @@
      "must": true,
      "surface": "חגית",
      "prefix": "ו",
-     "cat": "leak-16.9",
-     "ent": "leak169-16#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-16#must"
     },
     {
      "s": 110,
@@ -1259,18 +1259,18 @@
      "type": "PER",
      "must": true,
      "surface": "חגית",
-     "cat": "leak-16.9",
-     "ent": "leak169-16#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-16#must"
     }
    ]
   },
   {
-   "id": "leak169-17",
-   "genre": "leak-16.9",
+   "id": "leak-shape-17",
+   "genre": "leak-shape",
    "text": "הבית של אסנת נמצא ליד הגן.\nהילדים שוהים אצל אסנת בסופי שבוע.\nהאב דיבר עם אסנת בטלפון.\nבלי אסנת אין מי שיאסוף אותם.\nאסנת מסכימה להסדר.",
    "pass": "exact-or-prefix-cut",
    "control": false,
-   "what": "The 16.9 leak shape: one four-letter word as a name, many occurrences; with possessive and preposition words.",
+   "what": "The short-name leak shape: one four-letter word as a name, many occurrences; with possessive and preposition words.",
    "mentions": [
     {
      "s": 8,
@@ -1278,8 +1278,8 @@
      "type": "PER",
      "must": true,
      "surface": "אסנת",
-     "cat": "leak-16.9",
-     "ent": "leak169-17#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-17#must"
     },
     {
      "s": 44,
@@ -1287,8 +1287,8 @@
      "type": "PER",
      "must": true,
      "surface": "אסנת",
-     "cat": "leak-16.9",
-     "ent": "leak169-17#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-17#must"
     },
     {
      "s": 73,
@@ -1296,8 +1296,8 @@
      "type": "PER",
      "must": true,
      "surface": "אסנת",
-     "cat": "leak-16.9",
-     "ent": "leak169-17#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-17#must"
     },
     {
      "s": 90,
@@ -1305,8 +1305,8 @@
      "type": "PER",
      "must": true,
      "surface": "אסנת",
-     "cat": "leak-16.9",
-     "ent": "leak169-17#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-17#must"
     },
     {
      "s": 115,
@@ -1314,18 +1314,18 @@
      "type": "PER",
      "must": true,
      "surface": "אסנת",
-     "cat": "leak-16.9",
-     "ent": "leak169-17#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-17#must"
     }
    ]
   },
   {
-   "id": "leak169-18",
-   "genre": "leak-16.9",
+   "id": "leak-shape-18",
+   "genre": "leak-shape",
    "text": "רחלי הגישה בקשה נוספת.\nרחלי ביקשה דחייה.\nאמרתי שרחלי תגיע מחר.\nעל רחלי להגיש את התצהיר עד יום ראשון.\nרחלי נכנסה והתיישבה.",
    "pass": "exact-or-prefix-cut",
    "control": false,
-   "what": "The 16.9 leak shape: one four-letter word as a name, many occurrences; before verbs that could be read as surnames.",
+   "what": "The short-name leak shape: one four-letter word as a name, many occurrences; before verbs that could be read as surnames.",
    "mentions": [
     {
      "s": 0,
@@ -1333,8 +1333,8 @@
      "type": "PER",
      "must": true,
      "surface": "רחלי",
-     "cat": "leak-16.9",
-     "ent": "leak169-18#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-18#must"
     },
     {
      "s": 23,
@@ -1342,8 +1342,8 @@
      "type": "PER",
      "must": true,
      "surface": "רחלי",
-     "cat": "leak-16.9",
-     "ent": "leak169-18#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-18#must"
     },
     {
      "s": 48,
@@ -1352,8 +1352,8 @@
      "must": true,
      "surface": "רחלי",
      "prefix": "ש",
-     "cat": "leak-16.9",
-     "ent": "leak169-18#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-18#must"
     },
     {
      "s": 66,
@@ -1361,8 +1361,8 @@
      "type": "PER",
      "must": true,
      "surface": "רחלי",
-     "cat": "leak-16.9",
-     "ent": "leak169-18#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-18#must"
     },
     {
      "s": 101,
@@ -1370,18 +1370,18 @@
      "type": "PER",
      "must": true,
      "surface": "רחלי",
-     "cat": "leak-16.9",
-     "ent": "leak169-18#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-18#must"
     }
    ]
   },
   {
-   "id": "leak169-19",
-   "genre": "leak-16.9",
+   "id": "leak-shape-19",
+   "genre": "leak-shape",
    "text": "מלכה טלפנה בבוקר.\nומלכה הוסיפה שהיא חוששת.\nכשמלכה הגיעה, הדלת הייתה נעולה.\nהילדים מחכים למלכה.\nמלכה תעדכן אותנו.",
    "pass": "exact-or-prefix-cut",
    "control": false,
-   "what": "The 16.9 leak shape: one four-letter word as a name, many occurrences; a name that starts with מ, with ו and כש.",
+   "what": "The short-name leak shape: one four-letter word as a name, many occurrences; a name that starts with מ, with ו and כש.",
    "mentions": [
     {
      "s": 0,
@@ -1389,8 +1389,8 @@
      "type": "PER",
      "must": true,
      "surface": "מלכה",
-     "cat": "leak-16.9",
-     "ent": "leak169-19#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-19#must"
     },
     {
      "s": 19,
@@ -1399,8 +1399,8 @@
      "must": true,
      "surface": "מלכה",
      "prefix": "ו",
-     "cat": "leak-16.9",
-     "ent": "leak169-19#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-19#must"
     },
     {
      "s": 45,
@@ -1409,8 +1409,8 @@
      "must": true,
      "surface": "מלכה",
      "prefix": "כש",
-     "cat": "leak-16.9",
-     "ent": "leak169-19#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-19#must"
     },
     {
      "s": 89,
@@ -1419,8 +1419,8 @@
      "must": true,
      "surface": "מלכה",
      "prefix": "ל",
-     "cat": "leak-16.9",
-     "ent": "leak169-19#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-19#must"
     },
     {
      "s": 95,
@@ -1428,18 +1428,18 @@
      "type": "PER",
      "must": true,
      "surface": "מלכה",
-     "cat": "leak-16.9",
-     "ent": "leak169-19#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-19#must"
     }
    ]
   },
   {
-   "id": "leak169-20",
-   "genre": "leak-16.9",
+   "id": "leak-shape-20",
+   "genre": "leak-shape",
    "text": "ציפי הגיעה לפגישה באיחור. ציפי הסבירה שהאוטובוס לא הגיע, וציפי התנצלה. אחרי שציפי התיישבה, העובדת שאלה את ציפי על הילדים. ציפי סיפרה שהם בסדר, אבל שציפי דואגת לבן הגדול. בסוף הפגישה ציפי ביקשה עוד מועד, וציפי קיבלה אותו.",
    "pass": "exact-or-prefix-cut",
    "control": false,
-   "what": "The 16.9 leak shape: one four-letter word as a name, many occurrences; many occurrences in one long paragraph.",
+   "what": "The short-name leak shape: one four-letter word as a name, many occurrences; many occurrences in one long paragraph.",
    "mentions": [
     {
      "s": 0,
@@ -1447,8 +1447,8 @@
      "type": "PER",
      "must": true,
      "surface": "ציפי",
-     "cat": "leak-16.9",
-     "ent": "leak169-20#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-20#must"
     },
     {
      "s": 26,
@@ -1456,8 +1456,8 @@
      "type": "PER",
      "must": true,
      "surface": "ציפי",
-     "cat": "leak-16.9",
-     "ent": "leak169-20#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-20#must"
     },
     {
      "s": 58,
@@ -1466,8 +1466,8 @@
      "must": true,
      "surface": "ציפי",
      "prefix": "ו",
-     "cat": "leak-16.9",
-     "ent": "leak169-20#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-20#must"
     },
     {
      "s": 77,
@@ -1476,8 +1476,8 @@
      "must": true,
      "surface": "ציפי",
      "prefix": "ש",
-     "cat": "leak-16.9",
-     "ent": "leak169-20#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-20#must"
     },
     {
      "s": 106,
@@ -1485,8 +1485,8 @@
      "type": "PER",
      "must": true,
      "surface": "ציפי",
-     "cat": "leak-16.9",
-     "ent": "leak169-20#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-20#must"
     },
     {
      "s": 122,
@@ -1494,8 +1494,8 @@
      "type": "PER",
      "must": true,
      "surface": "ציפי",
-     "cat": "leak-16.9",
-     "ent": "leak169-20#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-20#must"
     },
     {
      "s": 148,
@@ -1504,8 +1504,8 @@
      "must": true,
      "surface": "ציפי",
      "prefix": "ש",
-     "cat": "leak-16.9",
-     "ent": "leak169-20#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-20#must"
     },
     {
      "s": 182,
@@ -1513,8 +1513,8 @@
      "type": "PER",
      "must": true,
      "surface": "ציפי",
-     "cat": "leak-16.9",
-     "ent": "leak169-20#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-20#must"
     },
     {
      "s": 204,
@@ -1523,8 +1523,8 @@
      "must": true,
      "surface": "ציפי",
      "prefix": "ו",
-     "cat": "leak-16.9",
-     "ent": "leak169-20#must"
+     "cat": "leak-shape",
+     "ent": "leak-shape-20#must"
     }
    ]
   },
@@ -1613,7 +1613,7 @@
   {
    "id": "fp-role-word",
    "genre": "false-positive",
-   "text": "כתב עמדה מטעם האפוטרופא לדין.\nהאפוטרופוס לדין ממליץ על הרחבת השהות.\nהאפטרופא ביקשה להגיש השלמה.\nאפוטרופסית לדין תמונה בהקדם.\nהמגשרת והח\"מ נפגשו עם שני ההורים.",
+   "text": "חוות דעת מטעם האפוטרופא לדין.\nהאפוטרופוס לדין ממליץ על הרחבת השהות.\nהאפטרופא ביקשה להגיש השלמה.\nאפוטרופסית לדין תמונה בהקדם.\nהמגשרת והח\"מ נפגשו עם שני ההורים.",
    "pass": "no-span",
    "control": false,
    "what": "Role words in any spelling, with no name beside them.",

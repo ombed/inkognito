@@ -14,7 +14,7 @@ Every part of the harness (`bench/model-eval/`) reads and writes these shapes. T
 | Known cases (invented text) | `repo-clone/bench/model-eval/gold/known-cases.json` | yes |
 | Public sets (NEMO, BMC, Knesset UD), raw and converted | `C:/Users/Me/.vscode/paintItBlack/public-bench/{raw,gold}/` | **never** |
 | Converted model exports | `C:/Users/Me/.vscode/paintItBlack/model-cache/<key>/` | never |
-| Anything derived from her documents (gold, predictions, judgements) | `C:/Users/Me/.vscode/paintItBlack/private-bench/model-eval/` | **never** |
+| Anything derived from the private set of real documents (gold, predictions, judgements) | a private folder beside the repository (`../private-bench/model-eval/`) | **never** |
 | Reports | `repo-clone/bench/model-eval/out/` while working; aggregate tables copied to `docs/model-eval/results/` | the aggregate tables only, after the privacy check |
 
 ## Gold set
@@ -85,7 +85,7 @@ Every part of the harness (`bench/model-eval/`) reads and writes these shapes. T
 
 ## Private gold sets
 
-A gold set built from her documents has `"licence": "private"` and lives under `private-bench/model-eval/`;
+A gold set built from real documents has `"licence": "private"` and lives under `private-bench/model-eval/`;
 `compare.js` switches to counts-only output on either.
 
 ## Privacy rule for code that touches private sets

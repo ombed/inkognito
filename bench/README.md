@@ -64,14 +64,14 @@ canonical must be one of its surfaces.
 
 | column | meaning | cost |
 |---|---|---|
-| found | some surface form was surfaced somewhere, so she is asked | – |
-| missed | surfaced nowhere | she is never asked |
+| found | some surface form was surfaced somewhere, so the user is asked | – |
+| missed | surfaced nowhere | the user is never asked |
 | leaked | an identifying form survives in the final text | the failure the tool exists to prevent |
 | false positives | a trap or public body was suggested or altered; or the two edit-distance-1 people were merged | one tap, or a corrupted sentence |
 
 Leaked is counted even when it overlaps with missed, because they are
 different questions. Matching is deliberately generous: a surfaced surname
-counts as her being asked about the person.
+counts as the user being asked about the person.
 
 "Unlisted suggestions" are values that match nothing in the key. Each costs
 a tap. The count is reported in every table and **never optimised for**:
@@ -81,7 +81,7 @@ moves the junk count, the report says so and the decision is made on leaks.
 
 ## Corpus
 
-Thirty-seven documents in nine genres, the ninth being transcribed audio: speech typed from a recording, with no speaker turns, no titles and no case header, the speaker written on a line of its own, and deliberate typing errors. It is the shape of the documents the client works on daily.
+Thirty-seven documents in nine genres, the ninth being transcribed audio: speech typed from a recording, with no speaker turns, no titles and no case header, the speaker written on a line of its own, and deliberate typing errors. It is a common shape of document in real use.
 
 The others are: meeting summaries, court filings, raw
 transcripts, welfare reports, medical summaries, police statements, bank

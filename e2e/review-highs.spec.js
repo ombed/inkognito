@@ -79,7 +79,7 @@ test("a failed verification stops the download until she says so", async ({ page
   expect(downloads).toBe(1);
 });
 
-/* H11, and the decision of 20.9: removing a name from the list is remembered by the case. It
+/* H11: removing a name from the list is remembered by the case. It
    used to be forgotten: the next document of the case brought the rule back without a word,
    with its old pseudonym, while "לא שם" was remembered. A removed name that turns up again
    is put in front of her as a suggestion, never added and never skipped in silence. */

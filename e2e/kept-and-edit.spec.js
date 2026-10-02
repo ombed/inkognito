@@ -1,12 +1,11 @@
 const { test, expect } = require("./base");
 const H = require("./helpers");
 
-/* Three things a real session showed were silent.
+/* Three things real use showed were silent.
 
    Deleting a chip on the people screen put the name on the never-replace
    list with no trace: nothing on screen, nothing in the log, no way back
-   short of retyping it. Editing a replacement did nothing eight times in a
-   row, because the card's value and the rule's value were not the same
+   short of retyping it. Editing a replacement did nothing, because the card's value and the rule's value were not the same
    string. And "ordinary word" from the document popup did nothing when the
    selection carried a prefix letter, because it handed the raw drag to the
    allow list. */

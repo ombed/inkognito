@@ -1,9 +1,9 @@
 const { test, expect } = require("./base");
 const H = require("./helpers");
 
-/* The leak from a real session, reduced to its mechanism.
+/* A leak, reduced to its mechanism.
 
-   The model found the teacher's name seven times at full confidence, and the
+   The model found a name several times at full confidence, and the
    name left the tool anyway. The document was long, the model was still
    scanning, and "continue without waiting" bumped the scan counter, so when
    the result arrived it was thrown away whole. Nothing downstream ever saw

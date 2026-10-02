@@ -1,4 +1,4 @@
-/* The privacy gate for model-eval runs that touch her documents (PLAN.md section 6).
+/* The privacy gate for model-eval runs that touch the private set of real documents (PLAN.md section 6).
 
    Everything a private run prints, and everything it writes outside private-bench/, goes
    through here. The rule is an allowlist, not a blocklist: a token passes only if it is a
@@ -83,7 +83,7 @@ const BIG_FIELDS = new Set(["loadMs", "scanMs", "words", "tokens", "bytes"]);
 // A looser pattern let "COHEN_DANA" through (reviewer's finding).
 const CATEGORY = /^[A-Z]_[A-Z0-9]+(?:_[A-Z0-9]+)*$/;               // P_ARABIC, S_ALT, I_ID
 // the shape, and then the actual folder list: "r1-dana-2026-01-01" has the shape of a fixture name
-const FIXTURE_SHAPE = /^r[0-9]+-[a-z]+-\d{4}-\d{2}-\d{2}$/;       // r3-interview-2026-09-16
+const FIXTURE_SHAPE = /^r[0-9]+-[a-z]+-\d{4}-\d{2}-\d{2}$/;       // r1-sample-2000-01-01
 let fixtureNames = null;
 const FIXTURE = { test: (t) => {
   if (!FIXTURE_SHAPE.test(t)) return false;
@@ -127,7 +127,7 @@ function keys() {
   for (const k of [...modelKeys]) if (!k.startsWith("union-")) modelKeys.add("union-" + k);
   return modelKeys;
 }
-// Only the registry's own revisions and sha256s: any other hash could be one of her text
+// Only the registry's own revisions and sha256s: any other hash could be one of private text
 // (a 9-digit ID hashes to something a laptop can reverse in minutes).
 function hashes() { keys(); return knownHashes; }
 

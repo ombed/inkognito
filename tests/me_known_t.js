@@ -119,7 +119,7 @@ const sp = (s, e, type, score) => ({ s, e, type: type || "PER", score: score == 
     const E0 = judge(G, empty);
     const noSpan = G.docs.filter((d) => !d.control && d.pass === "no-span").length;
     ok(E0.totals.passed === noSpan, `no spans at all: only the no-span cases pass (${E0.totals.passed} of ${noSpan})`);
-    ok(J.controls.cases === 2, "two controls (r4, r5)");
+    ok(J.controls.cases === 2, "two controls");
 
     // the command line, end to end, on invented files in a temp folder
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "me-known-"));

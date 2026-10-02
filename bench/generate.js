@@ -358,10 +358,10 @@ const PUBLIC = ["בית המשפט לענייני משפחה", "משרד הרו�
 
 // the second half: five more genres, two-letter surnames, anchored minors, PII
 docs.push(...require("./corpus-more.js")(Doc, C));
-// transcribed audio: the shape her real transcripts have, and the typos the
+// transcribed audio: the shape transcripts have, and the typos the
 // near-miss layer exists for
 docs.push(...require("./corpus-audio.js")(Doc, C));
-// interview: spoken conversation with a child, the genre a real session leaked in
+// interview: a spoken conversation transcribed from a recording
 docs.push(...require("./corpus-interview.js")(Doc, C));
 // names outside the body: header, footnote, alt text, comment, file properties (review M20)
 docs.push(...require("./corpus-structure.js")(Doc, C));

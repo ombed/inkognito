@@ -2,7 +2,7 @@ const { test, expect } = require("./base");
 const H = require("./helpers");
 const { report } = require("../scripts/log-report.js");
 
-/* The richer session log (before the session of 22.9). Each correction she makes
+/* The richer session log (v48). Each correction the user makes
    carries what caused it: which layer proposed the value, its kind and size, the
    model's confidence band. A pseudonym change says what changed (gender, origin,
    which part), a name she adds herself says what each layer thought of it, and

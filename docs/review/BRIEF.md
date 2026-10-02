@@ -47,7 +47,7 @@ Added 2026-09-23, with the documentation batch of the triage:
   commit is itself from 2026-09-03, so "since 2026-09-03" meant everything.
 - **Section 7, "4 false positives".** That column counts keyed traps and public bodies only.
   The same report lists, beside it, unlisted suggestions: values that match nothing in the key
-  ("המטופלת", "חתימה", "תצהיר"), each one tap for her to dismiss. The run the review read had 23.
+  ("המטופלת", "חתימה", "תצהיר"), each one tap for the user to dismiss. The run the review read had 23.
   Today, model off, 43 documents: 74 leaks, 58 missed, 4 false positives and 29 unlisted
   (`bench/results-no-model.md`).
 - **Section 7, "1,828 checks".** 1,154 of them, 63%, are one combinatorial suite,
@@ -64,13 +64,13 @@ the rule the code keeps, and none narrates a bug without it.
 
 A single-page browser tool that removes identifying details from Hebrew legal
 and welfare documents, so a lawyer can paste the text into a general AI
-assistant without sending her client's identity with it. She uploads a Word
-file, the tool proposes what to hide, she corrects the proposals, and the tool
-gives her back a redacted document, a clipboard copy for the AI, and a way to
+assistant without sending a client's identity with it. The user uploads a Word
+file, the tool proposes what to hide, the user corrects the proposals, and the
+tool gives back a redacted document, a clipboard copy for the AI, and a way to
 put the real names back into the AI's answer.
 
-One real user, a family lawyer, with real cases. Four real sessions so far,
-logged. Everything runs in her browser.
+Built for a real client, a lawyer, working on real cases; real sessions have
+been logged. Everything runs in the user's browser.
 
 ## 2. Promises the product makes
 
@@ -83,10 +83,10 @@ definition serious.
    report carry event kinds, counts and codes. A guard in `page-logic.js`
    refuses any string with three Hebrew letters in a row, and the export
    throws rather than send text.
-3. **Nothing identifying survives in the file she downloads.** Not only the
+3. **Nothing identifying survives in the downloaded file.** Not only the
    visible text: also metadata, comments, tracked changes, headers, bookmarks,
    document variables, SmartArt and chart labels.
-4. **Her decisions hold.** A name she corrected stays corrected across re-runs
+4. **The user's decisions hold.** A corrected name stays corrected across re-runs
    and across documents in the same case.
 5. **Real client documents never enter this repository.** They live in a
    sibling folder, `../private-bench/`, which is outside the repo and
@@ -122,7 +122,7 @@ files that get published).
    its source: the case profile, the document header, speaker labels in
    transcripts, the NER model, a body scan, patterns for numbers and dates,
    and near-spellings of names already known.
-3. **She decides.** The people screen and the check screen. Her decisions are
+3. **The user decides.** The people screen and the check screen. The decisions are
    rules: replace with this pseudonym, don't replace, not a name, blank it.
 4. **Apply.** Replacements are written back into the XML, with a consistency
    sweep for parts of names, then re-verified against the output file.
@@ -159,9 +159,9 @@ Facts, listed because they belong to the privacy lens:
 - The service worker caches the app shell and model requests, and serves from
   cache first.
 - The only outbound paths in the app are these loads. There is no fetch to any
-  endpoint of ours, and no analytics library of any kind. The package she sends
-  travels by her own email client.
-- Persistent state in her browser: `localStorage` keys `redact-cases` (the case
+  endpoint of ours, and no analytics library of any kind. The package the user
+  sends leaves by the user's own hand, outside the app.
+- Persistent state in the user's browser: `localStorage` keys `redact-cases` (the case
   profiles, which hold real names mapped to pseudonyms), `redact-profile-last`,
   `redact-theme`, `redact-intro-seen`, `redact-tour-seen`,
   `redact-feedback-mail`; and two Cache Storage buckets, the app shell and
@@ -182,11 +182,11 @@ Facts, listed because they belong to the privacy lens:
   gate (`bench/gate.js`) fails CI if leaks or misses rise.
   Current, model off: 71 leaks, 55 missed, 4 false positives.
   Model on: about 6 leaks.
-- **Private bench**: her five real documents in `../private-bench/`, scored by
-  the same runner, results written beside the fixtures. Model on: 3 leaks
-  across the five.
+- **Private bench**: a private set of real documents in `../private-bench/`,
+  scored by the same runner, results written beside the fixtures and not
+  published.
 - **Shape harvest**: `npm run shapes` records the structural shape of each
-  keyed occurrence in her documents and fails if a shape she has is not
+  keyed occurrence in those documents and fails if a shape they have is not
   covered by our checks.
 - **Session log**: `npm run log-report -- <package>` summarises a real
   session: minutes per screen, corrections and their causes, misses.

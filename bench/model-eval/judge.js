@@ -1,5 +1,5 @@
-/* Judging the model suggestions on her documents (PLAN.md decision 2 and 4.4): a suggestion
-   that matches nothing in her key is either junk (a false positive) or a real name the key
+/* Judging the model suggestions on the private set (PLAN.md decision 2 and 4.4): a suggestion
+   that matches nothing in its key is either junk (a false positive) or a real name the key
    does not list. Claude judges them; nothing leaves private-bench.
 
      node bench/model-eval/judge.js collect     every unmatched cleaned-stage span of every row,
@@ -8,8 +8,8 @@
                                                 each row's precision with the judged names counted
                                                 -> judge/scores.json; the console gets counts only
 
-   items.json carries her text (the span and a few words around it) and stays beside her
-   documents. labels.json is written by the judge. */
+   items.json carries private text (the span and a few words around it) and stays beside the
+   private documents. labels.json is written by the judge. */
 const fs = require("fs");
 const path = require("path");
 const S = require("./score-spans.js");

@@ -7,13 +7,13 @@
    model again with the faithful tokenizer). Each step is its own process:
      1. run.js on the synthetic tune and test halves, protocol.txt, NEMO test, BMC test 1,
         Knesset UD and the known cases -> out/full/pred/
-     2. run.js --private --offline on her gold set (gold-private.js) -> private-bench/model-eval/pred/
-     3. product.js --tag=full (the whole chain, synthetic and hers) -> out/product/, private-bench/model-eval/product/
-     4. compare.js on the public sets -> out/full/compare.md; with --private on hers ->
+     2. run.js --private --offline on the private gold set (gold-private.js) -> private-bench/model-eval/pred/
+     3. product.js --tag=full (the whole chain, synthetic and private) -> out/product/, private-bench/model-eval/product/
+     4. compare.js on the public sets -> out/full/compare.md; with --private on the private set ->
         private-bench/model-eval/compare-private.md (counts only)
      5. the known cases judged per row -> out/full/known.json
    A step that fails is logged and the run goes on; the summary lists every failure. Invented,
-   public and her text are kept apart exactly as run.js, product.js and compare.js keep them. */
+   public and private text are kept apart exactly as run.js, product.js and compare.js keep them. */
 const fs = require("fs");
 const path = require("path");
 const { spawnSync } = require("child_process");

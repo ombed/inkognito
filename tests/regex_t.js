@@ -7,7 +7,7 @@
    that means the expression never matches anything. It has cost, so far: the
    grouper's punctuation class, a public-body context check, the model's
    single-word test, and the speaker-line anchor, which never fired at all —
-   including on the client's real transcripts, where it was written for.
+   including on the transcripts it was written for.
 
    The first scan looks for character classes that are almost certainly a lost
    backslash. A real intent to match the letter s next to + is vanishingly rare

@@ -1,11 +1,11 @@
 /* The places screen and the evidence behind a decision.
 
-   Two screens ask her to decide about a word without showing her the word in
+   Two screens ask the user to decide about a word without showing the word in
    the document: "מי בתיק" shows a chip, the places screen shows a name and a
-   box to type the substitute. On a real case file the tool offered to replace
+   box to type the substitute. The tool could offer to replace
    אזור, which is a town south of Tel Aviv and also the ordinary word for an
-   area. She could not tell which one it was, because nothing on that screen
-   comes from her document.
+   area. There was no way to tell which one it was, because nothing on that
+   screen comes from the document.
 
    Worse than the display: the places screen wrote its own scan of the
    settlement list, and did not apply the ambiguity guard the engine applies
@@ -115,8 +115,8 @@ console.log("\n— fakePlace: a town gets a town, not a bracketed label —");
 
 console.log("\n— the ambiguous list holds only names that really are something else —");
 {
-  /* She read a row saying לוד — "also an ordinary word" and said, correctly,
-     that Lod is a city name and nothing else, not remotely like אזור. Fourteen
+  /* A row said לוד — "also an ordinary word", but Lod is a city name and
+     nothing else, not remotely like אזור. Fourteen
      entries were like that: real town names sitting in a list whose stated
      criterion is settlement names that are also ordinary Hebrew words. They
      cost those towns their place in the distance-preserving map and put a

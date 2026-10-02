@@ -3,8 +3,8 @@ const H = require("./helpers");
 
 /* A replacement she typed that is also a real person in the document.
 
-   Until now the tool dropped her choice without a word and picked another
-   fake name: "doesn't take". Her decision (Q14 of release 2, CHANGELOG v29): what she typed stands, and
+   Until now the tool dropped the choice without a word and picked another
+   fake name. The decision (Q14 of release 2, CHANGELOG v29): what she typed stands, and
    the card says that two people now share a name, with the two ways out. */
 
 const DOC = [

@@ -2,66 +2,64 @@
 
 Decisions from the grilling session, in the order they were made, then the
 work they imply. Nothing below is assumed; every line was asked and answered.
-The lawyer's questionnaire (609 words, received the same day) fed rounds
-three and four; its facts are summarised, never quoted with identifiers.
+The user's own answers fed rounds three and four; they are summarised
+below in engineering terms, never quoted.
 
 ## What is settled
 
 | # | question | decision |
 |---|---|---|
-| Q1 | who uses it | one lawyer now, on her own machine; built so a colleague on another machine, and later other lawyers via the public URL, need no redesign |
-| Q2 | what "safe to send" means | names and numbers gone; places and organisations are her call, flagged but never blocking |
-| Q3 | how real files reach testing | she sends cleaned files via you for now; a one-button send later (Q9) |
+| Q1 | who uses it | one user now, on their own machine; built so a colleague on another machine, and later other lawyers via the public URL, need no redesign |
+| Q2 | what "safe to send" means | names and numbers gone; places and organisations are the user's call, flagged but never blocking |
+| Q3 | how real files reach testing | the user sends cleaned files via the maintainer for now; a one-button send later (Q9) |
 | Q6 | licence | PolyForm Shield 1.0.0: anyone may use it, including in a practice; nobody may sell it or build a competing product on it |
 | Q7 | the recall gate | blocking now: a PR that increases leaks or misses in any benchmark category cannot merge until fixed or the baseline is updated in that PR |
 | Q8 | what blocks the green bar | person names, ID numbers, phones, emails, bank accounts, plates, dates of birth, and street addresses with a number. Towns, neighbourhoods, private organisations and public bodies are flagged only |
-| Q9 | one-button send | packages the cleaned document and the shape report into one file and opens her mail client with the address filled in; no server, nothing automatic |
-| Q10 | gazetteer and transcript | full Israeli settlement list now, with homograph handling; the Knesset transcript is keyed only if her cleaned transcripts do not arrive within two weeks |
+| Q9 | one-button send | packages the cleaned document and the shape report into one file and opens the mail client with the address filled in; no server, nothing automatic |
+| Q10 | gazetteer and transcript | full Israeli settlement list now, with homograph handling; the Knesset transcript is keyed only if real cleaned transcripts do not arrive within two weeks |
 | Q11 | case profiles | the browser keeps a list of recent cases by name; the entry screen shows them; export and import stay for moving between machines |
 | Q12 | the restore step | first-class: after "copy to AI" the bar offers "paste the answer", pre-loaded with this document's mapping. Three visible steps: redact, send, restore |
 | Q13 | the model on first run | on by default, one-time-download message, deterministic result shown immediately while it loads; measure time-to-first-result; the reported loading problem is investigated below |
-| Q14 | what the trial produces | she tries it alone and reports; plus the local session log (Q16) |
-| Q15 | transcription errors | ask her for two or three cleaned transcripts with the typos left in; build the near-miss measurement from those |
-| Q16 | session log | always on, local only, no text; exported by a button next to the leak report; nothing leaves the machine unless she exports |
+| Q14 | what the trial produces | the user tries it alone and reports; plus the local session log (Q16) |
+| Q15 | transcription errors | ask the user for two or three cleaned transcripts with the typos left in; build the near-miss measurement from those |
+| Q16 | session log | always on, local only, no text; exported by a button next to the leak report; nothing leaves the machine unless the user exports |
 
 **Numbering.** There is no Q4 or Q5 in this table. `Q<n>` is not one scheme across the
-repository: this table is one; each release built from her real use numbered its own
+repository: this table is one; each release built from real use numbered its own
 questions again from Q1 (`CHANGELOG.md`: release 2 in v29, release 3 in v33, release 5 in
 v39). Comments name the source: "PLAN-v18 Q13" for this table, "Q11 בגרסה 2" or "Q14 of
 release 2" for a release's. A bare Q number inside a CHANGELOG section is that section's.
 
-## What the questionnaire changed
+## What the user's answers changed
 
-- She does this almost daily, on several documents in parallel: meeting
-  summaries for herself and positions or motions for court. One profile slot
-  was the wrong shape (Q11).
-- The round trip is the job: strip, send to ChatGPT (sometimes Gemini), get
-  rewritten text back, put the real names back. Restore was a side link;
-  for her it is step three of every task (Q12).
-- Her leaks come from transcription typos in text she transcribes from audio
-  herself ("פנים מאירות" replaced, "פנים מהירות" left). The near-miss layer is
-  the one that matters most to her, and her own cleaned transcripts are the
-  right test material (Q15).
-- Her acceptance test is speed: twenty minutes on a real case in the next
-  two weeks, and she uses it again if it is efficient and fast (Q13, Q16).
-- She uses Word find-and-replace today and finds inventing realistic
-  replacement names the tiresome part. The fake-name generator is a feature
-  she will notice.
-- Files move by email and through the office document system, and only she
-  does this work. No sync, no accounts (Q1, Q9).
+- The work spans several documents in parallel. One profile slot was the
+  wrong shape (Q11).
+- The round trip is the job: strip, send to an AI assistant, get rewritten
+  text back, put the real names back. Restore was a side link; it should be
+  step three of every task (Q12).
+- Leaks come from transcription typos: a name spelled correctly in one place
+  and with a one-letter slip in another, the first replaced and the second
+  left. The near-miss layer matters most, and real cleaned transcripts are
+  the right test material (Q15).
+- The acceptance test is speed on a real case: the tool is used again if it
+  is efficient and fast (Q13, Q16).
+- Inventing realistic replacement names by hand is the tiresome part today.
+  The fake-name generator is a feature that will be noticed.
+- One person does this work and files move between machines by hand. No
+  sync, no accounts (Q1, Q9).
 
 ## The homograph rule for the settlement list
 
 Every town name that is also a common word, a first name in the tool's
 lists, or a word that appears in the document with a prefix or the definite
 article elsewhere ("באזור" next to "אזור") goes on the ambiguity list
-automatically: it is flagged for her, never auto-replaced. The list stays a
+automatically: it is flagged for the user, never auto-replaced. The list stays a
 data file, not code, so a wrong entry is a one-line fix.
 
-**Superseded the next day.** The code no longer keeps this rule. On her four
-real documents the one-word entries of the settlement list gave twelve wrong
-hits and no right ones (`docs/measurements.md`, "Two transcripts and a
-position paper"), so `findPlaces` in `engine/06-model.js` now uses only the
+**Superseded the next day.** The code no longer keeps this rule. On a private set
+of real documents the one-word entries of the settlement list gave only wrong
+hits and no right ones (`docs/measurements.md`, "Three more real
+documents"), so `findPlaces` in `engine/06-model.js` now uses only the
 entries of two words or more. A one-word locality from the settlement list is
 neither replaced nor flagged. A two-word one is flagged only when it is three
 letters or fewer or on the `AMBIG` list, and skipped inside the name of a
@@ -83,13 +81,13 @@ ambiguous one-word towns (`AMBIG`, three letters or fewer).
    with the leak report; the mail button assembles the package.
 6. **Settlement list with homograph handling** (Q10), measured on the
    benchmark: the two town leaks close, no new false positives.
-7. **Her cleaned transcripts** (Q15): each becomes a benchmark document
+7. **Real cleaned transcripts** (Q15): each becomes a benchmark document
    with its typos keyed; the near-miss sweep becomes measurable.
-8. **The trial** (Q14): after 1 to 5 are live, she runs it; the log and her
-   report decide the round after.
+8. **The trial** (Q14): after 1 to 5 are live, the user runs it; the log and
+   the user's report decide the round after.
 
-Items 1 to 5 are the trial's prerequisites and fit before her two weeks are
-up. 6 and 7 run alongside as the files arrive.
+Items 1 to 5 are the trial's prerequisites and fit before the trial window
+closes. 6 and 7 run alongside as the files arrive.
 
 ## Loading measurement (live site, v17, fast office-grade connection)
 
@@ -101,7 +99,7 @@ up. 6 and 7 run alongside as the files arrive.
 | WASM runtime | 12.3 s | cached |
 | names on screen | 15.3 s | 5.9 s |
 
-Three things explain "loading is not working so good", none of them a
+Three things explain the reported loading problem, none of them a
 broken download:
 
 1. **Nothing is shown until the model finishes.** The deterministic layers
@@ -128,9 +126,9 @@ run is where the minutes go, and item 4 in the list above is the work.
 | 2. case list | done, `e2e/profile.spec.js` |
 | 3. restore as step three | done, `e2e/steps.spec.js` |
 | 4. loading: byte progress, tokenizer cache reuse, continue without waiting | done, `e2e/wait.spec.js` |
-| 5. session log and mail package | done; the mail address is a field in the profile section, empty until she sets it |
+| 5. session log and mail package | done; the mail address is a field in the profile section, empty until the user sets it |
 | 6. settlement list with homograph handling | done: 1,116 localities, the two town leaks closed, no new false positives |
-| 7. her cleaned transcripts | waiting on the files |
+| 7. real cleaned transcripts | waiting on the files |
 | 8. the trial | ready once #12 is merged and the chip reads v18 |
 
 Benchmark after this round, model on, product options: 3 leaks (the two

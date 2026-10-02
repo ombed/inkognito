@@ -1,6 +1,6 @@
 /* Numbers that look like the tool missed them.
 
-   She reported that identifying numbers appear untouched in the output. Two
+   The user reported that identifying numbers appear untouched in the output. Two
    separate causes, both silent.
 
    One: a nine-digit number whose check digit does not match was dropped by

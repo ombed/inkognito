@@ -1,6 +1,6 @@
 /* Nothing private is tracked, and the private folder is outside the tree.
 
-   Real documents from real sessions are the regression set that the synthetic
+   Real documents are the regression set that the synthetic
    corpus cannot replace, and they can never be published. bench/private.js
    reads them from a sibling folder of the repository. This checks the two
    properties that keep that true:
@@ -25,7 +25,7 @@ console.log("\n— nothing private is tracked —");
   let tracked = "", listed = true;
   try { tracked = execSync("git ls-files", { cwd: PRIVATE.ROOT, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }); } catch (_) { listed = false; }
   ok(listed && tracked.split("\n").length > 50, "git ls-files ran and listed the repository; without it this check proves nothing");
-  const bad = tracked.split("\n").filter((f) => /private-bench|bench\/private\/|private-fixture|real-use|r\d+-interview/i.test(f));
+  const bad = tracked.split("\n").filter((f) => /private-bench|bench\/private\/|private-fixture|real-use|r\d+-[a-z]+-\d{4}-\d{2}-\d{2}/i.test(f));
   ok(bad.length === 0, "tracked paths that look private: " + JSON.stringify(bad));
 }
 

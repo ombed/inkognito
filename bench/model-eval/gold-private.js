@@ -1,10 +1,10 @@
-/* Her documents as a gold set with positions (PLAN.md 4.4, FORMATS.md "Private gold sets"):
+/* The private set of real documents as a gold set with positions (PLAN.md 4.4, FORMATS.md "Private gold sets"):
    node bench/model-eval/gold-private.js
 
    The same locating as the synthetic set (gold-synth.js build), on the private fixtures'
    keys (bench/private.js) and their no-model rows (for offMissed). Written only inside
    private-bench/model-eval/gold/ (private.json, private-report.json), with licence
-   "private", so every harness script treats it as hers. The console gets counts only,
+   "private", so every harness script treats it as private. The console gets counts only,
    through the privacy gate; an error is printed without its message. */
 const fs = require("fs");
 const path = require("path");

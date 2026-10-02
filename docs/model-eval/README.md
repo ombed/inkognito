@@ -1,7 +1,7 @@
 # Choosing the name-recognition model (September 2026)
 
 This folder is the full record of how paintItBlack chose the model that suggests names, bodies and
-places in her documents. It covers what was tried, how it was judged, what each decision was, and
+places in the user's documents. It covers what was tried, how it was judged, what each decision was, and
 all the data behind it. The work ran on 23–24 September 2026 and ended in **v56**.
 
 | File | What it is |
@@ -21,9 +21,9 @@ measured against anything else. The owner asked for a real comparison of local m
 precision, recall and F-scores on every case we knew of and on the real documents we had.
 
 Three conditions held throughout:
-- The model must run in her browser. No cloud service was considered.
+- The model must run in the user's browser. No cloud service was considered.
 - No fine-tuning. There is no safe training data.
-- Her documents never leave the machine. From them, only counts appear in this repository.
+- Real documents never leave the machine. Results on them are not published here.
 
 ## The short answer
 
@@ -33,20 +33,18 @@ only one of 16 configurations that passed the rule written in advance.
 | Whole chain (model plus every other layer) | v55 (before) | v56 (after) |
 |---|---|---|
 | Synthetic set, 268 entities: found / missed / leaked | 262 / 6 / 7 | 266 / 2 / 2 |
-| Her five documents, 33 entities: found / missed / leaked | 32 / 1 / 3 | 33 / 0 / 0 |
 | Held-out public sets, recall gain (raw spans, each model's tuned cut-off) | – | +0.123 [0.100, 0.146] at 97.5% |
-| Model-only false suggestions on her documents (judged) | 4 | 14 |
 | Download / browser scan time | 185 MB / 1.00× | 185 MB / 1.01× |
 
 **How big a change is this?** A solid step, not a dramatic one.
 - **What improved most:** leaks, the failure that matters most, dropped on every set. Every
   independent set pointed the same way.
-- **The sets are small:** "3 → 0" on her documents is three names.
-- **The other layers already caught most names:** today's tool found 32 of her 33.
+- **The sets are small:** "7 → 2" on the synthetic set is five names.
+- **The other layers already caught most names:** the v55 tool found 262 of the 268 synthetic entities.
 - **The gain is smaller in the product:** at the product's own setting (cleaned names, cut-off
   0.6) recall rose by 0.10 on BMC and 0.07 on NEMO, not significantly on Knesset, and by about
   zero on the court protocol.
-- **It costs her time:** about two more false suggestions per document to dismiss.
+- **It costs the user some time:** more model-only false suggestions to dismiss.
 
 The most valuable outcome may be the two bugs the evaluation found in how the tool fed text to
 *any* model. Both are fixed in v56 (below).
@@ -60,11 +58,11 @@ run a second time with the corrected tokenizer (`-ft`). That makes 16 rows.
 |---|---|---|---|---|---|
 | `base-q8` | onnx-community/dictabert-ner-ONNX (the v55 model) | 185 MB | CC-BY-4.0 | undocumented | The baseline everything was compared with |
 | `parse-base` | dicta-il/dictabert-parse, NER head only | 185 MB | CC-BY-4.0 | NEMO + UD | **Chosen, with the tokenizer fix** |
-| `joint-base` | dicta-il/dictabert-joint, NER head only | 185 MB | CC-BY-4.0 | NEMO + IAHLT | Close second. With the fix: no new synthetic leak, but one of her surnames newly leaked |
-| `tiny-parse` | dicta-il/dictabert-tiny-parse | 45 MB | CC-BY-4.0 | NEMO + UD | About 7× faster, but new leaks, and about twice the chosen model's false suggestions on her documents (23–30 against 14) |
+| `joint-base` | dicta-il/dictabert-joint, NER head only | 185 MB | CC-BY-4.0 | NEMO + IAHLT | Close second. With the fix: no new synthetic leak, but a new leak on the private set |
+| `tiny-parse` | dicta-il/dictabert-tiny-parse | 45 MB | CC-BY-4.0 | NEMO + UD | About 7× faster, but new leaks, and more false suggestions than the chosen model |
 | `iahlt-base` | iahlt/ner-baseline-dictabert-he | 185 MB | CC-BY-4.0 | IAHLT | The smallest reading gain (+0.03), and new leaks |
 | `msperka-dicta` | msperka/dictabert_ner | 185 MB | CC-BY-4.0 | NEMO | Good on the known cases, but 5 new synthetic leaks (neighbourhoods, a boarding school, a daycare) |
-| `aleph` | msperka/aleph_bert-finetuned-ner | 127 MB | Apache-2.0 | NEMO | Strong reader (+0.10), but a new leak on each set, including a party in her filing's header |
+| `aleph` | msperka/aleph_bert-finetuned-ner | 127 MB | Apache-2.0 | NEMO | Strong reader (+0.10), but a new leak on each set |
 | `golem` | CordwainerSmith/GolemPII-v1 (XLM-R) | 279 MB | MIT | synthetic PII templates | Weak on real speech and filings (recall −0.38) |
 | `large-q8` | dicta-il/dictabert-large-ner, re-exported | 437 MB | CC-BY-4.0 | NEMO | 3.7× slower, and no better |
 
@@ -83,7 +81,7 @@ The rule was written in PLAN.md section 1 and committed before any candidate ran
 replaces the current model only if **all five** hold:
 
 1. **No new leaks.**
-   - On the synthetic set and on her documents, it must not leak or miss any must-redact entity
+   - On the synthetic set and on the private set of real documents, it must not leak or miss any must-redact entity
      that the current model catches.
    - The only exception is the current model's own noise band: entities that flip between two runs
      of it, between q8 and uint8, and between Node and the browser.
@@ -91,27 +89,25 @@ replaces the current model only if **all five** hold:
 2. **A real benefit.** Either:
    - held-out recall significantly better (a paired bootstrap, 97.5% for the two finalists), with
      no set significantly worse; or
-   - 25% fewer false suggestions on her documents.
+   - 25% fewer false suggestions on the private set.
 3. **Fits the budget:** download size, browser time and memory.
-4. **Licence** allows her use.
+4. **Licence** allows the user's use.
 5. **The browser gives the same answers as Node**, within the current model's own drift.
 
 **The test sets:**
-- **Synthetic (43 documents).** Invented, in her genres. The v55 model was tuned on it, so it can
+- **Synthetic (43 documents).** Invented, in the user's genres. The v55 model was tuned on it, so it can
   only show a candidate is *not worse*.
-- **Her five documents.** Real, already redacted by the tool. Used only for the safety and her-time
-  checks, counts only.
+- **A private set of real documents.** Already redacted by the tool. Used only for the safety and
+  user-time checks; results not published.
 - **Held out:** `protocol.txt` (a public Knesset protocol, keyed blind by two passes and
   adjudicated), NEMO test, BMC split 1, and Knesset UD (with the sentences IAHLT trained on
   removed). Only these can show a candidate is *better*.
 - **The known cases:** 33 invented cases for every leak the tool has had, plus 2 controls.
 
-**Privacy.** Every script that touches her documents prints and writes only what an allowlist lets
-through (`bench/model-eval/privacy.js`). Her keys, predictions and judgements stay in the private
-folder beside the repository. 637 model suggestions on her documents matched nothing in her key.
-- 319 were a second span on a name the key already has.
-- Claude judged the other 318 one by one, on the machine, as the owner decided, plus 12 values the
-  whole chain produced.
+**Privacy.** Every script that touches the private set prints and writes only what an allowlist lets
+through (`bench/model-eval/privacy.js`). Its keys, predictions and judgements stay in the private
+folder beside the repository. Model suggestions on it that matched nothing in its key were judged
+one by one, on the machine, as the owner decided.
 
 ## What happened, in order
 
@@ -121,7 +117,7 @@ folder beside the repository. 637 model suggestions on her documents matched not
 | Phase 1 | Harness, **parity**, noise band | The harness reproduces the v55 tool exactly (0 entities different). The noise band comes entirely from uint8 |
 | Discovery | **The tokenizer bug** (below) | Every DictaBERT-family model was then run both ways |
 | Checkpoint 1 | Smoke table: every row loads, clean health | The owner kept all nine models |
-| Phase 4 | Full run, 16 rows × 7 sets, the whole chain, her documents judged | – |
+| Phase 4 | Full run, 16 rows × 7 sets, the whole chain, the private set judged | – |
 | Checkpoint 2 | The decision table ([RESULTS.md](RESULTS.md)) | The owner chose finalists parse-base-ft and base-q8-ft |
 | Phase 5 | The finalists in the real page (Chromium, one thread) | Both gave exactly the Node result, at about the same speed |
 | Checkpoint 3 | The rule as written: parse-base-ft passes all five; base-q8-ft is blocked on one synthetic surname | The owner chose **switch to parse-base-ft, hosted in the app's own site** (no Hugging Face account, no third party) |
@@ -151,17 +147,17 @@ leaks against 7 on the synthetic set). The new model does not.
 ## Limits and what to watch
 
 - **The sets are small,** so an improvement of 2 to 5 entities is real but narrow.
-- **Her documents are biased toward the old model.** They were made with it: every name it found
+- **The private set is biased toward the old model.** It was made with it: every name it found
   had already been replaced.
-- **The her-time cost is real on paper:** model-only false suggestions went from 4 to 14 across
-  five documents. Her next session log will show whether it costs her in practice.
+- **The user-time cost is real on paper:** model-only false suggestions rose. Real use will show
+  whether it costs time in practice.
 - **At the product's own setting the gain is smaller** than the headline, as the table above says.
 
 ## Not done, and why
 
-- **Fine-tuning:** no safe training data. Her documents are real client material.
-- **Cloud models:** against the tool's promise that nothing leaves her computer.
-- **Models over 450 MB:** too large for a one-time download on her machine. large-q8, at 437 MB,
+- **Fine-tuning:** no safe training data. Real documents are confidential.
+- **Cloud models:** against the tool's promise that nothing leaves the user's computer.
+- **Models over 450 MB:** too large for a one-time download on the user's machine. large-q8, at 437 MB,
   was measured, and it did not help.
 - **hebert:** no licence.
 
@@ -173,7 +169,7 @@ Every run's output is here, so every number above can be checked or recomputed. 
 
 | Path | What |
 |---|---|
-| `data/full/decision.md` | The checkpoint 2 table: every row's safety, benefit, her-time counts, size and speed |
+| `data/full/decision.md` | The checkpoint 2 table: every row's safety, benefit, user-time counts, size and speed |
 | `data/full/compare.md`, `data/full/compare-finalists.md` | The full comparison: the rule table, cut-offs, harness health, one table per set; the second at 97.5% for the finalists |
 | `data/full/known.json` | Each row's known cases, pass or fail, with the reason buckets |
 | `data/full/pred/<row>.<set>.{raw,cleaned}.json` | Every model-level prediction. Raw spans carry every score (threshold 0); cleaned is after the product's name cleaning. Offsets only, no text |
@@ -198,14 +194,14 @@ The tags in `data/product/`:
 - **The public sets' texts** (NEMO, BMC, Knesset UD). Their licences do not clearly allow
   redistribution. [SOURCES.md](SOURCES.md) gives the exact commits to download, and
   `bench/model-eval/convert-public.js` converts them. The predictions here index into those texts.
-- **Anything from her documents,** except the counts in RESULTS.md.
+- **Anything from the private set of real documents,** including its results.
 - **The model exports** (several GB). The registry pins each one by commit and hash, and
   `bench/model-eval/export.py` rebuilds them.
 
 ## Reproducing it
 
 The texts and models live beside the repository: `../public-bench/`, `../model-cache/` and, for
-her documents, `../private-bench/`.
+the private set, `../private-bench/`.
 
 ```
 py -3 bench/model-eval/export.py download         # the pinned source files

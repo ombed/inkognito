@@ -1,4 +1,4 @@
-/* A one-page reading of her session log (npm run log-report -- <package.zip | session-log.json>).
+/* A one-page reading of the user's session log (npm run log-report -- <package.zip | session-log.json>).
 
    The log holds no text, only events with codes and counts (page-logic.js,
    sessionLog). This turns it into what we need to know before changing
@@ -14,14 +14,14 @@ const path = require("path");
 
 const SRC = { m: "model", h: "header", s: "speaker", p: "profile", t: "typed by her", b: "body scan", w: "sweep", x: "pattern", n: "near spelling", "-": "unknown" };
 
-/* A package is the zip she sends (often saved without an extension): session-log.json and,
-   when she marked a name by hand, leak-report.json. Packages up to v56 also carried the
+/* A package is the zip the user sends (often saved without an extension): session-log.json and,
+   when a name was marked by hand, leak-report.json. Packages up to v56 also carried the
    redacted document; it is never read here. Both are read in memory; nothing is unpacked to
    disk. */
 function readPackage(file) {
   const buf = fs.readFileSync(file);
   // under four bytes readUInt32LE threw a bare RangeError (outside review, nit 9). No file
-  // name in the message: hers may carry a client's name.
+  // name in the message: a file name may carry a client's name.
   if (buf.length < 4) throw new Error(`not a session log or a package: the file is ${buf.length} bytes`);
   if (buf.readUInt32LE(0) !== 0x04034b50) return { log: JSON.parse(buf.toString("utf8")), leaks: null };
   const { unzip } = require("./harvest-shapes.js");

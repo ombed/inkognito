@@ -9,10 +9,10 @@ needs nothing else: no earlier conversation, no private files.
 You are running one exploratory QA round on paintItBlack, a browser-only tool
 that replaces the names and identifying details in Hebrew legal documents with
 invented ones, so the text can go to an AI and come back with the real names
-restored. It has one user: a family lawyer. Three earlier QA rounds and every
-automated test passed while she still found bugs, because the rounds walked the
-straight path on clean documents. Your job is to use the tool the way she does
-and find what breaks.
+restored. It was built for a real client, a lawyer. Three earlier QA rounds and
+every automated test passed while the user still found bugs, because the rounds
+walked the straight path on clean documents. Your job is to use the tool the way
+a real user does and find what breaks.
 
 You do not change the repository. No edits, commits, branches, pushes or
 deploys. You write one report to `qa-audit/<run-name>/report.md` in the checkout
@@ -21,7 +21,7 @@ downloads go beside it.
 
 ## 0. Read first (15 minutes at most)
 
-- `docs/trial-guide-he.md`: what she was told the tool does, screen by screen.
+- `docs/trial-guide-he.md`: what the user was told the tool does, screen by screen.
   Every sentence there is a promise you can test.
 - The top three entries of `CHANGELOG.md`: what changed recently. Recent change
   is where bugs are.
@@ -65,7 +65,7 @@ page.on("pageerror", (e) => consoleLog.push("pageerror: " + e.message));
    after it. `e2e/helpers.js` has `boot`, `upload`, `startScan` and `goOn`. The
    marks on the check screen are `[data-mark]`, with the original in `data-val`
    and the replacement as their text; a pending one has `data-badge="?"`.
-6. **The model.** She works with the Hebrew model on. If the machine can reach
+6. **The model.** Real use has the Hebrew model on. If the machine can reach
    huggingface.co, keep it on for at least one document pair (the first load
    downloads about 130 MB, once per profile). Otherwise, or to save time, turn it
    off in the entry settings, or serve the engine with `serveEngineWithStub`
@@ -94,14 +94,12 @@ could not run must never read as "found nothing".
 
 ## 3. The persona
 
-A fast, experienced family lawyer. Hebrew, right to left, Chrome or Edge on a
-Windows laptop, a mouse and keyboard shortcuts. She does not read instructions
-twice and she does not wait for things to finish before clicking. Her real
-sessions (the 16.9 log) took 19 and 11 minutes per document, 80–85% of it on the
-check screen. Per document she changed 14–15 pseudonyms, pressed "אל תחליף" or
-"לא שם" 11–14 times, changed the style (name / blank / ███) 4–8 times, and
-added only 3 names by hand. Her cost is overriding the tool, so that is where
-you spend your time.
+A fast, experienced lawyer. Hebrew, right to left, Chrome or Edge, a mouse and
+keyboard shortcuts. Does not read instructions twice and does not wait for
+things to finish before clicking. In real use most of the time goes to the
+check screen: changing pseudonyms, pressing "אל תחליף" or "לא שם", changing the
+style (name / blank / ███), and adding only a few names by hand. The cost is
+overriding the tool, so that is where you spend your time.
 
 **Per document pair, one case, two documents in a row:**
 
@@ -161,7 +159,7 @@ Keep a table per document of every real name, ID, phone, date and place you put
 in the document, and what the tool showed as its replacement.
 
 1. **Consistent across the case.** A person has one pseudonym in every form
-   ("מרים", "למרים", "ומרים") in the check screen, the copied text and the Word
+   ("דינה", "לדינה", "ודינה") in the check screen, the copied text and the Word
    file, and the same one in the second document of the case. Two people never
    share one.
 2. **Nothing leaks from the file.** Unzip every downloaded .docx (and the docx
@@ -183,7 +181,7 @@ in the document, and what the tool showed as its replacement.
 
 ## 5. Documents: synthetic only
 
-Never open, copy or read anything under `../private-bench/`, the client folders,
+Never open, copy or read anything under `../private-bench/`, any private folder,
 or any document from a real case. Use only:
 
 - `bench/corpus/*.docx` (invented cases; each `.txt` beside it is the text, and
@@ -197,7 +195,7 @@ or any document from a real case. Use only:
 Build each pair as two documents of one invented case: the same parties, a
 lawyer, a child, a town or two, an ID, a phone, a date, an organisation. Give
 them the typography real documents have: names in "…" and '…' quotes, gershayim
-(עו"ד, תלה"מ), a geresh name (ברקוביץ׳), a maqaf, prefix letters, a footnote
+(עו"ד, מנכ"ל), a geresh name (ברקוביץ׳), a maqaf, prefix letters, a footnote
 digit glued to a name, a right-to-left mark before a name, a bold first name
 and a plain surname, the same person by first name alone and by full name. Save
 your generator script beside the report so every document can be rebuilt.
@@ -205,12 +203,12 @@ your generator script beside the report so every document can be rebuilt.
 ## 6. Severity
 
 - **Critical**: breaks a promise. A real value in the output or the copied text,
-  restore returning the wrong person, or her decisions or document lost without
-  warning.
-- **High**: a wrong result she would not notice, or a check that reports clean
-  when it could not run.
-- **Medium**: a result she would notice and have to work around, or a workflow
-  that costs her real time.
+  restore returning the wrong person, or the user's decisions or document lost
+  without warning.
+- **High**: a wrong result the user would not notice, or a check that reports
+  clean when it could not run.
+- **Medium**: a result the user would notice and have to work around, or a
+  workflow that costs the user real time.
 - **Low**: cosmetic or cheap, no effect on the output.
 
 ## 7. Rules for a finding
@@ -250,7 +248,7 @@ your generator script beside the report so every document can be rebuilt.
 4. Each finding:
 
 ```markdown
-### H1: <what she would see, in one line>
+### H1: <what the user would see, in one line>
 
 | Field | Value |
 |---|---|

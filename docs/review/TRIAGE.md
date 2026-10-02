@@ -32,7 +32,7 @@ reproduced here, got a test that fails on the old code, and was fixed in its own
 | H11 | A removed name came back in the next document of the case | `removed` in the case profile; it returns only as a visible question (owner's decision) | v51 |
 | H8 | «אל תחליף» on a place was overridden in seven prefix forms | `geoRemove` clears the rule; the allowance uses the rules' own prefix lists | v51 |
 | M1 | "Delete case" left the name map in the browser | the mirror profile goes with the case | v51 |
-| M3 | A model failure was invisible once she had moved on | a notice on the screen she is on | v51 |
+| M3 | A model failure was invisible once the user had moved on | a notice on the screen the user is on | v51 |
 | H10 | Field codes, table alt text and the page-one thumbnail were not walked | hidden blocks, link scrub in field codes, thumbnail dropped | v51 |
 | L14 | Three files named three licences | PolyForm Shield 1.0.0, pinned by `tests/license_t.js` (owner's decision) | v51 |
 | H15, L16–L18 | The brief and the charter were wrong in four places | a corrections section in `BRIEF.md` | v51 |
@@ -69,17 +69,17 @@ reproduced here, got a test that fails on the old code, and was fixed in its own
 | Nit 4 | HANDOVER says MIT | the dated note at its top, with L14 | v51 |
 
 **Looked at and deliberately left.** A finishing re-run closes an inline editor opened while it ran
-(found by CI, not by the review). Her two real sessions show re-runs of 0.14–0.2 s, 0.42 s at most,
-and no editor opened during one in 83 re-runs. Keeping the editor open would also leave its
-preview stale. Not worth the risk before her session.
+(found by CI, not by the review). Logged real sessions show re-runs well under half a second and
+no editor opened during one. Keeping the editor open would also leave its preview stale. Not worth
+the risk before the next real session.
 
-## Planned, in this order, after the client session
+## Planned, in this order, after the next real session
 
 Nothing here is disputed. The order is by what it protects.
 
-**Batch A — her results.** What is left of it: M25 (the body scan fails open), the rest of H10
-(VML WordArt text, `styles.xml` and `numbering.xml`, which the review rated contrived for her
-documents), and the suspicions about `restoreNames` on shifted dates and per-document placeholder
+**Batch A — results on real documents.** What is left of it: M25 (the body scan fails open), the
+rest of H10 (VML WordArt text, `styles.xml` and `numbering.xml`, which the review rated contrived
+for the real documents seen so far), and the suspicions about `restoreNames` on shifted dates and per-document placeholder
 counters.
 
 **Batch B — measurement.** What is left of it: M20 (the benchmark measures body text only), L19
@@ -121,15 +121,15 @@ known one (the benchmark's names are disjoint from the lists, so it shows as 3 l
 
 ## Decided by the owner on 2026-09-20
 
-- **Before the client session:** everything that is tests or process, and small fixes to the app
-  with a test that fails on the old code. Anything that touches detection leaves both benchmarks
-  unchanged. The last deploy lands by the evening of 2026-09-21; after that only a rollback, and
-  only for a blocker she reports (`docs/ROLLBACK.md`).
+- **Before the next real session:** everything that is tests or process, and small fixes to the
+  app with a test that fails on the old code. Anything that touches detection leaves both
+  benchmarks unchanged. The last deploy lands the evening before; after that only a rollback, and
+  only for a blocker the user reports (`docs/ROLLBACK.md`).
 - **After it:** self-hosting the two libraries and a Content-Security-Policy (H14), the
   restructuring, accessibility, the documentation batch, and whether a failed verification
   should block the export outright instead of asking.
 - **H11:** a removed name is remembered by the case, and comes back only as a visible question.
-- **H2:** a failed verification asks, then allows. A hard block would lock her out where the
+- **H2:** a failed verification asks, then allows. A hard block would lock the user out where the
   tool cannot yet clear the value.
 - **L14:** the licence is PolyForm Shield 1.0.0.
 - **The date shift direction:** unchanged for now. After the session it becomes backwards, for

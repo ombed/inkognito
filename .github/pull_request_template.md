@@ -11,7 +11,7 @@
 ## For a bug fix: the class, not the instance
 
 <!-- docs/QUALITY-PLAN.md, layer 6. A bug a user found is one member of a class.
-     Fixing only her case leaves its siblings for the next session, so each bug fix
+     Fixing only the reported case leaves its siblings for the next session, so each bug fix
      closes with the three answers below. Leave them empty for "Not a bug fix". -->
 
 ### 1. The case that was hit
@@ -27,7 +27,7 @@
 
 ### 3. The probe
 
-<!-- What was tried beyond her case before closing, and what it found, "nothing"
+<!-- What was tried beyond the reported case before closing, and what it found, "nothing"
      included. The 31-shape probe for quoted names found footnote digits and glued
      numbers in the same pass. -->
 

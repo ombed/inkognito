@@ -1,7 +1,7 @@
 const { test, expect } = require("./base");
 const H = require("./helpers");
 
-/* The round trip is her daily task: redact, send to the AI, put the real
+/* The round trip is the everyday task: redact, send to the AI, put the real
    names back into what comes back. Restore used to be a header link. It is
    now step three, offered in the bar the moment step two (copy) happens,
    and the restore screen arrives already connected to this document. */

@@ -1,6 +1,6 @@
 {
  "name": "known-cases",
- "source": "invented text, PLAN.md 4.5; no word is copied from a client document",
+ "source": "invented text, PLAN.md 4.5; no word is copied from a real document",
  "licence": "repo",
  "passRules": {
   "exact-or-prefix-cut": "Every must mention has a predicted span with the same end and a start that is the mention's start, or one letter later when that letter is a prefix letter (מבלוהשכ: cut only by a prefix letter). Glued fails (PLAN.md 4.5): a span that starts earlier, including one that takes in the recorded prefix letter (bench/spans.js counts that glued-left; docs/measurements.md: 37 such spans the cleaner could not peel), or that runs into another word or punctuation. A span glued only by the recorded prefix is reported apart as glued-prefix, so the table can be read both ways, but it does not pass. No predicted span may overlap a must:false mention. The span's type is not checked; a kind mismatch is reported apart.",
@@ -10,10 +10,10 @@
  "controls": "A case with control:true is a leak no model is expected to close (it was in the product's rules, not in reading). It is reported, and counted in no rule.",
  "cases": [
   {
-   "id": "r3-bank-pseudonym",
+   "id": "bank-pseudonym",
    "group": "leak",
-   "what": "A bank whose name is a place's head word and a place, like the r3 leak: the one real leak a better model could close.",
-   "text": "ההעברות החודשיות מגיעות לחשבון בבנק רמת ארזים, והאם מושכת מהן את דמי המזונות.\nלפי דפי החשבון של בנק רמת ארזים, ההפקדה האחרונה נעשתה לפני שבועיים.\nהמבקשת מסרה שבנק רמת ארזים סירב לפרוס את החוב, ולכן פנתה לגישור.",
+   "what": "A bank whose name is a place's head word and a place: the one leak shape a better model could close.",
+   "text": "ההעברות החודשיות מגיעות לחשבון בבנק רמת ארזים, והיא מושכת מהן את דמי השכירות.\nלפי דפי החשבון של בנק רמת ארזים, ההפקדה האחרונה נעשתה לפני שבועיים.\nהמבקשת מסרה שבנק רמת ארזים סירב לפרוס את החוב, ולכן פנתה לייעוץ.",
    "mentions": [
     {
      "s": 32,
@@ -54,9 +54,9 @@
    "pass": "covers-core"
   },
   {
-   "id": "r4-town-variants",
+   "id": "town-variants",
    "group": "control",
-   "what": "A small town written in two spellings, like the r4 leak. The leak was in matching the variant, not in finding the town.",
+   "what": "A small town written in two spellings. The leak this models was in matching the variant, not in finding the town.",
    "text": "המשפחה עברה לקריית אלונה בקיץ שעבר.\nבית הספר בקרית אלונה קיבל את הילד באמצע השנה.\nהאם עובדת בקריית אלונה, ליד הבית, והאב נשאר בקרית אלונה עד החורף.",
    "mentions": [
     {
@@ -96,9 +96,9 @@
    "control": true
   },
   {
-   "id": "r5-two-letter-prefix",
+   "id": "two-letter-prefix",
    "group": "control",
-   "what": "A two-letter first name seen only with a prefix letter, like the r5 leak. The leak was in the rules for short names.",
+   "what": "A two-letter first name seen only with a prefix letter. The leak this models was in the rules for short names.",
    "text": "האם מסרה שהיא הסבירה לרז את ההסדר החדש.\nאחר כך נסעו האב ורז לבית הסבתא.\nאמרתי לרז שנתראה שוב בשבוע הבא.",
    "mentions": [
     {
@@ -130,10 +130,10 @@
    "control": true
   },
   {
-   "id": "v28-teacher",
+   "id": "v28-foreign-name",
    "group": "leak",
-   "what": "A teacher's foreign first name in a child's transcript, every occurrence found at full confidence and then lost downstream (v28). The model part: every occurrence, exact.",
-   "text": "מי המורה שלך השנה?\nהמורה אוקסנה.\nומה אוקסנה אומרת על השיעורים?\nאוקסנה אומרת שאני משתדלת. לפעמים אוקסנה כועסת.\nעל מי היא כועסת?\nעל הבנים. אוקסנה אמרה להם לשבת בשקט.\nואת אוהבת את אוקסנה?\nכן. סיפרתי לאוקסנה על הכלב שלנו.",
+   "what": "A foreign first name in a question-and-answer transcript, every occurrence found at full confidence and then lost downstream (v28). The model part: every occurrence, exact.",
+   "text": "מי השכנה שלך השנה?\nהשכנה אוקסנה.\nומה אוקסנה אומרת על התיקונים?\nאוקסנה אומרת שאני משתדלת. לפעמים אוקסנה כועסת.\nעל מי היא כועסת?\nעל הבנים. אוקסנה אמרה להם לשחק בשקט.\nואת אוהבת את אוקסנה?\nכן. סיפרתי לאוקסנה על הכלב שלנו.",
    "mentions": [
     {
      "s": 25,
@@ -191,8 +191,8 @@
   {
    "id": "v39-glued-full-name",
    "group": "leak",
-   "what": "A client's full name that the model glued to the next word (v39): rejecting the span allow-listed the name inside it. Glued fails.",
-   "text": "הבקשה הוגשה בעניינה של גב' נחמה ברקת אלמוג (להלן: נחמה) ביום ראשון.\nנפגשה הח\"מ עם נחמה בביתה, בנוכחות בתה.\nנחמה ברקת אלמוג מסרה כי היא מבינה את ההליך ומסכימה לו.",
+   "what": "A full name that the model glued to the next word (v39): rejecting the span allow-listed the name inside it. Glued fails.",
+   "text": "הבקשה הוגשה בעניינה של גב' נחמה ברקת אלמוג (להלן: נחמה) ביום ראשון.\nשוחחה הח\"מ עם נחמה בבוקר, בנוכחות בנה.\nנחמה ברקת אלמוג מסרה כי היא מבינה את ההליך ומסכימה לו.",
    "mentions": [
     {
      "s": 27,
@@ -229,7 +229,7 @@
    "id": "v39-infinitive",
    "group": "leak",
    "what": "An infinitive after a prefixed first name taken as a surname (v39): the word that decides the sentence is swallowed.",
-   "text": "מהאמור לעיל סבורה הח\"מ כי דין הבקשה למינוי אפוטרופוס לנחמה להידחות.\nנחמה ציינה כי היא מבינה את ההחלטה. נחמה חזרה על כך פעמיים.",
+   "text": "בשים לב לכך סבורה הח\"מ כי דין הבקשה לקביעת דיון חוזר לנחמה להידחות.\nנחמה ציינה כי היא מבינה את ההחלטה. נחמה חזרה על כך פעמיים.",
    "mentions": [
     {
      "s": 54,
@@ -264,9 +264,9 @@
    "pass": "exact-or-prefix-cut"
   },
   {
-   "id": "leak169-01",
-   "group": "leak-16.9",
-   "what": "The 16.9 leak shape: one four-letter word as a name, many occurrences; before speech verbs.",
+   "id": "leak-shape-01",
+   "group": "leak-shape",
+   "what": "The short-name leak shape: one four-letter word as a name, many occurrences; before speech verbs.",
    "text": "דליה אמרה שהיא לא מרוצה מההסדר.\nאחר כך דליה סיפרה על הלילה ההוא.\nדליה ביקשה לדבר עם העובדת לבד.\nכשסיימנו דליה הודתה שהיא עייפה.\nדליה הוסיפה שהיא תבוא שוב.",
    "mentions": [
     {
@@ -308,9 +308,9 @@
    "pass": "exact-or-prefix-cut"
   },
   {
-   "id": "leak169-02",
-   "group": "leak-16.9",
-   "what": "The 16.9 leak shape: one four-letter word as a name, many occurrences; after discourse words.",
+   "id": "leak-shape-02",
+   "group": "leak-shape",
+   "what": "The short-name leak shape: one four-letter word as a name, many occurrences; after discourse words.",
    "text": "כאמור נאוה לא הגיעה לפגישה הקודמת.\nמשכך נאוה ביקשה מועד חדש.\nלדבריה נאוה לא קיבלה את ההזמנה.\nלפיכך נאוה תוזמן בשנית.\nעם זאת נאוה מסרה את מספר הטלפון שלה.",
    "mentions": [
     {
@@ -352,9 +352,9 @@
    "pass": "exact-or-prefix-cut"
   },
   {
-   "id": "leak169-03",
-   "group": "leak-16.9",
-   "what": "The 16.9 leak shape: one four-letter word as a name, many occurrences; with one prefix letter.",
+   "id": "leak-shape-03",
+   "group": "leak-shape",
+   "what": "The short-name leak shape: one four-letter word as a name, many occurrences; with one prefix letter.",
    "text": "רונה הגיעה מוקדם.\nהסברתי לרונה מה יקרה בדיון.\nהאב ורונה ישבו בחוץ.\nהילד ביקש שרונה תישאר.\nקיבלנו מכתב מרונה ביום שני.\nהפגישה עם רונה נמשכה שעה.",
    "mentions": [
     {
@@ -407,9 +407,9 @@
    "pass": "exact-or-prefix-cut"
   },
   {
-   "id": "leak169-04",
-   "group": "leak-16.9",
-   "what": "The 16.9 leak shape: one four-letter word as a name, many occurrences; with two prefix letters.",
+   "id": "leak-shape-04",
+   "group": "leak-shape",
+   "what": "The short-name leak shape: one four-letter word as a name, many occurrences; with two prefix letters.",
    "text": "סיגל מתגוררת עם הילדים.\nהאם ולסיגל יש הסכם בעל פה.\nכשסיגל חזרה, הילדים כבר ישנו.\nומסיגל לא התקבלה תשובה.\nהבית שסיגל שכרה קטן מדי.\nסיגל חתמה על הטופס.",
    "mentions": [
     {
@@ -462,9 +462,9 @@
    "pass": "exact-or-prefix-cut"
   },
   {
-   "id": "leak169-05",
-   "group": "leak-16.9",
-   "what": "The 16.9 leak shape: one four-letter word as a name, many occurrences; after role words.",
+   "id": "leak-shape-05",
+   "group": "leak-shape",
+   "what": "The short-name leak shape: one four-letter word as a name, many occurrences; after role words.",
    "text": "האם אילה מסרה את גרסתה.\nהמטפלת אילה המליצה על טיפול רגשי.\nהעובדת הסוציאלית אילה ביקרה בבית.\nהשכנה אילה שמעה צעקות.\nאילה לא הוסיפה דבר.",
    "mentions": [
     {
@@ -506,9 +506,9 @@
    "pass": "exact-or-prefix-cut"
   },
   {
-   "id": "leak169-06",
-   "group": "leak-16.9",
-   "what": "The 16.9 leak shape: one four-letter word as a name, many occurrences; a name that starts with a prefix letter (מ).",
+   "id": "leak-shape-06",
+   "group": "leak-shape",
+   "what": "The short-name leak shape: one four-letter word as a name, many occurrences; a name that starts with a prefix letter (מ).",
    "text": "מירב הגיעה עם בנה.\nאמרתי למירב שהדיון נדחה.\nהאב ומירב לא דיברו מאז.\nמירב טוענת שהיא לא קיבלה הודעה.\nביקשנו ממירב מסמכים נוספים.",
    "mentions": [
     {
@@ -553,9 +553,9 @@
    "pass": "exact-or-prefix-cut"
   },
   {
-   "id": "leak169-07",
-   "group": "leak-16.9",
-   "what": "The 16.9 leak shape: one four-letter word as a name, many occurrences; before punctuation and at sentence ends.",
+   "id": "leak-shape-07",
+   "group": "leak-shape",
+   "what": "The short-name leak shape: one four-letter word as a name, many occurrences; before punctuation and at sentence ends.",
    "text": "הילדים נשארו עם גליה.\nגליה, כך נמסר, לא ידעה על כך.\nנכחו בפגישה האב והסבתא (גליה).\nהאם שאלה: \"איפה גליה?\"\nהכול נאמר לגליה; היא לא הגיבה.\nהבית שייך לגליה!",
    "mentions": [
     {
@@ -606,9 +606,9 @@
    "pass": "exact-or-prefix-cut"
   },
   {
-   "id": "leak169-08",
-   "group": "leak-16.9",
-   "what": "The 16.9 leak shape: one four-letter word as a name, many occurrences; inside quotation marks.",
+   "id": "leak-shape-08",
+   "group": "leak-shape",
+   "what": "The short-name leak shape: one four-letter word as a name, many occurrences; inside quotation marks.",
    "text": "הילד קרא לה \"יפעת\" ולא אמא.\nלדבריו, \"יפעת תמיד מאחרת\".\nבהודעה נכתב: ״יפעת תאסוף אותם״.\nיפעת אישרה את הדברים.\nהוא חזר ואמר \"יפעת, יפעת\" כשבכה.",
    "mentions": [
     {
@@ -657,9 +657,9 @@
    "pass": "exact-or-prefix-cut"
   },
   {
-   "id": "leak169-09",
-   "group": "leak-16.9",
-   "what": "The 16.9 leak shape: one four-letter word as a name, many occurrences; as a speaker at the start of a line.",
+   "id": "leak-shape-09",
+   "group": "leak-shape",
+   "what": "The short-name leak shape: one four-letter word as a name, many occurrences; as a speaker at the start of a line.",
    "text": "עינב: אני לא מסכימה עם זה.\nהעובדת: למה?\nעינב: כי הוא לא מגיע בזמן.\nהעובדת: ומה עינב מציעה?\nעינב: שיאסוף אותם בשבת בבוקר.\nהעובדת: תודה, עינב.\nעינב: בבקשה.",
    "mentions": [
     {
@@ -708,9 +708,9 @@
    "pass": "exact-or-prefix-cut"
   },
   {
-   "id": "leak169-10",
-   "group": "leak-16.9",
-   "what": "The 16.9 leak shape: one four-letter word as a name, many occurrences; beside numbers and parentheses.",
+   "id": "leak-shape-10",
+   "group": "leak-shape",
+   "what": "The short-name leak shape: one four-letter word as a name, many occurrences; beside numbers and parentheses.",
    "text": "המבקשת (להלן: רעות) הגישה את הבקשה ביום 3.4.\nרעות, 34, עובדת במשמרות.\nביום 15 רעות לא הגיעה.\nרעות (האם) שילמה 400 ש\"ח.\nסעיף 7 חל על רעות בלבד.",
    "mentions": [
     {
@@ -752,9 +752,9 @@
    "pass": "exact-or-prefix-cut"
   },
   {
-   "id": "leak169-11",
-   "group": "leak-16.9",
-   "what": "The 16.9 leak shape: one four-letter word as a name, many occurrences; a name that starts with ש, before an infinitive.",
+   "id": "leak-shape-11",
+   "group": "leak-shape",
+   "what": "The short-name leak shape: one four-letter word as a name, many occurrences; a name that starts with ש, before an infinitive.",
    "text": "שקמה ביקשה לדחות את הדיון.\nהצעתי לשקמה להגיש תצהיר.\nביקשתי משקמה להתייצב בזמן.\nלשקמה לא היה עורך דין.\nשקמה הסכימה.",
    "mentions": [
     {
@@ -799,9 +799,9 @@
    "pass": "exact-or-prefix-cut"
   },
   {
-   "id": "leak169-12",
-   "group": "leak-16.9",
-   "what": "The 16.9 leak shape: one four-letter word as a name, many occurrences; before a word that could be read as a surname.",
+   "id": "leak-shape-12",
+   "group": "leak-shape",
+   "what": "The short-name leak shape: one four-letter word as a name, many occurrences; before a word that could be read as a surname.",
    "text": "ענבר אמא של שני ילדים.\nענבר בעלת הדירה ביקשה לפנות אותה.\nענבר מורה בבית ספר יסודי.\nלדברי ענבר אחות של האב, הילדים מוזנחים.\nענבר דודה של הקטין.",
    "mentions": [
     {
@@ -843,9 +843,9 @@
    "pass": "exact-or-prefix-cut"
   },
   {
-   "id": "leak169-13",
-   "group": "leak-16.9",
-   "what": "The 16.9 leak shape: one four-letter word as a name, many occurrences; after a hyphen or a maqaf.",
+   "id": "leak-shape-13",
+   "group": "leak-shape",
+   "what": "The short-name leak shape: one four-letter word as a name, many occurrences; after a hyphen or a maqaf.",
    "text": "יונה סירבה להגיע.\nההודעה נשלחה ל-יונה ביום חמישי.\nהאב ו-יונה לא נפגשו.\nהזימון נמסר ל־יונה ביד.\nיונה חתמה על קבלתו.",
    "mentions": [
     {
@@ -890,9 +890,9 @@
    "pass": "exact-or-prefix-cut"
   },
   {
-   "id": "leak169-14",
-   "group": "leak-16.9",
-   "what": "The 16.9 leak shape: one four-letter word as a name, many occurrences; alone on a line, at line starts and ends.",
+   "id": "leak-shape-14",
+   "group": "leak-shape",
+   "what": "The short-name leak shape: one four-letter word as a name, many occurrences; alone on a line, at line starts and ends.",
    "text": "זיוה\nהגיעה לפגישה בשעה תשע.\nהעובדת שוחחה עם זיוה\nזיוה\nלא הוסיפה דבר.\nבסוף הפגישה נפרדנו מזיוה\nזיוה",
    "mentions": [
     {
@@ -935,9 +935,9 @@
    "pass": "exact-or-prefix-cut"
   },
   {
-   "id": "leak169-15",
-   "group": "leak-16.9",
-   "what": "The 16.9 leak shape: one four-letter word as a name, many occurrences; after a title.",
+   "id": "leak-shape-15",
+   "group": "leak-shape",
+   "what": "The short-name leak shape: one four-letter word as a name, many occurrences; after a title.",
    "text": "גב' תמרה הגיעה לבדה.\nב\"כ גב' תמרה לא התייצב.\nעו\"ד תמרה ייצגה את האם בדיון הקודם.\nד\"ר תמרה בדקה את הילד.\nתמרה אישרה את הדברים.",
    "mentions": [
     {
@@ -979,9 +979,9 @@
    "pass": "exact-or-prefix-cut"
   },
   {
-   "id": "leak169-16",
-   "group": "leak-16.9",
-   "what": "The 16.9 leak shape: one four-letter word as a name, many occurrences; in a list.",
+   "id": "leak-shape-16",
+   "group": "leak-shape",
+   "what": "The short-name leak shape: one four-letter word as a name, many occurrences; in a list.",
    "text": "נכחו: חגית, האב והסבתא.\nחגית, האב והילדים ישבו יחד.\nהאב ביקש שחגית, הסבתא והדוד לא יגיעו.\nהוזמנו הסבתא וחגית.\nחגית הגיעה ראשונה.",
    "mentions": [
     {
@@ -1025,9 +1025,9 @@
    "pass": "exact-or-prefix-cut"
   },
   {
-   "id": "leak169-17",
-   "group": "leak-16.9",
-   "what": "The 16.9 leak shape: one four-letter word as a name, many occurrences; with possessive and preposition words.",
+   "id": "leak-shape-17",
+   "group": "leak-shape",
+   "what": "The short-name leak shape: one four-letter word as a name, many occurrences; with possessive and preposition words.",
    "text": "הבית של אסנת נמצא ליד הגן.\nהילדים שוהים אצל אסנת בסופי שבוע.\nהאב דיבר עם אסנת בטלפון.\nבלי אסנת אין מי שיאסוף אותם.\nאסנת מסכימה להסדר.",
    "mentions": [
     {
@@ -1069,9 +1069,9 @@
    "pass": "exact-or-prefix-cut"
   },
   {
-   "id": "leak169-18",
-   "group": "leak-16.9",
-   "what": "The 16.9 leak shape: one four-letter word as a name, many occurrences; before verbs that could be read as surnames.",
+   "id": "leak-shape-18",
+   "group": "leak-shape",
+   "what": "The short-name leak shape: one four-letter word as a name, many occurrences; before verbs that could be read as surnames.",
    "text": "רחלי הגישה בקשה נוספת.\nרחלי ביקשה דחייה.\nאמרתי שרחלי תגיע מחר.\nעל רחלי להגיש את התצהיר עד יום ראשון.\nרחלי נכנסה והתיישבה.",
    "mentions": [
     {
@@ -1114,9 +1114,9 @@
    "pass": "exact-or-prefix-cut"
   },
   {
-   "id": "leak169-19",
-   "group": "leak-16.9",
-   "what": "The 16.9 leak shape: one four-letter word as a name, many occurrences; a name that starts with מ, with ו and כש.",
+   "id": "leak-shape-19",
+   "group": "leak-shape",
+   "what": "The short-name leak shape: one four-letter word as a name, many occurrences; a name that starts with מ, with ו and כש.",
    "text": "מלכה טלפנה בבוקר.\nומלכה הוסיפה שהיא חוששת.\nכשמלכה הגיעה, הדלת הייתה נעולה.\nהילדים מחכים למלכה.\nמלכה תעדכן אותנו.",
    "mentions": [
     {
@@ -1161,9 +1161,9 @@
    "pass": "exact-or-prefix-cut"
   },
   {
-   "id": "leak169-20",
-   "group": "leak-16.9",
-   "what": "The 16.9 leak shape: one four-letter word as a name, many occurrences; many occurrences in one long paragraph.",
+   "id": "leak-shape-20",
+   "group": "leak-shape",
+   "what": "The short-name leak shape: one four-letter word as a name, many occurrences; many occurrences in one long paragraph.",
    "text": "ציפי הגיעה לפגישה באיחור. ציפי הסבירה שהאוטובוס לא הגיע, וציפי התנצלה. אחרי שציפי התיישבה, העובדת שאלה את ציפי על הילדים. ציפי סיפרה שהם בסדר, אבל שציפי דואגת לבן הגדול. בסוף הפגישה ציפי ביקשה עוד מועד, וציפי קיבלה אותו.",
    "mentions": [
     {
@@ -1305,7 +1305,7 @@
    "id": "fp-role-word",
    "group": "false-positive",
    "what": "Role words in any spelling, with no name beside them.",
-   "text": "כתב עמדה מטעם האפוטרופא לדין.\nהאפוטרופוס לדין ממליץ על הרחבת השהות.\nהאפטרופא ביקשה להגיש השלמה.\nאפוטרופסית לדין תמונה בהקדם.\nהמגשרת והח\"מ נפגשו עם שני ההורים.",
+   "text": "חוות דעת מטעם האפוטרופא לדין.\nהאפוטרופוס לדין ממליץ על הרחבת השהות.\nהאפטרופא ביקשה להגיש השלמה.\nאפוטרופסית לדין תמונה בהקדם.\nהמגשרת והח\"מ נפגשו עם שני ההורים.",
    "mentions": [
     {
      "s": 15,
