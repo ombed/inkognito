@@ -3,9 +3,9 @@ const H = require("./helpers");
 
 /* Places by kind, and the map that matches character before distance.
 
-   In one session a neighbourhood came out as a bracketed label, and a
+   In real use a neighbourhood came out as a bracketed label, and a
    town could be swapped for any town at the right distance. Now the places
-   screen says what the substitute shares with the original, from the table
+   screen says what the substitute shares with the original, from the reviewed
    table, and a neighbourhood gets a neighbourhood name. */
 
 const DOC = [

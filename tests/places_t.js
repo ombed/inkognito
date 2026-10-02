@@ -2,7 +2,7 @@
 
    Two screens ask the user to decide about a word without showing the word in
    the document: "מי בתיק" shows a chip, the places screen shows a name and a
-   box to type the substitute. On a real case file the tool offered to replace
+   box to type the substitute. The tool could offer to replace
    אזור, which is a town south of Tel Aviv and also the ordinary word for an
    area. There was no way to tell which one it was, because nothing on that
    screen comes from the document.
@@ -116,7 +116,7 @@ console.log("\n— fakePlace: a town gets a town, not a bracketed label —");
 console.log("\n— the ambiguous list holds only names that really are something else —");
 {
   /* A row said לוד — "also an ordinary word", but Lod is a city name and
-     that Lod is a city name and nothing else, not remotely like אזור. Fourteen
+     nothing else, not remotely like אזור. Fourteen
      entries were like that: real town names sitting in a list whose stated
      criterion is settlement names that are also ordinary Hebrew words. They
      cost those towns their place in the distance-preserving map and put a

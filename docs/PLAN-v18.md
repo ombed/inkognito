@@ -2,8 +2,8 @@
 
 Decisions from the grilling session, in the order they were made, then the
 work they imply. Nothing below is assumed; every line was asked and answered.
-The user's answers fed rounds
-three and four; its facts are summarised, never quoted with identifiers.
+The user's own answers fed rounds three and four; they are summarised
+below in engineering terms, never quoted.
 
 ## What is settled
 
@@ -30,24 +30,23 @@ questions again from Q1 (`CHANGELOG.md`: release 2 in v29, release 3 in v33, rel
 v39). Comments name the source: "PLAN-v18 Q13" for this table, "Q11 בגרסה 2" or "Q14 of
 release 2" for a release's. A bare Q number inside a CHANGELOG section is that section's.
 
-## What the questionnaire changed
+## What the user's answers changed
 
-- The tool is used on several documents in parallel. One profile slot
-  was the wrong shape (Q11).
-- The round trip is the job: strip, send to ChatGPT (sometimes Gemini), get
-  rewritten text back, put the real names back. Restore was a side link;
-  for her it is step three of every task (Q12).
-- Leaks can come from transcription typos in text transcribed from audio
-  ("נרות מאירות" replaced, "נרות מהירות" left). The near-miss layer is
-  the one that matters most to her, and her own cleaned transcripts are the
-  right test material (Q15).
-- Her acceptance test is speed: twenty minutes on a real case in the next
-  two weeks, and she uses it again if it is efficient and fast (Q13, Q16).
-- She uses Word find-and-replace today and finds inventing realistic
-  replacement names the tiresome part. The fake-name generator is a feature
-  she will notice.
-- Files move by email and through the office document system, and only she
-  does this work. No sync, no accounts (Q1, Q9).
+- The work spans several documents in parallel. One profile slot was the
+  wrong shape (Q11).
+- The round trip is the job: strip, send to an AI assistant, get rewritten
+  text back, put the real names back. Restore was a side link; it should be
+  step three of every task (Q12).
+- Leaks come from transcription typos: a name spelled correctly in one place
+  and with a one-letter slip in another, the first replaced and the second
+  left. The near-miss layer matters most, and real cleaned transcripts are
+  the right test material (Q15).
+- The acceptance test is speed on a real case: the tool is used again if it
+  is efficient and fast (Q13, Q16).
+- Inventing realistic replacement names by hand is the tiresome part today.
+  The fake-name generator is a feature that will be noticed.
+- One person does this work and files move between machines by hand. No
+  sync, no accounts (Q1, Q9).
 
 ## The homograph rule for the settlement list
 
@@ -58,9 +57,9 @@ automatically: it is flagged for the user, never auto-replaced. The list stays a
 data file, not code, so a wrong entry is a one-line fix.
 
 **Superseded the next day.** The code no longer keeps this rule. On a private set
-real documents the one-word entries of the settlement list gave twelve wrong
-hits and no right ones (`docs/measurements.md`, "Two transcripts and a
-position paper"), so `findPlaces` in `engine/06-model.js` now uses only the
+of real documents the one-word entries of the settlement list gave only wrong
+hits and no right ones (`docs/measurements.md`, "Three more real
+documents"), so `findPlaces` in `engine/06-model.js` now uses only the
 entries of two words or more. A one-word locality from the settlement list is
 neither replaced nor flagged. A two-word one is flagged only when it is three
 letters or fewer or on the `AMBIG` list, and skipped inside the name of a
@@ -85,10 +84,10 @@ ambiguous one-word towns (`AMBIG`, three letters or fewer).
 7. **Real cleaned transcripts** (Q15): each becomes a benchmark document
    with its typos keyed; the near-miss sweep becomes measurable.
 8. **The trial** (Q14): after 1 to 5 are live, the user runs it; the log and
-   report decide the round after.
+   the user's report decide the round after.
 
 Items 1 to 5 are the trial's prerequisites and fit before the trial window
-up. 6 and 7 run alongside as the files arrive.
+closes. 6 and 7 run alongside as the files arrive.
 
 ## Loading measurement (live site, v17, fast office-grade connection)
 
@@ -100,7 +99,7 @@ up. 6 and 7 run alongside as the files arrive.
 | WASM runtime | 12.3 s | cached |
 | names on screen | 15.3 s | 5.9 s |
 
-Three things explain "loading is not working so good", none of them a
+Three things explain the reported loading problem, none of them a
 broken download:
 
 1. **Nothing is shown until the model finishes.** The deterministic layers

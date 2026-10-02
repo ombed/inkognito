@@ -1,7 +1,7 @@
 const { test, expect } = require("./base");
 const H = require("./helpers");
 
-/* Four complaints about the check screen, from a real session.
+/* Four complaints about the check screen, from real use.
 
    The manual add-a-replacement card was hard-coded below all five accordions
    and was the only card that could not be collapsed, so it sat about a screen
@@ -9,8 +9,7 @@ const H = require("./helpers");
 
    The audit bundle lived in the fifth and last section, collapsed, under a
    heading about what was cleaned from the file, inside a sub-box called
-   sending for review. Her words: if I searched and did not find it, she would
-   never find it.
+   sending for review: hard to find even when looking for it.
 
    And the bottom bar floated over the document and the rail, with the space
    left for it hardcoded in three places that nothing tied to its real height.

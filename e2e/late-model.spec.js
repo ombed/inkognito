@@ -1,7 +1,7 @@
 const { test, expect } = require("./base");
 const H = require("./helpers");
 
-/* The leak from a real session, reduced to its mechanism.
+/* A leak, reduced to its mechanism.
 
    The model found a name several times at full confidence, and the
    name left the tool anyway. The document was long, the model was still

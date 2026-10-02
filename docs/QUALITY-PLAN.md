@@ -46,10 +46,7 @@ A script reads the private fixtures and records only the shapes around each enti
 
 **Done.** Run `npm run shapes` on every new package. It reads each fixture in the private fixture folder and records only the shape of every keyed occurrence, never text. A guard refuses output with three Hebrew letters in a row, and the report stays beside the fixtures. It then harvests what our checks cover, from the corpus, tests/shape-lib.js and tests/structure-lib.js, and fails on any shape the fixtures have that we don't.
 
-The first run over the five private documents found 418 occurrences.
-- Every one sits in the body, in a single run, with no table, field, text box or separator. So the Word-structure work in 1b guards against files we haven't received yet, not against the private set.
-- Three shapes she does have were missing: a right-to-left embedding mark before a name (12 times), a bracket straight after one, and several prefix letters.
-- Adding them exposed a real gap: two prefix letters on a model span were never peeled.
+Results on the private set are not published. The first run found shapes the synthetic checks lacked (a right-to-left embedding mark before a name, a bracket straight after one, several prefix letters), and adding them exposed a real gap: two prefix letters on a model span were never peeled. The Word-structure work in 1b guards against files not yet received.
 
 tests/harvest_t.js checks the harvester itself. Its first run reported "all covered" while finding nothing.
 

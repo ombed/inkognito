@@ -16,7 +16,7 @@
    The same harvester then reads what our checks cover: the synthetic corpus
    (bench/corpus + bench/key.json), the typographic shapes (tests/shape-lib.js)
    and the Word structures (tests/structure-lib.js). A shape the private documents
-   and our checks don't is reported and fails the run.
+   have and our checks don't is reported and fails the run.
 
    Nothing here leaves the machine. The report is written next to the fixtures,
    and a guard refuses to print or write anything that holds three Hebrew

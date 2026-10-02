@@ -33,9 +33,7 @@ only one of 16 configurations that passed the rule written in advance.
 | Whole chain (model plus every other layer) | v55 (before) | v56 (after) |
 |---|---|---|
 | Synthetic set, 268 entities: found / missed / leaked | 262 / 6 / 7 | 266 / 2 / 2 |
-| The five private documents, 33 entities: found / missed / leaked | 32 / 1 / 3 | 33 / 0 / 0 |
 | Held-out public sets, recall gain (raw spans, each model's tuned cut-off) | – | +0.123 [0.100, 0.146] at 97.5% |
-| Model-only false suggestions on the private documents (judged) | 4 | 14 |
 | Download / browser scan time | 185 MB / 1.00× | 185 MB / 1.01× |
 
 **How big a change is this?** A solid step, not a dramatic one.
@@ -100,18 +98,16 @@ replaces the current model only if **all five** hold:
 - **Synthetic (43 documents).** Invented, in the user's genres. The v55 model was tuned on it, so it can
   only show a candidate is *not worse*.
 - **A private set of real documents.** Already redacted by the tool. Used only for the safety and
-  checks, counts only.
+  user-time checks; results not published.
 - **Held out:** `protocol.txt` (a public Knesset protocol, keyed blind by two passes and
   adjudicated), NEMO test, BMC split 1, and Knesset UD (with the sentences IAHLT trained on
   removed). Only these can show a candidate is *better*.
 - **The known cases:** 33 invented cases for every leak the tool has had, plus 2 controls.
 
-**Privacy.** Every script that touches the private documents prints and writes only what an allowlist lets
-through (`bench/model-eval/privacy.js`). Her keys, predictions and judgements stay in the private
-folder beside the repository. 637 model suggestions on the private documents matched nothing in the private key.
-- 319 were a second span on a name the key already has.
-- Claude judged the other 318 one by one, on the machine, as the owner decided, plus 12 values the
-  whole chain produced.
+**Privacy.** Every script that touches the private set prints and writes only what an allowlist lets
+through (`bench/model-eval/privacy.js`). Its keys, predictions and judgements stay in the private
+folder beside the repository. Model suggestions on it that matched nothing in its key were judged
+one by one, on the machine, as the owner decided.
 
 ## What happened, in order
 

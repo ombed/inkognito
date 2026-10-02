@@ -8,7 +8,7 @@
     "cases": 4,
     "passed": 2
    },
-   "leak-16.9": {
+   "leak-shape": {
     "cases": 20,
     "passed": 18
    },
@@ -32,8 +32,8 @@
   "failed": [
    "v39-glued-full-name",
    "v39-infinitive",
-   "leak169-14",
-   "leak169-19",
+   "leak-shape-14",
+   "leak-shape-19",
    "nikud-full-name",
    "latin-name",
    "latin-caps"
@@ -48,7 +48,7 @@
     "cases": 4,
     "passed": 2
    },
-   "leak-16.9": {
+   "leak-shape": {
     "cases": 20,
     "passed": 19
    },
@@ -72,7 +72,7 @@
   "failed": [
    "v39-glued-full-name",
    "v39-infinitive",
-   "leak169-14",
+   "leak-shape-14",
    "nikud-full-name",
    "latin-name",
    "latin-caps"
@@ -87,7 +87,7 @@
     "cases": 4,
     "passed": 3
    },
-   "leak-16.9": {
+   "leak-shape": {
     "cases": 20,
     "passed": 20
    },
@@ -124,7 +124,7 @@
     "cases": 4,
     "passed": 3
    },
-   "leak-16.9": {
+   "leak-shape": {
     "cases": 20,
     "passed": 20
    },
@@ -161,7 +161,7 @@
     "cases": 4,
     "passed": 3
    },
-   "leak-16.9": {
+   "leak-shape": {
     "cases": 20,
     "passed": 19
    },
@@ -184,7 +184,7 @@
   "controls": 1,
   "failed": [
    "v39-glued-full-name",
-   "leak169-14",
+   "leak-shape-14",
    "nikud-full-name",
    "latin-name",
    "latin-caps"
@@ -199,7 +199,7 @@
     "cases": 4,
     "passed": 3
    },
-   "leak-16.9": {
+   "leak-shape": {
     "cases": 20,
     "passed": 19
    },
@@ -222,7 +222,7 @@
   "controls": 1,
   "failed": [
    "v39-glued-full-name",
-   "leak169-14",
+   "leak-shape-14",
    "nikud-full-name",
    "latin-name",
    "latin-caps"
@@ -237,7 +237,7 @@
     "cases": 4,
     "passed": 3
    },
-   "leak-16.9": {
+   "leak-shape": {
     "cases": 20,
     "passed": 20
    },
@@ -273,7 +273,7 @@
     "cases": 4,
     "passed": 3
    },
-   "leak-16.9": {
+   "leak-shape": {
     "cases": 20,
     "passed": 20
    },
@@ -309,7 +309,7 @@
     "cases": 4,
     "passed": 3
    },
-   "leak-16.9": {
+   "leak-shape": {
     "cases": 20,
     "passed": 19
    },
@@ -332,7 +332,7 @@
   "controls": 0,
   "failed": [
    "v39-glued-full-name",
-   "leak169-14",
+   "leak-shape-14",
    "nikud-full-name",
    "latin-name",
    "latin-caps"
@@ -347,7 +347,7 @@
     "cases": 4,
     "passed": 3
    },
-   "leak-16.9": {
+   "leak-shape": {
     "cases": 20,
     "passed": 20
    },
@@ -383,7 +383,7 @@
     "cases": 4,
     "passed": 3
    },
-   "leak-16.9": {
+   "leak-shape": {
     "cases": 20,
     "passed": 20
    },
@@ -419,7 +419,7 @@
     "cases": 4,
     "passed": 3
    },
-   "leak-16.9": {
+   "leak-shape": {
     "cases": 20,
     "passed": 20
    },
@@ -455,7 +455,7 @@
     "cases": 4,
     "passed": 3
    },
-   "leak-16.9": {
+   "leak-shape": {
     "cases": 20,
     "passed": 20
    },
@@ -491,7 +491,7 @@
     "cases": 4,
     "passed": 2
    },
-   "leak-16.9": {
+   "leak-shape": {
     "cases": 20,
     "passed": 15
    },
@@ -513,13 +513,13 @@
   },
   "controls": 0,
   "failed": [
-   "r3-bank-pseudonym",
+   "bank-pseudonym",
    "v39-glued-full-name",
-   "leak169-02",
-   "leak169-06",
-   "leak169-14",
-   "leak169-15",
-   "leak169-19",
+   "leak-shape-02",
+   "leak-shape-06",
+   "leak-shape-14",
+   "leak-shape-15",
+   "leak-shape-19",
    "fp-verb-as-name",
    "nikud-first-name",
    "nikud-full-name",
@@ -536,7 +536,7 @@
     "cases": 4,
     "passed": 2
    },
-   "leak-16.9": {
+   "leak-shape": {
     "cases": 20,
     "passed": 18
    },
@@ -560,8 +560,8 @@
   "failed": [
    "v39-glued-full-name",
    "v39-infinitive",
-   "leak169-13",
-   "leak169-19",
+   "leak-shape-13",
+   "leak-shape-19",
    "nikud-full-name",
    "latin-name",
    "latin-caps"
@@ -576,7 +576,7 @@
     "cases": 4,
     "passed": 3
    },
-   "leak-16.9": {
+   "leak-shape": {
     "cases": 20,
     "passed": 19
    },
@@ -599,7 +599,7 @@
   "controls": 1,
   "failed": [
    "v39-glued-full-name",
-   "leak169-19",
+   "leak-shape-19",
    "nikud-full-name",
    "latin-name",
    "latin-caps"

@@ -70,7 +70,7 @@ reproduced here, got a test that fails on the old code, and was fixed in its own
 
 **Looked at and deliberately left.** A finishing re-run closes an inline editor opened while it ran
 (found by CI, not by the review). Logged real sessions show re-runs well under half a second and
-and no editor opened during one in 83 re-runs. Keeping the editor open would also leave its
+no editor opened during one. Keeping the editor open would also leave its preview stale. Not worth
 the risk before the next real session.
 
 ## Planned, in this order, after the next real session
@@ -79,7 +79,7 @@ Nothing here is disputed. The order is by what it protects.
 
 **Batch A — results on real documents.** What is left of it: M25 (the body scan fails open), the
 rest of H10 (VML WordArt text, `styles.xml` and `numbering.xml`, which the review rated contrived
-documents), and the suspicions about `restoreNames` on shifted dates and per-document placeholder
+for the real documents seen so far), and the suspicions about `restoreNames` on shifted dates and per-document placeholder
 counters.
 
 **Batch B — measurement.** What is left of it: M20 (the benchmark measures body text only), L19
@@ -122,8 +122,8 @@ known one (the benchmark's names are disjoint from the lists, so it shows as 3 l
 ## Decided by the owner on 2026-09-20
 
 - **Before the next real session:** everything that is tests or process, and small fixes to the
-  with a test that fails on the old code. Anything that touches detection leaves both benchmarks
-  unchanged. The last deploy lands by the evening of 2026-09-21; after that only a rollback, and
+  app with a test that fails on the old code. Anything that touches detection leaves both
+  benchmarks unchanged. The last deploy lands the evening before; after that only a rollback, and
   only for a blocker the user reports (`docs/ROLLBACK.md`).
 - **After it:** self-hosting the two libraries and a Content-Security-Policy (H14), the
   restructuring, accessibility, the documentation batch, and whether a failed verification

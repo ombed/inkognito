@@ -518,8 +518,7 @@ async function redactDocx(buf,subs,allow,opt){
       ...applied.map(r=>r.base||r.value),...applied.map(r=>r.baseRep||r.rep)];
     suggest=bodyNames(ORIG.filter(b=>!hiddenPart(b.part)),known)
       .filter(x=>!near.some(nm=>norm(nm.value).trim()===norm(x.value).trim()));
-    // בלי תקרה: ההצעות נחתכו בשתים-עשרה, והשם השלושה-עשר שלא ברשימה לא הוצע לה ונשאר בקובץ.
-    // על המסמכים האמיתיים שלה, בלי רשימה בכלל, הגבוה ביותר היה תשע (L12, הבדיקה של המשפחה)
+    // בלי תקרה: ההצעות נחתכו בשתים-עשרה, והשם השלושה-עשר שלא ברשימה לא הוצע ונשאר בקובץ (ביקורת L12).
   }catch(e){if(!e||!e.skip){console.warn("סריקת גוף הטקסט נכשלה",e);incomplete.push("body")}}
   ver.suggest=suggest;
   /* תווית בגרף או בתרשים עומדת לבדה, בלי משפט סביבה, ולכן סריקת הגוף — ששוקלת הקשר — אינה
@@ -584,7 +583,7 @@ function ctxHTML(t,s,e,w=55){
 
    מסך "מי בתיק" ומסך היישובים מבקשים החלטה על מילה בלי להראות אותה במסמך.
    כש«אזור» מופיע ברשימת המקומות, אי אפשר לדעת אם זו העיירה
-   שליד חולון או המילה הרגילה, כי שום דבר במסך לא בא מהמסמך. מסך הבדיקה כבר
+   שליד חולון או המילה הרגילה, כשאף דבר במסך לא בא מהמסמך. מסך הבדיקה כבר
    שומר בדיוק את ההקשר הזה ומציג אותו; כאן הוא נבנה גם לשני המסכים שלפניו.
 
    אותו גבול מילה ואותה אות שימוש ככללי ההחלפה, כדי שמה שנראה בדוגמה יהיה מה
@@ -646,7 +645,7 @@ function discover(blocks){
     const nxt=blocks[bi+1]&&trimEdges(blocks[bi+1].text||"");
     // הפיסוק נבדק על השורה הגולמית: trimEdges מסיר נקודה בסוף, ואז "לא." נראה
     // כמו "לא" — שורה בת מילה אחת בלי פיסוק, כלומר שורת דובר. על תמלול של שיחה
-    // עם ילדה זה נתן אחת-עשרה הצעות: "וואי", "אההה", "תגידי", "לא.".
+    // זה נותן הצעות כמו "וואי", "אההה", "תגידי", "לא.".
     if(!t||w.length>3||t.length>25||/[.,?!:;…]$/.test(rawLine))continue;
     if(!nxt||nxt.split(/\s+/).length<4)continue;
     const c=cleanName(t); if(!c||!anchorOK(c))continue;
@@ -743,7 +742,7 @@ const ORT_CDN="https://cdn.jsdelivr.net/npm/onnxruntime-web@"+ORT_V+"/dist/";
 const ORT_WASM={"ort-wasm-simd-threaded.asyncify":"ijj2sXOzrwSfS0ib7b4dolPO7XoXIPls3vYD8oNrZlw=",
   "ort-wasm-simd-threaded":"v3jjoRtGXpqh51bCDtQG3dbP8trXwt8NCNhytDbVTio="};
 /* המודל, במקום אחד (בדיקת המודלים, ספטמבר 2026): DictaBERT-parse, ראש הישויות
-   בלבד, מיוצא ל-ONNX ב-8 ביט. היחיד מבין תשעה מודלים שלא פתח אף דליפה חדשה בקורפוס ובמסמכים
+   בלבד, מיוצא ל-ONNX ב-8 ביט. היחיד מבין תשעה מודלים שלא פתח אף דליפה חדשה בקורפוס ובסט פרטי
    של מסמכים אמיתיים (התוצאות לא מפורסמות), וקורא טוב יותר בכל ארבעת הקבצים הציבוריים. הוא יושב באתר עצמו, models/<id>/, ולא
    ב-Hugging Face: העמוד לא פונה לשום אתר אחר כדי לטעון אותו. GitHub אינו מחזיק קובץ מעל
    100MB, ולכן המשקולות בארבעה חלקים (scripts/model-parts.js); nerJoinParts מחבר אותם, והקובץ
