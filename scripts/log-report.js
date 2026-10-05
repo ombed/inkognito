@@ -40,7 +40,7 @@ const srcName = (code) => (code || "-").split("").map((c) => SRC[c] || c).join("
 function report(log) {
   const ev = log.events || [], out = [];
   const by = (name) => ev.filter((e) => e.ev === name);
-  out.push(`paintItBlack ${log.v} · session of ${min(log.ms || 0)} min · ${ev.length} events`);
+  out.push(`InKognito ${log.v} · session of ${min(log.ms || 0)} min · ${ev.length} events`);
 
   // time per screen
   const scr = by("screen"); let last = 0, cur = "entry"; const t = {}, spans = [];
