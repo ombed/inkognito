@@ -1415,16 +1415,34 @@ class Component extends DCLogic {
     const f = e.dataTransfer && e.dataTransfer.files[0]; if(f) this.load(f); };
   onFile = e => { const f=e.target.files[0]; if(f) this.load(f); e.target.value=""; };
 
-  /* מסמך שנטען — Word, PDF, טקסט מודבק או המסמך לדוגמה — הוא המסמך הבא, גם כשהגיעו אליו בכפתורי
-     החזרה ולא ב«מסמך חדש» (בדיקה חיה, 6.10). עד כאן מסך ההחזרה של המסמך הבא החזיק את תשובת ה-AI של
-     הלקוח הקודם עם השמות האמיתיים שלו, וההחזרה קראה את המיפוי של המסמך הקודם: היישובים שלו והכינויים
-     שנשלחו ממנו חזרו כשמות האמיתיים של אותו לקוח. מה שהמסמך הקודם השאיר נמחק כאן בכל טעינה. תיק
-     שמחובר נשאר, ואיתו מה שהוא שומר (profileObj): הכללים, רשימת ההיתר, מי שהוסר והכינויים שנשלחו. */
-  nextDoc(){
-    const S=this.state, inCase=!!(S.profile||S.caseName);
-    this._undo=[]; this._redo=[];
-    return {res:null, rvIn:"", rvOut:"", rvCount:0, leaks:[], copied:false, undoN:0, redoN:0,
-      ...(inCase?{}:{rules:[], allow:[], removed:[], sent:{}})};
+  /* מה ששייך למסמך מתאפס כאן, ברשימה אחת, בכל דרך שבה מסמך אחד נגמר והבא מתחיל: «מסמך חדש», קובץ Word
+     או PDF, טקסט מודבק, המסמך לדוגמה, ופתיחת הסיור וסגירתו. מסמך שנטען הוא המסמך הבא גם כשהגיעו אליו
+     בכפתורי החזרה (בדיקה חיה, 6.10). עד כאן לכל דרך הייתה רשימה משלה: «מסמך חדש» איפס כחמישים מפתחות
+     והטעינה שמונה, והמסמך הבא מצא את האנשים, ההצעות, היישובים, ההחלטות והסריקה של הקודם — «מי בתיק»
+     הראה את אנשי המסמך הקודם, ו«המשך» החיל אותם על הבא (הביקורת של 6.10). tests/state_t.js קורא את
+     הרשימה הזאת ואת מה שכל דרך מוסיפה עליה, ונכשל על מפתח של מסמך שנשאר מחוצה לה.
+     keepCase: תיק שנשאר מחובר שומר את מה שהתיק עצמו שומר (profileObj) — הכללים, רשימת ההיתר, מי
+     שהוסר והכינויים שנשלחו — כך שאותו אדם מקבל אותו כינוי במסמך הבא בתיק. «מסמך חדש» מנתק את התיק (C3). */
+  docReset(keepCase){
+    const S=this.state;
+    this._undo=[]; this._redo=[]; this._modelFound=null; this._lastScan=null; this._scannedBuf=null;
+    // סריקה של המסמך הקודם שעוד רצה ברקע (אחרי «לא לחכות למודל») נגמרת איתו: התשובה שלה נכתבה לכללים של הבא
+    this._scan=(this._scan||0)+1; this._goneAhead=null;
+    const reset={screen:"entry", err:"", fileErr:"", name:"", buf:null, origBlocks:[], pending:false, pendMeta:"", nerAsk:false, pasteText:"",
+      // מי בתיק
+      cands:[], peo:[], peoSug:[], peoKept:[], peoNotSame:[], peoIn:"", peoNote:"", nerUsed:false, sugAsk:false, trimPeo:null,
+      scanning:false, nerBox:false, nerFailed:false, nerStall:false,
+      // מקומות
+      geo:null, geoV:0, geoNames:[], geoExtra:[], geoEdits:{}, geoExcluded:[],
+      // מסך הבדיקה
+      res:null, sel:null, hot:null, query:"", cat:"", filter:"all", addV:"", addR:"", addK:"NAME", inline:null, inlineDraft:"", popup:null, tip:null,
+      repDraft:"", approved:[], formSel:null, markIdx:0, docView:"red", exportAsk:"", notice:"", leaks:[], copied:false, copyLabel:"העתקה ל-AI", undoN:0, redoN:0,
+      // החזרת שמות
+      rvIn:"", rvOut:"", rvCount:0,
+      // מה שהתיק שומר (profileObj)
+      rules:[], allow:[], removed:[], sent:{}};
+    if(keepCase&&(S.profile||S.caseName)) for(const k of ["rules","allow","removed","sent"]) delete reset[k];
+    return reset;
   }
 
   async load(f){
@@ -1445,7 +1463,7 @@ class Component extends DCLogic {
     if(!chars) return bad("במסמך אין טקסט לקריאה. אם זה סריקה או תמונה, צריך קודם להמיר אותו לטקסט.", "empty");
     const size = chars>=1000 ? `כ-${(chars/1000).toFixed(1)} אלף תווים` : `${chars} תווים`;
     const meta=`${blocks.length===1?"פסקה אחת":blocks.length+" פסקאות"} · ${size} · ${Math.round(f.size/1024)} KB`;
-    this.setState({...this.nextDoc(), origBlocks:blocks.map(b=>({part:b.part, text:b.text})), err:"", fileErr:"", nerAsk:false, name:f.name, buf, pending:true, pendMeta:meta});
+    this.setState({...this.docReset(true), origBlocks:blocks.map(b=>({part:b.part, text:b.text})), err:"", fileErr:"", nerAsk:false, name:f.name, buf, pending:true, pendMeta:meta});
   }
 
   async loadPdf(raw, f){
@@ -1460,7 +1478,7 @@ class Component extends DCLogic {
       const {textToDocx} = await import("./text-to-docx.js");
       const buf = await textToDocx(text);
       const blocks = await this.blocksOf(buf);
-      this.setState({...this.nextDoc(), screen:"entry", buf, name:f.name, pending:true, nerAsk:false, fileErr:"", err:"",
+      this.setState({...this.docReset(true), screen:"entry", buf, name:f.name, pending:true, nerAsk:false, fileErr:"", err:"",
         origBlocks:blocks.map(b=>({part:b.part, text:b.text})),
         pendMeta:`${pages===1?"עמוד אחד":pages+" עמודים"} · ${blocks.length} פסקאות · טקסט חולץ מ-PDF`});
       // עמוד שהוא תמונה בתוך PDF של טקסט (עמוד חתום שנסרק): מה שכתוב בו לא נקרא ולא יוחלף
@@ -1542,7 +1560,8 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
       const buf = await textToDocx(txt);
       const blocks = await this.blocksOf(buf);
       const chars = txt.length;
-      this.setState({...this.nextDoc(), err:"", buf, name:"טקסט שהודבק", pending:true, nerAsk:false,
+      // הטקסט שבתיבה הוא המסמך הזה, ונשאר בה; טקסט של מסמך קודם נמחק עם כל השאר
+      this.setState({...this.docReset(true), pasteText:this.state.pasteText, err:"", buf, name:"טקסט שהודבק", pending:true, nerAsk:false,
         origBlocks:blocks.map(b=>({part:b.part, text:b.text})),
         pendMeta:`${blocks.length===1?"פסקה אחת":blocks.length+" פסקאות"} · ${chars>=1000?`כ-${(chars/1000).toFixed(1)} אלף תווים`:chars+" תווים"} · טקסט מודבק`});
     }catch(e){ this.setState({err:"הכנת הטקסט נכשלה: "+(e.message||e)}); }
@@ -1774,6 +1793,10 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
       list.push({value:r.value, kind:r.kind, note:"נוסף במסך הבדיקה", auto:!!r.auto, g:r.g||null, sameAs:r.sameAs||undefined});
     this.setState({screen:"people", err:"", peo:list, peoKept:kept});
   }
+  /* צעד בכותרת מוביל לרשימה של המסמך הזה. מסמך שעוד לא נסרק — גם כשהגיעו אליו בכפתורי החזרה, אחרי מסמך
+     שכבר עבר את כל הדרך — נסרק קודם, כמו ב«המשך — איתור שמות במסמך». עד כאן «מי בתיק» הראה את מה שהיה
+     ברשימה, ו«מקומות» המשיך בלי רשימה, והשמות של המסמך נשארו בטקסט (הביקורת של 6.10) */
+  unscanned(){ const S=this.state; return !!S.buf&&!!S.o.auto&&this._scannedBuf!==S.buf; }
   peoAddAll(){
     const open=this.openSugs(); if(!open.length) return;
     this.log.add("add-all",{n:open.length});
@@ -2824,7 +2847,8 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     this.log.add("tour",{at:"start"});
     this._tourNer=this.state.o.ner;
     // hadPlaces: null עד שיודעים — כך המונה מראה שבעה צעדים מההתחלה ולא קופץ
-    this.setState({intro:false, tour:{i:0, hadPlaces:null}, tourSpot:null, o:{...this.state.o, ner:false}, buf:null, res:null, rules:[], peo:[], peoSug:[], allow:[], pending:false, screen:"entry", err:""});
+    // הסיור מתחיל ממסמך ריק: מה שהמסמך הקודם השאיר מתאפס כמו בכל מעבר בין מסמכים (docReset)
+    this.setState({...this.docReset(false), intro:false, tour:{i:0, hadPlaces:null}, tourSpot:null, o:{...this.state.o, ner:false}});
     this._spotKey=null;
     this._onSpot=()=>{ if(this.state.tour) this.tourMeasure(); };
     window.addEventListener("resize", this._onSpot); window.addEventListener("scroll", this._onSpot, true);
@@ -2905,7 +2929,8 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     if(this._spotRO){ this._spotRO.disconnect(); this._spotRO=null; this._spotEl=null; }
     // שם תיק שהוקלד בסיור הוא חלק מהמסמך הבדוי (M1 בביקורת השנייה): הוא לא עובר למסמך
     // הבא, ולא נשמר כתיק — הסיור מבטיח ששום דבר ממנו לא נשמר
-    this.setState({tour:null, tourSpot:null, o, buf:null, res:null, rules:[], peo:[], peoSug:[], allow:[], geo:null, geoNames:[], geoExtra:[], pending:false, screen:"entry", err:"", copied:false,
+    // והמסמך הבדוי נמחק כולו, באותה רשימה שמאפסת כל מסמך (docReset): עד כאן נשארו ממנו ההחלטות, הטקסט והסריקה
+    this.setState({...this.docReset(false), tour:null, tourSpot:null, o,
       caseName:"", profile:null, profileDirty:false});
   };
   tourNext = async () => {
@@ -2918,7 +2943,7 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
         const {textToDocx} = await import("./text-to-docx.js");
         const buf = await textToDocx(this.constructor.SAMPLE);
         const blocks = await this.blocksOf(buf);
-        this.setState({...this.nextDoc(), buf, name:"מסמך לדוגמה", origBlocks:blocks.map(b=>({part:b.part, text:b.text})), pending:false});
+        this.setState({...this.docReset(true), buf, name:"מסמך לדוגמה", origBlocks:blocks.map(b=>({part:b.part, text:b.text})), pending:false});
         // הצעד מתקדם רק אחרי שהסריקה נגמרה: באתר החי הלוח הראה "מי בתיק" בזמן
         // שהרשימה עוד הייתה ריקה, ו"המשך" המשיך בלי אף שם — והמסמך יצא לא מושחר
         await this.scanNames();
@@ -3326,8 +3351,8 @@ const KIND_NAME={NAME:"אדם", ORG:"גוף", PLACE:"מקום"};
       // בלי מסמך אין לאן ללכת: מושבתים באמת, לא רק בצבע חיוור (ראו header nav button:disabled)
       step2Off:!S.buf, step3Off:!S.buf,
       goStep1:()=>this.setState({screen:"entry", pending:!!S.buf, err:""}),
-      goStep2:()=>this.showList(),
-      goStep3:()=>{ if(S.buf) this.toPlaces(S.rules); },
+      goStep2:()=>{ if(this.unscanned()) this.start(); else this.showList(); },
+      goStep3:()=>{ if(!S.buf) return; if(this.unscanned()) this.start(); else this.toPlaces(S.rules); },
       showBack:S.screen!=="entry",
       backLabel:backOf(S.screen, S.returnTo).label,
       onBack:()=>{ const b=backOf(S.screen, S.returnTo); if(b.to==="people"){ this.showList(); return; } this.setState({screen:b.to, pending:b.to==="entry"?!!S.buf:false, err:""}); },
@@ -3593,17 +3618,12 @@ const KIND_NAME={NAME:"אדם", ORG:"גוף", PLACE:"מקום"};
            הפרופיל", כמו אחרי טעינה מחדש. */
         let lastProfile=null;
         try{ const j=localStorage.getItem("redact-profile-last"); const p=j&&JSON.parse(j); if(p&&p.v===1&&!p.name&&(p.rules||[]).length) lastProfile=p; }catch(_){}
-        this.setState({screen:"entry", res:null, err:"", fileErr:"", name:"", buf:null, pending:false,
-          pasteText:"", query:"", cat:"", filter:"all", addV:"", addR:"", sel:null, inline:null, popup:null,
-          notice:"", copied:false, copyLabel:"העתקה ל-AI", sugAsk:false, casesHidden:false, peo:[], peoSug:[], peoKept:[],
-          caseName:"", profile:null, rules:[], allow:[], profileDirty:false, approved:[], undoN:0, redoN:0, lastProfile, cases:this.readCases(),
-          // כל מה ששייך למסמך ולא לסשן מתאפס כאן (ביקורת H1): דוח הדליפה של לקוח אחד יצא בחבילה של הבא,
-          // ותשובת ה-AI עם השמות האמיתיים שלו חיכתה במסך ההחזרה. tests/state_t.js בודק שכל מפתח ב-state
-          // מתאפס כאן או רשום שם כשייך לסשן.
-          origBlocks:[], removed:[], leaks:[], rvIn:"", rvOut:"", cands:[], nerUsed:false, peoIn:"", peoNote:"", hot:null, addK:"NAME",
-          geo:null, geoV:0, geoNames:[], geoExtra:[], geoEdits:{}, tip:null, repDraft:"", sent:{}, peoNotSame:[], inlineDraft:""},
+        /* כל מה ששייך למסמך ולא לסשן מתאפס ב-docReset, באותה רשימה שמאפסת כל מסמך שנטען (ביקורת H1: דוח הדליפה
+           של לקוח אחד יצא בחבילה של הבא, ותשובת ה-AI עם השמות האמיתיים שלו חיכתה במסך ההחזרה). כאן נוסף רק
+           ניתוק התיק. tests/state_t.js בודק שכל מפתח ב-state מתאפס שם, רשום שם כשייך ל«מסמך חדש» בלבד, או
+           רשום כשייך לסשן. */
+        this.setState({...this.docReset(false), caseName:"", profile:null, profileDirty:false, casesHidden:false, lastProfile, cases:this.readCases()},
           ()=>{ try{ scrollTo(0,0); }catch(_){} });
-        this._undo=[]; this._redo=[]; this._modelFound=null; this._lastScan=null;
         this.log.add("new-doc",{}); },
       tip:!!S.tip, tipLabel:S.tip?S.tip.label:"", tipItems:S.tip?S.tip.items:[],
       tipMore:S.tip&&S.tip.items.length>=3?"שלוש הראשונות":"",
