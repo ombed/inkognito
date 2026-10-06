@@ -208,24 +208,33 @@ test("with an account suffix the import adds to the account's cases only", async
   await expect(page.locator(`[data-case="${PLAIN_CASE.name}"]`)).toHaveCount(0);
 });
 
-/* "Clear this computer" (modelForget, in the settings: «מחיקת המודל והקבצים השמורים מהמחשב») removes the
-   saved cases of every account on the computer too: the plain keys and every key that is one of them
-   followed by ":". The display keys and anything else stay. */
-test("clearing the tool from the computer removes every saved case on it, of every account, and keeps the display settings", async ({ page }) => {
+/* Deleting the model (modelForget, under the local-model setting: «מחיקת המודל והקבצים השמורים מהמחשב»)
+   deletes the model and the tool's cached files, and nothing else. Its label and its notice speak of the
+   model only, it asks nothing, and she would press it to free 185 MB; 8b54f7d had made it delete every
+   saved case of every account on the computer as well (the independent review of 6.10). Every case key of
+   every account stays, and a case in use stays in use. */
+test("deleting the model keeps every saved case of every account on the computer, and the case in use", async ({ page }) => {
   await H.serveEngineWithStub(page);
   await page.addInitScript(() => { window.__ner = { env: { local: false, canCache: true, canRun: true }, cached: true }; });
   await seed(page, { "redact-cases": { [PLAIN_CASE.name]: PLAIN_CASE }, "redact-profile-last": PLAIN_LAST,
     "redact-cases:acct-1": { [ACCOUNT_CASE.name]: ACCOUNT_CASE }, "redact-profile-last:acct-1": PLAIN_LAST, "redact-profile-last:acct-2": PLAIN_LAST,
     "redact-theme": "light", "redact-cases-notes": "kept", "another-tool": "kept" });
   await H.boot(page);
-  await expect(page.locator(`[data-case="${PLAIN_CASE.name}"]`)).toBeVisible();
+  const before = await store(page);
+  expect(Object.keys(before)).toEqual(["redact-cases", "redact-cases:acct-1", "redact-profile-last", "redact-profile-last:acct-1", "redact-profile-last:acct-2"]);
+  await page.locator(`[data-case="${PLAIN_CASE.name}"]`).getByRole("button", { name: "שימוש בתיק הזה" }).click();
+  await expect(page.locator("[data-case-chip]")).toContainText("תיק: " + PLAIN_CASE.name);
   const settings = page.locator("[data-settings-toggle]");
   if ((await settings.getAttribute("aria-expanded")) !== "true") await settings.click();
   await page.locator("[data-model-forget]").click();
   await expect(notice(page)).toContainText("המודל והקבצים השמורים נמחקו מהמחשב");
-  expect(await store(page)).toEqual({});
+  expect(await store(page)).toEqual(before);
   expect(await page.evaluate(() => ["redact-theme", "redact-intro-seen", "redact-tour-seen", "redact-cases-notes", "another-tool"].map((k) => localStorage.getItem(k))))
     .toEqual(["light", "1", "*", "kept", "kept"]);
-  await expect(page.locator("[data-case]")).toHaveCount(0);
-  await expect(page.getByText(LAST_CARD)).toHaveCount(0);
+  await expect(page.locator("[data-case-chip]")).toContainText("תיק: " + PLAIN_CASE.name);
+  // and the next visit offers them as before
+  await page.reload();
+  await expect(page.locator(`[data-case="${PLAIN_CASE.name}"]`)).toBeVisible({ timeout: 60000 });
+  await expect(page.getByText(LAST_CARD)).toBeVisible();
+  expect(await store(page)).toEqual(before);
 });
