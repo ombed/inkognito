@@ -97,5 +97,25 @@ ok(r.text.includes("האלמוג"),"word-like fake surname is never restored on 
 r=C.restoreNames("כהן הגיע.",[["דוד לוי","יוסי כהן"],["רות מור","דנה כהן"]]);
 ok(!r.text.includes("לוי")&&!r.text.includes("מור"),"shared surname is never guessed: "+r.text);
 
+// the tool's own sample document (invented names) and the pseudonyms it gave them, as on the live tool, 6.10
+const SAMPLE_MAP=[["נועה שרעבי","אירינה אשכנזי"],["מיכל שרעבי","אביבה ביטון"],["חולון","הרצליה"],["אורן שרעבי","אלירן כהן"],
+  ["רמת גן","כפר סבא"],["לודמילה כץ","רחל לוי"],["11.2.2026","16.11.2026"]];
+const back=t=>C.restoreNames(t,SAMPLE_MAP).text;
+
+console.log("\n— restoreNames: every prefix Hebrew puts before a name —");
+// live check, 6.10: «שלאביבה ביטון» came back as «שלאביבה שרעבי», a person who does not exist
+eq(back("Sure! Here is a short summary:\nאביבה ביטון היא האם.\nשלאביבה ביטון אין התנגדות, ואלירן כהן הוא האב."),
+  "Sure! Here is a short summary:\nמיכל שרעבי היא האם.\nשלמיכל שרעבי אין התנגדות, ואורן שרעבי הוא האב.","the live check's answer comes back whole");
+for(const p of ["ו","ה","ב","כ","ל","מ","ש","וב","וה","ול","ומ","וכ","כש","מה","לכ",
+  "של","וש","וכש","מש","שב","שמ","שכ","שה","ומה","לכש","ושה","ושל","ושב","כשה","כשל","ולכש","ומש","שמה","ל-","ב־","של-"])
+  eq(back(p+"אביבה ביטון אמרה כך."),p+"מיכל שרעבי אמרה כך.","prefix «"+p+"» before a full pseudonym");
+eq(back("ובשלאירינה אשכנזי."),"ובשלאירינה אשכנזי.","letters no prefix explains: the whole pseudonym stays, never half of it");
+eq(back("הדירה של אלירן כהןים"),"הדירה של אלירן כהןים","a suffix on the surname: the first name is not restored alone beside it");
+eq(back("ביטון אמרה כך, ומיכל שרעבי לא."),"שרעבי אמרה כך, ומיכל שרעבי לא.","where the full pseudonym is not there, the surname alone still comes back");
+eq(back("אביבה ביטון ואלירן כהן"),"מיכל שרעבי ואורן שרעבי","two people side by side");
+r=C.restoreNames("אבי ברקוביץ ויוסי מזרחי",[["דוד מזרחי","אבי ברקוביץ"],["משה ברקוביץ","יוסי מזרחי"]]);
+eq(r.text,"דוד מזרחי ומשה ברקוביץ","a restored real name is never read again as someone's pseudonym");
+eq(r.count,2,"and counted once each");
+
 console.log(`\n${pass} passed, ${fail} failed\n`);
 process.exit(fail?1:0);

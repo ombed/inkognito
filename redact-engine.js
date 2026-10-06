@@ -3293,15 +3293,30 @@ function cleanEntry(raw){
   return {v:trimEdges(v),note,kind};
 }
 
-function pseudoRX(p){
-  const pat=[...p].map(c=>/['\u05f3\u2019]/.test(c)?"['\u05f3\u2019]"
+/* אותיות השימוש שה-AI מדביק לפני כינוי, בסדר שהעברית מרשה: ו, אחריה ש/כש/מש/לכש, אחריהן
+   ב/ל/כ/מ, ובסוף ה — "ושלאביבה", "לכשאביבה", "ומהאביבה". עד כאן נקראו רק אות אחת, ו+אות,
+   כש, מה ולכ, ו"שלאביבה ביטון" לא חזר (בדיקה בכלי החי, 6.10). "לכ" נשאר מהרשימה ההיא. */
+const PRE_SEQ=(()=>{
+  const o=new Set(["לכ"]);
+  for(const w of ["","ו"])for(const s of ["","ש","כש","מש","לכש"])for(const p of ["","ב","ל","כ","מ"])
+    for(const h of ["","ה"])if(w+s+p+h)o.add(w+s+p+h);
+  return [...o].sort((a,b)=>b.length-a.length);
+})();
+// אחרי ב/ל/כ ה' הידיעה נבלעת ("בגפן" ל"הגפן"): כל רצף שמסתיים באחת מהן, ו"כש" מהרשימה הקודמת
+const PRE_MERGED=PRE_SEQ.filter(x=>/[בלכ]$/.test(x)).concat("כש");
+// גוף התבנית של כינוי, בלי הגבולות: כל צורה של גרש וגרשיים, וכל רצף של רווח או מקף בין המילים
+function pseudoPat(p){
+  return [...p].map(c=>/['\u05f3\u2019]/.test(c)?"['\u05f3\u2019]"
     :/["\u05f4\u201d]/.test(c)?'["\u05f4\u201d]'
     :/[-\u05be\u2013\s]/.test(c)?"[-\\u05be\\u2013\\s]+":esc(c)).join("");
+}
+function pseudoRX(p){
+  const pat=pseudoPat(p);
   /* גבול המילה הוא אות או ניקוד, לא כל הטווח העברי: ״ ו-׳ ו-־ (מקף) יושבים בטווח,
      ולכן כינוי בגרשיים ("״מיכל ברנע״") או אחרי מקף ("ל־מיכל") לא הוחזר — אותו סוג
      של באג כמו השם במירכאות ב-v41 (שכבה 1ב). אות שימוש יכולה לבוא עם מקף, והמקף
      נשאר איתה. */
-  const L="\u0591-\u05bd\u05bf-\u05c7\u05d0-\u05ea", PRE="(?:[בהולמכש]|ו[בהלמכ]|כש|מה|לכ)";
+  const L="\u0591-\u05bd\u05bf-\u05c7\u05d0-\u05ea", PRE="(?:"+PRE_SEQ.join("|")+")";
   /* בצד שבו הכינוי מסתיים בספרה או באות לטינית, גם ספרה ואות לטינית הן חלק מהמילה: תאריך
      מוזז "19.7.2020" שחזר שכתב גם את פנים "119.7.20201", ומספר זהות את פנים מספר ארוך ממנו
      (ביקורת, חשד שאומת). בצד של אות עברית ספרה נשארת גבול: "ברנע2" הוא שם עם הערת שוליים. */
@@ -3310,7 +3325,7 @@ function pseudoRX(p){
   // כינוי שמתחיל ב-ה ("הגפן") נכתב במסמך בלי ה אחרי ב/ל/כ ("בגפן", "לגפן"):
   // כך addPre כותב אותו, וכך ה-AI מעתיק אותו. הקבוצה השנייה תופסת את הצורה הזאת.
   if(p[0]==="ה"&&p.length>2)
-    return new RegExp("(?<!["+LB+"])(?:("+PRE+"[-\u05be]?)?ה|((?:[בלכ]|ו[בלכ]|כש)[-\u05be]?))"+
+    return new RegExp("(?<!["+LB+"])(?:("+PRE+"[-\u05be]?)?ה|((?:"+PRE_MERGED.join("|")+")[-\u05be]?))"+
       pat.slice(esc("ה").length)+"(?!["+LA+"])","gu");
   return new RegExp("(?<!["+LB+"])("+PRE+"[-\u05be]?)?"+pat+
     "(?!["+LA+"])","gu");
@@ -3338,15 +3353,33 @@ function restoreNames(txt,pairs){
     }
   }
   for(const k of bad)partial.delete(k);
-  const order=[...seen.entries()].sort((a,b)=>b[0].length-a[0].length)
-    .concat([...partial.entries()].sort((a,b)=>b[0].length-a[0].length));
-  let out=txt,n=0;const missing=[];
-  for(const [pseudo,real] of order){
+  const longFirst=m=>[...m.entries()].sort((a,b)=>b[0].length-a[0].length);
+  /* כל החזרה היא קטע של הטקסט שהודבק, וקטע שכבר נלקח לא נלקח שוב. עד כאן כל כינוי הוחלף
+     בטקסט שכבר השתנה: חלק של שם נמצא בתוך שם אמיתי שחזר רגע קודם, ושם המשפחה לבד הוחלף
+     בתוך שם מלא שלא נתפס ("שלאביבה ביטון" חזר כ"שלאביבה שרעבי", אדם שאינו קיים — בדיקה
+     בכלי החי, 6.10). */
+  const took=[], held=[];
+  const free=(s,e,also)=>![took,also||[]].some(l=>l.some(t=>t[0]<e&&s<t[1]));
+  let n=0;const missing=[];
+  const run=(pseudo,real,also)=>{
     let hit=0;
-    out=out.replace(pseudoRX(pseudo),(m,pre,pre2)=>{hit++;return (pre||(typeof pre2==="string"?pre2:"")||"")+real});
+    for(const m of txt.matchAll(pseudoRX(pseudo))){
+      const s=m.index,e=s+m[0].length;
+      if(!free(s,e,also))continue;
+      took.push([s,e,(m[1]||(typeof m[2]==="string"?m[2]:"")||"")+real]);hit++;
+    }
     if(hit)n+=hit; else if(seen.has(pseudo))missing.push(pseudo);
+  };
+  for(const [pseudo,real] of longFirst(seen))run(pseudo,real);
+  // שם מלא שנמצא בטקסט ולא נלקח — דבוק לאותיות שאינן אותיות שימוש, או עם סיומת — שומר על החלקים שלו
+  for(const [,pseudo] of pairs){
+    const p=typeof pseudo==="string"?pseudo.trim():"";
+    if(/\s/.test(p))for(const m of txt.matchAll(new RegExp(pseudoPat(p),"gu")))held.push([m.index,m.index+m[0].length]);
   }
-  return {text:out,count:n,missing,conflict:[...conflict]};
+  for(const [pseudo,real] of longFirst(partial))run(pseudo,real,held);
+  let out="",at=0;
+  for(const [s,e,t] of took.sort((a,b)=>a[0]-b[0])){out+=txt.slice(at,s)+t;at=e}
+  return {text:out+txt.slice(at),count:n,missing,conflict:[...conflict]};
 }
 /* זוגות ההחזרה במסך ההחזרה: המסמך שבעבודה קודם, והתיק משלים שמות ממסמכים קודמים.
    תווית ("פלוני א׳", "[ת"ז א׳]") נספרת מחדש בכל מסמך, ולכן אותה תווית יכולה להיות של
