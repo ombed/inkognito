@@ -24,7 +24,7 @@ deploys, which have their own process.
 
 Every version of the tool that was published here before the move has a tag,
 `live/vNN`, put there by the `pages` workflow after it confirmed the live page
-reported that version; the last is `live/v61`. Those tags have no
+reported that version; the last is `live/v62`. Those tags have no
 `scripts/build-forward.js`, so publishing one again builds and publishes the tool
 from it, exactly as before the move. That is a rollback.
 
@@ -43,12 +43,12 @@ Roll back first, diagnose second.
 
 ```
 git ls-remote --tags origin "refs/tags/live/*"      # what can be published
-gh workflow run pages.yml -f ref=live/v61            # publish that version of the tool
+gh workflow run pages.yml -f ref=live/v62            # publish that version of the tool
 gh run watch                                         # build, deploy, verify
 ```
 
 The run builds the site from the tag, runs the browser checks against it, deploys
-it, and then fails unless the live page and the service worker both report `v61`.
+it, and then fails unless the live page and the service worker both report `v62`.
 
 To serve the forward again, publish main: `gh workflow run pages.yml` with no
 `ref`, or let the next push to main do it. That run checks the live address as
