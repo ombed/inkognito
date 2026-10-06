@@ -1415,6 +1415,18 @@ class Component extends DCLogic {
     const f = e.dataTransfer && e.dataTransfer.files[0]; if(f) this.load(f); };
   onFile = e => { const f=e.target.files[0]; if(f) this.load(f); e.target.value=""; };
 
+  /* מסמך שנטען — Word, PDF, טקסט מודבק או המסמך לדוגמה — הוא המסמך הבא, גם כשהגיעו אליו בכפתורי
+     החזרה ולא ב«מסמך חדש» (בדיקה חיה, 6.10). עד כאן מסך ההחזרה של המסמך הבא החזיק את תשובת ה-AI של
+     הלקוח הקודם עם השמות האמיתיים שלו, וההחזרה קראה את המיפוי של המסמך הקודם: היישובים שלו והכינויים
+     שנשלחו ממנו חזרו כשמות האמיתיים של אותו לקוח. מה שהמסמך הקודם השאיר נמחק כאן בכל טעינה. תיק
+     שמחובר נשאר, ואיתו מה שהוא שומר (profileObj): הכללים, רשימת ההיתר, מי שהוסר והכינויים שנשלחו. */
+  nextDoc(){
+    const S=this.state, inCase=!!(S.profile||S.caseName);
+    this._undo=[]; this._redo=[];
+    return {res:null, rvIn:"", rvOut:"", rvCount:0, leaks:[], copied:false, undoN:0, redoN:0,
+      ...(inCase?{}:{rules:[], allow:[], removed:[], sent:{}})};
+  }
+
   async load(f){
     /* קובץ שנבחר לפני שהמנוע סיים להיטען נשמר ונקרא כשהוא מגיע. עד כאן load חזר בשקט, ובקו
        איטי קובץ שנבחר מיד אחרי פתיחת הדף פשוט לא עשה דבר (נמצא ב-CI של אצוות הביקורת) */
@@ -1433,7 +1445,7 @@ class Component extends DCLogic {
     if(!chars) return bad("במסמך אין טקסט לקריאה. אם זה סריקה או תמונה, צריך קודם להמיר אותו לטקסט.", "empty");
     const size = chars>=1000 ? `כ-${(chars/1000).toFixed(1)} אלף תווים` : `${chars} תווים`;
     const meta=`${blocks.length===1?"פסקה אחת":blocks.length+" פסקאות"} · ${size} · ${Math.round(f.size/1024)} KB`;
-    this.setState({origBlocks:blocks.map(b=>({part:b.part, text:b.text})), err:"", fileErr:"", nerAsk:false, name:f.name, buf, pending:true, pendMeta:meta});
+    this.setState({...this.nextDoc(), origBlocks:blocks.map(b=>({part:b.part, text:b.text})), err:"", fileErr:"", nerAsk:false, name:f.name, buf, pending:true, pendMeta:meta});
   }
 
   async loadPdf(raw, f){
@@ -1448,7 +1460,7 @@ class Component extends DCLogic {
       const {textToDocx} = await import("./text-to-docx.js");
       const buf = await textToDocx(text);
       const blocks = await this.blocksOf(buf);
-      this.setState({screen:"entry", buf, name:f.name, pending:true, nerAsk:false, fileErr:"", err:"",
+      this.setState({...this.nextDoc(), screen:"entry", buf, name:f.name, pending:true, nerAsk:false, fileErr:"", err:"",
         origBlocks:blocks.map(b=>({part:b.part, text:b.text})),
         pendMeta:`${pages===1?"עמוד אחד":pages+" עמודים"} · ${blocks.length} פסקאות · טקסט חולץ מ-PDF`});
       // עמוד שהוא תמונה בתוך PDF של טקסט (עמוד חתום שנסרק): מה שכתוב בו לא נקרא ולא יוחלף
@@ -1530,7 +1542,7 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
       const buf = await textToDocx(txt);
       const blocks = await this.blocksOf(buf);
       const chars = txt.length;
-      this.setState({err:"", buf, name:"טקסט שהודבק", pending:true, nerAsk:false,
+      this.setState({...this.nextDoc(), err:"", buf, name:"טקסט שהודבק", pending:true, nerAsk:false,
         origBlocks:blocks.map(b=>({part:b.part, text:b.text})),
         pendMeta:`${blocks.length===1?"פסקה אחת":blocks.length+" פסקאות"} · ${chars>=1000?`כ-${(chars/1000).toFixed(1)} אלף תווים`:chars+" תווים"} · טקסט מודבק`});
     }catch(e){ this.setState({err:"הכנת הטקסט נכשלה: "+(e.message||e)}); }
@@ -2906,7 +2918,7 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
         const {textToDocx} = await import("./text-to-docx.js");
         const buf = await textToDocx(this.constructor.SAMPLE);
         const blocks = await this.blocksOf(buf);
-        this.setState({buf, name:"מסמך לדוגמה", origBlocks:blocks.map(b=>({part:b.part, text:b.text})), pending:false});
+        this.setState({...this.nextDoc(), buf, name:"מסמך לדוגמה", origBlocks:blocks.map(b=>({part:b.part, text:b.text})), pending:false});
         // הצעד מתקדם רק אחרי שהסריקה נגמרה: באתר החי הלוח הראה "מי בתיק" בזמן
         // שהרשימה עוד הייתה ריקה, ו"המשך" המשיך בלי אף שם — והמסמך יצא לא מושחר
         await this.scanNames();
