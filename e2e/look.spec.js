@@ -154,6 +154,29 @@ test("an empty text box shows its Hebrew hint right to left, and typed text keep
   expect(found.filter((x) => !x.endsWith(": rtl"))).toEqual([]);
 });
 
+/* Everything the first screen needs waited for the engine (redact-engine.js, about 270KB): until it arrived a
+   phone showed the computer's layout, the header's description line and the detection settings open, and a
+   night page the day's moon, for up to two seconds on a slow line (found live on v60). The engine still
+   loads first, but the page no longer waits for it to lay itself out */
+test("on a phone the first screen is the phone's, by night the night's, while the engine is on its way", async ({ page }) => {
+  await page.setViewportSize(PHONE);
+  await page.emulateMedia({ colorScheme: "dark" });
+  let release;
+  const held = new Promise((r) => { release = r; });
+  await page.route("**/redact-engine.js", async (route) => { await held; await route.continue(); });
+  await page.addInitScript(() => { try { localStorage.setItem("redact-intro-seen", "1"); localStorage.setItem("redact-tour-seen", "*"); } catch (_) {} });
+  await page.goto("/index.html");
+  await expect(page.locator("#dc-root")).toBeAttached({ timeout: 60000 });
+  await expect(page.locator("#boot")).toHaveCount(0);
+  await expect(page.locator("[data-settings-toggle]")).toHaveAttribute("aria-expanded", "false");
+  await expect(page.locator("header").getByText("הכול רץ בדפדפן")).toHaveCount(0);
+  await expect(page.locator("header [data-night] svg")).toHaveAttribute("data-icon", "sun");
+  expect(await page.evaluate(() => !!window.__RE), "the engine is still held back").toBe(false);
+  release();
+  await expect.poll(() => page.evaluate(() => !!window.__RE), { timeout: 30000 }).toBe(true);
+  await expect(page.locator("[data-settings-toggle]")).toHaveAttribute("aria-expanded", "false");
+});
+
 // every visible piece of text, and the "?" a waiting mark draws, under the 11.5px floor
 const underFloor = (page) => page.evaluate(() => {
   const out = [];
