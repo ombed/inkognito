@@ -39,7 +39,8 @@ module.exports = [
   { ignores: ["node_modules/**", "vendor/**", "support.js", "engine/**", "tests/app.html", "tests/core.js", "tests/*-core.js", "bench/.engine*.cjs", "test-results/**", "playwright-report/**"] },
   { files: ["redact-engine.js", "pdf-text.js", "text-to-docx.js"], languageOptions: { ecmaVersion: 2022, sourceType: "module", globals: globals.browser }, rules: { ...js.configs.recommended.rules, ...rules } },
   { files: ["page-logic.js"], languageOptions: { ecmaVersion: 2022, sourceType: "script", globals: { ...globals.browser, module: "readonly" } }, rules: { ...js.configs.recommended.rules, ...rules } },
-  { files: ["sw.js"], languageOptions: { ecmaVersion: 2022, sourceType: "script", globals: globals.browser }, rules: { ...js.configs.recommended.rules, ...rules } },
+  // forward/sw.js replaces sw.js at the old address after the move (scripts/build-forward.js)
+  { files: ["sw.js", "forward/sw.js"], languageOptions: { ecmaVersion: 2022, sourceType: "script", globals: globals.browser }, rules: { ...js.configs.recommended.rules, ...rules } },
   { files: ["bench/*.js", "scripts/*.js", "tests/run.js", "tests/build-fixtures.js", "tests/version_t.js", "tests/design_t.js", "e2e/*.js", "eslint.config.js", "playwright.config.js"],
     languageOptions: { ecmaVersion: 2022, sourceType: "commonjs", globals: { ...globals.node, localStorage: "readonly", getComputedStyle: "readonly", innerWidth: "readonly", navigator: "readonly", NodeFilter: "readonly", getSelection: "readonly", MouseEvent: "readonly", performance: "readonly", requestAnimationFrame: "readonly", CSSRule: "readonly", caches: "readonly" } },
     // the browser checks build a deliberately broken RegExp to prove the tokenizer repair
