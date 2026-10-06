@@ -250,19 +250,19 @@ test("a file the moved page downloads, imported in the tool, brings every case; 
     };
     const stored = () => page.evaluate(() => [localStorage.getItem("redact-cases:acct-1"), localStorage.getItem("redact-profile-last:acct-1")].map((s) => JSON.parse(s)));
 
+    // the saved-cases list is what she sees of it; no other words (none approved for an import)
     await importIt();
-    await expect(page.locator("[data-notice]")).toHaveText("יובאו 3 תיקים.");
     for (const name of Object.keys(CASES)) await expect(page.locator(`[data-case="${name}"]`)).toBeVisible();
     await expect(page.getByText(LAST_CARD)).toBeVisible();
+    await expect(page.locator("[data-notice]")).toHaveCount(0);
     expect(await stored()).toEqual([CASES, LAST]);
 
     // the same file again: nothing is overwritten, each case comes in under the next free number
-    await page.locator("[data-notice]").getByRole("button", { name: "סגירה" }).click();
     await importIt();
-    await expect(page.locator("[data-notice]")).toHaveText("יובאו 3 תיקים.");
     const copies = Object.fromEntries(Object.entries(CASES).map(([n, p]) => [n + " 2", { ...p, name: n + " 2" }]));
-    expect(await stored()).toEqual([{ ...CASES, ...copies }, LAST]);
     for (const name of [...Object.keys(CASES), ...Object.keys(copies)]) await expect(page.locator(`[data-case="${name}"]`)).toBeVisible();
+    await expect(page.locator("[data-notice]")).toHaveCount(0);
+    expect(await stored()).toEqual([{ ...CASES, ...copies }, LAST]);
   } finally {
     site.server.close();
   }
