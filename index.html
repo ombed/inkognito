@@ -182,6 +182,9 @@ html.dark [data-mark]{transition:none}
 @keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 /* כפתור מושבת נראה מושבת (ביקורת UX #5): עד כאן "סורק את המסמך…" נראה כמו כפתור ירוק שלא מגיב */
 button:disabled{opacity:.55;cursor:not-allowed}
+/* לתיבה ריקה עם dir="auto" אין אות שתקבע את הכיוון, והדפדפן פורש אותה משמאל לימין: הרמז העברי
+   ישב בצד שמאל, וה"…" שלו לפניו. עד שיש בה טקסט היא מימין לשמאל (e2e/look.spec.js) */
+textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction:rtl}
 /* טלפון צר (UX #1): שורת הקובץ שנבחר עוטפת, והכפתור הראשי יורד לשורה משלו במקום לצאת מהמסך */
 @media (max-width:480px){
   /* הדף בטלפון (L20 בביקורת השנייה): שוליים של דף מודפס השאירו עמודה צרה של שתי פסקאות */

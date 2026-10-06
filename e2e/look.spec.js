@@ -129,6 +129,31 @@ test("the current step is said, not only shown: aria-current, in the header's gi
   await expect(page.locator('header [aria-current="step"]')).toHaveCount(1);
 });
 
+/* An empty box with dir="auto" has no letter to take its direction from, and the browser laid it out left to
+   right: the paste box's Hebrew hint sat on the left with its «…» before it, and so did the restore box's
+   (found live on v60). Empty, every such box is right to left; typed text still sets its own direction */
+test("an empty text box shows its Hebrew hint right to left, and typed text keeps its own direction", async ({ page }) => {
+  await toEntry(page);
+  const empties = () => page.evaluate(() => [...document.querySelectorAll("textarea[dir=auto][placeholder], input[dir=auto][placeholder]")]
+    .filter((el) => !el.value && el.getClientRects().length).map((el) => el.placeholder + ": " + getComputedStyle(el).direction));
+  let found = await empties();
+  expect(found.length).toBeGreaterThan(0);
+  expect(found.filter((x) => !x.endsWith(": rtl"))).toEqual([]);
+  const box = page.getByPlaceholder("הדבקת טקסט לבדיקה…");
+  const dir = () => box.evaluate((el) => getComputedStyle(el).direction);
+  await box.fill("Hello world");
+  expect(await dir()).toBe("ltr");
+  await box.fill("שלום עולם");
+  expect(await dir()).toBe("rtl");
+  await box.fill("");
+  expect(await dir()).toBe("rtl");
+  await page.getByRole("button", { name: "החזרת שמות מתשובת AI" }).click();
+  await expect(page.getByPlaceholder("הדבקת תשובת ה-AI…")).toBeVisible();
+  found = await empties();
+  expect(found.some((x) => x.startsWith("הדבקת תשובת ה-AI…"))).toBe(true);
+  expect(found.filter((x) => !x.endsWith(": rtl"))).toEqual([]);
+});
+
 // every visible piece of text, and the "?" a waiting mark draws, under the 11.5px floor
 const underFloor = (page) => page.evaluate(() => {
   const out = [];
