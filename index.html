@@ -3235,7 +3235,9 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     const last=file.last&&localStorage.getItem(kl)===null?file.last:null;
     if(last) localStorage.setItem(kl, JSON.stringify(last));
     this.log.add("cases-import",{n, last:!!last});
-    this.setState({cases:this.readCases(), casesHidden:false, err:"", notice:`יובאו ${n} תיקים.`, noticeUndo:false,
+    // רשימת התיקים היא מה שהיא רואה; אין הודעה, עד שיאושרו לה מילים (הביקורת העצמאית, 6.10). כשתיק בשימוש
+    // הרשימה מוסתרת (hasCases), והתיק שבשימוש נשאר כמו שהוא
+    this.setState({cases:this.readCases(), casesHidden:false, err:"",
       ...(last&&!this.state.lastProfile&&last.rules.length?{lastProfile:last}:{})});
   }
   onProfFile = async e => {
