@@ -1267,6 +1267,25 @@ function pseudoRX(p){
   return new RegExp("(?<!["+LB+"])("+PRE+"[-\u05be]?)?"+pat+
     "(?!["+LA+"])","gu");
 }
+/* תאריך מוזז כפי שה-AI כותב אותו בעצמו: "16/11/2026", "16-11-2026", "16.11.26", "2026-11-16",
+   "16 בנובמבר 2026", עם אפס לפני ספרה בודדת או בלעדיו. עד כאן חזר רק הכתיב שיצא מהכלי, ו-AI
+   שכתב את התאריך אחרת קיבל בחזרה את התאריך המוזז (בדיקה בכלי החי, 6.10). שמות החודשים כאן רק
+   לקריאה: התאריך האמיתי חוזר כפי שהמסמך כתב אותו, כמו שם. */
+const MONTHS_HE=["ינואר","פברואר","מר[ץס]","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
+function dateParts(s){
+  const m=/^(\d{1,2})([./-])(\d{1,2})\2(\d{4}|\d{2})$/.exec(String(s||"").trim());
+  if(!m)return null;
+  const d=+m[1], mo=+m[3], y=m[4].length===2?2000+ +m[4]:+m[4];
+  return d>=1&&d<=31&&mo>=1&&mo<=12?{d,m:mo,y}:null;
+}
+const sameDay=(a,b)=>!!a&&!!b&&a.d===b.d&&a.m===b.m&&a.y===b.y;
+function dateRX(f){
+  const z=n=>n<10?"0?"+n:String(n), D=z(f.d), M=z(f.m), Y=String(f.y), YY=String(f.y%100).padStart(2,"0");
+  const B="0-9A-Za-z\u0591-\u05bd\u05bf-\u05c7\u05d0-\u05ea";
+  const body=D+"(?<sep>[./-])"+M+"\\k<sep>(?:"+Y+"|"+YY+")|"+Y+"-"+M+"-"+D+"|"+
+    D+"\\s+[בל]?"+MONTHS_HE[f.m-1]+",?\\s+"+Y;
+  return new RegExp("(?<!["+B+"])(?<pre>(?:"+PRE_SEQ.join("|")+")[-\u05be]?)?(?:"+body+")(?!["+B+"])","gu");
+}
 // זוגות [שם אמיתי, כינוי]. מחזיר טקסט, כמה הוחזרו, ומה לא נמצא —
 // כינוי שלא נמצא הוא לא בהכרח תקלה, אבל כדאי לדעת עליו.
 function restoreNames(txt,pairs){
@@ -1297,23 +1316,31 @@ function restoreNames(txt,pairs){
      בכלי החי, 6.10). */
   const took=[], held=[];
   const free=(s,e,also)=>![took,also||[]].some(l=>l.some(t=>t[0]<e&&s<t[1]));
-  let n=0;const missing=[];
-  const run=(pseudo,real,also)=>{
+  const run=(rx,to,also)=>{
     let hit=0;
-    for(const m of txt.matchAll(pseudoRX(pseudo))){
+    for(const m of txt.matchAll(rx)){
       const s=m.index,e=s+m[0].length;
       if(!free(s,e,also))continue;
-      took.push([s,e,(m[1]||(typeof m[2]==="string"?m[2]:"")||"")+real]);hit++;
+      took.push([s,e,to(m)]);hit++;
     }
-    if(hit)n+=hit; else if(seen.has(pseudo))missing.push(pseudo);
+    return hit;
   };
-  for(const [pseudo,real] of longFirst(seen))run(pseudo,real);
+  const back=real=>m=>(m[1]||(typeof m[2]==="string"?m[2]:"")||"")+real;
+  const hits=new Map();
+  for(const [pseudo,real] of longFirst(seen))hits.set(pseudo,run(pseudoRX(pseudo),back(real)));
+  // תאריך מוזז בכתיב אחר של ה-AI. יום בדוי ששני ימים אמיתיים יצאו בו (שני מסמכים בתיק, שתי הזזות)
+  // חוזר רק בכתיב שיצא, כי אין לדעת לאיזה מהם התכוון
+  const days=[...seen].map(([p,r])=>({p,r,f:dateParts(p),t:dateParts(r)})).filter(x=>x.f&&x.t);
+  for(const x of days)if(!days.some(y=>sameDay(y.f,x.f)&&!sameDay(y.t,x.t)))
+    hits.set(x.p,hits.get(x.p)+run(dateRX(x.f),m=>(m.groups.pre||"")+x.r));
+  let n=0;const missing=[];
+  for(const [pseudo] of longFirst(seen)){const h=hits.get(pseudo); if(h)n+=h; else missing.push(pseudo)}
   // שם מלא שנמצא בטקסט ולא נלקח — דבוק לאותיות שאינן אותיות שימוש, או עם סיומת — שומר על החלקים שלו
   for(const [,pseudo] of pairs){
     const p=typeof pseudo==="string"?pseudo.trim():"";
     if(/\s/.test(p))for(const m of txt.matchAll(new RegExp(pseudoPat(p),"gu")))held.push([m.index,m.index+m[0].length]);
   }
-  for(const [pseudo,real] of longFirst(partial))run(pseudo,real,held);
+  for(const [pseudo,real] of longFirst(partial))n+=run(pseudoRX(pseudo),back(real),held);
   let out="",at=0;
   for(const [s,e,t] of took.sort((a,b)=>a[0]-b[0])){out+=txt.slice(at,s)+t;at=e}
   return {text:out+txt.slice(at),count:n,missing,conflict:[...conflict]};

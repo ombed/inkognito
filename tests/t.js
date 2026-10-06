@@ -117,5 +117,27 @@ r=C.restoreNames("אבי ברקוביץ ויוסי מזרחי",[["דוד מזר�
 eq(r.text,"דוד מזרחי ומשה ברקוביץ","a restored real name is never read again as someone's pseudonym");
 eq(r.count,2,"and counted once each");
 
+console.log("\n— restoreNames: a shifted date in the AI's own spelling —");
+// live check, 6.10: 16.11.2026 came back as 11.2.2026, but «16/11/2026», «16 בנובמבר 2026» and «16.11.26» stayed shifted.
+// The real date comes back as the document wrote it, the way a name does.
+for(const [said,want] of [["ב-16.11.2026","ב-11.2.2026"],["ביום 16/11/2026","ביום 11.2.2026"],["ב-16 בנובמבר 2026","ב-11.2.2026"],
+  ["ב-16.11.26","ב-11.2.2026"],["ביום 16-11-2026","ביום 11.2.2026"],["ב16.11.2026","ב11.2.2026"],["מיום 2026-11-16","מיום 11.2.2026"],
+  ["ביום 16 לנובמבר 2026","ביום 11.2.2026"],["ביום 16 נובמבר 2026","ביום 11.2.2026"],["ב-16 בנובמבר, 2026","ב-11.2.2026"],["(16/11/26)","(11.2.2026)"]])
+  eq(back("הדיון התקיים "+said+"."),"הדיון התקיים "+want+".","the shifted date written as «"+said+"»");
+r=C.restoreNames("ב-16 בנובמבר 2026 ושוב ב-16/11/2026.",SAMPLE_MAP);
+eq(r.count,2,"each spelling counts as a restored value");
+eq(r.missing.includes("16.11.2026"),false,"and the date is not reported as unused");
+const D1=[["1.1.2026","6.3.2026"]];
+for(const said of ["06.03.2026","6.03.2026","06/03/2026","6 במרץ 2026","6 במרס 2026","2026-03-06","06.03.26"])
+  eq(C.restoreNames("נקבע ל-"+said+".",D1).text,"נקבע ל-1.1.2026.","a leading zero or another month spelling: «"+said+"»");
+const D2=[["11.2.26","16.11.26"]];
+eq(C.restoreNames("ב-16.11.2026 וב-16/11/26.",D2).text,"ב-11.2.26 וב-11.2.26.","a two-digit year, written by the AI in full or with a slash");
+for(const t of ["ב-16.11.2027.","ב-16.11.20261.","ב-116.11.2026.","ב-16 בנובמבר.","ב-16.11.","ב-11/16/2026.","ב-16 בנובמבר 2027.","ב-17 בנובמבר 2026.","שעה 16:11:2026."])
+  eq(back(t),t,"not the shifted date, left alone: «"+t+"»");
+// the same invented day stands for two real days (two documents of one case shifted by different amounts):
+// each spelling that went out comes back to its own day, and another spelling of it is not guessed
+r=C.restoreNames("16.11.2026, 16/11/2026 ו-16 בנובמבר 2026.",[["1.1.2026","16.11.2026"],["3.3.2026","16/11/2026"]]);
+eq(r.text,"1.1.2026, 3.3.2026 ו-16 בנובמבר 2026.","an invented day of two real days is restored only as written");
+
 console.log(`\n${pass} passed, ${fail} failed\n`);
 process.exit(fail?1:0);
