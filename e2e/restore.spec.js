@@ -182,3 +182,35 @@ for (const how of ["pasted text", "a file"]) {
     await expect(out).not.toContainText("חיפה");
   });
 }
+
+/* Live check, 6.10: after «החזרת שמות» a screen reader heard nothing, whether it worked or failed: neither
+   the error nor the result's heading sat in a live region, and the focus stayed on the button. The error
+   is an alert now, as on the other screens, and the heading sits in a status region that is on the screen
+   before the result comes, so the result is announced when it arrives; the heading stays a heading. */
+test("a screen reader is told the restore's error and its result", async ({ page }) => {
+  await H.serveEngineWithStub(page);
+  await H.boot(page);
+  await modelOff(page);
+  // no document and no case: the error
+  await openRestore(page);
+  await page.getByPlaceholder("הדבקת תשובת ה-AI…").fill("אביבה ביטון היא האם.");
+  await page.getByRole("button", { name: "החזרת שמות", exact: true }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("alert")).toContainText("אין מיפוי זמין");
+
+  // with a document: the result
+  await page.locator("[data-back]").click();
+  await H.upload(page, "case.docx", DOC);
+  await toWork(page);
+  const r = await fakeOf(page, "רחל פרידמן");
+  await openRestore(page);
+  const status = page.locator("main").getByRole("status");
+  await expect(status, "the status region is there before the result").toHaveCount(1);
+  await expect(status).toHaveText("");
+  await page.getByPlaceholder("הדבקת תשובת ה-AI…").fill(`${r} היא המבקשת.`);
+  await page.getByRole("button", { name: "החזרת שמות", exact: true }).focus();
+  await page.keyboard.press("Enter");
+  await expect(status).toContainText("התשובה עם השמות האמיתיים · שם אחד הוחזר");
+  await expect(status.getByRole("heading", { name: /התשובה עם השמות האמיתיים/ })).toBeVisible();
+  await expect(page.locator("[data-rv-out]")).toHaveText("רחל פרידמן היא המבקשת.");
+});

@@ -864,9 +864,9 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
       <button onClick="{{ onRvGo }}" disabled="{{ rvEmpty }}" style="{{ rvGoStyle }}">החזרת שמות</button>
       <button onClick="{{ onLoadProf }}" style="padding:12px 18px;border-radius:10px;border:1px solid var(--line);background:var(--panel);font-weight:500;font-size:14px;white-space:nowrap" style-hover="background:var(--panel2)">ייבוא פרופיל תיק מקובץ</button>
     </div>
-    <sc-if value="{{ rvErr }}"><div style="margin-top:10px;padding:10px 13px;border-radius:10px;background:var(--bad-soft);color:var(--bad);font-size:13.5px">{{ rvErr }}</div></sc-if>
+    <sc-if value="{{ rvErr }}"><div role="alert" style="margin-top:10px;padding:10px 13px;border-radius:10px;background:var(--bad-soft);color:var(--bad);font-size:13.5px">{{ rvErr }}</div></sc-if>
+    <div role="status"><sc-if value="{{ rvOut }}"><h2 data-rv-result style="margin:24px 0 8px;font-size:16px;font-weight:500">{{ rvHead }}</h2></sc-if></div><!-- השגיאה והתוצאה נאמרות לקורא מסך: אזור המצב כבר במסך כשהתוצאה מגיעה (בדיקה חיה, 6.10) -->
     <sc-if value="{{ rvOut }}">
-      <h2 data-rv-result style="margin:24px 0 8px;font-size:16px;font-weight:500">{{ rvHead }}</h2>
       <div data-rv-out dir="rtl" style="background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:18px;font:15px/1.9 'Noto Serif Hebrew',serif;white-space:pre-wrap;unicode-bidi:plaintext;text-align:start">{{ rvOut }}</div><!-- כל פסקה בכיוון של האות הראשונה שלה, כמו בתיבת ההדבקה; dir="auto" נתן לתשובה כולה כיוון אחד (בדיקה חיה, 6.10) -->
       <button onClick="{{ onRvCopy }}" style="{{ rvCopyStyle }};margin-top:11px">{{ rvCopyLabel }}</button>
     </sc-if>
