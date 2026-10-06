@@ -365,6 +365,8 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
         <button onClick="{{ onResumeLast }}" style="padding:9px 16px;border-radius:9px;background:var(--accent);color:var(--panel);font-size:13px;font-weight:600;letter-spacing:.01em;white-space:nowrap">המשך עם הפרופיל</button>
       </div>
     </sc-if>
+    <!-- כל התיקים מקובץ אחד (importCases): הקובץ שירד בכתובת הישנה, גם כשאין עדיין אף תיק שמור -->
+    <div style="margin-top:12px"><button data-import-cases onClick="{{ onImportCases }}" style="padding:7px 12px;border-radius:9px;border:1px solid var(--line);background:var(--panel);font-size:12.5px;font-weight:500;color:var(--ink)" style-hover="background:var(--panel2)">ייבוא תיקים מקובץ</button></div>
 
     <!-- ההגדרות מאחורי כותרת שנפתחת (UX #3): ברירות המחדל טובות, והמסך נקרא כמו "להגדיר קודם".
          במחשב פתוח — יש מקום; בטלפון סגור, שם העמוד היה באורך 1,744 פיקסלים. -->
@@ -1386,13 +1388,17 @@ class Component extends DCLogic {
   toggleTheme = () => { const t = this.state.theme==="dark"?"light":"dark"; this.applyTheme(t, true); this.setState({theme:t}); };
 
   /* מחיקת המודל מהמחשב (ביקורת M2): 185MB שנשארו לתמיד, ומטמון פגום שרק כלי המפתחים ניקו.
-     המודל יירד שוב בשימוש הבא; הכלי עצמו נטען מחדש מהרשת. */
+     המודל יירד שוב בשימוש הבא; הכלי עצמו נטען מחדש מהרשת.
+     ומאז המעבר ל-inkognito.co.il (6.10.2026) גם התיקים השמורים במחשב, של כל חשבון (forgetCases). תיק
+     שפתוח עכשיו לא נשמר אליו שוב, כמו אחרי מחיקת תיק (deleteCase) */
   modelForget = async () => {
     const E=this.state.E; if(!E) return;
     this.log.add("model-forget",{});
     try{ await E.nerForget(); }catch(_){}
     try{ const c=navigator.serviceWorker&&navigator.serviceWorker.controller; if(c) c.postMessage("refresh"); }catch(_){}
-    this.setState({nerHave:false, nerHint:"המודל נמחק מהמחשב. בהפעלה הבאה יורדים כ-185MB.", notice:"המודל והקבצים השמורים נמחקו מהמחשב.", noticeUndo:false});
+    this.forgetCases();
+    this.setState({nerHave:false, nerHint:"המודל נמחק מהמחשב. בהפעלה הבאה יורדים כ-185MB.", notice:"המודל והקבצים השמורים נמחקו מהמחשב.", noticeUndo:false,
+      cases:[], lastProfile:null, caseName:"", profile:null});
   };
   async nerStatus(E){
     const env = E.nerEnv();
@@ -2733,6 +2739,16 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
      כשהדף המאורח קובע אותו לחשבון המחובר, המפתח הוא k + ":" + הסיומת. מפתחות התצוגה (redact-theme,
      redact-intro-seen, redact-tour-seen) נשארים משותפים. tests/casekey_t.js, e2e/case-store.spec.js */
   caseKey(k){ const s=window.__inkStoreSuffix; return s===undefined||s===null||s===""?k:k+":"+s; }
+  /* "ניקוי הכלי מהמחשב" (modelForget) מוחק גם את התיקים השמורים במחשב הזה, של כל חשבון: שני המפתחות
+     עצמם, וכל מפתח שהוא אחד מהם ואחריו ":". זה המקום היחיד שלא עובר דרך caseKey, כי הוא לא של חשבון אחד */
+  static CASE_KEYS=["redact-cases","redact-profile-last"];
+  forgetCases(){
+    try{
+      const K=this.constructor.CASE_KEYS, gone=[];
+      for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(K.some(c=>k===c||k.startsWith(c+":"))) gone.push(k); }
+      for(const k of gone) localStorage.removeItem(k);
+    }catch(_){}
+  }
   // הפרופיל הוא ההבטחה שאותו אדם מקבל את אותו שם בכל מסמך בתיק. עד עכשיו הוא
   // חי רק כקובץ שהיא זוכרת לשמור; עכשיו הוא נכתב לדפדפן אחרי כל שינוי, מוצע
   // בכניסה הבאה, ומזהיר לפני יציאה בלי ייצוא. הדפדפן אינו גיבוי — הייצוא הוא.
@@ -3004,17 +3020,50 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
   loadProfileClick = () => this.profEl && this.profEl.click();
   resumeLast = () => { const p=this.state.lastProfile; if(!p) return; this.setState({lastProfile:null, caseName:p.name||""}); this.applyProfile(p); };
   dismissLast = () => this.setState({lastProfile:null});
+  // הסיבה בהודעה על קובץ פרופיל פגום (L17), וגם על קובץ תיקים פגום (importCases)
+  static BAD_PROFILE="הקובץ אינו קובץ פרופיל תקין, או שהוא נפגם";
+  /* ייבוא כל התיקים מקובץ אחד («ייבוא תיקים מקובץ»; המעבר ל-inkognito.co.il, 6.10.2026). הקובץ יורד
+     מהדף «הכלי עבר לכתובת חדשה» שבכתובת הישנה (forward/index.html, «הורדת התיקים לקובץ»), וזו התבנית שלו:
+       {"inkognito":"cases", "v":1, "exported":"<תאריך ISO>",
+        "cases": <מה ששמור שם תחת redact-cases: שם התיק ← הפרופיל שלו>,
+        "last": <מה ששמור שם תחת redact-profile-last, או null>}
+     התיקים נוספים לתיקים של מי שעובד עכשיו (caseKey). תיק שהשם שלו כבר קיים נשאר כמו שהוא, והמיובא נכנס
+     בשם עם המספר הפנוי הבא אחריו («לוי נ׳ לוי 2»): שום דבר לא נדרס. "last" נכנס רק כשאין פרופיל אחרון.
+     רשומה שהכלי עצמו לא היה מציג (readCases: גרסה 1 עם שם) לא נכנסת. קובץ פגום או זר לא משנה כלום,
+     ומקבל את ההודעה של קובץ פרופיל פגום. e2e/case-store.spec.js, e2e/moved.spec.js */
+  importCases(file){
+    const obj=x=>!!x&&typeof x==="object"&&!Array.isArray(x);
+    if(file.v!==1||!obj(file.cases)||(file.last!=null&&!obj(file.last))) throw new Error(this.constructor.BAD_PROFILE);
+    const kc=this.caseKey("redact-cases"), kl=this.caseKey("redact-profile-last");
+    // בלי אב טיפוס: גם תיק בשם "__proto__" הוא רק שם
+    const m=Object.assign(Object.create(null), JSON.parse(localStorage.getItem(kc)||"{}"));
+    let n=0;
+    for(const p of Object.values(file.cases)){
+      if(!obj(p)||p.v!==1||typeof p.name!=="string"||!p.name) continue;
+      let name=p.name;
+      for(let k=2; name in m; k++) name=p.name+" "+k;
+      m[name]={...p, name}; n++;
+    }
+    localStorage.setItem(kc, JSON.stringify(m));
+    const last=obj(file.last)&&file.last.v===1&&localStorage.getItem(kl)===null?file.last:null;
+    if(last) localStorage.setItem(kl, JSON.stringify(last));
+    this.log.add("cases-import",{n, last:!!last});
+    this.setState({cases:this.readCases(), casesHidden:false, err:"", notice:`יובאו ${n} תיקים.`, noticeUndo:false,
+      ...(last&&!this.state.lastProfile&&(last.rules||[]).length?{lastProfile:last}:{})});
+  }
   onProfFile = async e => {
     const f=e.target.files[0]; e.target.value=""; if(!f) return;
     try{
       const prof=JSON.parse(await f.text());
+      // קובץ של כל התיקים נקלט מכל כפתור ייבוא; כל קובץ אחר הוא הפרופיל של תיק אחד, כמו קודם
+      if(prof&&prof.inkognito==="cases"){ this.importCases(prof); return; }
       if(!prof || prof.v!==1) throw new Error("קובץ פרופיל לא מזוהה");
       this.setState({caseName:prof.name||this.state.caseName});
       this.applyProfile(prof);
     }catch(err){
       // L17: שגיאת JSON גולמית באנגלית לא אמרה לה כלום
       const m=String((err&&err.message)||err||"");
-      const why=/JSON|Unexpected|Expected|position/i.test(m)?"הקובץ אינו קובץ פרופיל תקין, או שהוא נפגם":m;
+      const why=/JSON|Unexpected|Expected|position/i.test(m)?this.constructor.BAD_PROFILE:m;
       this.setState({err:"טעינת הפרופיל נכשלה: "+why+". קובץ פרופיל הוא הקובץ שירד מ«ייצוא לקובץ» (סיומת ‎.json)."});
     }
   };
@@ -3046,7 +3095,7 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     }catch(err){
       // L17: שגיאת JSON גולמית באנגלית לא אמרה לה כלום
       const m=String((err&&err.message)||err||"");
-      const why=/JSON|Unexpected|Expected|position/i.test(m)?"הקובץ אינו קובץ פרופיל תקין, או שהוא נפגם":m;
+      const why=/JSON|Unexpected|Expected|position/i.test(m)?this.constructor.BAD_PROFILE:m;
       this.setState({err:"טעינת הפרופיל נכשלה: "+why+". קובץ פרופיל הוא הקובץ שירד מ«ייצוא לקובץ» (סיומת ‎.json)."});
     }
   }
@@ -3426,7 +3475,7 @@ const KIND_NAME={NAME:"אדם", ORG:"גוף", PLACE:"מקום"};
          ברקע; אם יסיים לפני "המשך" — השמות נכנסים לרשימה, אחרת לכללים. */
       onGoNow:()=>{ if(!S.scanning) return; this._goneAhead=this._scan; this.log.add("go-without-model",{names:S.peo.length});
         this.setState({scanning:false, nerBox:false, nerUsed:false, peoNote:"ממשיכים בלי לחכות. הרשימה כאן היא מהכותרת ומתורות הדיבור; שמות שהמודל ימצא בגוף הטקסט יוצעו גם הם."}); },
-      onLoadProf:this.loadProfileClick, onSaveProf:this.saveProfile,
+      onLoadProf:this.loadProfileClick, onSaveProf:this.saveProfile, onImportCases:this.loadProfileClick,
       fileErr:S.screen==="entry"?(S.fileErr||""):"",
       settingsShown:S.settingsOpen===undefined?!S.narrow:!!S.settingsOpen,
       settingsHint:(S.o.ner?"מודל מקומי":"בלי מודל")+" · "+(S.mode==="block"?"███":S.mode==="label"?"תוויות":"שמות חלופיים"),
