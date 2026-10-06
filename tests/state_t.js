@@ -134,6 +134,17 @@ ok(/rules:this\.state\.rules/.test(prof) && /allow:this\.state\.allow/.test(prof
 ok(/removed:this\.removedNow\(\)/.test(prof) && /this\.state\.removed/.test(bodyOf("removedNow(){")), "profileObj stores the removals (removedNow)");
 ok(/sent:this\.sentAll\(\)/.test(prof) && /this\.state\.sent/.test(bodyOf("sentAll(){")), "profileObj stores the sent pseudonyms (sentAll)");
 
+/* The hosted service defines docEnd(how), which sends the finished document's usage log and its report of
+   missed names; the session log's "new-doc" is where scripts/log-report.js splits documents. Both belong to
+   the reset, so a document that ends is ended once, however the next one comes: a second call beside the
+   reset («מסמך חדש» calling docEnd itself) would send the report twice and count the document twice. */
+console.log("\n— a document ends once, in the reset —");
+const count = (re) => (cls.match(re) || []).length;
+ok(/if\(typeof this\.docEnd==="function"\) this\.docEnd\("new-doc"\);/.test(resetBody), "docReset calls the hosted service's docEnd when it exists");
+ok(count(/docEnd\("new-doc"\)/g) === 1, 'docEnd("new-doc") is called in one place, the reset: ' + count(/docEnd\("new-doc"\)/g));
+ok(/this\.log\.add\("new-doc",\{\}\)/.test(resetBody), 'docReset writes "new-doc" to the session log');
+ok(count(/log\.add\("new-doc"/g) === 1, '"new-doc" is written in one place, the reset: ' + count(/log\.add\("new-doc"/g));
+
 console.log("\n— the instance fields that hold a document are cleared with it —");
 for (const f of ["this._undo=[]", "this._redo=[]", "this._modelFound=null", "this._lastScan=null", "this._scannedBuf=null", "this._goneAhead=null", "this._scan=(this._scan||0)+1"])
   ok(resetBody.includes(f), `docReset clears ${f.split(/[=(]/)[0]}`);
