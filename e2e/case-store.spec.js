@@ -208,6 +208,102 @@ test("with an account suffix the import adds to the account's cases only", async
   await expect(page.locator(`[data-case="${PLAIN_CASE.name}"]`)).toHaveCount(0);
 });
 
+/* A case the screen cannot show (the independent review of 6.10). The import checked only the outer
+   fields of a cases file and, per entry, v:1 and a name, and stored the entry as it was: an entry whose
+   rules was an object, a number or true was saved, and from then on the entry screen did not render at
+   all ("index.renderVals(): object is not iterable"), on every reload, for that account on that
+   computer, and the only remedy deleted every case. Now every profile that comes in or is read back
+   passes one check (profileOk: every field the screen reads, of the type the tool writes): a cases file
+   with one entry that fails it is refused whole, a profile file that fails it is refused, and an entry
+   that fails it in the browser's storage, written by another version or another tab, is skipped. */
+const BAD_SHAPES = {
+  "rules as an object": (p) => ({ ...p, rules: Object.fromEntries(p.rules.map((r) => [r.value, r.replacement])) }),
+  "rules as a number": (p) => ({ ...p, rules: 2 }),
+  "rules as true": (p) => ({ ...p, rules: true }),
+  "rules as null": (p) => ({ ...p, rules: null }),
+  "rules as an array of numbers": (p) => ({ ...p, rules: [1, 2] }),
+  "a rule pair with a non-string": (p) => ({ ...p, rules: p.rules.map((r) => ({ ...r, replacement: 7 })) }),
+  "a map pair with a non-string": (p) => ({ ...p, map: Object.fromEntries(p.rules.map((r) => [r.value, { to: r.replacement }])) }),
+  "allow as a string": (p) => ({ ...p, allow: "רשימה" }),
+  "removed as an object": (p) => ({ ...p, removed: { x: 1 } }),
+  "sent as a number": (p) => ({ ...p, sent: 3 }),
+  "a name that is a number": (p) => ({ ...p, name: 12 }),
+};
+const BROKEN_FILE = "הקובץ אינו קובץ פרופיל תקין, או שהוא נפגם";
+const loadErr = (page) => page.getByRole("alert").filter({ hasText: "טעינת הפרופיל נכשלה" });
+
+test("a cases file with one entry the screen cannot show is refused whole: nothing is written, and it gets the broken-profile message", async ({ page }) => {
+  await H.serveEngineWithStub(page);
+  await seed(page, { "redact-cases": { [PLAIN_CASE.name]: PLAIN_CASE }, "redact-profile-last": PLAIN_LAST });
+  await H.boot(page);
+  const before = await store(page);
+  const a = profile("כהן נ׳ כהן", "אורית כהן", "מירב טל"), b = profile("דהן נ׳ דהן", "יוסי דהן", "רון גל");
+  const files = Object.entries(BAD_SHAPES).flatMap(([shape, make]) => [
+    [shape + " in a case", casesFile([a, make(profile("זיו נ׳ זיו", "ענבל זיו", "שני אור")), b])],
+    [shape + " in the last profile", casesFile([a, b], make(profile("", "תמר רז", "ליאת בר")))]]);
+  for (const [what, file] of files) {
+    await page.reload();
+    await expect(page.locator(`[data-case="${PLAIN_CASE.name}"]`), what).toBeVisible({ timeout: 60000 });
+    await importFile(page, file);
+    await expect(loadErr(page), what).toContainText(BROKEN_FILE);
+    expect(await store(page), what).toEqual(before);
+    await expect(page.locator(`[data-case="${a.name}"]`), what).toHaveCount(0);
+    await expect(page.locator("[data-case]"), what).toHaveCount(1);
+  }
+});
+
+test("an entry already stored that the screen cannot show is skipped: the entry screen works, lists the others and keeps it stored", async ({ page }) => {
+  await H.serveEngineWithStub(page);
+  await H.boot(page);
+  const good = profile("כהן נ׳ כהן", "אורית כהן", "מירב טל"), other = profile("דהן נ׳ דהן", "יוסי דהן", "רון גל");
+  for (const [shape, make] of Object.entries(BAD_SHAPES)) {
+    // written as another version or another tab would write it, next to good cases, with a last profile of the same shape
+    const items = { "redact-cases": { [good.name]: good, "זיו נ׳ זיו": make(profile("זיו נ׳ זיו", "ענבל זיו", "שני אור")), [other.name]: other },
+      "redact-profile-last": make(PLAIN_LAST) };
+    await page.evaluate((items) => { for (const [k, v] of Object.entries(items)) localStorage.setItem(k, JSON.stringify(v)); }, items);
+    await page.reload();
+    await expect(page.locator(`[data-case="${good.name}"]`), shape).toBeVisible({ timeout: 60000 });
+    await expect(page.locator(`[data-case="${other.name}"]`), shape).toBeVisible();
+    await expect(page.locator("[data-case]"), shape).toHaveCount(2);
+    await expect(page.getByText(LAST_CARD), shape).toHaveCount(0);
+    // and it works: a good case is used, and nothing stored was changed by reading it
+    await page.locator(`[data-case="${good.name}"]`).getByRole("button", { name: "שימוש בתיק הזה" }).click();
+    await expect(page.locator("[data-case-chip]"), shape).toContainText("תיק: " + good.name);
+    expect(await store(page), shape).toEqual(items);
+  }
+});
+
+test("a profile file the screen cannot show is refused by «ייבוא פרופיל מקובץ» with its existing message, and nothing is loaded", async ({ page }) => {
+  await H.serveEngineWithStub(page);
+  await H.boot(page);
+  for (const [shape, make] of Object.entries(BAD_SHAPES)) {
+    await page.reload();
+    await expect(page.locator("[data-import-cases]"), shape).toBeVisible({ timeout: 60000 });
+    const one = make(profile("גל נ׳ גל", "איתי גל", "עידו נר"));
+    await importFile(page, { name: "פרופיל-גל נ׳ גל.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(one)) }, "ייבוא פרופיל מקובץ");
+    await expect(loadErr(page), shape).toContainText("קובץ פרופיל לא מזוהה");
+    await expect(page.locator("[data-case-chip]"), shape).toHaveCount(0);
+    expect(await store(page), shape).toEqual({});
+  }
+});
+
+test("a case she names over a stored entry the screen cannot show is saved in its place", async ({ page }) => {
+  await H.serveEngineWithStub(page);
+  const broken = BAD_SHAPES["rules as an object"](profile("לוי נ׳ לוי", "שרה לוי", "דנה רום"));
+  await seed(page, { "redact-cases": { [broken.name]: broken, [PLAIN_CASE.name]: PLAIN_CASE } });
+  await H.boot(page);
+  await expect(page.locator("[data-case]")).toHaveCount(1);
+  await workAndName(page, broken.name);
+  await expect.poll(async () => Array.isArray((((await store(page))["redact-cases"] || {})[broken.name] || {}).rules)).toBe(true);
+  const s = await store(page);
+  expect(s["redact-cases"][PLAIN_CASE.name]).toEqual(PLAIN_CASE);
+  expect(s["redact-cases"][broken.name].rules.map((r) => r.value).sort()).toEqual(["אבנר שטרן", "רחל פרידמן"]);
+  page.on("dialog", (d) => d.accept());
+  await page.getByRole("button", { name: "מסמך חדש" }).click();
+  await expect(page.locator(`[data-case="${broken.name}"]`)).toBeVisible();
+  await expect(page.locator("[data-case]")).toHaveCount(2);
+});
+
 /* Deleting the model (modelForget, under the local-model setting: «מחיקת המודל והקבצים השמורים מהמחשב»)
    deletes the model and the tool's cached files, and nothing else. Its label and its notice speak of the
    model only, it asks nothing, and she would press it to free 185 MB; 8b54f7d had made it delete every
