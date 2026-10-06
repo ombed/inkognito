@@ -1553,17 +1553,13 @@ class Component extends DCLogic {
   toggleTheme = () => { const t = this.state.theme==="dark"?"light":"dark"; this.applyTheme(t, true); this.setState({theme:t}); };
 
   /* מחיקת המודל מהמחשב (ביקורת M2): 185MB שנשארו לתמיד, ומטמון פגום שרק כלי המפתחים ניקו.
-     המודל יירד שוב בשימוש הבא; הכלי עצמו נטען מחדש מהרשת.
-     ומאז המעבר ל-inkognito.co.il (6.10.2026) גם התיקים השמורים במחשב, של כל חשבון (forgetCases). תיק
-     שפתוח עכשיו לא נשמר אליו שוב, כמו אחרי מחיקת תיק (deleteCase) */
+     המודל יירד שוב בשימוש הבא; הכלי עצמו נטען מחדש מהרשת. */
   modelForget = async () => {
     const E=this.state.E; if(!E) return;
     this.log.add("model-forget",{});
     try{ await E.nerForget(); }catch(_){}
     try{ const c=navigator.serviceWorker&&navigator.serviceWorker.controller; if(c) c.postMessage("refresh"); }catch(_){}
-    this.forgetCases();
-    this.setState({nerHave:false, nerHint:"המודל נמחק מהמחשב. בהפעלה הבאה יורדים כ-185MB.", notice:"המודל והקבצים השמורים נמחקו מהמחשב.", noticeUndo:false,
-      cases:[], lastProfile:null, caseName:"", profile:null});
+    this.setState({nerHave:false, nerHint:"המודל נמחק מהמחשב. בהפעלה הבאה יורדים כ-185MB.", notice:"המודל והקבצים השמורים נמחקו מהמחשב.", noticeUndo:false});
   };
   async nerStatus(E){
     const env = E.nerEnv();
@@ -2904,8 +2900,10 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
      כשהדף המאורח קובע אותו לחשבון המחובר, המפתח הוא k + ":" + הסיומת. מפתחות התצוגה (redact-theme,
      redact-intro-seen, redact-tour-seen) נשארים משותפים. tests/casekey_t.js, e2e/case-store.spec.js */
   caseKey(k){ const s=window.__inkStoreSuffix; return s===undefined||s===null||s===""?k:k+":"+s; }
-  /* "ניקוי הכלי מהמחשב" (modelForget) מוחק גם את התיקים השמורים במחשב הזה, של כל חשבון: שני המפתחות
-     עצמם, וכל מפתח שהוא אחד מהם ואחריו ":". זה המקום היחיד שלא עובר דרך caseKey, כי הוא לא של חשבון אחד */
+  /* מחיקת כל התיקים השמורים במחשב הזה, של כל חשבון: שני המפתחות עצמם, וכל מפתח שהוא אחד מהם ואחריו ":".
+     זה המקום היחיד שלא עובר דרך caseKey, כי הוא לא של חשבון אחד. אף כפתור לא קורא לה עדיין: מחיקת המודל
+     (modelForget) מחקה איתה את כל התיקים, בלי שאלה ובמילים שמדברות רק על המודל (הביקורת העצמאית, 6.10).
+     היא תקבל כפתור משלה, במילים שאושרו ועם שאלה לפני המחיקה. tests/casekey_t.js */
   static CASE_KEYS=["redact-cases","redact-profile-last"];
   forgetCases(){
     try{
