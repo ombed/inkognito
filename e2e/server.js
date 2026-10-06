@@ -20,6 +20,7 @@ const TYPES = {
   ".png": "image/png",
   ".jpg": "image/jpeg",
   ".md": "text/markdown; charset=utf-8",
+  ".woff2": "font/woff2",
 };
 
 http
