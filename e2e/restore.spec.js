@@ -214,3 +214,34 @@ test("a screen reader is told the restore's error and its result", async ({ page
   await expect(status.getByRole("heading", { name: /התשובה עם השמות האמיתיים/ })).toBeVisible();
   await expect(page.locator("[data-rv-out]")).toHaveText("רחל פרידמן היא המבקשת.");
 });
+
+/* The independent review of 6.10: a second restore with the same count left the status region's text as
+   it was, and a live region that does not change says nothing, so the second restore was not said; nor
+   was the same error a second time. Each restore now puts its heading and its alert back as new elements,
+   which a screen reader reads as new. Checked by identity: the element of the first restore is gone. */
+test("a second restore is said again, with the same result and with the same error", async ({ page }) => {
+  await firstDoc(page);
+  const r = await fakeOf(page, "רחל פרידמן");
+  await openRestore(page);
+  const status = page.locator("main").getByRole("status");
+  const mark = (loc) => loc.evaluate((el) => { el.__said = true; });
+  const same = (loc) => loc.evaluate((el) => !!el.__said);
+
+  await restore(page, `${r} היא המבקשת.`);
+  const head = status.locator("[data-rv-result]");
+  await expect(head).toHaveText("התשובה עם השמות האמיתיים · שם אחד הוחזר");
+  await mark(head);
+  await page.getByRole("button", { name: "החזרת שמות", exact: true }).click();
+  await expect(head).toHaveText("התשובה עם השמות האמיתיים · שם אחד הוחזר");
+  await expect.poll(() => same(head), { message: "the same result is put back as a new heading" }).toBe(false);
+
+  // an answer with no pseudonym in it, twice
+  await page.getByPlaceholder("הדבקת תשובת ה-AI…").fill("אין כאן אף שם.");
+  await page.getByRole("button", { name: "החזרת שמות", exact: true }).click();
+  const alert = page.getByRole("alert");
+  await expect(alert).toContainText("לא נמצא אף שם חלופי");
+  await mark(alert);
+  await page.getByRole("button", { name: "החזרת שמות", exact: true }).click();
+  await expect(alert).toContainText("לא נמצא אף שם חלופי");
+  await expect.poll(() => same(alert), { message: "the same error is put back as a new alert" }).toBe(false);
+});

@@ -388,8 +388,8 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
         <button onClick="{{ onTourClose }}" aria-label="סגירת הסיור" style="margin-inline-start:auto;width:24px;height:24px;border-radius:50%;color:var(--ink3);display:grid;place-items:center"><svg class="ic" data-icon="x" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17"/><path d="m7 7 10 10"/></svg></button>
       </div>
       <div aria-live="polite"><b style="display:block;font-weight:500;font-size:17px;margin-bottom:6px">{{ tourTitle }}</b>
-      <p style="margin:0 0 12px;font-size:13px;color:var(--ink2);line-height:1.6">{{ tourText }}</p></div>
-      <sc-if value="{{ tourNudge }}"><p data-tour-nudge role="status" style="margin:-4px 0 12px;font-size:12.5px;color:var(--warn);line-height:1.5">בסיור אפשר ללחוץ רק באזור המואר. כדי לצאת מהסיור — ✕ למעלה.</p></sc-if>
+      <p style="margin:0 0 12px;font-size:13px;color:var(--ink2);line-height:1.6">{{ tourText }}</p>
+      <sc-if value="{{ tourNudge }}"><p data-tour-nudge style="margin:-4px 0 12px;font-size:12.5px;color:var(--warn);line-height:1.5">בסיור אפשר ללחוץ רק באזור המואר. כדי לצאת מהסיור — ✕ למעלה.</p></sc-if></div><!-- ההערה נאמרת בתוך אזור החי של הכרטיס, שכבר במסך כשהיא מגיעה (הביקורת של 6.10) -->
       <div style="display:flex;gap:7px;align-items:center">
         <button onClick="{{ onTourNext }}" style="padding:8px 16px;border-radius:9px;background:var(--accent);color:var(--panel);font-size:13px;font-weight:600;letter-spacing:.01em">{{ tourNextLabel }}</button>
         <sc-if value="{{ tourHasBack }}"><button onClick="{{ onTourBack }}" style="padding:8px 12px;border-radius:9px;border:1px solid var(--line);font-size:13px">חזרה</button></sc-if>
@@ -425,13 +425,13 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
       <sc-if value="{{ engineFailed }}"><button data-engine-retry onClick="{{ onEngineRetry }}" style="padding:6px 12px;border-radius:9px;background:var(--bad);color:var(--panel);font-size:12.5px;font-weight:500">טעינה מחדש</button></sc-if>
     </div>
   </sc-if>
-  <sc-if value="{{ notice }}">
-    <div data-notice role="status" aria-live="polite" style="position:fixed;bottom:calc(var(--bar-h, 64px) + 14px);left:50%;transform:translateX(-50%);z-index:60;display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:12px;background:var(--panel);border:1px solid var(--line);box-shadow:var(--shadow);font-size:13px;color:var(--ink)">
+  <div role="status" aria-live="polite"><!-- ההודעה נאמרת: אזור המצב כבר בדף כשהיא מגיעה, ולא עולה איתה (הביקורת של 6.10) --><sc-if value="{{ notice }}">
+    <div data-notice style="position:fixed;bottom:calc(var(--bar-h, 64px) + 14px);left:50%;transform:translateX(-50%);z-index:60;display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:12px;background:var(--panel);border:1px solid var(--line);box-shadow:var(--shadow);font-size:13px;color:var(--ink)">
       <span>{{ notice }}</span>
       <sc-if value="{{ noticeUndo }}"><button onClick="{{ onNoticeUndo }}" style="padding:4px 10px;border-radius:9px;border:1px solid var(--line);font-size:12.5px;font-weight:500">ביטול <svg class="ic" data-icon="undo" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/></svg></button></sc-if>
       <button onClick="{{ onNoticeClose }}" aria-label="סגירה" style="width:22px;height:22px;border-radius:50%;color:var(--ink3);display:grid;place-items:center"><svg class="ic" data-icon="x" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17"/><path d="m7 7 10 10"/></svg></button>
     </div>
-  </sc-if>
+  </sc-if></div>
 
   <!-- ═════ מסך פתיחה ═════ -->
   <sc-if value="{{ isEntry }}" hint-placeholder-val="{{ true }}">
@@ -465,10 +465,11 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
         <textarea dir="auto" value="{{ pasteText }}" onChange="{{ onPasteText }}" placeholder="הדבקת טקסט לבדיקה…" style="width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:10px 12px;font:13.5px/1.6 Rubik,sans-serif;min-height:64px;resize:vertical"></textarea>
       </div>
       <sc-if value="{{ fileErr }}">
-        <div data-file-err id="file-err" role="alert" style="grid-column:1/-1;padding:11px 14px;border-radius:12px;background:var(--bad-soft);color:var(--bad);font-size:13.5px;line-height:1.5">{{ fileErr }}</div>
+        <div data-file-err id="file-err" role="alert" key="{{ fileErrKey }}" style="grid-column:1/-1;padding:11px 14px;border-radius:12px;background:var(--bad-soft);color:var(--bad);font-size:13.5px;line-height:1.5">{{ fileErr }}</div>
       </sc-if>
-      <sc-if value="{{ hasPending }}">
-        <div data-pend style="grid-column:1/-1;display:flex;align-items:center;gap:12px;padding:13px 16px;border-radius:12px;background:var(--accent-soft);border:1px solid var(--line)">
+    </div><!-- הקובץ שנטען ושאלת המודל בטלפון נאמרים לקורא מסך: אזור המצב כבר במסך כשהם מגיעים (הביקורת של 6.10). הוא מחוץ לרשת, כדי שלא יוסיף לה שורה ריקה, באותו מרווח, ומצויר מעל הצל של הכרטיסים שמעליו כמו בתוכה -->
+    <div role="status" aria-atomic="false" style="position:relative"><sc-if value="{{ hasPending }}">
+        <div data-pend style="margin-top:12px;display:flex;align-items:center;gap:12px;padding:13px 16px;border-radius:12px;background:var(--accent-soft);border:1px solid var(--line)">
           <span style="width:26px;height:26px;border-radius:50%;background:var(--accent);color:var(--panel);display:grid;place-items:center;font-size:13px;flex:none"><svg class="ic" data-icon="check" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
           <div style="min-width:0">
             <b style="display:block;font-weight:500;font-size:14px">{{ pendName }}</b>
@@ -479,13 +480,12 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
         </div>
       </sc-if>
       <sc-if value="{{ nerAsk }}">
-        <div data-ner-ask role="group" aria-label="הורדת מודל הזיהוי" style="grid-column:1/-1;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 14px;border-radius:12px;background:var(--panel);border:1px solid var(--line);font-size:13.5px;line-height:1.5">
+        <div data-ner-ask role="group" aria-label="הורדת מודל הזיהוי" style="margin-top:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 14px;border-radius:12px;background:var(--panel);border:1px solid var(--line);font-size:13.5px;line-height:1.5">
           <span style="flex:1 1 240px">להוריד את מודל הזיהוי? כ-185MB, פעם אחת, ואחר כך הוא נשמר בטלפון. הוא מוצא יותר שמות; על חבילת גלישה עדיף Wi-Fi.</span>
           <button onClick="{{ onNerAskYes }}" style="padding:9px 14px;border-radius:9px;background:var(--accent);color:var(--panel);font-size:13px;font-weight:600;letter-spacing:.01em">להוריד את המודל</button>
           <button onClick="{{ onNerAskNo }}" style="padding:9px 14px;border-radius:9px;border:1px solid var(--line);font-size:13px">בלי המודל</button>
         </div>
-      </sc-if>
-    </div>
+      </sc-if></div>
 
     <sc-if value="{{ hasCases }}">
       <div style="margin-top:12px;padding:12px 16px;border-radius:12px;background:var(--panel);border:1px solid var(--line);box-shadow:var(--shadow)">
@@ -703,15 +703,15 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
       </label>
     </sc-if>
     <sc-if value="{{ nerFailed }}">
-      <div style="margin-top:12px;padding:10px 12px;border-radius:10px;background:var(--warn-soft);color:var(--warn);font-size:13px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <div role="alert" style="margin-top:12px;padding:10px 12px;border-radius:10px;background:var(--warn-soft);color:var(--warn);font-size:13px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         <span style="flex:1;min-width:200px">{{ peoNote }}</span>
         <button onClick="{{ onRetryScan }}" style="padding:7px 12px;border-radius:9px;border:1px solid var(--warn);font-size:12.5px;font-weight:500;color:var(--warn)">ניסיון נוסף</button>
       </div>
     </sc-if>
-    <sc-if value="{{ nerOk }}"><p style="margin:11px 0 0;font-size:13px;color:var(--ink2);line-height:1.55">{{ peoNote }}</p></sc-if>
+    <div role="status"><sc-if value="{{ nerOk }}"><p style="margin:11px 0 0;font-size:13px;color:var(--ink2);line-height:1.55">{{ peoNote }}</p></sc-if></div><!-- מה שהסריקה מצאה, ומה שלא נוסף, נאמרים: אזור המצב נשאר במסך גם כשהמודל נכשל ושב (הביקורת של 6.10) -->
 
     <sc-if value="{{ sugPrompt }}">
-      <div data-sug-prompt style="margin-top:18px;padding:10px 12px;border-radius:10px;background:var(--warn-soft);color:var(--warn);font-size:13px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <div data-sug-prompt role="alert" style="margin-top:18px;padding:10px 12px;border-radius:10px;background:var(--warn-soft);color:var(--warn);font-size:13px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <span style="flex:1 1 220px">{{ sugPromptText }}</span>
         <button onClick="{{ onPeoAddAllGo }}" style="padding:6px 12px;border-radius:9px;background:var(--warn);color:var(--panel);font-size:12.5px;font-weight:500">הוספת כולם והמשך</button>
         <button onClick="{{ onPeoGoAnyway }}" style="padding:6px 12px;border-radius:9px;border:1px solid var(--warn);color:var(--warn);font-size:12.5px">להמשיך בלעדיהם</button>
@@ -864,8 +864,8 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
       <button onClick="{{ onRvGo }}" disabled="{{ rvEmpty }}" style="{{ rvGoStyle }}">החזרת שמות</button>
       <button onClick="{{ onLoadProf }}" style="padding:12px 18px;border-radius:10px;border:1px solid var(--line);background:var(--panel);font-weight:500;font-size:14px;white-space:nowrap" style-hover="background:var(--panel2)">ייבוא פרופיל תיק מקובץ</button>
     </div>
-    <sc-if value="{{ rvErr }}"><div role="alert" style="margin-top:10px;padding:10px 13px;border-radius:10px;background:var(--bad-soft);color:var(--bad);font-size:13.5px">{{ rvErr }}</div></sc-if>
-    <div role="status"><sc-if value="{{ rvOut }}"><h2 data-rv-result style="margin:24px 0 8px;font-size:16px;font-weight:500">{{ rvHead }}</h2></sc-if></div><!-- השגיאה והתוצאה נאמרות לקורא מסך: אזור המצב כבר במסך כשהתוצאה מגיעה (בדיקה חיה, 6.10) -->
+    <sc-if value="{{ rvErr }}"><div role="alert" key="{{ rvKey }}" style="margin-top:10px;padding:10px 13px;border-radius:10px;background:var(--bad-soft);color:var(--bad);font-size:13.5px">{{ rvErr }}</div></sc-if>
+    <div role="status"><sc-if value="{{ rvOut }}"><h2 data-rv-result key="{{ rvKey }}" style="margin:24px 0 8px;font-size:16px;font-weight:500">{{ rvHead }}</h2></sc-if></div><!-- השגיאה והתוצאה נאמרות לקורא מסך: אזור המצב כבר במסך כשהתוצאה מגיעה (בדיקה חיה, 6.10), וכל החזרה מעלה אותן כאלמנט חדש (rvKey), כך שגם תוצאה או שגיאה זהות לקודמות נאמרות שוב (הביקורת של 6.10) -->
     <sc-if value="{{ rvOut }}">
       <div data-rv-out dir="rtl" style="background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:18px;font:15px/1.9 'Noto Serif Hebrew',serif;white-space:pre-wrap;unicode-bidi:plaintext;text-align:start">{{ rvOut }}</div><!-- כל פסקה בכיוון של האות הראשונה שלה, כמו בתיבת ההדבקה; dir="auto" נתן לתשובה כולה כיוון אחד (בדיקה חיה, 6.10) -->
       <button onClick="{{ onRvCopy }}" style="{{ rvCopyStyle }};margin-top:11px">{{ rvCopyLabel }}</button>
@@ -1188,7 +1188,7 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
     <div style="max-width:1520px;margin:0 auto;display:flex;align-items:center;gap:12px">
       <sc-if value="{{ barErr }}">
         <span style="width:22px;height:22px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:12px;font-weight:600;color:var(--bad);background:var(--bad-soft)">!</span>
-        <div data-bar-text style="flex:1;min-width:0;font-size:13px;color:var(--bad);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ barErr }}">{{ barErr }}</div>
+        <div data-bar-text role="alert" style="flex:1;min-width:0;font-size:13px;color:var(--bad);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ barErr }}">{{ barErr }}</div>
         <button onClick="{{ onClearErr }}" aria-label="סגירה" style="width:26px;height:26px;border-radius:50%;color:var(--ink3);display:grid;place-items:center" style-hover="background:var(--panel2);color:var(--ink)"><svg class="ic" data-icon="x" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17"/><path d="m7 7 10 10"/></svg></button>
       </sc-if>
       <sc-if value="{{ barOk }}">
@@ -1625,7 +1625,7 @@ class Component extends DCLogic {
     if(!E) return this.afterEngine(()=>this.load(f));
     /* שגיאות קובץ ליד כרטיס הקובץ, עם מה לעשות (UX #4), ובזמן הבחירה ולא אחרי
        "המשך" (ביקורת QA 010): קובץ שאינו docx תקין, או docx בלי טקסט, לא מקבל ✓. */
-    const bad=(m,code)=>{ this.log.add("file-reject",{why:code||"other"}); this.setState({fileErr:m, err:"", pending:false, name:"", buf:null}); };
+    const bad=(m,code)=>{ this.log.add("file-reject",{why:code||"other"}); this._fileErrN=(this._fileErrN||0)+1; this.setState({fileErr:m, err:"", pending:false, name:"", buf:null}); };
     if(!/\.(docx|pdf)$/i.test(f.name)) return bad("נדרש קובץ Word (docx) או PDF. קובץ doc ישן — לשמור מחדש ב-Word בתור docx.", "type");
     let buf; try{ buf = await f.arrayBuffer(); }catch(_){ return bad("לא הצלחנו לפתוח את הקובץ. אם הוא שמור בענן (OneDrive, Dropbox) — להוריד עותק למחשב; אם הוא פתוח ב-Word — לסגור אותו, ולבחור אותו שוב.", "read"); }
     if(/\.pdf$/i.test(f.name)) return this.loadPdf(buf, f);
@@ -3631,6 +3631,9 @@ const KIND_NAME={NAME:"אדם", ORG:"גוף", PLACE:"מקום"};
         this.setState({scanning:false, nerBox:false, nerUsed:false, peoNote:"ממשיכים בלי לחכות. הרשימה כאן היא מהכותרת ומתורות הדיבור; שמות שהמודל ימצא בגוף הטקסט יוצעו גם הם."}); },
       onLoadProf:this.loadProfileClick, onSaveProf:this.saveProfile,
       fileErr:S.screen==="entry"?(S.fileErr||""):"",
+      /* הודעה שחוזרת באותן מילים נאמרת שוב: אזור חי שלא השתנה אינו אומר דבר, ולכן כל דחייה של קובץ וכל החזרת
+         שמות מעלות את האזעקה ואת הכותרת שלהן כאלמנט חדש (key), שקורא מסך קורא כחדש (הביקורת של 6.10) */
+      fileErrKey:"fe"+(this._fileErrN||0), rvKey:"rv"+(this._rvN||0),
       settingsShown:S.settingsOpen===undefined?!S.narrow:!!S.settingsOpen,
       settingsHint:(S.o.ner?"מודל מקומי":"בלי מודל")+" · "+(S.mode==="block"?"███":S.mode==="label"?"תוויות":"שמות חלופיים"),
       onToggleSettings:()=>this.setState({settingsOpen:!(S.settingsOpen===undefined?!S.narrow:!!S.settingsOpen)}),
@@ -3699,7 +3702,7 @@ const KIND_NAME={NAME:"אדם", ORG:"גוף", PLACE:"מקום"};
       rvErr:S.screen==="reverse"?S.err:"", errTop:(S.screen==="reverse"||(S.screen==="work"&&S.res))?"":S.err,
       rvIn:S.rvIn, rvOut:S.rvOut, rvCopyLabel:S.rvCopyLabel,
       onRvIn:e=>this.setState({rvIn:e.target.value, err:""}),
-      onRvGo:()=>{
+      onRvGo:()=>{ this._rvN=(this._rvN||0)+1;
         /* ביקורת QA (ISSUE-001): אחרי הצמדת תיק שמור מ"תיקים אחרונים" ההחזרה קראה
            רק את המפה של התיק השמור, ולא את זו של המסמך שבעבודה — הכינוי שהכלי
            עצמו כתב רגע קודם לא נמצא. המסמך הנוכחי קודם; הפרופיל משלים שמות
