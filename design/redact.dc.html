@@ -1425,6 +1425,14 @@ class Component extends DCLogic {
      שהוסר והכינויים שנשלחו — כך שאותו אדם מקבל אותו כינוי במסמך הבא בתיק. «מסמך חדש» מנתק את התיק (C3). */
   docReset(keepCase){
     const S=this.state;
+    /* המסמך שהיה פתוח נגמר כאן, פעם אחת, לפני שמה שלו נמחק: השירות המתארח מגדיר docEnd ושולח בה את יומן
+       השימוש ואת דוח השמות שפוספסו של המסמך שנגמר, ויומן הסשן מסמן "new-doc", שלפיו scripts/log-report.js
+       מפריד בין מסמכים. עד כאן רק «מסמך חדש» סיים מסמך, ומסמך שנטען אחרי כפתורי החזרה, או סיור שנפתח מעל
+       מסמך, איבד את הדוח ואיחד שני מסמכים ביומן (הביקורת של 6.10). המסמך לדוגמה של הסיור אינו מסמך שלה */
+    if((S.buf||S.res)&&!S.tour){
+      if(typeof this.docEnd==="function") this.docEnd("new-doc");
+      this.log.add("new-doc",{});
+    }
     this._undo=[]; this._redo=[]; this._modelFound=null; this._lastScan=null; this._scannedBuf=null;
     // סריקה של המסמך הקודם שעוד רצה ברקע (אחרי «לא לחכות למודל») נגמרת איתו: התשובה שלה נכתבה לכללים של הבא
     this._scan=(this._scan||0)+1; this._goneAhead=null;
@@ -3608,6 +3616,7 @@ const KIND_NAME={NAME:"אדם", ORG:"גוף", PLACE:"מקום"};
       onGeoAlt:this.geoAlt, onGeoApply:this.geoApply, onGeoSkip:()=>this.run(S.rules),
       // יציאה בלי ייצוא: הפרופיל נשאר בדפדפן הזה בלבד, וזו הבטחה חלשה מדי לתיק
       onBackHome:()=>{ if(S.profileDirty&&S.rules.length&&!confirm("הפרופיל של התיק נשמר בדפדפן הזה בלבד ולא יוצא לקובץ. אם הדפדפן ינוקה הוא יאבד. לצאת בכל זאת?")) return;
+        // המסמך נגמר ב-docReset, פעם אחת לכל מסמך: שם נקראת docEnd של השירות המתארח, ושם נרשם "new-doc" ביומן
         /* מסמך חדש מתחיל נקי (UX #22, ביקורת QA 005): חיפוש, הוספה ידנית, טקסט
            מודבק ושם הקובץ הקודמים נשארו — והמסמך הבא נפתח עם מסילה ריקה, או עם
            שני מסמכים מודבקים יחד. הגלילה חוזרת לראש העמוד. */
@@ -3623,8 +3632,7 @@ const KIND_NAME={NAME:"אדם", ORG:"גוף", PLACE:"מקום"};
            ניתוק התיק. tests/state_t.js בודק שכל מפתח ב-state מתאפס שם, רשום שם כשייך ל«מסמך חדש» בלבד, או
            רשום כשייך לסשן. */
         this.setState({...this.docReset(false), caseName:"", profile:null, profileDirty:false, casesHidden:false, lastProfile, cases:this.readCases()},
-          ()=>{ try{ scrollTo(0,0); }catch(_){} });
-        this.log.add("new-doc",{}); },
+          ()=>{ try{ scrollTo(0,0); }catch(_){} }); },
       tip:!!S.tip, tipLabel:S.tip?S.tip.label:"", tipItems:S.tip?S.tip.items:[],
       tipMore:S.tip&&S.tip.items.length>=3?"שלוש הראשונות":"",
       // חלונית מידע בלבד: אינה תופסת לחיצות, אחרת היא חוסמת את הכפתור שמתחתיה כשהעכבר נשאר במקומו אחרי מעבר מסך

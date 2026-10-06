@@ -138,3 +138,75 @@ for (const how of ["«מסמך חדש»", "the back buttons"]) {
     expect(await page.locator("[data-work]").innerText()).not.toContain("שמעון ביטון");
   });
 }
+
+/* The hosted service defines docEnd(how): when a document ends, it sends that document's usage log and its
+   report of missed names, and the session log's "new-doc" is where scripts/log-report.js splits documents.
+   Only «מסמך חדש» called it, so the next document loaded through the back buttons (or the tour started over
+   an open one) would drop the report and merge two documents in the log. The reset ends the document that
+   was open, once, before its data is cleared. The public tool has no docEnd of its own: the stand-in here
+   is installed before the page loads, where the component finds it as this.docEnd. */
+async function fakeDocEnd(page) {
+  await page.addInitScript(() => {
+    window.__ends = [];
+    Object.defineProperty(Object.prototype, "docEnd", {
+      configurable: true, writable: true, enumerable: false,
+      value: function (how) { window.__ends.push({ how, name: this.state.name, res: !!this.state.res }); },
+    });
+  });
+}
+const ends = (page) => page.evaluate(() => window.__ends);
+const newDocs = (page) => page.evaluate(() => window.__pib.log().events.filter((e) => e.ev === "new-doc").length);
+
+test("the document that ends calls docEnd once, by the back buttons and by «מסמך חדש»", async ({ page }) => {
+  await fakeDocEnd(page);
+  await H.serveEngineWithStub(page);
+  await H.boot(page);
+  await modelOff(page);
+  await H.upload(page, "first.docx", FIRST);
+  await toWork(page);
+  expect(await ends(page)).toEqual([]);
+
+  // the back buttons and the next file: the first document ends, once, while its result is still there
+  await backTo(page, ["רשימת השמות", "קובץ"]);
+  expect(await ends(page)).toEqual([]);
+  await H.upload(page, "next.docx", NEXT);
+  expect(await ends(page)).toEqual([{ how: "new-doc", name: "first.docx", res: true }]);
+  expect(await newDocs(page)).toBe(1);
+
+  // «מסמך חדש» on the second: once more, not twice
+  await toWork(page);
+  page.once("dialog", (d) => d.accept());
+  await page.getByRole("button", { name: "מסמך חדש", exact: true }).click();
+  await expect(page.getByRole("heading", { name: /מה יוצא מהמסמך/ })).toBeVisible();
+  expect(await ends(page)).toEqual([{ how: "new-doc", name: "first.docx", res: true }, { how: "new-doc", name: "next.docx", res: true }]);
+  expect(await newDocs(page)).toBe(2);
+
+  // nothing was open after «מסמך חדש», so the next file ends nothing
+  await H.upload(page, "third.docx", FIRST);
+  expect((await ends(page)).length).toBe(2);
+  expect(await newDocs(page)).toBe(2);
+});
+
+test("the tour started over an open document ends it once, and the tour's own sample ends nothing", async ({ page }) => {
+  await fakeDocEnd(page);
+  await H.serveEngineWithStub(page);
+  await H.boot(page);
+  await modelOff(page);
+  await H.upload(page, "first.docx", FIRST);
+  await toWork(page);
+  await backTo(page, ["רשימת השמות", "קובץ"]);
+
+  await page.locator("[data-tour-start]").click();
+  const tour = page.locator("[data-tour]");
+  await expect(tour).toContainText("קובץ או טקסט");
+  expect(await ends(page)).toEqual([{ how: "new-doc", name: "first.docx", res: true }]);
+  expect(await newDocs(page)).toBe(1);
+  // the sample is loaded and the tour closed: no document of hers ended there
+  await tour.getByRole("button", { name: /טעינת המסמך לדוגמה/ }).click();
+  await expect(tour).toContainText("מי בתיק", { timeout: 20000 });
+  await tour.getByRole("button", { name: "סגירת הסיור" }).click();
+  await expect(tour).toHaveCount(0);
+  await H.upload(page, "next.docx", NEXT);
+  expect((await ends(page)).length).toBe(1);
+  expect(await newDocs(page)).toBe(1);
+});
