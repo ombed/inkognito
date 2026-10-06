@@ -305,16 +305,25 @@ button:disabled{opacity:.55;cursor:not-allowed}
         console.warn("עובד השירות לא נרשם:",e.message)});
       // אם העובד מגיש גרסה אחרת ממה שכתוב בעמוד — לומר את זה, ולא לחכות
       // שנבזבז סבב דיבוג על מטמון ישן.
+      // בעדכון העובד הישן עונה ראשון, והחדש תופס את הדף כשתי שניות אחריו. עד v60 העמוד שאל פעם
+      // אחת בלבד, ו"מוגש v59" נשאר על המסך עד הכניסה הבאה, גם כשהכול כבר היה חדש. לכן שואלים
+      // שוב כשהעובד מתחלף, תשובה של עובד שכבר לא אחראי על הדף לא נחשבת, ותשובה תואמת מחזירה
+      // את התווית כפי שהייתה (e2e/sw.spec.js)
+      var chip=null;
       sw.addEventListener("message",function(ev){
         var v=ev.data && ev.data.sw; if(!v) return;
+        if(ev.source && sw.controller && ev.source!==sw.controller) return;
         var served=v.replace("hedact-","");
         console.log("עובד שירות: "+served);
-        if(served==="v60") return;
         var el=document.getElementById("ver"); if(!el) return;
+        if(chip===null) chip=el.innerHTML; else el.innerHTML=chip;
+        if(served==="v60") return;
         el.innerHTML='גרסה v60 · <b style="color:var(--warn)">מוגש '+served+
           ' — רענון בלי מטמון</b>';
       });
-      sw.ready.then(function(){ if(sw.controller) sw.controller.postMessage("version") });
+      var ask=function(){ if(sw.controller) sw.controller.postMessage("version") };
+      sw.ready.then(ask);
+      sw.addEventListener("controllerchange",ask);
     });
 })();
 </script>
