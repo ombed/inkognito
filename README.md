@@ -38,7 +38,18 @@ The interface is in Hebrew; the Hebrew documentation follows this section.
 
 ## פריסה
 
-הקבצים יושבים יחד תחת אותה כתובת `https`:
+**מאז 6.10.2026 הכלי נמצא ב-https://inkognito.co.il/.** הכתובת הישנה,
+https://ombed.github.io/inkognito/, מגישה מ-main את דף ההעברה שבתיקייה `forward/`
+(`node scripts/build-forward.js`): `index.html` — בלי תיקים שמורים בדפדפן הוא שולח
+מיד ל-inkognito.co.il, ועם תיקים שמורים הוא מציע להוריד את כולם לקובץ אחד, לייבוא שם
+ב«ייבוא תיקים מקובץ»; `404.html` — אותו דף, לכל קישור ישן; ו-`sw.js`, שמחליף את עובד
+השירות של הכלי, מוחק את המטמונים שלו ואת המודל, ומסיר את עצמו. התיקים השמורים נשארים
+במקומם. `.github/workflows/pages.yml` בונה את התיקייה, מריץ עליה את
+`e2e/moved.spec.js`, מפרסם אותה, ובודק שהכתובת החיה מגישה את דף ההעברה, גם לקישור
+ישן, ואת עובד השירות שלו. לדף ההעברה אין גרסה ואין לו תג `live/vNN`: הגרסאות והתגים
+שייכים מעכשיו לפריסות של inkognito.co.il.
+
+קבצי הכלי עצמו יושבים יחד תחת אותה כתובת `https`:
 
 | קובץ | תפקיד |
 |---|---|
@@ -60,11 +71,14 @@ The interface is in Hebrew; the Hebrew documentation follows this section.
 | `models/dictabert-parse-ner-37f4d6f/onnx/model_quantized.onnx.part1`, `models/dictabert-parse-ner-37f4d6f/onnx/model_quantized.onnx.part2`, `models/dictabert-parse-ner-37f4d6f/onnx/model_quantized.onnx.part3`, `models/dictabert-parse-ner-37f4d6f/onnx/model_quantized.onnx.part4` | המשקולות (185MB) בארבעה חלקים; הדף מחבר אותם ובודק את הקובץ המחובר מול SHA-256 נעול |
 | `models/dictabert-parse-ner-37f4d6f/NOTICE.md` | הקרדיט, הרישיון ומה שונה במודל |
 
-רק הקבצים האלה מתפרסמים: `.github/workflows/pages.yml` בונה איתם תיקייה
-(`node scripts/build-site.js`), מריץ עליה בדיקות דפדפן, ומפרסם אותה ב-GitHub
-Pages בכל דחיפה ל-main. שאר המאגר — בדיקות, בנצ'מרק, `design/`, `docs/` — לא
-מוגש. קובץ שהדף טוען חייב להיכנס לרשימה שבסקריפט, לטבלה הזאת ולבדיקה
-`tests/site_t.js`, שמשווה ביניהן.
+הכלי מוגש עכשיו ב-inkognito.co.il, מהענף `inkognito`. בכתובת הישנה הוא מתפרסם רק
+בחזרה לאחור: ref שאין בו `scripts/build-forward.js`, כמו תג `live/vNN` מלפני המעבר,
+נבנה ומתפרסם כמו קודם — רק הקבצים האלה (`node scripts/build-site.js`), בדיקות דפדפן
+על התיקייה, ובדיקה שהכתובת החיה מדווחת את הגרסה. חזרה לכלי:
+`gh workflow run pages.yml -f ref=live/vNN` (התג האחרון לפני המעבר: live/v61); חזרה
+לדף ההעברה: אותה פקודה בלי `-f ref`. הפרטים ב-`docs/ROLLBACK.md`. שאר המאגר —
+בדיקות, בנצ'מרק, `design/`, `docs/` — לא מוגש. קובץ שהכלי טוען חייב להיכנס לרשימה
+שבסקריפט, לטבלה הזאת ולבדיקה `tests/site_t.js`, שמשווה ביניהן.
 
 GitHub Pages או כל אירוח סטטי מספיק. **כתובת `https` היא דרישה, לא
 המלצה:** מקובץ `file://` הדפדפן חוסם Cache API, IndexedDB ו-`import`
