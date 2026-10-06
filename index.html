@@ -278,7 +278,7 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
 </div></div>
 <script>
 (function(){
-  console.log("השחרת מסמכים — גרסה v62");
+  console.log("השחרת מסמכים — גרסה v63");
   var stuck=setTimeout(function(){
     var b=document.getElementById("boot"); if(!b) return;
     b.className="stuck";
@@ -324,8 +324,8 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
         console.log("עובד שירות: "+served);
         var el=document.getElementById("ver"); if(!el) return;
         if(chip===null) chip=el.innerHTML; else el.innerHTML=chip;
-        if(served==="v62") return;
-        el.innerHTML='גרסה v62 · <b style="color:var(--warn)">מוגש '+served+
+        if(served==="v63") return;
+        el.innerHTML='גרסה v63 · <b style="color:var(--warn)">מוגש '+served+
           ' — רענון בלי מטמון</b>';
       });
       var ask=function(){ if(sw.controller) sw.controller.postMessage("version") };
@@ -529,6 +529,8 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
         <button onClick="{{ onResumeLast }}" style="padding:9px 16px;border-radius:9px;background:var(--accent);color:var(--panel);font-size:13px;font-weight:600;letter-spacing:.01em;white-space:nowrap">המשך עם הפרופיל</button>
       </div>
     </sc-if>
+    <!-- כל התיקים מקובץ אחד (importCases): הקובץ שירד בכתובת הישנה, גם כשאין עדיין אף תיק שמור -->
+    <div style="margin-top:12px"><button data-import-cases onClick="{{ onImportCases }}" style="padding:7px 12px;border-radius:9px;border:1px solid var(--line);background:var(--panel);font-size:12.5px;font-weight:500;color:var(--ink)" style-hover="background:var(--panel2)">ייבוא תיקים מקובץ</button></div>
 
     <!-- ההגדרות מאחורי כותרת שנפתחת (UX #3): ברירות המחדל טובות, והמסך נקרא כמו "להגדיר קודם".
          במחשב פתוח — יש מקום; בטלפון סגור, שם העמוד היה באורך 1,744 פיקסלים. -->
@@ -1291,7 +1293,7 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
 
 </div>
 </x-dc>
-<footer><div id="ver">גרסה v62</div></footer>
+<footer><div id="ver">גרסה v63</div></footer>
 <script type="text/x-dc" data-dc-script data-props="{&quot;docFont&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;serif&quot;,&quot;sans&quot;],&quot;default&quot;:&quot;serif&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;עיצוב&quot;},
 &quot;railWidth&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:340,&quot;max&quot;:500,&quot;step&quot;:4,&quot;default&quot;:404,&quot;unit&quot;:&quot;px&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;עיצוב&quot;}}">
 class Component extends DCLogic {
@@ -1327,7 +1329,7 @@ class Component extends DCLogic {
       if(!c){ const t=e.matches?"dark":"light"; this.applyTheme(t); this.setState({theme:t}); } }); }catch(_){} }
     // הסיור מוצע פעם אחת לכל גרסה: המפתח נושא את מספר הגרסה, ו-"*" (מהבדיקות) מכסה את כולן
     let seen=false; try{ const t=localStorage.getItem("redact-tour-seen"); seen = localStorage.getItem("redact-intro-seen")==="1" && (t==="*"||t===this.ver()); }catch(_){}
-    let lastProfile=null; try{ const j=localStorage.getItem("redact-profile-last"); const p=j&&JSON.parse(j); if(p&&p.v===1&&(p.rules||[]).length) lastProfile=p; }catch(_){}
+    const lastProfile=this.readLast();
     this.setState({theme:th, intro:!seen, lastProfile, cases:this.readCases()});
     // יומן הסשן (PLAN-v18 Q16): זמנים ואירועים בלי טקסט, בדפדפן בלבד, מיוצא בכפתור ליד דוח הדליפה
     const ver=((document.getElementById("ver")||{}).textContent||"").replace(/[^v\d]/g,"");
@@ -1430,7 +1432,7 @@ class Component extends DCLogic {
        והרצועות לא התעדכנו. שינוי ברשימת התיקים מלשונית אחרת מרענן את הרצועה; ואם התיק של
        הלשונית הזאת נמחק שם, הלשונית הזאת מפסיקה לשמור אליו ואומרת את זה. */
     this._storage=e=>{
-      if(e.key!=="redact-cases") return;
+      if(e.key!==this.caseKey("redact-cases")) return;
       const cases=this.readCases(), cn=this.state.caseName;
       let had=false; try{ had=!!(cn&&JSON.parse(e.oldValue||"{}")[cn]); }catch(_){}
       if(had&&!cases.some(c=>c.name===cn)) this.setState({cases, caseName:"", profile:null, notice:`התיק «${cn}» נמחק בלשונית אחרת. המסמך הזה כבר לא נשמר אליו.`, noticeUndo:false});
@@ -2934,20 +2936,62 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
       // הבחירה על מספרים ועל תאריכים היא של התיק, לא של הלשונית (Q1 בגרסה 5)
       styles:{num:this.state.o.numStyle||"blank", date:this.state.o.dateStyle||"name"}};
   }
+  /* התיקים שמורים לכל חשבון בנפרד (המעבר ל-inkognito.co.il, 6.10.2026): השירות המאורח מריץ את הדף הזה
+     לכל חשבון, וכמה חשבונות יכולים לעבוד על אותו מחשב. כל קריאה, כתיבה ומחיקה של שני מפתחות התיקים,
+     "redact-cases" ו-"redact-profile-last", וגם הבדיקה של אירוע ה-storage שלהם, עוברות כאן: בלי
+     window.__inkStoreSuffix (הכלי הציבורי) המפתח הוא בדיוק מה שהיה, והתיקים שכבר שמורים ממשיכים לעבוד;
+     כשהדף המאורח קובע אותו לחשבון המחובר, המפתח הוא k + ":" + הסיומת. מפתחות התצוגה (redact-theme,
+     redact-intro-seen, redact-tour-seen) נשארים משותפים. tests/casekey_t.js, e2e/case-store.spec.js */
+  caseKey(k){ const s=window.__inkStoreSuffix; return s===undefined||s===null||s===""?k:k+":"+s; }
+  /* מחיקת כל התיקים השמורים במחשב הזה, של כל חשבון: שני המפתחות עצמם, וכל מפתח שהוא אחד מהם ואחריו ":".
+     זה המקום היחיד שלא עובר דרך caseKey, כי הוא לא של חשבון אחד. אף כפתור לא קורא לה עדיין: מחיקת המודל
+     (modelForget) מחקה איתה את כל התיקים, בלי שאלה ובמילים שמדברות רק על המודל (הביקורת העצמאית, 6.10).
+     היא תקבל כפתור משלה, במילים שאושרו ועם שאלה לפני המחיקה. tests/casekey_t.js */
+  static CASE_KEYS=["redact-cases","redact-profile-last"];
+  forgetCases(){
+    try{
+      const K=this.constructor.CASE_KEYS, gone=[];
+      for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(K.some(c=>k===c||k.startsWith(c+":"))) gone.push(k); }
+      for(const k of gone) localStorage.removeItem(k);
+    }catch(_){}
+  }
+  /* מה שהמסך קורא מפרופיל של תיק, בסוג שהכלי עצמו כותב (הביקורת העצמאית, 6.10). ייבוא התיקים בדק רק את
+     המעטפת של הקובץ, ובכל רשומה רק v:1 ושם, ושמר את הרשומה כמו שהיא: רשומה שבה rules היה אובייקט, מספר או
+     true נשמרה, ומאז מסך הכניסה לא עלה בכלל, בכל טעינה, עד שכל התיקים נמחקו. זו הבדיקה היחידה, לכל מה שנכנס
+     ולכל מה שנקרא בחזרה: קובץ פרופיל (onProfFile), כל רשומה בקובץ תיקים והפרופיל האחרון שבו (importCases,
+     שדוחה את כל הקובץ בגלל רשומה אחת), וכל קריאה של תיק שמור (readCases, readLast, writeCase), כך שרשומה
+     שנכתבה בגרסה אחרת או בלשונית אחרת מדולגת ולא מפילה את המסך. שדה חסר מותר, כמו בקבצים ישנים (בלי removed,
+     sent או styles, ובקובץ הראשון גם בלי שם); שדה שקיים חייב להיות מהסוג שהכלי כותב. named: רשומה ברשימת
+     התיקים, ולכן עם שם. tests/profile_t.js, e2e/case-store.spec.js */
+  static profileOk(p, named){
+    const obj=x=>!!x&&typeof x==="object"&&!Array.isArray(x), str=x=>typeof x==="string";
+    const opt=(x,f)=>x===undefined||x===null||f(x), strs=x=>Array.isArray(x)&&x.every(str);
+    return obj(p)&&p.v===1&&(named?str(p.name)&&p.name!=="":opt(p.name,str))
+      &&Array.isArray(p.rules)&&p.rules.every(r=>obj(r)&&str(r.value)&&["replacement","kind","style","sameAs"].every(k=>opt(r[k],str)))
+      &&opt(p.map,m=>obj(m)&&Object.values(m).every(str))&&opt(p.allow,strs)&&opt(p.removed,strs)
+      &&opt(p.sent,s=>obj(s)&&Object.values(s).every(strs))&&opt(p.styles,s=>obj(s)&&opt(s.num,str)&&opt(s.date,str))
+      &&["mode","created","updated"].every(k=>opt(p[k],str));
+  }
   // הפרופיל הוא ההבטחה שאותו אדם מקבל את אותו שם בכל מסמך בתיק. עד עכשיו הוא
   // חי רק כקובץ שהיא זוכרת לשמור; עכשיו הוא נכתב לדפדפן אחרי כל שינוי, מוצע
   // בכניסה הבאה, ומזהיר לפני יציאה בלי ייצוא. הדפדפן אינו גיבוי — הייצוא הוא.
   // היא עובדת על כמה תיקים במקביל (Q11 ב-docs/PLAN-v18.md): כל תיק בשם נשמר
   // ברשימה בדפדפן, ומסך הכניסה מציע אותם. תיק בלי שם נשאר ב"פרופיל אחרון".
   readCases(){
-    try{ const m=JSON.parse(localStorage.getItem("redact-cases")||"{}");
-      return Object.values(m).filter(p=>p&&p.v===1&&p.name).sort((a,b)=>String(b.updated||"").localeCompare(String(a.updated||""))); }catch(_){ return []; }
+    try{ const m=JSON.parse(localStorage.getItem(this.caseKey("redact-cases"))||"{}");
+      return Object.values(m).filter(p=>this.constructor.profileOk(p,true)).sort((a,b)=>String(b.updated||"").localeCompare(String(a.updated||""))); }catch(_){ return []; }
+  }
+  // הפרופיל האחרון, כשהמסך יכול להציג אותו (profileOk) ויש בו ערכים
+  readLast(){
+    try{ const p=JSON.parse(localStorage.getItem(this.caseKey("redact-profile-last"))||"null");
+      return this.constructor.profileOk(p)&&p.rules.length?p:null; }catch(_){ return null; }
   }
   writeCase(prof){
-    try{ const m=JSON.parse(localStorage.getItem("redact-cases")||"{}");
+    try{ const m=JSON.parse(localStorage.getItem(this.caseKey("redact-cases"))||"{}");
+      // רשומה שהמסך לא יכול להציג (profileOk) אינה מתמזגת: המיזוג נפל עליה בשקט, והתיק שבעבודה לא נשמר. היא מוחלפת
       const prev=m[prof.name];
-      m[prof.name]=(prev&&prev.v===1)?this.mergeCase(prev, prof):prof;
-      localStorage.setItem("redact-cases", JSON.stringify(m)); }catch(_){}
+      m[prof.name]=this.constructor.profileOk(prev,true)?this.mergeCase(prev, prof):prof;
+      localStorage.setItem(this.caseKey("redact-cases"), JSON.stringify(m)); }catch(_){}
   }
   /* התיק הוא איחוד של כל המסמכים שלו, לא צילום של האחרון (C2 בביקורת השנייה):
      מסמך שבו אבנר לא מוזכר מחק אותו מהתיק, והמסמך הבא נתן לו שם חדש. מה שהוחלט
@@ -2972,8 +3016,8 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
      את רשימת התיקים — מפת השמות האמיתיים נשארה בדפדפן בטקסט גלוי. ואם התיק שנמחק הוא זה שפתוח,
      השמירה הבאה יצרה אותו מחדש; עכשיו המסמך ממשיך בלי תיק. */
   deleteCase = name => {
-    try{ const m=JSON.parse(localStorage.getItem("redact-cases")||"{}"); delete m[name]; localStorage.setItem("redact-cases", JSON.stringify(m)); }catch(_){}
-    try{ const last=JSON.parse(localStorage.getItem("redact-profile-last")||"null"); if(last&&last.name===name) localStorage.removeItem("redact-profile-last"); }catch(_){}
+    try{ const m=JSON.parse(localStorage.getItem(this.caseKey("redact-cases"))||"{}"); delete m[name]; localStorage.setItem(this.caseKey("redact-cases"), JSON.stringify(m)); }catch(_){}
+    try{ const last=JSON.parse(localStorage.getItem(this.caseKey("redact-profile-last"))||"null"); if(last&&last.name===name) localStorage.removeItem(this.caseKey("redact-profile-last")); }catch(_){}
     const mine=this.state.caseName===name;
     this.setState({cases:this.readCases(), ...(mine?{caseName:"", profile:null}:{}),
       ...(this.state.lastProfile&&this.state.lastProfile.name===name?{lastProfile:null}:{})});
@@ -3188,7 +3232,7 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     if(!this.state.res) return;
     if(!this.state.rules.length&&!(this.state.allow||[]).length&&!this.removedNow().length) return;
     const prof=this.profileObj();
-    try{ localStorage.setItem("redact-profile-last", JSON.stringify(prof)); }catch(_){}
+    try{ localStorage.setItem(this.caseKey("redact-profile-last"), JSON.stringify(prof)); }catch(_){}
     if(prof.name){ this.writeCase(prof); this.setState({cases:this.readCases()}); }
     if(!this.state.profileDirty) this.setState({profileDirty:true});
   }
@@ -3207,17 +3251,54 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
   loadProfileClick = () => this.profEl && this.profEl.click();
   resumeLast = () => { const p=this.state.lastProfile; if(!p) return; this.setState({lastProfile:null, caseName:p.name||""}); this.applyProfile(p); };
   dismissLast = () => this.setState({lastProfile:null});
+  // הסיבה בהודעה על קובץ פרופיל פגום (L17), וגם על קובץ תיקים פגום (importCases)
+  static BAD_PROFILE="הקובץ אינו קובץ פרופיל תקין, או שהוא נפגם";
+  /* ייבוא כל התיקים מקובץ אחד («ייבוא תיקים מקובץ»; המעבר ל-inkognito.co.il, 6.10.2026). הקובץ יורד
+     מהדף «הכלי עבר לכתובת חדשה» שבכתובת הישנה (forward/index.html, «הורדת התיקים לקובץ»), וזו התבנית שלו:
+       {"inkognito":"cases", "v":1, "exported":"<תאריך ISO>",
+        "cases": <מה ששמור שם תחת redact-cases: שם התיק ← הפרופיל שלו>,
+        "last": <מה ששמור שם תחת redact-profile-last, או null>}
+     התיקים נוספים לתיקים של מי שעובד עכשיו (caseKey). תיק שהשם שלו כבר קיים נשאר כמו שהוא, והמיובא נכנס
+     בשם עם המספר הפנוי הבא אחריו («לוי נ׳ לוי 2»): שום דבר לא נדרס. "last" נכנס רק כשאין פרופיל אחרון.
+     הכול או כלום (הביקורת העצמאית, 6.10): כל רשומה, וגם "last", עוברת את profileOk לפני שנכתב דבר, וקובץ
+     שאחת מהן לא עוברת נדחה כולו. קובץ כזה, וכל קובץ פגום או זר, לא משנה כלום, ומקבל את ההודעה של קובץ
+     פרופיל פגום. e2e/case-store.spec.js, e2e/moved.spec.js */
+  importCases(file){
+    const P=this.constructor, obj=x=>!!x&&typeof x==="object"&&!Array.isArray(x);
+    if(file.v!==1||!obj(file.cases)||!Object.values(file.cases).every(p=>P.profileOk(p,true))||(file.last!=null&&!P.profileOk(file.last)))
+      throw new Error(P.BAD_PROFILE);
+    const kc=this.caseKey("redact-cases"), kl=this.caseKey("redact-profile-last");
+    // בלי אב טיפוס: גם תיק בשם "__proto__" הוא רק שם
+    const m=Object.assign(Object.create(null), JSON.parse(localStorage.getItem(kc)||"{}"));
+    let n=0;
+    for(const p of Object.values(file.cases)){
+      let name=p.name;
+      for(let k=2; name in m; k++) name=p.name+" "+k;
+      m[name]={...p, name}; n++;
+    }
+    localStorage.setItem(kc, JSON.stringify(m));
+    const last=file.last&&localStorage.getItem(kl)===null?file.last:null;
+    if(last) localStorage.setItem(kl, JSON.stringify(last));
+    this.log.add("cases-import",{n, last:!!last});
+    // רשימת התיקים היא מה שהיא רואה; אין הודעה, עד שיאושרו לה מילים (הביקורת העצמאית, 6.10). כשתיק בשימוש
+    // הרשימה מוסתרת (hasCases), והתיק שבשימוש נשאר כמו שהוא
+    this.setState({cases:this.readCases(), casesHidden:false, err:"",
+      ...(last&&!this.state.lastProfile&&last.rules.length?{lastProfile:last}:{})});
+  }
   onProfFile = async e => {
     const f=e.target.files[0]; e.target.value=""; if(!f) return;
     try{
       const prof=JSON.parse(await f.text());
-      if(!prof || prof.v!==1) throw new Error("קובץ פרופיל לא מזוהה");
+      // קובץ של כל התיקים נקלט מכל כפתור ייבוא; כל קובץ אחר הוא הפרופיל של תיק אחד, כמו קודם
+      if(prof&&prof.inkognito==="cases"){ this.importCases(prof); return; }
+      // אותה בדיקה של כל פרופיל שנכנס או נקרא (profileOk), עם אותה הודעה של קובץ שאינו פרופיל
+      if(!this.constructor.profileOk(prof)) throw new Error("קובץ פרופיל לא מזוהה");
       this.setState({caseName:prof.name||this.state.caseName});
       this.applyProfile(prof);
     }catch(err){
       // L17: שגיאת JSON גולמית באנגלית לא אמרה לה כלום
       const m=String((err&&err.message)||err||"");
-      const why=/JSON|Unexpected|Expected|position/i.test(m)?"הקובץ אינו קובץ פרופיל תקין, או שהוא נפגם":m;
+      const why=/JSON|Unexpected|Expected|position/i.test(m)?this.constructor.BAD_PROFILE:m;
       this.setState({err:"טעינת הפרופיל נכשלה: "+why+". קובץ פרופיל הוא הקובץ שירד מ«ייצוא לקובץ» (סיומת ‎.json)."});
     }
   };
@@ -3249,7 +3330,7 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     }catch(err){
       // L17: שגיאת JSON גולמית באנגלית לא אמרה לה כלום
       const m=String((err&&err.message)||err||"");
-      const why=/JSON|Unexpected|Expected|position/i.test(m)?"הקובץ אינו קובץ פרופיל תקין, או שהוא נפגם":m;
+      const why=/JSON|Unexpected|Expected|position/i.test(m)?this.constructor.BAD_PROFILE:m;
       this.setState({err:"טעינת הפרופיל נכשלה: "+why+". קובץ פרופיל הוא הקובץ שירד מ«ייצוא לקובץ» (סיומת ‎.json)."});
     }
   }
@@ -3629,7 +3710,7 @@ const KIND_NAME={NAME:"אדם", ORG:"גוף", PLACE:"מקום"};
          ברקע; אם יסיים לפני "המשך" — השמות נכנסים לרשימה, אחרת לכללים. */
       onGoNow:()=>{ if(!S.scanning) return; this._goneAhead=this._scan; this.log.add("go-without-model",{names:S.peo.length});
         this.setState({scanning:false, nerBox:false, nerUsed:false, peoNote:"ממשיכים בלי לחכות. הרשימה כאן היא מהכותרת ומתורות הדיבור; שמות שהמודל ימצא בגוף הטקסט יוצעו גם הם."}); },
-      onLoadProf:this.loadProfileClick, onSaveProf:this.saveProfile,
+      onLoadProf:this.loadProfileClick, onSaveProf:this.saveProfile, onImportCases:this.loadProfileClick,
       fileErr:S.screen==="entry"?(S.fileErr||""):"",
       /* הודעה שחוזרת באותן מילים נאמרת שוב: אזור חי שלא השתנה אינו אומר דבר, ולכן כל דחייה של קובץ וכל החזרת
          שמות מעלות את האזעקה ואת הכותרת שלהן כאלמנט חדש (key), שקורא מסך קורא כחדש (הביקורת של 6.10) */
@@ -3793,8 +3874,7 @@ const KIND_NAME={NAME:"אדם", ORG:"גוף", PLACE:"מקום"};
            לקוח אחר נכתב לתוך התיק של הקודם. מסמך חדש מתחיל בלי תיק; התיק השמור
            מוצע ברצועת "תיקים אחרונים", ופרופיל בלי שם — בכרטיס "להמשיך עם
            הפרופיל", כמו אחרי טעינה מחדש. */
-        let lastProfile=null;
-        try{ const j=localStorage.getItem("redact-profile-last"); const p=j&&JSON.parse(j); if(p&&p.v===1&&!p.name&&(p.rules||[]).length) lastProfile=p; }catch(_){}
+        const last=this.readLast(), lastProfile=last&&!last.name&&(last.rules||[]).length?last:null;
         /* כל מה ששייך למסמך ולא לסשן מתאפס ב-docReset, באותה רשימה שמאפסת כל מסמך שנטען (ביקורת H1: דוח הדליפה
            של לקוח אחד יצא בחבילה של הבא, ותשובת ה-AI עם השמות האמיתיים שלו חיכתה במסך ההחזרה). כאן נוסף רק
            ניתוק התיק. tests/state_t.js בודק שכל מפתח ב-state מתאפס שם, רשום שם כשייך ל«מסמך חדש» בלבד, או
