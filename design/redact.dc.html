@@ -1163,7 +1163,7 @@ class Component extends DCLogic {
       if(!c){ const t=e.matches?"dark":"light"; this.applyTheme(t); this.setState({theme:t}); } }); }catch(_){} }
     // הסיור מוצע פעם אחת לכל גרסה: המפתח נושא את מספר הגרסה, ו-"*" (מהבדיקות) מכסה את כולן
     let seen=false; try{ const t=localStorage.getItem("redact-tour-seen"); seen = localStorage.getItem("redact-intro-seen")==="1" && (t==="*"||t===this.ver()); }catch(_){}
-    let lastProfile=null; try{ const j=localStorage.getItem("redact-profile-last"); const p=j&&JSON.parse(j); if(p&&p.v===1&&(p.rules||[]).length) lastProfile=p; }catch(_){}
+    let lastProfile=null; try{ const j=localStorage.getItem(this.caseKey("redact-profile-last")); const p=j&&JSON.parse(j); if(p&&p.v===1&&(p.rules||[]).length) lastProfile=p; }catch(_){}
     this.setState({theme:th, intro:!seen, lastProfile, cases:this.readCases()});
     // יומן הסשן (PLAN-v18 Q16): זמנים ואירועים בלי טקסט, בדפדפן בלבד, מיוצא בכפתור ליד דוח הדליפה
     const ver=((document.getElementById("ver")||{}).textContent||"").replace(/[^v\d]/g,"");
@@ -1266,7 +1266,7 @@ class Component extends DCLogic {
        והרצועות לא התעדכנו. שינוי ברשימת התיקים מלשונית אחרת מרענן את הרצועה; ואם התיק של
        הלשונית הזאת נמחק שם, הלשונית הזאת מפסיקה לשמור אליו ואומרת את זה. */
     this._storage=e=>{
-      if(e.key!=="redact-cases") return;
+      if(e.key!==this.caseKey("redact-cases")) return;
       const cases=this.readCases(), cn=this.state.caseName;
       let had=false; try{ had=!!(cn&&JSON.parse(e.oldValue||"{}")[cn]); }catch(_){}
       if(had&&!cases.some(c=>c.name===cn)) this.setState({cases, caseName:"", profile:null, notice:`התיק «${cn}» נמחק בלשונית אחרת. המסמך הזה כבר לא נשמר אליו.`, noticeUndo:false});
@@ -2726,20 +2726,27 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
       // הבחירה על מספרים ועל תאריכים היא של התיק, לא של הלשונית (Q1 בגרסה 5)
       styles:{num:this.state.o.numStyle||"blank", date:this.state.o.dateStyle||"name"}};
   }
+  /* התיקים שמורים לכל חשבון בנפרד (המעבר ל-inkognito.co.il, 6.10.2026): השירות המאורח מריץ את הדף הזה
+     לכל חשבון, וכמה חשבונות יכולים לעבוד על אותו מחשב. כל קריאה, כתיבה ומחיקה של שני מפתחות התיקים,
+     "redact-cases" ו-"redact-profile-last", וגם הבדיקה של אירוע ה-storage שלהם, עוברות כאן: בלי
+     window.__inkStoreSuffix (הכלי הציבורי) המפתח הוא בדיוק מה שהיה, והתיקים שכבר שמורים ממשיכים לעבוד;
+     כשהדף המאורח קובע אותו לחשבון המחובר, המפתח הוא k + ":" + הסיומת. מפתחות התצוגה (redact-theme,
+     redact-intro-seen, redact-tour-seen) נשארים משותפים. tests/casekey_t.js, e2e/case-store.spec.js */
+  caseKey(k){ const s=window.__inkStoreSuffix; return s===undefined||s===null||s===""?k:k+":"+s; }
   // הפרופיל הוא ההבטחה שאותו אדם מקבל את אותו שם בכל מסמך בתיק. עד עכשיו הוא
   // חי רק כקובץ שהיא זוכרת לשמור; עכשיו הוא נכתב לדפדפן אחרי כל שינוי, מוצע
   // בכניסה הבאה, ומזהיר לפני יציאה בלי ייצוא. הדפדפן אינו גיבוי — הייצוא הוא.
   // היא עובדת על כמה תיקים במקביל (Q11 ב-docs/PLAN-v18.md): כל תיק בשם נשמר
   // ברשימה בדפדפן, ומסך הכניסה מציע אותם. תיק בלי שם נשאר ב"פרופיל אחרון".
   readCases(){
-    try{ const m=JSON.parse(localStorage.getItem("redact-cases")||"{}");
+    try{ const m=JSON.parse(localStorage.getItem(this.caseKey("redact-cases"))||"{}");
       return Object.values(m).filter(p=>p&&p.v===1&&p.name).sort((a,b)=>String(b.updated||"").localeCompare(String(a.updated||""))); }catch(_){ return []; }
   }
   writeCase(prof){
-    try{ const m=JSON.parse(localStorage.getItem("redact-cases")||"{}");
+    try{ const m=JSON.parse(localStorage.getItem(this.caseKey("redact-cases"))||"{}");
       const prev=m[prof.name];
       m[prof.name]=(prev&&prev.v===1)?this.mergeCase(prev, prof):prof;
-      localStorage.setItem("redact-cases", JSON.stringify(m)); }catch(_){}
+      localStorage.setItem(this.caseKey("redact-cases"), JSON.stringify(m)); }catch(_){}
   }
   /* התיק הוא איחוד של כל המסמכים שלו, לא צילום של האחרון (C2 בביקורת השנייה):
      מסמך שבו אבנר לא מוזכר מחק אותו מהתיק, והמסמך הבא נתן לו שם חדש. מה שהוחלט
@@ -2764,8 +2771,8 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
      את רשימת התיקים — מפת השמות האמיתיים נשארה בדפדפן בטקסט גלוי. ואם התיק שנמחק הוא זה שפתוח,
      השמירה הבאה יצרה אותו מחדש; עכשיו המסמך ממשיך בלי תיק. */
   deleteCase = name => {
-    try{ const m=JSON.parse(localStorage.getItem("redact-cases")||"{}"); delete m[name]; localStorage.setItem("redact-cases", JSON.stringify(m)); }catch(_){}
-    try{ const last=JSON.parse(localStorage.getItem("redact-profile-last")||"null"); if(last&&last.name===name) localStorage.removeItem("redact-profile-last"); }catch(_){}
+    try{ const m=JSON.parse(localStorage.getItem(this.caseKey("redact-cases"))||"{}"); delete m[name]; localStorage.setItem(this.caseKey("redact-cases"), JSON.stringify(m)); }catch(_){}
+    try{ const last=JSON.parse(localStorage.getItem(this.caseKey("redact-profile-last"))||"null"); if(last&&last.name===name) localStorage.removeItem(this.caseKey("redact-profile-last")); }catch(_){}
     const mine=this.state.caseName===name;
     this.setState({cases:this.readCases(), ...(mine?{caseName:"", profile:null}:{}),
       ...(this.state.lastProfile&&this.state.lastProfile.name===name?{lastProfile:null}:{})});
@@ -2978,7 +2985,7 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     if(!this.state.res) return;
     if(!this.state.rules.length&&!(this.state.allow||[]).length&&!this.removedNow().length) return;
     const prof=this.profileObj();
-    try{ localStorage.setItem("redact-profile-last", JSON.stringify(prof)); }catch(_){}
+    try{ localStorage.setItem(this.caseKey("redact-profile-last"), JSON.stringify(prof)); }catch(_){}
     if(prof.name){ this.writeCase(prof); this.setState({cases:this.readCases()}); }
     if(!this.state.profileDirty) this.setState({profileDirty:true});
   }
@@ -3580,7 +3587,7 @@ const KIND_NAME={NAME:"אדם", ORG:"גוף", PLACE:"מקום"};
            מוצע ברצועת "תיקים אחרונים", ופרופיל בלי שם — בכרטיס "להמשיך עם
            הפרופיל", כמו אחרי טעינה מחדש. */
         let lastProfile=null;
-        try{ const j=localStorage.getItem("redact-profile-last"); const p=j&&JSON.parse(j); if(p&&p.v===1&&!p.name&&(p.rules||[]).length) lastProfile=p; }catch(_){}
+        try{ const j=localStorage.getItem(this.caseKey("redact-profile-last")); const p=j&&JSON.parse(j); if(p&&p.v===1&&!p.name&&(p.rules||[]).length) lastProfile=p; }catch(_){}
         this.setState({screen:"entry", res:null, err:"", fileErr:"", name:"", buf:null, pending:false,
           pasteText:"", query:"", cat:"", filter:"all", addV:"", addR:"", sel:null, inline:null, popup:null,
           notice:"", copied:false, copyLabel:"העתקה ל-AI", sugAsk:false, casesHidden:false, peo:[], peoSug:[], peoKept:[],
