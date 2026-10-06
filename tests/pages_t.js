@@ -55,6 +55,10 @@ ok(fwd.if === "steps.kind.outputs.kind == 'forward'", "only for the forward: " +
 const fwdCheck = step("build", (s) => /npx playwright test e2e\/moved\.spec\.js/.test(s.run), "that runs the moved page's browser checks");
 ok(fwdCheck.if === "steps.kind.outputs.kind == 'forward'", "only for the forward: " + fwdCheck.if);
 ok(/FORWARD_ROOT: _site/.test(fwdCheck.text), "against the folder it is about to publish (FORWARD_ROOT)");
+for (const spec of (fwdCheck.run.match(/e2e\/[\w.-]+\.spec\.js/g) || [])) {
+  const src = fs.existsSync(path.join(ROOT, spec)) ? fs.readFileSync(path.join(ROOT, spec), "utf8") : "";
+  ok(/process\.env\.FORWARD_ROOT/.test(src), spec + " exists and serves FORWARD_ROOT when it is set");
+}
 ok(index("build", fwd) < index("build", fwdCheck), "built before it is checked");
 
 console.log("\n— the tool, as before, for a ref without it (a rollback to live/vNN) —");
