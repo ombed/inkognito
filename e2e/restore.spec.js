@@ -116,3 +116,69 @@ for (const size of [{ name: "desktop", width: 1440, height: 900 }, { name: "phon
     });
   });
 }
+
+// a first document with two towns, so the places screen writes rules; the next one has neither its people nor its towns
+const WITH_TOWNS = [
+  "פרוטוקול דיון",
+  "רחל פרידמן: אני מבקשת לפתוח. גרנו בחיפה ואחר כך בתל אביב.",
+  "דוד כהן: הגעתי מחיפה הבוקר.",
+  "רחל פרידמן: תודה.",
+  "דוד כהן: נסכם בכתב.",
+].join("\n");
+const NEXT = [
+  "פרוטוקול ישיבה",
+  "יעל ברגר: אני המבקשת.",
+  "משה גולן: אני המשיב.",
+  "יעל ברגר: אני מבקשת דחייה.",
+  "משה גולן: אני מתנגד.",
+].join("\n");
+
+/* Live check, 6.10: «מסמך חדש» cleared the restore screen, but the next document can also be reached by the
+   back buttons and loaded from there. Then the last client's AI answer and its restored real names waited on
+   the restore screen of the next one, and the restore still read the last document's mapping: its towns and
+   the pseudonyms it had sent came back as that client's real ones. Loading a document, by pasted text or by a
+   file, now clears all of it; a case that is attached keeps its own (e2e/qa2.spec.js, e2e/unruly.spec.js). */
+for (const how of ["pasted text", "a file"]) {
+  test(`the next document, loaded by ${how}, finds nothing of the last one on the restore screen`, async ({ page }) => {
+    await H.serveEngineWithStub(page);
+    await H.boot(page);
+    await modelOff(page);
+    await H.upload(page, "first.docx", WITH_TOWNS);
+    await toWork(page);
+    const r = await fakeOf(page, "רחל פרידמן");
+    const town = await page.evaluate(() => (window.__pib.state().rules.find((x) => x.value === "חיפה") || {}).replacement);
+    expect(town, "the first document's town has a pseudonym").toBeTruthy();
+    // copied, so its pseudonyms count as sent
+    await page.evaluate(() => { navigator.clipboard.writeText = () => Promise.resolve(); });
+    await page.locator("[data-bar]").getByRole("button", { name: /העתקה ל-AI|הועתק/ }).click();
+    const anyway = page.getByRole("button", { name: /בכל זאת/ });
+    if (await anyway.isVisible({ timeout: 800 }).catch(() => false)) await anyway.click();
+    await openRestore(page);
+    await restore(page, `${r} גרה ב${town}.`);
+    await expect(page.locator("[data-rv-out]")).toHaveText("רחל פרידמן גרה בחיפה.");
+
+    // back to the file screen by the back buttons, not by «מסמך חדש»
+    for (const label of ["המסמך", "רשימת השמות", "קובץ"]) {
+      await expect(page.locator("[data-back]")).toContainText(label);
+      await page.locator("[data-back]").click();
+    }
+    if (how === "pasted text") {
+      await page.getByPlaceholder("הדבקת טקסט לבדיקה…").fill(NEXT);
+      await page.getByRole("button", { name: "שימוש בטקסט הזה" }).click();
+    } else await H.upload(page, "next.docx", NEXT);
+    await toWork(page);
+    const y = await fakeOf(page, "יעל ברגר");
+
+    await openRestore(page);
+    await expect(page.getByPlaceholder("הדבקת תשובת ה-AI…")).toHaveValue("");
+    await expect(page.locator("[data-rv-out]")).toHaveCount(0);
+    await expect(page.locator("[data-rv-result]")).toHaveCount(0);
+    // this document's names come back; the last one's pseudonyms are not this client's, and stay as written
+    await restore(page, `${y} ביקשה דחייה. ${r} גרה ב${town}.`);
+    const out = page.locator("[data-rv-out]");
+    await expect(out).toContainText("יעל ברגר ביקשה דחייה.");
+    await expect(out).toContainText(`גרה ב${town}.`);
+    await expect(out).not.toContainText("רחל פרידמן");
+    await expect(out).not.toContainText("חיפה");
+  });
+}
