@@ -3275,6 +3275,13 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     }
   }
   tourStep(i){ return this.constructor.TOUR[i]; }
+  /* On a phone the review screen shows one pane at a time: the save step's field sits in «ממצאים ובדיקה», and the
+     step said «הקלידו שם תיק בשדה המסומן» over the document, with nothing lit (the tour lens, 6.10). A step
+     whose target is in the rail shows the rail; the step about the document shows the document. */
+  tourPane(step){
+    if(!this.state.narrow||!step||!step.target) return {};
+    return step.target.includes("data-tour-target=case")?{pane:"find"}:step.target.includes("[data-work] section")?{pane:"doc"}:{};
+  }
   tourClose = () => {
     const t=this.state.tour; if(!t) return;
     this.log.add("tour",{at:"close", step:t.i, done:t.i>=this.constructor.TOUR.length-1});
@@ -3339,7 +3346,7 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     }
     // בצעד ההחזרה, כפתור הכרטיס עושה מה שעושה הכפתור שבמסך (rvGo מעביר לצעד הבא); תיבה שרוקנה מתמלאת שוב
     if(cur.restore){ if((this.state.rvIn||"").trim()) this.rvGo(); else this.setState({rvIn:this.tourAnswer()}, this.rvGo); return; }
-    this.setState({tour:{...t, i:t.i+1}, open:nx.open?this.openWith(nx.open):this.state.open});
+    this.setState({tour:{...t, i:t.i+1}, open:nx.open?this.openWith(nx.open):this.state.open, ...this.tourPane(nx)});
   };
   // עד עשרים שניות, בפסיעות קטנות, עד שהתנאי מתקיים — העיבוד רץ בלי await
   async tourWait(cond){ for(let i=0;i<200&&!cond();i++) await new Promise(r=>setTimeout(r,100)); }
@@ -3349,7 +3356,7 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     if(T[i].screen==="places"&&!t.hadPlaces) i--;
     const cur=T[i];
     this.log.add("tour",{at:"back", step:t.i});
-    const patch={tour:{...t, i}};
+    const patch={tour:{...t, i}, ...this.tourPane(cur)};
     if(cur.screen==="entry") Object.assign(patch,{screen:"entry", pending:!!this.state.buf});
     else if(cur.screen==="people") Object.assign(patch,{screen:"people"});
     else if(cur.screen==="places") Object.assign(patch,{screen:"places"});

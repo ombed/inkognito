@@ -79,3 +79,24 @@ test("browser Back closes the tour and stays in the tool; closing it by its butt
   // and the page scrolls again
   expect(await page.evaluate(() => document.documentElement.classList.contains("touring"))).toBe(false);
 });
+
+/* On a phone the review screen shows one pane at a time, and the save step's field is in «ממצאים ובדיקה»: the
+   step asked to type a case name in «השדה המסומן» over the document, with nothing lit (the tour lens, 6.10). */
+test("on a phone the save step shows the pane its field is in, lit; Back to the document's step shows the document", async ({ page }) => {
+  test.info().annotations.push({ type: "no-self-check" });
+  const tour = await tourAt(page, 390, 844);
+  await tour.getByRole("button", { name: /טעינת המסמך לדוגמה/ }).click();
+  await expect(tour).toContainText("מי בתיק", { timeout: 20000 });
+  await tour.getByRole("button", { name: "המשך", exact: true }).click();
+  await expect(tour).toContainText("יישובים", { timeout: 20000 });
+  await tour.getByRole("button", { name: /החלת הקבוצה/ }).click();
+  await expect(tour).toContainText("מסך הבדיקה", { timeout: 20000 });
+  await tour.getByRole("button", { name: "המשך", exact: true }).click();
+  await expect(tour).toContainText("שמירה");
+  await expect(page.locator("[data-tour-target=case]")).toBeVisible();
+  await expect(page.locator("[data-spot]")).toBeVisible();
+  await expect.poll(() => spotOk(page)).toBe(true);
+  await tour.getByRole("button", { name: "חזרה" }).click();
+  await expect(tour).toContainText("מסך הבדיקה");
+  await expect(page.locator("[data-work] section").first()).toBeVisible();
+});
