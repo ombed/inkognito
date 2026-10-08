@@ -3035,8 +3035,9 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
       const t=this.state.tour; if(!t||!e.isTrusted) return;
       const cur=this.constructor.TOUR[t.i], target=cur&&cur.target?document.querySelector(cur.target):null;
       const el=e.target;
-      if(!target||!el||!el.closest) return;
-      if(target.contains(el)||el.closest("[data-tour],[data-inline],[data-notice],[data-intro],[data-tip],[data-demo]")) return;
+      // a step whose target is not on the screen lets nothing through either (the tour lens, 6.10: step 7 did)
+      if(!el||!el.closest) return;
+      if((target&&target.contains(el))||el.closest("[data-tour],[data-inline],[data-notice],[data-intro],[data-tip],[data-demo]")) return;
       e.preventDefault(); e.stopPropagation();
       this.log.add("tour",{at:"blocked-click"});
       if(t.nudge!==t.i) this.setState({tour:{...t, nudge:t.i}});

@@ -100,3 +100,17 @@ test("on a phone the save step shows the pane its field is in, lit; Back to the 
   await expect(tour).toContainText("מסך הבדיקה");
   await expect(page.locator("[data-work] section").first()).toBeVisible();
 });
+
+// the tour lens, 6.10: on a step whose target was not on the screen, every click went through to the page
+test("a step whose target is not on the screen lets no click through", async ({ page }) => {
+  test.info().annotations.push({ type: "no-self-check" });
+  const tour = await tourAt(page);
+  // with no target there is no spotlight and no dimmed layer over the page: the click reaches the page itself
+  await page.evaluate(() => { document.querySelector("[data-tour-target=upload]").removeAttribute("data-tour-target"); window.dispatchEvent(new window.Event("resize")); });
+  await expect(page.locator("[data-spot]")).toHaveCount(0);
+  const dark = () => page.evaluate(() => document.documentElement.classList.contains("dark"));
+  const before = await dark();
+  await page.getByRole("button", { name: "מצב יום או לילה" }).click();
+  expect(await dark()).toBe(before);
+  await expect(tour.locator("[data-tour-nudge]")).toBeVisible();
+});
