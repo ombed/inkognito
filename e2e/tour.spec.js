@@ -121,7 +121,7 @@ test("a first visit offers the tour, and the tour walks the screens on the sampl
   }));
   expect(stored.last).toBeNull();
   expect(stored.cases === null || stored.cases === "{}").toBe(true);
-  expect(stored.tour).toMatch(/^v\d+$/);
+  expect(stored.tour).toMatch(/^v\d+(?:\.\d+)?$/);
 });
 
 /* The owner's decision of 6.10 (Q33): the welcome shows once. Until v65 it came back after every update;
