@@ -95,6 +95,7 @@ GitHub Pages או כל אירוח סטטי מספיק. **כתובת `https` הי
 | פקודה | מה |
 |---|---|
 | `npm test` | לינט, סוללות Node, בדיקות דפדפן — רץ על כל PR ב-CI |
+| `npm run test:browsers` | אותן בדיקות דפדפן במנוע של Safari (WebKit) וב-Firefox, לפני גרסה שמשנה את הדף (פעם אחת במחשב: `npx playwright install webkit firefox`) |
 | `npm run lint` | ESLint: שם לא מוגדר, הכרזה כפולה, regex שבור |
 | `npm run bump <n>` / `npm run bump fix` | מקדם את ששת אתרי הגרסה יחד: גרסה, או תיקון קטן (vNN.1) |
 | `npm run bench` / `bench:nomodel` / `gate` | הבנצ'מרק (ראו `bench/README.md`) |

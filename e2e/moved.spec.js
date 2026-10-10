@@ -94,7 +94,7 @@ const shown = (page) => page.evaluate(() => document.body.innerText.replace(/\s+
 // an evaluate during a navigation the page did not start throws; poll through it
 const settled = (page, fn) => page.evaluate(fn).catch(() => "navigating");
 
-test("the moved page offers her saved cases as one file, in the approved words, and nothing leaves the browser", async ({ page }) => {
+test("the moved page offers her saved cases as one file, in the approved words, and nothing leaves the browser", async ({ page, browserName }) => {
   const site = await serve(forwardSite());
   try {
     const outside = await guard(page);
@@ -115,7 +115,10 @@ test("the moved page offers her saved cases as one file, in the approved words, 
     await page.keyboard.press("Tab");
     await expect(download).toBeFocused();
     expect(await ring(download)).toEqual(["solid", true]);
-    await page.keyboard.press("Tab");
+    // Safari's Tab skips links unless a setting is on (Option+Tab on a Mac); the WebKit the tests run
+    // has no key that reaches them, so there the link takes the focus from the page, after the keyboard
+    if (browserName === "webkit") await page.getByRole("link", { name: GO }).focus();
+    else await page.keyboard.press("Tab");
     await expect(page.getByRole("link", { name: GO })).toBeFocused();
     expect(await ring(page.getByRole("link", { name: GO }))).toEqual(["solid", true]);
 
@@ -186,41 +189,47 @@ test("with nothing saved the moved page sends the visitor straight to inkognito.
   }
 });
 
-test("the handover: the tool's worker gives way, its caches and the model go, the saved cases stay, and the page ends on the moved page", async ({ page }) => {
-  const site = await serve(ROOT);
-  try {
-    await guard(page, ["unpkg.com", "cdn.jsdelivr.net"]);
-    await page.addInitScript(() => { try { localStorage.setItem("redact-intro-seen", "1"); localStorage.setItem("redact-tour-seen", "*"); } catch (_) {} });
-    // until now: the tool at this address, its worker installed and in control
-    await page.goto(site.base + "/index.html");
-    await expect(page.locator("#dc-root")).toBeAttached({ timeout: 60000 });
-    await page.waitForFunction(() => !!navigator.serviceWorker.controller, null, { timeout: 30000 });
-    await page.evaluate(async ([c, l]) => {
-      localStorage.setItem("redact-cases", JSON.stringify(c));
-      localStorage.setItem("redact-profile-last", JSON.stringify(l));
-      // the model, where transformers.js keeps it
-      const m = await caches.open("transformers-cache");
-      await m.put("https://huggingface.co/x/resolve/r/config.json", new window.Response("{}"));
-    }, [CASES, LAST]);
-    const before = await page.evaluate(() => caches.keys());
-    expect(before.some((k) => /^hedact-v\d+(?:\.\d+)?$/.test(k)) && before.includes("transformers-cache"), before.join(",")).toBe(true);
+// the worker is what is checked here (the config blocks it everywhere else); the other tests in this
+// file serve the tool with a stub, which a worker could replace with the real engine after a reload
+test.describe("with the tool's service worker", () => {
+  test.use({ serviceWorkers: "allow" });
 
-    // the deploy: this address now serves the forward
-    site.state.root = forwardSite();
-    await page.reload();
-    await expect.poll(() => settled(page, () => navigator.serviceWorker.getRegistrations().then((r) => r.length)), { timeout: 30000 }).toBe(0);
-    await expect.poll(() => settled(page, () => caches.keys()), { timeout: 30000 }).toEqual([]);
-    await expect(page.locator("main p")).toHaveText(TEXT);
-    await expect(page.getByRole("button", { name: DOWNLOAD, exact: true })).toBeVisible();
-    expect(await page.evaluate(() => [localStorage.getItem("redact-cases"), localStorage.getItem("redact-profile-last")].map((s) => JSON.parse(s))))
-      .toEqual([CASES, LAST]);
-    // and the worker that did it is gone for good: a reload is served by nobody but the network
-    await page.reload();
-    expect(await page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(false);
-    await expect(page.locator("main p")).toHaveText(TEXT);
-  } finally {
-    site.server.close();
-  }
+  test("the handover: the tool's worker gives way, its caches and the model go, the saved cases stay, and the page ends on the moved page", async ({ page }) => {
+    const site = await serve(ROOT);
+    try {
+      await guard(page, ["unpkg.com", "cdn.jsdelivr.net"]);
+      await page.addInitScript(() => { try { localStorage.setItem("redact-intro-seen", "1"); localStorage.setItem("redact-tour-seen", "*"); } catch (_) {} });
+      // until now: the tool at this address, its worker installed and in control
+      await page.goto(site.base + "/index.html");
+      await expect(page.locator("#dc-root")).toBeAttached({ timeout: 60000 });
+      await page.waitForFunction(() => !!navigator.serviceWorker.controller, null, { timeout: 30000 });
+      await page.evaluate(async ([c, l]) => {
+        localStorage.setItem("redact-cases", JSON.stringify(c));
+        localStorage.setItem("redact-profile-last", JSON.stringify(l));
+        // the model, where transformers.js keeps it
+        const m = await caches.open("transformers-cache");
+        await m.put("https://huggingface.co/x/resolve/r/config.json", new window.Response("{}"));
+      }, [CASES, LAST]);
+      const before = await page.evaluate(() => caches.keys());
+      expect(before.some((k) => /^hedact-v\d+(?:\.\d+)?$/.test(k)) && before.includes("transformers-cache"), before.join(",")).toBe(true);
+
+      // the deploy: this address now serves the forward
+      site.state.root = forwardSite();
+      await page.reload();
+      await expect.poll(() => settled(page, () => navigator.serviceWorker.getRegistrations().then((r) => r.length)), { timeout: 30000 }).toBe(0);
+      await expect.poll(() => settled(page, () => caches.keys()), { timeout: 30000 }).toEqual([]);
+      await expect(page.locator("main p")).toHaveText(TEXT);
+      await expect(page.getByRole("button", { name: DOWNLOAD, exact: true })).toBeVisible();
+      expect(await page.evaluate(() => [localStorage.getItem("redact-cases"), localStorage.getItem("redact-profile-last")].map((s) => JSON.parse(s))))
+        .toEqual([CASES, LAST]);
+      // and the worker that did it is gone for good: a reload is served by nobody but the network
+      await page.reload();
+      expect(await page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(false);
+      await expect(page.locator("main p")).toHaveText(TEXT);
+    } finally {
+      site.server.close();
+    }
+  });
 });
 
 test("a file the moved page downloads, imported in the tool, brings every case; importing it again adds numbered copies", async ({ page, context }) => {

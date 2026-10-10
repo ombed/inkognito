@@ -4,6 +4,9 @@ const fs = require("fs");
 const path = require("path");
 const { SITE_FILES } = require("../scripts/build-site.js");
 
+// the worker is what is checked here (the config blocks it everywhere else)
+test.use({ serviceWorkers: "allow" });
+
 /* The service worker (sw.js) as a returning visitor meets it: across an update, and without a network.
 
    1. An update. The new page comes from the network while the old worker still controls it, and the
@@ -84,7 +87,7 @@ test("after an update the version chip ends as the page's own, and warns only wh
   }
 });
 
-test("after one visit the tool starts and keeps its look without a network", async ({ page, context }) => {
+test("after one visit the tool starts and keeps its look without a network", async ({ page, context, browserName }) => {
   const { server, base } = await serveRepo();
   try {
     await page.addInitScript(seen);
@@ -105,7 +108,9 @@ test("after one visit the tool starts and keeps its look without a network", asy
     // offline: the tool starts, and the tour's invented sample reaches the check screen in its own fonts
     const failed = [];
     page.on("requestfailed", (r) => failed.push(r.url()));
-    await context.setOffline(true);
+    // in WebKit the test's offline switch breaks the reload itself («internal error»), so there the
+    // network goes away as it does for a user: the server stops answering
+    if (browserName === "webkit") { server.closeAllConnections(); await new Promise((r) => server.close(r)); } else await context.setOffline(true);
     await page.reload();
     await expect(page.locator("#dc-root")).toBeAttached({ timeout: 30000 });
     await expect(page.locator("#boot")).toHaveCount(0);
@@ -125,7 +130,7 @@ test("after one visit the tool starts and keeps its look without a network", asy
     });
     expect(faces).toEqual({ failed: [], doc: true, ui: true, name: true });
     expect(failed.filter((u) => /\/fonts\/|unpkg\.com\/react/.test(u)), "nothing the tool needs failed offline").toEqual([]);
-    await context.setOffline(false);
+    if (browserName !== "webkit") await context.setOffline(false);
   } finally {
     server.close();
   }

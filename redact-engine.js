@@ -3120,8 +3120,9 @@ let nerLoad=async function(){
   if(nerEnv().local)throw new Error("מקובץ מקומי אי אפשר לטעון את המודל");
   NERSTATE="loading";
   NERP=(async()=>{
-    // בלי זה הדפדפן רשאי למחוק את המודל כשהמקום נגמר, והוא יירד שוב
-    await nerPersist();
+    // בלי זה הדפדפן רשאי למחוק את המודל כשהמקום נגמר, והוא יירד שוב. בלי לחכות לתשובה: Firefox
+    // שואל את המשתמש בחלון קופץ ולא עונה עד שהוא בוחר, ומי שלא בחר חיכה למודל לנצח (בדיקה ב-Firefox, 10.10)
+    nerPersist();
     nerHookFetch();
     try{ const dropped=await nerMigrateCache(); if(dropped)console.log("מודל: "+dropped+" קבצים של מודל קודם נמחקו מהמטמון"); }
     catch(e){ console.warn('ניקוי המטמון נכשל',e); }

@@ -15,6 +15,10 @@ module.exports = defineConfig({
   use: {
     baseURL: "http://127.0.0.1:4173",
     trace: "retain-on-failure",
+    // The service worker fetches what it stores itself, out of page routes' reach in Firefox and WebKit,
+    // so after a reload a test's stubbed engine could come back as the real one (10.10). It is blocked
+    // here and allowed where it is what is checked: e2e/sw.spec.js, e2e/moved.spec.js
+    serviceWorkers: "block",
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
