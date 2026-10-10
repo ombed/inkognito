@@ -42,8 +42,9 @@ test("the built tool opens under /app/ and its model loads from the re-split par
   expect(logs.some((l) => l.includes("קובץ המשקולות נבדק מול הגרסה הנעולה")), "the joined weights passed the pinned SHA-256").toBe(true);
   const parts = new Set(asked.filter((u) => /\/dist\/app\/models\/[^/]+\/onnx\/model_quantized\.onnx\.part\d+of8$/.test(u)));
   expect(parts.size).toBe(8);
-  // the runtime's WebAssembly from the site itself, in its parts, and React and the fonts too
-  expect(asked.filter((u) => /\/dist\/app\/vendor\/ort-[^/]+\/ort-wasm-simd-threaded\.asyncify\.wasm\.part\d$/.test(u)).length).toBeGreaterThanOrEqual(2);
+  // the runtime's WebAssembly from the site itself, in its parts, and React and the fonts too. Safari gets the build
+  // without asyncify (nerRuntime, engine/08-docx.js), and the site ships both (ORT_FILES, scripts/hosted.js)
+  expect(asked.filter((u) => /\/dist\/app\/vendor\/ort-[^/]+\/ort-wasm-simd-threaded(?:\.asyncify)?\.wasm\.part\d$/.test(u)).length).toBeGreaterThanOrEqual(2);
   expect(asked.some((u) => /\/dist\/app\/vendor\/react-18\.3\.1\.production\.min\.js$/.test(u))).toBe(true);
   expect(asked.some((u) => /\/dist\/app\/fonts\/rubik-hebrew-400-normal\.woff2$/.test(u))).toBe(true);
   // and nothing from any other site: every request went to this site or the (stand-in) project
