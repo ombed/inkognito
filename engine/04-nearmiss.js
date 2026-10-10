@@ -42,7 +42,7 @@ function mergeSignals(a,b){
     else if(aw.every((w,k)=>sameW(w,bw[k]))&&aw.some((w,k)=>w!==bw[k])&&aw.join("").length>=4)out.push("כתיב מלא מול חסר");
     else if(aw.length>=2&&[...aw].sort().join(" ")===[...bw].sort().join(" "))out.push("אותן מילים בסדר אחר");
   }
-  // "ארסן" ו"שארסן": אחד הוא השני עם אות שימוש לפניו. כשהמודל לא הכריע (או כבוי)
+  // "גורגן" ו"שגורגן": אחד הוא השני עם אות שימוש לפניו. כשהמודל לא הכריע (או כבוי)
   // זה נשאר הצעה, לא קיפול — "רון" ו"שרון" הם שני אנשים.
   if(aw.length===bw.length){
     const [x,y]=A.length<B.length?[A,B]:[B,A];

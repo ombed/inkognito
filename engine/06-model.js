@@ -149,7 +149,7 @@ function nerClean(ents,text,opt){
     // תואר בתחילת המקטע אינו חלק מהשם: "עו\"ד יערה" הוא "יערה". בלי זה המקטע
     // המודבק מאושר כשם שני לצד "יערה ליפשיץ", ושם המשפחה לבדו נחשב משותף ולא מוחלף.
     if(v)v=trimEdges(v.replace(TITLE_RX,""));
-    // "כאמור גדעון", "משכך גדעון": מילת קישור בראש המקטע אינה חלק מהשם
+    // "כאמור עמרי", "משכך עמרי": מילת קישור בראש המקטע אינה חלק מהשם
     if(v){let ws=v.split(/\s+/); while(ws.length>1&&LEAD.has(norm(ws[0])))ws.shift(); v=ws.join(" ");}
     if(v&&!/\s/.test(v)&&(STOP.has(v)||COMMON.has(v)||VRB.has(v)||STOP.has(norm(v))||COMMON.has(norm(v))))continue;
     // "שדוברת רוסית": אות שימוש על פועל או מילה נפוצה בראש המקטע אינה שם
