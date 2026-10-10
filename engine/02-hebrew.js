@@ -107,6 +107,10 @@ function ibanOK(s){
   }
   return m===1;
 }
+// כמה ספרות יש במספר שנמצא, וחלוקה שאינה שנה. אחרי תווית כמו «חשבון» או «תיק», ארבע ספרות שהן
+// שנה (2025) אינן מספר מזהה
+function digitsIn(lo,hi){return s=>{const n=s.replace(/\D/g,"").length;return n>=lo&&n<=hi}}
+function notYear(s){const m=/(\d[\d/-]*\d)\s*$/.exec(s);const d=m?m[1]:"";return !/^(19|20)\d\d$/.test(d)&&d.replace(/\D/g,"").length>=3}
 function luhn(s){const d=s.replace(/\D/g,"");if(d.length<12||d.length>19)return false;
   let t=0,a=false;for(let i=d.length-1;i>=0;i--){let n=+d[i];
     if(a){n*=2;if(n>9)n-=9}t+=n;a=!a}return t%10===0}
