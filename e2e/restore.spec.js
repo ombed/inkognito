@@ -49,12 +49,18 @@ async function restore(page, answer) {
 }
 
 /* Each paragraph of the restored answer as laid out: the edge it hugs, and whether its closing
-   mark sits to the left of its first letter (read right to left) or to its right. */
+   mark sits to the left of its first letter (read right to left) or to its right. Each paragraph
+   is a block of its own: one block with unicode-bidi:plaintext gave every paragraph its own
+   direction in Chrome and Safari, but Firefox aligned them all by the first one (10.10). The line
+   break between two blocks is counted, so the text measured here is the answer as written. */
 const paragraphs = (page) => page.locator("[data-rv-out]").evaluate((out) => {
-  const walker = document.createTreeWalker(out, NodeFilter.SHOW_TEXT);
   const nodes = [];
   let full = "", n;
-  while ((n = walker.nextNode())) { nodes.push({ n, at: full.length }); full += n.data; }
+  [...out.children].forEach((p, k) => {
+    if (k) full += "\n";
+    const walker = document.createTreeWalker(p, NodeFilter.SHOW_TEXT);
+    while ((n = walker.nextNode())) { nodes.push({ n, at: full.length }); full += n.data; }
+  });
   const pos = (i) => { for (let k = nodes.length - 1; k >= 0; k--) if (i >= nodes[k].at) return [nodes[k].n, i - nodes[k].at]; return [nodes[0].n, 0]; };
   const rects = (s, e) => { const r = document.createRange(); r.setStart(...pos(s)); r.setEnd(...pos(e)); return [...r.getClientRects()].filter((q) => q.width > 0); };
   const cs = getComputedStyle(out), box = out.getBoundingClientRect();
@@ -113,6 +119,13 @@ for (const size of [{ name: "desktop", width: 1440, height: 900 }, { name: "phon
         ["Note: see the protocol.", "left", false],
         ["רחל פרידמן היא המבקשת.", "right", true],
       ]);
+
+      // a blank line stays a blank line, one line high, and the answer's last line break adds none
+      await restore(page, [`${d} הוא המשיב.`, "", `${r} היא המבקשת.`, ""].join("\n"));
+      await expect(page.locator("[data-rv-out]")).toContainText("רחל פרידמן היא המבקשת.");
+      const blocks = await page.locator("[data-rv-out] > div").evaluateAll((ds) => ds.map((x) => [x.textContent, x.getBoundingClientRect().height]));
+      expect(blocks.map(([t]) => t)).toEqual(["דוד כהן הוא המשיב.", "", "רחל פרידמן היא המבקשת."]);
+      expect(blocks[1][1]).toBeGreaterThanOrEqual(blocks[0][1] - 1);
     });
   });
 }

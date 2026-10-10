@@ -457,8 +457,11 @@ test("L19: the restore box has a label, and the version chip sits in a landmark"
    file that arrives early is now held and read once the engine is there. */
 test("a file chosen before the engine has loaded is read once it has", async ({ page }) => {
   await H.serveEngineWithStub(page);
-  // after the stub's route, so it runs first: the engine arrives a moment late
-  await page.route("**/redact-engine.js", async (route) => { await new Promise((r) => setTimeout(r, 1500)); await route.fallback(); });
+  // after the stub's route, so it runs first: the engine is held until the file has been chosen. A fixed
+  // 1.5 s delay stood in for that, and in Firefox the page took longer than that to appear (10.10)
+  let release;
+  const held = new Promise((r) => { release = r; });
+  await page.route("**/redact-engine.js", async (route) => { await held; await route.fallback(); });
   await page.addInitScript(() => {
     try { localStorage.setItem("redact-intro-seen", "1"); localStorage.setItem("redact-tour-seen", "*"); } catch (_) {}
   });
@@ -466,6 +469,7 @@ test("a file chosen before the engine has loaded is read once it has", async ({ 
   await expect(page.locator("#dc-root")).toBeAttached({ timeout: 60000 });
   expect(await page.evaluate(() => !!(window.__pib && window.__pib.state().E))).toBe(false);
   await page.locator('input[type="file"][accept*=".docx"]').setInputFiles("e2e/fixtures/case-empty.docx");
+  release();
   await expect(page.locator("[data-file-err]")).toBeVisible({ timeout: 20000 });
   // and the session log says it happened, for the session-triage routine
   expect(await page.evaluate(() => window.__pib.log().events.filter((e) => e.ev === "file-early").map((e) => e.n))).toEqual([1]);

@@ -1,5 +1,24 @@
 const { test, expect } = require("./base");
 const H = require("./helpers");
+const { chromium } = require("@playwright/test");
+
+/* Only Chromium prints a page to PDF (page.pdf). In WebKit and Firefox the same PDF is printed by a
+   Chromium of its own, and the engine under test reads it back: what is checked is the reading. */
+async function printPdf(context, browserName, html) {
+  if (browserName === "chromium") {
+    const printer = await context.newPage();
+    await printer.setContent(html);
+    const pdf = await printer.pdf({ format: "A4" });
+    await printer.close();
+    return pdf;
+  }
+  const b = await chromium.launch();
+  try {
+    const printer = await b.newPage();
+    await printer.setContent(html);
+    return await printer.pdf({ format: "A4" });
+  } finally { await b.close(); }
+}
 
 /* pdf-text.js had no behavioural test (review M11), and it sorted every line's text items
    by ascending x. A Hebrew line split into several items, which one bold word is enough to
@@ -14,12 +33,9 @@ const LINES = [
   ["The mother <b>Ronit Levy</b> lives in Haifa", "The mother Ronit Levy lives in Haifa"],
 ];
 
-test("a Hebrew PDF is read in reading order, line by line, also when a line is split by formatting", async ({ page, context }) => {
+test("a Hebrew PDF is read in reading order, line by line, also when a line is split by formatting", async ({ page, context, browserName }) => {
   test.info().annotations.push({ type: "no-self-check" }); // no document is loaded into the app here
-  const printer = await context.newPage();
-  await printer.setContent(`<!doctype html><html lang="he" dir="rtl"><meta charset="utf-8"><body style="font-family:Arial,sans-serif;font-size:18px;line-height:2.2;margin:40px">${LINES.map(([h]) => `<p style="margin:0 0 18px">${h}</p>`).join("")}</body></html>`);
-  const pdf = await printer.pdf({ format: "A4" });
-  await printer.close();
+  const pdf = await printPdf(context, browserName, `<!doctype html><html lang="he" dir="rtl"><meta charset="utf-8"><body style="font-family:Arial,sans-serif;font-size:18px;line-height:2.2;margin:40px">${LINES.map(([h]) => `<p style="margin:0 0 18px">${h}</p>`).join("")}</body></html>`);
 
   await H.servePdfJsLocally(page);
   await page.goto("/index.html");
@@ -39,40 +55,34 @@ test("a Hebrew PDF is read in reading order, line by line, also when a line is s
 const HEADER = "בית המשפט לענייני משפחה בחיפה — תיק 12345-06-24";
 const page_ = (body) => `<section style="page-break-after:always"><p style="margin:0 0 18px">${HEADER}</p>${body}</section>`;
 const picture = `<div style="width:600px;height:700px;background:repeating-linear-gradient(45deg,#999 0 6px,#fff 6px 12px)"></div>`;
-async function readPdf(page, context, html) {
-  const printer = await context.newPage();
-  await printer.setContent(`<!doctype html><html lang="he" dir="rtl"><meta charset="utf-8"><body style="font-family:Arial,sans-serif;font-size:18px;margin:40px">${html}</body></html>`);
-  const pdf = await printer.pdf({ format: "A4" });
-  await printer.close();
+async function readPdf(page, context, browserName, html) {
+  const pdf = await printPdf(context, browserName, `<!doctype html><html lang="he" dir="rtl"><meta charset="utf-8"><body style="font-family:Arial,sans-serif;font-size:18px;margin:40px">${html}</body></html>`);
   await H.servePdfJsLocally(page);
   await page.goto("/index.html");
   return page.evaluate(async (bytes) => { const { pdfToText } = await import("./pdf-text.js"); return pdfToText(new Uint8Array(bytes).buffer); }, [...pdf]);
 }
 
-test("a scanned PDF with a printed header on every page is still a scanned PDF", async ({ page, context }) => {
+test("a scanned PDF with a printed header on every page is still a scanned PDF", async ({ page, context, browserName }) => {
   test.info().annotations.push({ type: "no-self-check" });
-  const got = await readPdf(page, context, page_(picture) + page_(picture) + page_(picture));
+  const got = await readPdf(page, context, browserName, page_(picture) + page_(picture) + page_(picture));
   expect(got.pages).toBe(3);
   expect(got.scanned).toBe(true);
 });
 
-test("a PDF with some pages that are pictures says which", async ({ page, context }) => {
+test("a PDF with some pages that are pictures says which", async ({ page, context, browserName }) => {
   test.info().annotations.push({ type: "no-self-check" });
   const one = `<p>העובדת הסוציאלית הגישה את הדוח היום, והאם רונית לוי מסרה את גרסתה בפני הוועדה.</p>`;
   const three = `<p>הדיון נדחה לחודש הבא, והצדדים יגישו עד אז את עמדותיהם בכתב לבית המשפט.</p>`;
-  const got = await readPdf(page, context, page_(one) + page_(picture) + page_(three));
+  const got = await readPdf(page, context, browserName, page_(one) + page_(picture) + page_(three));
   expect(got.scanned).toBe(false);
   expect(got.imagePages).toEqual([2]);
 });
 
-test("the app tells her which pages of the PDF are pictures", async ({ page, context }) => {
+test("the app tells her which pages of the PDF are pictures", async ({ page, context, browserName }) => {
   test.info().annotations.push({ type: "no-self-check" }); // stops at the entry screen
   const one = `<p>העובדת הסוציאלית הגישה את הדוח היום, והאם רונית לוי מסרה את גרסתה בפני הוועדה.</p>`;
   const three = `<p>הדיון נדחה לחודש הבא, והצדדים יגישו עד אז את עמדותיהם בכתב לבית המשפט.</p>`;
-  const printer = await context.newPage();
-  await printer.setContent(`<!doctype html><html lang="he" dir="rtl"><meta charset="utf-8"><body style="font-family:Arial,sans-serif;font-size:18px;margin:40px">${page_(one) + page_(picture) + page_(three)}</body></html>`);
-  const pdf = await printer.pdf({ format: "A4" });
-  await printer.close();
+  const pdf = await printPdf(context, browserName, `<!doctype html><html lang="he" dir="rtl"><meta charset="utf-8"><body style="font-family:Arial,sans-serif;font-size:18px;margin:40px">${page_(one) + page_(picture) + page_(three)}</body></html>`);
   await H.servePdfJsLocally(page);
   await H.serveEngineWithStub(page);
   await H.boot(page);

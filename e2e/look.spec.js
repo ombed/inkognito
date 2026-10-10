@@ -73,7 +73,9 @@ for (const vp of [DESK, PHONE]) {
 /* On paper. The runtime prints backgrounds (print-color-adjust:exact), so the cloth header would print as a
    solid green block: printed, it is ink on the page, with a rule under it and the pen stroke in ink, and its
    frames too (the night switch's stayed gilt). At night the page itself prints dark, so there the header
-   takes the night's ink: the day's ink on the night's page measured 1.03:1, a header no one could read. */
+   takes the night's ink: the day's ink on the night's page measured 1.03:1, a header no one could read.
+   Firefox prints in the light scheme, and a page that follows the system's scheme turns to the day as it
+   prints (10.10): there the day's ink is the right one, so the ink follows the page as it prints. */
 for (const dark of [false, true]) {
   test(`printed, the header is ink on the page and not a green block (${dark ? "night" : "day"})`, async ({ page }) => {
     if (dark) await page.emulateMedia({ colorScheme: "dark" });
@@ -97,7 +99,7 @@ for (const dark of [false, true]) {
       const h = document.querySelector("header"), mark = h.querySelector("[data-wordmark]");
       const texts = [...h.querySelectorAll("*")].filter((e) => e.getClientRects().length && [...e.childNodes].some((n) => n.nodeType === 3 && n.data.trim()));
       return {
-        background: getComputedStyle(h).backgroundColor, count: texts.length,
+        background: getComputedStyle(h).backgroundColor, count: texts.length, dark: document.documentElement.classList.contains("dark"),
         worst: Math.min(...texts.map((e) => ratio(rgb(getComputedStyle(e).color), behind(e)))),
         ink: getComputedStyle(mark).color, stroke: getComputedStyle(mark, "::after").backgroundColor,
         rule: getComputedStyle(h).borderBottomColor, frame: getComputedStyle(h.querySelector("[data-night]")).borderTopColor,
@@ -108,7 +110,7 @@ for (const dark of [false, true]) {
     expect(r.count).toBeGreaterThan(3);
     expect(r.worst, "the header's text against the page it prints on").toBeGreaterThanOrEqual(4.5);
     // one ink for the name, its pen stroke, the rule under the header and the night switch's frame
-    expect(r.ink).toBe(dark ? "rgb(237, 230, 204)" : "rgb(21, 23, 27)");
+    expect(r.ink).toBe(r.dark ? "rgb(237, 230, 204)" : "rgb(21, 23, 27)");
     for (const [what, c] of [["the pen stroke", r.stroke], ["the rule", r.rule], ["the night switch's frame", r.frame]]) expect(c, what).toBe(r.ink);
   });
 }
