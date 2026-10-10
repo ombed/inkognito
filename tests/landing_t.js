@@ -142,5 +142,20 @@ console.log("\n— the sitemap and the guides —");
   }
 }
 
+/* The sign-in page's script writes the texts of the mode it opens in on every load, so for that mode
+   its strings must be the page's own: from 7.10 to 11.10 it kept wording older than the page, and the
+   approved sentences were never seen (the launch checklist's reading of the code, 11.10). */
+{
+  const js = fs.readFileSync(path.join(SITE, "login.js"), "utf8"), html = fs.readFileSync(path.join(SITE, "login.html"), "utf8");
+  const mode = (js.match(/\bsignin: \{([^}]*)\}/) || [])[1] || "";
+  const said = (k) => (mode.match(new RegExp("\\b" + k + ': "([^"]*)"')) || [])[1];
+  const shown = (id) => (html.match(new RegExp('id="' + id + '">([^<]*)<')) || [])[1];
+  for (const [k, id] of [["h", "ask-h"], ["why", "ask-why"], ["send", "send"], ["q", "switch-q"], ["go", "switch"]]) {
+    ok(said(k) !== undefined && said(k) === shown(id), "sign-in: the script's «" + said(k) + "» is the page's «" + shown(id) + "» (" + k + ")");
+  }
+  const sentB = (html.match(/id="sent-b">([^<]*)</) || [])[1];
+  ok(!!sentB && js.includes('signup ? "' + sentB + '"'), "after sign-up the script says the page's own «" + sentB + "»");
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) process.exitCode = 1;

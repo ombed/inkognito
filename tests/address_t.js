@@ -35,8 +35,13 @@ const word = new RegExp("(?<![" + H + "])(" + SINGULAR.join("|") + ")(?![" + H +
 const LETTER = "\\u05D0-\\u05EA", NOT_VAV = "\\u05D0-\\u05D4\\u05D6-\\u05EA";
 const dont = new RegExp("(?<![" + H + "])אל (ת[" + LETTER + "]*[" + NOT_VAV + "])(?![" + H + "])", "g");
 
+// where the site lives (branch inkognito), its pages, scripts and emails speak to the reader too: the sign-in
+// page said «אין לך חשבון?» and thirteen pages «במחשב שלך» while this read the tool alone (11.10)
+const SITE = ["site", "supabase/templates"].filter((d) => fs.existsSync(path.join(ROOT, d)))
+  .flatMap((d) => fs.readdirSync(path.join(ROOT, d)).filter((f) => /\.(html|js)$/.test(f)).map((f) => d + "/" + f));
+
 const found = [];
-for (const f of FILES) {
+for (const f of [...FILES, ...SITE]) {
   const file = path.join(ROOT, f);
   if (!fs.existsSync(file)) continue;
   const text = strip(fs.readFileSync(file, "utf8"));

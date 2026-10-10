@@ -181,15 +181,23 @@ function build(out) {
      page also goes by the address Cloudflare serves it at: /login.html redirects to /login, and
      /index.html is /. Without those, every visit to the landing and sign-in pages ran the gate (the
      free plan's daily quota), and with "fail closed" set they would show Cloudflare's error page
-     once the quota ran out (4.10). */
+     once the quota ran out (4.10).
+     A page's .html name only redirects to that address, and since the clean links (8.10) no page
+     names it: it meets the function, which passes it on to the same redirect. So a page costs one
+     of Cloudflare's 100 rules, not two (11.10). Except /login.html: the gate (lib/gate.mjs) and the
+     demo's sign-up link still send people there. Still no patterns: a rule like /demo/* would hand
+     /demo/..%2Fapp%2Fx.js to the file server without the gate. wrangler pages dev decodes it and
+     serves /app/x.js; the live file server did not resolve a decoded ".." on 11.10, but nothing
+     documents that. */
   const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)]);
   const files = walk(out).map((f) => "/" + path.relative(out, f).split(path.sep).join("/"))
     .filter((p) => !/^\/app\//i.test(p) && !/(^|\/)\./.test(p) && !["/_headers", "/_routes.json"].includes(p));
   const pretty = files.filter((p) => /^\/[^/]+\.html$/.test(p)).map((p) => p === "/index.html" ? "/" : p.slice(0, -".html".length));
   // and a public folder's page by its folder's address, with and without the slash (/demo/ and /demo,
-  // which Cloudflare sends on to /demo/; without it the gate would send it to sign-in)
+  // which Cloudflare sends on to /demo/; without a rule it would meet the function, which passes it on)
   const folders = files.filter((p) => /^\/[^/]+\/index\.html$/.test(p)).flatMap((p) => [p.slice(0, -"index.html".length), p.slice(0, -"/index.html".length)]);
-  const pub = [...new Set([...files, ...pretty, ...folders])].sort();
+  const redirectOnly = (p) => p !== "/login.html" && /^\/[^/]+(\/index)?\.html$/.test(p);
+  const pub = [...new Set([...files.filter((p) => !redirectOnly(p)), ...pretty, ...folders])].sort();
   if (pub.length + 1 > ROUTE_LIMIT) throw new Error("build-hosted: " + pub.length + " public files exceed Cloudflare's " + ROUTE_LIMIT + " route rules");
   fs.writeFileSync(path.join(out, "_routes.json"), JSON.stringify({ version: 1, include: ["/*"], exclude: pub }, null, 1));
 

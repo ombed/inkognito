@@ -152,8 +152,15 @@ function hostedApp(html) {
    any could be made, would sit under their own key ("demo"), apart from every account's. The libraries are the
    site's own copies, as in /app/; the policy connects to the site alone. */
 const DEMO_FLAG = '<script>window.__inkDemo={signup:"../login.html?mode=signup"};window.__inkStoreSuffix="demo";</script>';
+/* The tool's link to its manifest has nothing to point to under /demo/ (no manifest, no worker there: it
+   answered 404, the launch dry run of 11.10), and in its place the page says noindex itself, so it stays
+   out of search engines by more than its header rule once the site-wide noindex comes off at launch. */
+const DEMO_MANIFEST = '<link rel="manifest" href="./manifest.webmanifest">';
+const DEMO_NOINDEX = '<meta name="robots" content="noindex">';
 function demoApp(html) {
   const anchor = '<script src="./page-logic.js"></script>';
+  if (html.split(DEMO_MANIFEST).length !== 2) throw new Error("hosted: index.html no longer links its manifest where the demo replaces it");
+  html = html.replace(DEMO_MANIFEST, DEMO_NOINDEX);
   const cspRe = /(<meta http-equiv="Content-Security-Policy" content=")([^"]*)(")/;
   if (!html.includes(anchor) || !cspRe.test(html)) throw new Error("hosted: index.html no longer has the places the demo inserts into");
   let out = html.replace(cspRe, (_, a, csp, z) => a + csp.split(";").map((d) => d.trim().split(/\s+/).filter((t) => !THIRD.test(t)).join(" ")).join("; ") + z);
