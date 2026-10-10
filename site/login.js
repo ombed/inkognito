@@ -150,7 +150,7 @@ const askReset = (addr) => sb.auth.resetPasswordForEmail(addr, { redirectTo: HER
 /* The form's three steps, as on other sites: sign in, create an account, and "forgot password"
    (an email to reset it). login.html?mode=signup opens on creating an account. */
 const MODES = {
-  signin: { h: "כניסה", why: "החשבון רק פותח את הכלי. המסמכים נשארים במחשב.", google: "כניסה", send: "כניסה", q: "אין לך חשבון?", go: "יצירת חשבון", to: "signup" },
+  signin: { h: "כניסה", why: "החשבון נדרש כדי להיכנס לכלי. המסמכים נשארים במחשב שלכם.", google: "כניסה", send: "כניסה", q: "אין לכם חשבון?", go: "יצירת חשבון", to: "signup" },
   signup: { h: "יצירת חשבון", why: "חינם. המסמכים נשארים במחשב שלכם.", google: "הרשמה", send: "יצירת חשבון", q: "כבר יש לכם חשבון?", go: "כניסה", to: "signin" },
   reset: { h: "שכחתי סיסמה", why: "תקבלו במייל קישור לבחירת סיסמה חדשה.", google: "", send: "שליחת קישור", q: "", go: "חזרה לכניסה", to: "signin" },
 };
@@ -192,7 +192,7 @@ function sent(what, addr) {
   $("sent-h").textContent = signup ? "נשאר לאמת את המייל" : "נשאר לפתוח את המייל";
   // Supabase sends a reset link only to an address that has an account, and says nothing either way
   $("sent-a").textContent = signup ? "מייל אימות נשלח אל" : "אם יש חשבון עם הכתובת";
-  $("sent-b").textContent = signup ? ". לוחצים על הכפתור שבמייל כדי לאמת את הכתובת." : ", יגיע אליה מייל עם קישור לאיפוס הסיסמה. הוא תקף ל־15 דקות.";
+  $("sent-b").textContent = signup ? ". לוחצים על הכפתור שבמייל, ובדף שנפתח מקלידים שוב את הסיסמה." : ", יגיע אליה מייל עם קישור לאיפוס הסיסמה. הוא תקף ל־15 דקות.";
   again = signup ? askConfirm : askReset;
   card.classList.add("is-sent");
   $("sent-h").focus();

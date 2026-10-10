@@ -69,6 +69,12 @@ try {
   ok(!/<script src="[^"]*(cloud|config|supabase)[^"]*"/.test(demo) && /connect-src 'self'(;|")/.test(demo), "it loads no sign-in and connects to the site alone");
   ok(!files.some((f) => /^demo\/(models\/|sw\.js|vendor\/(transformers|ort|pdfjs))/.test(f)), "no model, no runtime, no PDF reader, no service worker under /demo/");
   ok(files.includes("demo/vendor/react-18.3.1.production.min.js") && files.includes("demo/redact-engine.js"), "the demo has the tool's own copies of what it runs");
+  // every relative address the demo page names is a file under /demo/ or the site's (its manifest link
+  // pointed at nothing, 11.10), and the page says noindex itself
+  const demoRefs = [...demo.matchAll(/\b(?:src|href)="(?!https?:|mailto:|#|data:|{{)([^"?#]+)/g)].map((m) => path.posix.normalize(path.posix.join("demo", m[1])));
+  const demoMissing = demoRefs.filter((r) => !files.includes(r) && !files.includes(r + "index.html") && !files.includes(r.replace(/\/$/, "") + ".html"));
+  ok(demoRefs.length >= 5 && !demoMissing.length, "each of the demo page's " + demoRefs.length + " relative addresses is a file the site has" + (demoMissing.length ? ": " + demoMissing.join(", ") : ""));
+  ok(/<meta name="robots" content="noindex">/.test(demo) && !/rel="manifest"/.test(demo), "the demo page says noindex itself, and links no manifest");
   /* security.txt (RFC 9116; the owner's decision, 6.10): where to report a security problem. Its Expires
      must lie ahead, and less than a year ahead: this check fails when it lapses, as a reminder to renew */
   const sec = files.includes(".well-known/security.txt") ? read(".well-known/security.txt") : "";
@@ -205,6 +211,9 @@ try {
   const every = blocks.filter((b) => b.p === "/*");
   const early = every.length === 1 && every[0].lines.includes("X-Robots-Tag: noindex");
   ok(LAUNCHED ? !early : early, LAUNCHED ? "launched: inkognito.co.il is open to search engines" : "before launch: every address is kept out of search engines");
+  // once the rule for every address stops saying noindex, the tool and the demo each need their own: removing
+  // the demo's left every check green (the launch dry run, 11.10)
+  ok(["/app/*", "/demo/*"].every((p) => (blocks.find((b) => b.p === p) || { lines: [] }).lines.includes("X-Robots-Tag: noindex")), "the tool and the demo are kept out of search engines, each by its own rule");
   /* Cloudflare keeps one rule per pattern: a second "/*" rule for the noindex took the security
      headers off every page (seen live, 5.10). So no pattern twice, and the rule for every address
      still carries them. */
@@ -244,7 +253,15 @@ try {
   ok(routes.exclude.includes("/demo/") && routes.exclude.includes("/demo") && !routes.exclude.some((p) => p.startsWith("/app")), "the demo's address skips the gate; nothing of /app/ does");
   ok(routes.exclude.every(served), "each is a file the site has, or the address a page is served at");
   ok(!routes.exclude.some((p) => /^\/app(\/|$)/i.test(p) || /(^|\/)\./.test(p)), "none is under /app/, and no dot file");
-  for (const p of ["/index.html", "/login.html", "/privacy.html", "/site.css", "/config.js", "/login.js"]) ok(routes.exclude.includes(p), p + " skips the gate");
+  for (const p of ["/login.html", "/site.css", "/config.js", "/login.js"]) ok(routes.exclude.includes(p), p + " skips the gate");
+  // a page's .html name only redirects to its clean address: it meets the function, which passes it on, so a page
+  // costs one rule, not two (11.10); /login.html keeps its own, where the gate and the demo's sign-up send people
+  const htmlRules = routes.exclude.filter((p) => p.endsWith(".html"));
+  ok(htmlRules.join() === "/login.html", "no .html name has a rule but /login.html: " + htmlRules.join(", "));
+  ok(pages.every((f) => routes.exclude.includes(f === "index.html" ? "/" : "/" + f.slice(0, -".html".length))), "every page at the root skips the gate at its clean address (" + pages.length + ")");
+  // so no page may lead to one: the root's pages are checked above (clean links); the demo's and the tool's may name /login.html alone
+  const htmlLinks = ["demo/index.html", "app/index.html"].flatMap((f) => (read(f).match(/["'/][a-z][a-z0-9-]*\.html(?=["'#?])/g) || []).filter((m) => m.slice(1) !== "login.html").map((m) => f + ": " + m));
+  ok(!htmlLinks.length, "the demo and the tool name no page by its .html address but login.html" + (htmlLinks.length ? ": " + htmlLinks.join(", ") : ""));
   // without these, every visit to the landing and sign-in pages ran the gate, and with "fail closed"
   // an exhausted daily quota would have shut them too (4.10)
   for (const p of ["/", "/login", "/privacy", "/terms", "/accessibility", "/changes", "/deleted", "/security", "/help"]) ok(routes.exclude.includes(p), p + " (the address Cloudflare serves the page at) skips the gate");
