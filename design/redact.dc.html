@@ -768,7 +768,7 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
       </div></sc-if>
       <sc-if value="{{ rvLeftNone }}"><p data-rv-left-none key="{{ rvKey }}" style="margin:0 0 10px;font-size:13px;color:var(--ink2)">לא נמצא בתשובה פרט בדוי שלא הוחזר.</p></sc-if></sc-if></div><!-- השגיאה והתוצאה נאמרות לקורא מסך: אזור המצב כבר במסך כשהתוצאה מגיעה (בדיקה חיה, 6.10), וכל החזרה מעלה אותן כאלמנט חדש (rvKey), כך שגם תוצאה או שגיאה זהות לקודמות נאמרות שוב (הביקורת של 6.10) -->
     <sc-if value="{{ rvOut }}">
-      <div data-rv-out dir="rtl" style="background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:18px;font:15px/1.9 'Noto Serif Hebrew',serif;white-space:pre-wrap;unicode-bidi:plaintext;text-align:start"><sc-for list="{{ rvSegs }}" as="sg" hint-placeholder-count="3"><sc-if value="{{ sg.plain }}"><span>{{ sg.t }}</span></sc-if><sc-if value="{{ sg.mark }}"><mark data-left title="{{ sg.title }}" style="background:var(--warn-soft);color:inherit;border-bottom:2px dashed var(--warn);border-radius:3px;padding:0 1px">{{ sg.t }}</mark></sc-if></sc-for></div><!-- כל פסקה בכיוון של האות הראשונה שלה, כמו בתיבת ההדבקה; dir="auto" נתן לתשובה כולה כיוון אחד (בדיקה חיה, 6.10) -->
+      <div data-rv-out dir="rtl" style="background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:18px;font:15px/1.9 'Noto Serif Hebrew',serif;white-space:pre-wrap"><sc-for list="{{ rvParas }}" as="pg" hint-placeholder-count="3"><div dir="auto" style="min-height:1.9em;text-align:start"><sc-for list="{{ pg.segs }}" as="sg" hint-placeholder-count="3"><sc-if value="{{ sg.plain }}"><span>{{ sg.t }}</span></sc-if><sc-if value="{{ sg.mark }}"><mark data-left title="{{ sg.title }}" style="background:var(--warn-soft);color:inherit;border-bottom:2px dashed var(--warn);border-radius:3px;padding:0 1px">{{ sg.t }}</mark></sc-if></sc-for></div></sc-for></div><!-- כל פסקה בכיוון של האות הראשונה שלה, בבלוק משלה כמו המסמך במסך הבדיקה: dir="auto" על התשובה כולה נתן לה כיוון אחד (בדיקה חיה, 6.10), ובבלוק אחד עם unicode-bidi:plaintext יישר Firefox את כל הפסקאות לפי הראשונה (בדיקה ב-Firefox, 10.10) -->
       <div style="display:flex;gap:9px;margin-top:11px;flex-wrap:wrap">
         <button onClick="{{ onRvCopy }}" style="{{ rvCopyStyle }}">{{ rvCopyLabel }}</button>
         <sc-if value="{{ rvBackOn }}"><button data-rv-back onClick="{{ onBack }}" style="padding:12px 18px;border-radius:10px;border:1px solid var(--line);background:var(--panel);font-weight:500;font-size:14px;white-space:nowrap" style-hover="background:var(--panel2)">חזרה למסמך</button></sc-if>
@@ -1275,6 +1275,35 @@ class Component extends DCLogic {
     };
     if(typeof ResizeObserver!=="undefined"){ this._barObs=new ResizeObserver(()=>this._barSize()); this._headObs=new ResizeObserver(()=>this._barSize()); }
     this._barSize();
+    /* ריפוד הגלילה מספיק ל-Chrome בלבד (בדיקה בשלושת המנועים, 10.10): Safari מתעלם ממנו כשהוא גולל אל
+       הפקד שבמיקוד, ו-Shift+Tab השאיר שדות מתחת לכותרת; Firefox גלל רק את רשימת הממצאים, ו-Tab השאיר
+       כרטיס ממנה מחוץ לחלון. אחרי שהדפדפן גלל, הדף מודד את הפקד עם הטבעת שלו ומשלים את הגלילה: קודם
+       באזורי הגלילה שהוא בתוכם, ואז בחלון, בין הכותרת לבר. פקד בשכבה קבועה (כרטיס הסיור) זז עם החלון,
+       וגלילה לא תעזור לו. רק מיקוד שהמקלדת הזיזה: הקשה או לחיצה על שדה נגללים כמו קודם, בלי תיקון */
+    this._keyAt = 0;
+    this._keyMark = () => { this._keyAt = performance.now(); };
+    document.addEventListener("keydown", this._keyMark, true);
+    this._focusKeep = e => {
+      const el=e.target;
+      if(performance.now()-this._keyAt>1000||!el||!el.matches||!el.matches(":focus-visible")) return;
+      requestAnimationFrame(()=>{
+        if(document.activeElement!==el) return;
+        for(let a=el; a; a=a.parentElement) if(getComputedStyle(a).position==="fixed") return;
+        const cs=getComputedStyle(el), ext=(cs.outlineStyle==="none"?0:parseFloat(cs.outlineWidth)||0)+Math.max(0,parseFloat(cs.outlineOffset)||0)+2;
+        for(let a=el.parentElement; a&&a!==document.body; a=a.parentElement){
+          const s=getComputedStyle(a); if(s.overflowY!=="auto"&&s.overflowY!=="scroll") continue;
+          const b=a.getBoundingClientRect(), r=el.getBoundingClientRect();
+          if(r.top-ext<b.top) a.scrollTop-=b.top-(r.top-ext);
+          else if(r.bottom+ext>b.bottom) a.scrollTop+=Math.min(r.bottom+ext-b.bottom, r.top-ext-b.top);
+        }
+        const hd=document.querySelector("header"), bar=document.querySelector("[data-bar]"), r=el.getBoundingClientRect();
+        const top=hd&&!hd.contains(el)?Math.max(0,hd.getBoundingClientRect().bottom):0;
+        const bottom=bar&&!bar.contains(el)?Math.min(innerHeight,bar.getBoundingClientRect().top):innerHeight;
+        if(r.top-ext<top) scrollBy(0,(r.top-ext)-top);
+        else if(r.bottom+ext>bottom) scrollBy(0,Math.min(r.bottom+ext-bottom, r.top-ext-top));
+      });
+    };
+    document.addEventListener("focusin", this._focusKeep);
     this._docClick = e => {
       if(this.state.popup && !e.target.closest("[data-popup]")) this.setState({popup:null});
       // תפריט «עזרה» נסגר בלחיצה מחוץ לו, כמו תפריט
@@ -1428,7 +1457,7 @@ class Component extends DCLogic {
     removeEventListener("beforeunload", this._unload); removeEventListener("pagehide", this._hide); removeEventListener("popstate", this._pop); document.removeEventListener("click", this._histNow, true); document.removeEventListener("keydown", this._histNow, true);
     removeEventListener("scroll", this._follow, true); removeEventListener("resize", this._follow); removeEventListener("animationend", this._follow, true); removeEventListener("transitionend", this._follow, true);
     removeEventListener("scroll", this._scNudge, {capture:true}); removeEventListener("resize", this._scNudge); if(this._scT) clearTimeout(this._scT); removeEventListener("storage", this._storage); document.removeEventListener("focusin", this._helpFocus); removeEventListener("error", this._pageErr); removeEventListener("unhandledrejection", this._pageErr);
-    if(this._barObs) this._barObs.disconnect(); if(this._headObs) this._headObs.disconnect(); }
+    if(this._barObs) this._barObs.disconnect(); if(this._headObs) this._headObs.disconnect(); document.removeEventListener("focusin", this._focusKeep); document.removeEventListener("keydown", this._keyMark, true); }
   /* ביומן רוב האירועים היו "screen" — אותו מסך, שוב ושוב,
      בכל רינדור. הארגומנט הראשון של ההוק הוא ה-props הקודמים, לא ה-state הקודם, ולכן
      prev.screen היה undefined תמיד, ההשוואה תמיד "השתנה", ושדה from נעלם מהיומן.
@@ -3383,6 +3412,14 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     if(i<t.length||!out.length) out.push({t:t.slice(i), plain:true});
     return out;
   }
+  // אותם קטעים בפסקאות, פסקה לכל שורה, וקטע שעובר שורה נחתך בה. שורה ריקה נשארת פסקה ריקה, כמו
+  // שהייתה שורה ריקה; ירידת השורה האחרונה בסוף התשובה לא מוסיפה שורה
+  rvParas(){
+    const out=[{segs:[]}];
+    for(const sg of this.rvSegs()) sg.t.split("\n").forEach((t,k)=>{ if(k) out.push({segs:[]}); if(t) out[out.length-1].segs.push({...sg, t}); });
+    if(out.length>1&&!out[out.length-1].segs.length) out.pop();
+    return out;
+  }
   // הסיבה בהודעה על קובץ פרופיל פגום (L17), וגם על קובץ תיקים פגום (importCases)
   static BAD_PROFILE="הקובץ אינו קובץ תיק, או שהוא פגום";
   /* ייבוא כל התיקים מקובץ אחד («ייבוא תיקים מקובץ»; המעבר ל-inkognito.co.il, 6.10.2026). הקובץ יורד
@@ -3771,7 +3808,7 @@ const KIND_NAME={NAME:"אדם", ORG:"גוף", PLACE:"מקום"};
       rvLeftNone:!!S.rvOut&&!(S.rvLeft||[]).length&&S.rvCount>0,
       rvLeftHead:(n=>n===1?"נשאר בתשובה פרט בדוי אחד":"נשארו בתשובה "+n+" פרטים בדויים")((S.rvLeft||[]).length),
       rvLeftItems:(S.rvLeft||[]).map(x=>({t:this.leftLine(x)})),
-      rvSegs:this.rvSegs(),
+      rvParas:this.rvParas(),
       // «חזרה למסמך» גם מתחת לתוצאה, כשיש מסמך לחזור אליו; בכפתור העליון בלי מסמך כתוב «לבחירת מסמך»
       rvBackOn:back.to==="work"&&!S.tour,
       rvCtxStyle:"padding:12px 15px;border-radius:11px;font-size:13px;margin-bottom:16px;border:1px solid var(--line);background:"+(S.res||S.profile?"var(--accent-soft)":"var(--panel2)"),

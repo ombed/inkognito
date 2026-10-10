@@ -40,6 +40,24 @@ test("the model loads from the site in four parts, and the joined file passes it
   expect(asked.filter((u) => /model_quantized\.onnx(\?|$)/.test(u)), "the whole weights file is never asked of the network: the page joins it").toEqual([]);
 });
 
+/* Firefox asks the user in a popup whether the site may keep its data for good (navigator.storage.persist),
+   and answers the page only once the user chooses. The load waited for that answer, so in Firefox a popup
+   left alone held the model back for ever (10.10). The request is still made, and nothing waits for it:
+   here it is never answered, in every engine, and the model loads all the same. */
+test("a storage request that is never answered does not hold the model back", async ({ page }) => {
+  test.setTimeout(300000);
+  await page.addInitScript(() => {
+    if (!navigator.storage) return;
+    navigator.storage.persisted = async () => false;
+    navigator.storage.persist = () => { window.__persistAsked = true; return new Promise(() => {}); };
+  });
+  await open(page);
+  const r = await scan(page);
+  expect(r.error).toBeUndefined();
+  expect(r.names).toEqual(expect.arrayContaining(["דני כהן", "רונית לוי"]));
+  expect(await page.evaluate(() => !navigator.storage || !!window.__persistAsked), "the request was made").toBe(true);
+});
+
 test("a changed part fails the load, and leaves nothing of the model in the cache", async ({ page }) => {
   test.setTimeout(300000);
   await page.route(/\/models\/[^/]+\/onnx\/model_quantized\.onnx\.part3$/, async (route) => {

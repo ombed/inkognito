@@ -9,6 +9,7 @@
     "test": "eslint . && node tests/run.js && playwright test",
     "test:unit": "node tests/run.js",
     "test:browser": "playwright test",
+    "test:browsers": "playwright test -c playwright.browsers.config.js",
     "build:fixtures": "node tests/build-fixtures.js",
     "build:design": "node scripts/build-design.js",
     "build:atlas": "node scripts/build-atlas-doc.js",

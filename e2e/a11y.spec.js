@@ -339,7 +339,11 @@ test("a screen reader still hears the arrow between a name and its replacement",
    bar is fixed and the header sticky, and the browser scrolled a focused control into the window without
    knowing that either covers part of it: Tab left the first card's buttons and the document's marks under the
    bar, and Shift+Tab left them under the header, ring and all (already in v59). The page now keeps its scroll
-   clear of both, and the two scrolling areas (the document, the findings list) keep the whole ring inside. */
+   clear of both, and the two scrolling areas (the document, the findings list) keep the whole ring inside.
+   The scroll padding that does it in Chrome is not enough elsewhere (10.10): Safari ignores it when it brings
+   the focused control into the window, and Firefox scrolled only the findings list and left a card outside
+   the window. The page completes the scroll a frame after the browser's, so each stop is measured two
+   frames after the key, in every engine. */
 const LONG = [
   "פרוטוקול פגישה בעניין הקטינה נועה שרעבי, בת 9.",
   "מיכל שרעבי: אני האם. אנחנו גרים בחולון, ברחוב הזית 12.",
@@ -393,6 +397,7 @@ for (const vp of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
       let first = null, stops = 0;
       for (let i = 0; i < 400; i++) {
         await page.keyboard.press(key);
+        await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
         const s = await page.evaluate(FOCUS_SEEN);
         if (!s) continue;
         if (first === null) first = s.stop; else if (s.stop === first) break; // once round the page

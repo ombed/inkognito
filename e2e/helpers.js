@@ -18,7 +18,12 @@ const DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.doc
 
    env and cached are read at mount, so set them with addInitScript. The
    rest are read per call, so page.evaluate after boot is fine. Every other
-   line, including the generation guard, is the shipped code. */
+   line, including the generation guard, is the shipped code.
+
+   The service worker stores the engine on the first visit, and it fetches it
+   itself. In Firefox and WebKit that fetch is out of the route's reach, so
+   after a reload the page could get the real engine from the worker. The
+   config blocks the worker in every test but the ones about it (10.10). */
 async function serveEngineWithStub(page) {
   await page.route("**/redact-engine.js", async (route) => {
     const res = await route.fetch();

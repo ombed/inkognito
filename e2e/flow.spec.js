@@ -33,7 +33,7 @@ test.describe("people screen", () => {
     await expect(page.getByText("מהכותרת")).toBeVisible();
   });
 
-  test("typed and pasted names: add, clear, dedupe, strip titles, detect orgs, split lists, delete, empty", async ({ page }) => {
+  test("typed and pasted names: add, clear, dedupe, strip titles, detect orgs, split lists, delete, empty", async ({ page, browserName }) => {
     await H.upload(page, "plain.docx", "הדיון התקיים ביום שלישי.");
     await H.startScan(page);
     await expect(H.goButton(page)).toBeVisible({ timeout: 10000 });
@@ -61,12 +61,17 @@ test.describe("people screen", () => {
     await add.click();
     await expect(rows.filter({ hasText: "נרות מאירות" }).getByRole("combobox")).toHaveValue("ORG");
 
-    // Pasting a list splits on newlines and commas.
-    await input.evaluate((el) => {
-      const dt = new DataTransfer();
-      dt.setData("text", "סיגלית אזולאי\nיוסי כהן, ח'טיב");
-      el.dispatchEvent(new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true }));
-    });
+    // Pasting a list splits on newlines and commas. A paste made by a script carries no text in
+    // Firefox (a real paste does), so there the three names are typed one at a time instead.
+    if (browserName === "firefox") {
+      for (const n of ["סיגלית אזולאי", "יוסי כהן", "ח'טיב"]) { await input.fill(n); await input.press("Enter"); }
+    } else {
+      await input.evaluate((el) => {
+        const dt = new DataTransfer();
+        dt.setData("text", "סיגלית אזולאי\nיוסי כהן, ח'טיב");
+        el.dispatchEvent(new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true }));
+      });
+    }
     let names = await H.listedNames(page);
     for (const n of ["סיגלית אזולאי", "יוסי כהן", "ח'טיב"]) expect(names).toContain(n);
     expect(names).toHaveLength(6);
