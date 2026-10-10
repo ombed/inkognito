@@ -106,11 +106,11 @@ const DOPT = { ...OPT, on: new Set(["DATE"]) };
   console.log("\n— transcript anchors: 'שמי X', and a possessive after a role —");
   {
     const an = (t) => C.anchored(t).map((a) => a.text + "/" + a.anchor);
-    ok(an("טוב, נעים מאוד. אז שמי ולנטינה.").includes("ולנטינה/self"), "שמי X: " + an("טוב, נעים מאוד. אז שמי ולנטינה."));
+    ok(an("בוקר טוב לכולם. אז שמי ולנטינה.").includes("ולנטינה/self"), "שמי X: " + an("בוקר טוב לכולם. אז שמי ולנטינה."));
     ok(an("קוראים לי דנה, ואני מהמחלקה.").includes("דנה/self"), "קוראים לי X");
     ok(an("ואני הולכת הביתה.").length === 0, "ואני is not an anchor");
-    ok(an("עובד סוציאלי שלו, ברנשטיין, אמר לו.").includes("ברנשטיין/carep"), "the possessive after the role is skipped: " + an("עובד סוציאלי שלו, ברנשטיין, אמר לו."));
-    ok(!an("עובד סוציאלי שלו, ברנשטיין, אמר לו.").some((x) => /^שלו/.test(x)), "and 'שלו ברנשטיין' is not offered");
+    ok(an("הפסיכולוג שלו, ברקוביץ, אמר לו.").includes("ברקוביץ/carep"), "the possessive after the role is skipped: " + an("הפסיכולוג שלו, ברקוביץ, אמר לו."));
+    ok(!an("הפסיכולוג שלו, ברקוביץ, אמר לו.").some((x) => /^שלו/.test(x)), "and 'שלו ברקוביץ' is not offered");
     ok(an("העובדת הסוציאלית שלה אמרה.").length === 0, "a possessive followed by a verb: nothing");
   }
 
