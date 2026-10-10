@@ -319,6 +319,7 @@ module.exports = function more(Doc, C) {
   }
 
   // ── position papers: a filing shape that broke the anchors ──
+  // The sentences are invented; only the shapes below are what the documents test.
   // Parties by role and colon, form labels with colons, "the undersigned" before
   // verbs, a word ending in ת before a word starting with ז, a discourse word
   // before the minor's name, role words the model calls names.
@@ -340,11 +341,11 @@ module.exports = function more(Doc, C) {
      .p(`הנתבעת:  ${rn2}(להלן: גם האם)`)
      .p("מועד המצאת ההחלטה: ...........")
      .p("מועד אחרון לתגובה: ............")
-     .p(`בעניין הקטין ${mn}, יליד 2015, המתגורר בבית האב ב${l1} יחד עם ${sib}, כאשר ${sib.split(" ").pop()} משרת שירות צבאי.`)
+     .p(`בעניין הקטין ${mn}, יליד 2015, המתגורר עם סבתו ב${l1} ומבקר את ${sib} בסופי שבוע, כאשר ${sib.split(" ").pop()} עובד במוסך.`)
      .p(`כאמור ${mn} סיפר כי הוא מתאמן בכדורסל פעמיים בשבוע. משכך ${mn} מבקש שינוי קטן בהחלפת זמני ההסעות בימי שלישי.`)
      .p(`הח"מ סבורה כי יש לקבוע לוח זמנים כתוב. מאמצי הח"מ להשיג מהמאמן את לוח האימונים הצליחו. מהמסמכים שהגיעו אל הח"מ עולה כי ההסעות ארוכות מהשעות שנקבעו ותחת זאת מוצע לקצר אותן.`)
      .p(`יוזכר כי עורכת דין אחרת שמשה בעבר אפטרופא לדין עבור הקטין ${mn}, ומאז הוחלפה. האפוטרופא לדין ממליצה לאשר את שינוי השעות.`)
-     .p("לשם הבהרה: האב ביקש להתקדם קדימה בהסדר, וחבר של המשפחה הציע לסייע. מיטב המאמצים הושקעו.");
+     .p("לשם הבהרה: המאמן ביקש להתקדם קדימה בתיאום, וחבר לקבוצה הציע הסעה. מיטב השעות נשמרו.");
     docs.push(d);
   }
   {
