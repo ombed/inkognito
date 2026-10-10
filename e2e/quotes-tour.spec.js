@@ -105,7 +105,12 @@ test("a click outside the lit area does not reach the page, and the tour says wh
   await expect(page.locator("[data-tour-nudge]")).toHaveCount(0);
 });
 
-test("on a phone, a header button inside the lit area does not take the tour away", async ({ page }) => {
+/* Written (18.9) for «‹ רשימת השמות», then in the header, inside the lit area once the document scrolled
+   under it. That button has since moved below the header, and after the scroll this test tapped a point
+   above the window: Chrome hands such a tap to the page, which the tour blocked, so the test passed while
+   tapping nothing; Firefox drops it, and the test failed (10.10). It now taps the header's «מסמך חדש», the
+   button that would end the tour and drop the sample, where it is on the screen after the scroll. */
+test("on a phone, a header button tapped in the tour does not take the tour away", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 700 });
   const tour = await tourToWork(page);
   await tour.getByRole("button", { name: "המשך", exact: true }).click();
@@ -114,9 +119,9 @@ test("on a phone, a header button inside the lit area does not take the tour awa
   await expect(tour).toContainText("מסך הבדיקה", { timeout: 20000 });
   await page.mouse.move(195, 350);
   await page.mouse.wheel(0, 400);
-  await page.waitForTimeout(300);
-  const back = page.locator("[data-back]").filter({ hasText: "מי בתיק" });
-  const box = await back.boundingBox();
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(300);
+  const box = await page.locator("header").getByRole("button", { name: "מסמך חדש", exact: true }).boundingBox();
+  expect(box.y, "the tap lands on the screen").toBeGreaterThan(0);
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
   await expect(page.locator("[data-bar]")).toBeVisible();
   await expect(tour).toContainText("מסך הבדיקה");
