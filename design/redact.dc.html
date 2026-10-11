@@ -577,7 +577,7 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
     <sc-if value="{{ hasCaseField }}">
       <label data-case-field style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px;font-size:13px;color:var(--ink2)">
         <span>שם התיק <small style="color:var(--ink3);font-size:11.5px">(כדי שאותו אדם יקבל אותו שם בדוי גם במסמך הבא)</small></span>
-        <input value="{{ caseName }}" onChange="{{ onCaseName }}" placeholder="למשל: לוי נ׳ לוי" style="flex:1 1 180px;min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:8px 11px;font-size:13.5px">
+        <input value="{{ caseName }}" onChange="{{ onCaseName }}" onBlur="{{ onCaseNameDone }}" placeholder="למשל: לוי נ׳ לוי" style="flex:1 1 180px;min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:8px 11px;font-size:13.5px">
       </label>
     </sc-if>
     <sc-if value="{{ nerFailed }}">
@@ -1041,7 +1041,7 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
           <sc-if value="{{ s.openProfile }}">
             <div style="padding:0 15px 15px">
               <p style="margin:0 0 10px;font-size:12.5px;color:var(--ink2);line-height:1.55">שמירת רשימת הצדדים והשמות הבדויים שלהם, כדי שאותו אדם יקבל את אותו שם בכל מסמכי התיק.</p>
-              <input data-tour-target="case" value="{{ caseName }}" onChange="{{ onCaseName }}" placeholder="שם התיק (למשל: לוי נ׳ לוי)" style="width:100%;margin-bottom:8px;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:13.5px">
+              <input data-tour-target="case" value="{{ caseName }}" onChange="{{ onCaseName }}" onBlur="{{ onCaseNameDone }}" placeholder="שם התיק (למשל: לוי נ׳ לוי)" style="width:100%;margin-bottom:8px;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:13.5px">
               <div style="display:flex;gap:7px">
                 <button onClick="{{ onSaveProf }}" style="flex:1;padding:10px;border-radius:10px;border:1px solid var(--line);font-size:13px;font-weight:500" style-hover="background:var(--panel2)">ייצוא לקובץ</button>
                 <button onClick="{{ onLoadProf }}" style="flex:1;padding:10px;border-radius:10px;border:1px solid var(--line);font-size:13px;font-weight:500" style-hover="background:var(--panel2)">ייבוא מקובץ</button>
@@ -1383,6 +1383,9 @@ class Component extends DCLogic {
       }
     };
     addEventListener("beforeunload", this._unload);
+    // דף שנסגר או נטען מחדש באמצע הקלדת שם התיק: רשימת התיקים נשמרת לפניו (persistProfile), לפני שהמסמך מסתיים
+    this._caseOnHide = () => { clearTimeout(this._caseT); this.persistProfile(); };
+    addEventListener("pagehide", this._caseOnHide);
     // closing or leaving the page ends the document too (pagehide: also fires where unload does not)
     this._hide=()=>this.docEnd("leave");
     addEventListener("pagehide", this._hide);
@@ -1454,7 +1457,7 @@ class Component extends DCLogic {
     }
   }
   componentWillUnmount(){ document.removeEventListener("mousedown", this._docClick); document.removeEventListener("keydown", this._keys); document.removeEventListener("keyup", this._selKeys); removeEventListener("resize", this._resize);
-    removeEventListener("beforeunload", this._unload); removeEventListener("pagehide", this._hide); removeEventListener("popstate", this._pop); document.removeEventListener("click", this._histNow, true); document.removeEventListener("keydown", this._histNow, true);
+    removeEventListener("beforeunload", this._unload); removeEventListener("pagehide", this._hide); removeEventListener("pagehide", this._caseOnHide); clearTimeout(this._caseT); removeEventListener("popstate", this._pop); document.removeEventListener("click", this._histNow, true); document.removeEventListener("keydown", this._histNow, true);
     removeEventListener("scroll", this._follow, true); removeEventListener("resize", this._follow); removeEventListener("animationend", this._follow, true); removeEventListener("transitionend", this._follow, true);
     removeEventListener("scroll", this._scNudge, {capture:true}); removeEventListener("resize", this._scNudge); if(this._scT) clearTimeout(this._scT); removeEventListener("storage", this._storage); document.removeEventListener("focusin", this._helpFocus); removeEventListener("error", this._pageErr); removeEventListener("unhandledrejection", this._pageErr);
     if(this._barObs) this._barObs.disconnect(); if(this._headObs) this._headObs.disconnect(); document.removeEventListener("focusin", this._focusKeep); document.removeEventListener("keydown", this._keyMark, true); }
@@ -1583,7 +1586,7 @@ class Component extends DCLogic {
     }
     this._undo=[]; this._redo=[]; this._modelFound=null; this._lastScan=null; this._scannedBuf=null;
     // סריקה של המסמך הקודם שעוד רצה ברקע (אחרי «לא לחכות למודל») נגמרת איתו: התשובה שלה נכתבה לכללים של הבא
-    this._scan=(this._scan||0)+1; this._goneAhead=null;
+    this._scan=(this._scan||0)+1; this._goneAhead=null; this._caseSaved=null;
     const reset={screen:"entry", err:"", fileErr:"", name:"", buf:null, origBlocks:[], pending:false, pendMeta:"", nerAsk:false, pasteText:"",
       // מי בתיק
       cands:[], peo:[], peoSug:[], peoKept:[], peoNotSame:[], peoIn:"", peoNote:"", nerUsed:false, sugAsk:false, trimPeo:null,
@@ -3018,7 +3021,7 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     this.setState({cases:this.readCases(), ...(mine?{caseName:"", profile:null}:{}),
       ...(this.state.lastProfile&&this.state.lastProfile.name===name?{lastProfile:null}:{})});
   };
-  resumeCase = name => { const p=this.readCases().find(c=>c.name===name); if(!p) return; this.setState({caseName:name, lastProfile:null}); this.applyProfile(p); };
+  resumeCase = name => { const p=this.readCases().find(c=>c.name===name); if(!p) return; this.setState({lastProfile:null}); this.applyProfile(p, name); };
   /* ── הסיור (Q15 בגרסה 2) ──
      פעם אחת לכל גרסה, על מסמך בדוי שמובנה בכלי, ומסומן ככזה בכותרתו. הסיור
      מנווט בעצמו בין המסכים באותם מסלולים שהיא תלחץ בהם; המודל כבוי כדי שלא
@@ -3309,7 +3312,11 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
       tourNudge:!!(this.state.tour&&this.state.tour.nudge===this.state.tour.i), onTourBlocked:e=>{ if(e&&e.preventDefault) e.preventDefault(); this.log.add("tour",{at:"blocked-click"}); this.setState({tour:{...this.state.tour, nudge:this.state.tour.i}}); },
       onTourNext:this.tourNext, onTourBack:this.tourBack, onTourClose:this.tourClose};
   }
-  persistProfile(){
+  /* how: true — רק «הרשימה האחרונה», ולא רשימת התיקים, כך ששם התיק נשמר בכל הקשה בלי שאות אחרי אות תיווצר
+     רשומה בתיקים; "typing" — רגע אחרי שההקלדה נעצרת, אבל לא לתוך תיק קיים אחר ששמו הוא מה שהוקלד עד כאן: זה
+     מחכה ליציאה מהשדה (הציד של 11.10: כל אות שמרה תיק, ושם חלקי התמזג לתיק קיים) */
+  persistProfile(how){
+    const onlyLast=how===true;
     // המסמך לדוגמה של הסיור אינו תיק: שום דבר ממנו לא נשמר בדפדפן
     if(this.state.tour) return;
     // רשימה ריקה נשמרת גם היא כשיש מה לזכור: קודם, מחיקה של כל הכללים לא שמרה דבר, והתיק הישן החזיק את כולם
@@ -3317,8 +3324,20 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     if(!this.state.rules.length&&!(this.state.allow||[]).length&&!this.removedNow().length) return;
     const prof=this.profileObj();
     try{ localStorage.setItem(this.caseKey("redact-profile-last"), JSON.stringify(prof)); }catch(_){}
-    if(prof.name){ this.writeCase(prof); this.setState({cases:this.readCases()}); }
+    if(onlyLast) return;
+    const was=this._caseSaved;
+    if(how==="typing"&&prof.name&&!(was&&was.name===prof.name)&&this.readCases().some(c=>c.name===prof.name)) return;
+    if(was&&was.name!==prof.name&&!was.existed){ this.dropStored(was.name); this._caseSaved=null; }
+    if(prof.name){
+      const existed=was&&was.name===prof.name?was.existed:this.readCases().some(c=>c.name===prof.name);
+      this.writeCase(prof); this._caseSaved={name:prof.name, existed};
+      this.setState({cases:this.readCases()});
+    } else if(was&&!was.existed) this.setState({cases:this.readCases()});
     if(!this.state.profileDirty) this.setState({profileDirty:true});
+  }
+  // רק הרשומה ברשימת התיקים, בלי לגעת בתיק הפתוח או ברשימה האחרונה (שם התיק שהוחלף)
+  dropStored(name){
+    try{ const m=JSON.parse(localStorage.getItem(this.caseKey("redact-cases"))||"{}"); delete m[name]; localStorage.setItem(this.caseKey("redact-cases"), JSON.stringify(m)); }catch(_){}
   }
   saveProfile = () => {
     const prof=this.profileObj();
@@ -3333,7 +3352,7 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     this.setState({profileDirty:false, notice:`הקובץ «${name}» ירד לתיקיית ההורדות. התיק עצמו נשמר בדפדפן גם בלי זה.`, noticeUndo:false});
   };
   loadProfileClick = () => { if(window.__inkDemo) return; this._importAll=false; if(this.profEl) this.profEl.click(); };
-  resumeLast = () => { const p=this.state.lastProfile; if(!p) return; this.setState({lastProfile:null, caseName:p.name||""}); this.applyProfile(p); };
+  resumeLast = () => { const p=this.state.lastProfile; if(!p) return; this.setState({lastProfile:null}); this.applyProfile(p, p.name||""); };
   dismissLast = () => this.setState({lastProfile:null});
   /* ── מסך ההחזרה (החזרת שמות, 7.10.2026) ── */
   // לאן חוזרים מכל מסך, ובאיזו מילה; ממסך ההחזרה — למסך שממנו הגיעו, כשהוא עוד קיים
@@ -3467,8 +3486,7 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
       if(prof&&prof.inkognito==="cases"){ cases=true; this.importCases(prof); return; }
       // אותה בדיקה של כל פרופיל שנכנס או נקרא (profileOk), עם אותה הודעה של קובץ שאינו פרופיל
       if(!this.constructor.profileOk(prof)) throw new Error("קובץ תיק לא מזוהה");
-      this.setState({caseName:prof.name||this.state.caseName});
-      this.applyProfile(prof);
+      this.applyProfile(prof, prof.name||undefined);
     }catch(err){
       // קובץ תיקים פגום, או קובץ שלא נקרא אחרי «ייבוא תיקים מקובץ»: שום תיק לא נוסף, וזה מה שנאמר (הנוסח שאושר, 7.10.2026)
       if(cases||all){ this.setState({err:this.constructor.BAD_CASES}); return; }
@@ -3491,10 +3509,21 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     this.log.add("cases-clear",{});
     this.setState({cases:[], lastProfile:null, rvLast:null, caseName:"", profile:null, profileDirty:false, notice:"התיקים השמורים נמחקו מהמחשב.", noticeUndo:false});
   };
-  applyProfile(prof){
+  /* תיק שמצטרף למסמך פתוח מוסיף לו את האנשים שלו, כמו ב«מי בתיק», ולא מחליף את הרשימה (הציד של 11.10): ב«קובץ»,
+     ב«החזרת שמות» ובמסך הבדיקה הוא החליף אותה, והשמות שהוקלדו למסמך הזה יצאו גלויים תחת פס ירוק. ערך שבשניהם מקבל
+     את השם הבדוי של התיק, כדי שאותו אדם יקבל אותו שם בכל מסמכי התיק; מה שהוחלט במסמך הזה (להשאיר, להחליף) גובר,
+     כמו ב-mergeCase. מסמך ששייך כבר לתיק אחר נשאר בתיק שלו, ושום דבר ממנו לא נכתב לתיק של לקוח אחר: תיק אחר
+     מצרפים למסמך חדש. name הוא שם התיק שנבחר ("" לרשימה בלי שם), או undefined כשהקובץ לא נושא שם. */
+  applyProfile(prof, name){
     try{
-      // תיק שנטען על מסמך בעבודה מחליף את כל הרשימה: ↶ מחזיר אותה
-      if(this.state.res) this.pushHistory();
+      const open=!!this.state.res, mine=this.state.caseName||"";
+      if(open&&mine&&name!==undefined&&name!==mine){
+        this.log.add("case-kept",{});
+        this.setState({notice:`המסמך הפתוח שייך לתיק «${mine}», והוא נשאר בו. כדי לעבוד עם ${name?"«"+name+"»":"הרשימה הקודמת"}, פותחים מסמך חדש.`, noticeUndo:false});
+        return;
+      }
+      // ↶ מחזיר את הרשימה שהייתה לפני התיק
+      if(open) this.pushHistory();
       const En=this.state.E, nn=v=>En.norm(String(v||"")).trim(), goneP=new Set((prof.removed||[]).map(nn));
       const rules=(prof.rules||[]).filter(r=>r&&!goneP.has(nn(r.value)));
       for(const [value, replacement] of Object.entries(prof.map||{})){
@@ -3503,13 +3532,18 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
         if(ex){ if(!ex.replacement) ex.replacement=replacement; }
         else rules.push(this.mkRule({value, kind:/^\[|^[\d\s+()-]+$/.test(replacement)?"OTHER":"NAME", replacement, auto:true}));
       }
+      const own=open?this.state.rules||[]:[], ownAllow=open?this.state.allow||[]:[];
+      const ownR=new Set(own.map(r=>nn(r&&r.value))), ownA=new Set(ownAllow.map(nn));
+      const merged=[...rules.filter(r=>!ownA.has(nn(r.value))||ownR.has(nn(r.value))), ...own.filter(r=>r&&!rules.some(x=>nn(x.value)===nn(r.value)))];
+      const allow=[...new Set([...(prof.allow||[]).filter(a=>!ownR.has(nn(a))), ...ownAllow])];
+      const removed=[...new Set([...(prof.removed||[]), ...(open?this.state.removed||[]:[])])];
       const mode = prof.mode || this.state.mode;
       const st=prof.styles||{};
       const o={...this.state.o, ...(st.num?{numStyle:st.num}:{}), ...(st.date?{dateStyle:st.date}:{})};
-      this.setState({profile:prof, rules, allow:(prof.allow||[]).slice(), removed:(prof.removed||[]).slice(), mode, o, err:""}, ()=>{
+      this.setState({profile:prof, ...(name!==undefined?{caseName:name}:{}), rules:merged, allow, removed, mode, o, err:""}, ()=>{
         if(this.state.screen==="people"){
           const list=[...this.state.peo]; const E=this.state.E;
-          for(const r of rules) if(r.kind==="NAME"||r.kind==="ORG"){
+          for(const r of merged) if(r.kind==="NAME"||r.kind==="ORG"){
             if(!list.some(p=>E.norm(p.value)===E.norm(r.value)))
               list.push({value:r.value, kind:r.kind, note:"מהתיק", auto:true, g:null});
           }
@@ -3799,7 +3833,7 @@ const KIND_NAME={NAME:"אדם", ORG:"גוף", PLACE:"מקום"};
       rvLastTitle:S.rvLast?(S.rvLast.name?"להחזיר את השמות לפי התיק «"+S.rvLast.name+"»?":"להחזיר את השמות לפי רשימת השמות מהפעם הקודמת?"):"",
       rvLastMeta:S.rvLast?((n=>n===1?"שם או פרט אחד":n+" שמות ופרטים")(this.profileCount(S.rvLast))+" · עודכן "+new Date(S.rvLast.updated||S.rvLast.created).toLocaleString("he-IL",{dateStyle:"short",timeStyle:"short"})):"",
       rvLastUseLabel:S.rvLast&&S.rvLast.name?"שימוש בתיק הזה":"שימוש ברשימה הזאת",
-      onRvLastUse:()=>{ const p=S.rvLast; if(!p) return; this.setState({rvLast:null, caseName:p.name||"", lastProfile:null}); this.applyProfile(p); },
+      onRvLastUse:()=>{ const p=S.rvLast; if(!p) return; this.setState({rvLast:null, lastProfile:null}); this.applyProfile(p, p.name||""); },
       onRvLastOther:()=>this.setState({rvLast:null}),
       // בסיור: שורה מעל התשובה לדוגמה, ובלי ייבוא תיק (המסמך לדוגמה אינו תיק)
       rvTour:!!S.tour, rvImportOn:!S.tour,
@@ -3923,7 +3957,15 @@ const KIND_NAME={NAME:"אדם", ORG:"גוף", PLACE:"מקום"};
       // התיק שבשימוש, בכל מסך (UX #21): בלי זה אי אפשר לדעת שהלחיצה על התיק עשתה משהו
       hasCaseChip:!!(S.profile&&(S.profile.name||S.caseName))&&S.screen!=="work",
       caseChipName:(S.profile&&(S.profile.name||S.caseName))||"",
-      onCaseChipDrop:()=>{ this.log.add("case-detach",{}); this.setState({profile:null, caseName:"", rules:[], allow:[], casesHidden:false}); },
+      /* «בלי התיק הזה»: המסמך ממשיך להגן על כל שם שמופיע בו, מי שלא הוסיף אותו; אנשי התיק שלא מופיעים בו יוצאים, כדי
+         שתיק שייקרא לו אחר כך לא יקבל אותם (הציד של 11.10: הרשימה התרוקנה, והמכתב יצא ל-AI עם כל השמות גלויים
+         תחת פס ירוק). בלי מסמך, אין מה לשמור. */
+      onCaseChipDrop:()=>{ this.log.add("case-detach",{});
+        const blocks=S.origBlocks||[], E=S.E;
+        const text=E&&blocks.length?E.norm(blocks.map(b=>b.text).join("\n")):"";
+        const here=r=>!!text&&!!r&&text.includes(E.norm(String(r.value||"")).trim());
+        const rules=text?(S.rules||[]).filter(here):[], same=rules.length===(S.rules||[]).length;
+        this.setState({profile:null, caseName:"", casesHidden:false, rules, allow:text?S.allow:[]}, ()=>{ if(this.state.res&&!same) this.rerun(); }); },
       // שם התיק גם במסך "מי בתיק" (UX #16): המדריך קורא לזה צעד 1, והשדה היה בתחתית המסילה, סגור
       hasCaseField:S.screen==="people"&&!(S.profile&&S.profile.name),
       caseItems:S.cases.map(c=>({name:c.name, meta:((c.rules||[]).length===1?"שם או פרט אחד":(c.rules||[]).length+" שמות ופרטים")+" · עודכן "+new Date(c.updated||c.created).toLocaleString("he-IL",{dateStyle:"short",timeStyle:"short"}),
@@ -3937,7 +3979,10 @@ const KIND_NAME={NAME:"אדם", ORG:"גוף", PLACE:"מקום"};
       lastMorePairs:S.lastProfile?(n=>n>3?"ועוד "+(n-3):"")(this.profileCount(S.lastProfile)):"",
       onResumeLast:this.resumeLast, onDismissLast:this.dismissLast,
       engineFailed:!!S.engineFailed, onEngineRetry:()=>{ try{ location.reload(); }catch(_){} },
-      caseName:S.caseName, onCaseName:e=>this.setState({caseName:e.target.value}, ()=>this.persistProfile()),
+      // שם התיק: הרשימה האחרונה נשמרת בכל הקשה, ורשימת התיקים כשעוזבים את השדה או את הדף. כל אות שמרה קודם תיק
+      // משלו, עם השמות האמיתיים (הציד של 11.10)
+      caseName:S.caseName, onCaseName:e=>this.setState({caseName:e.target.value}, ()=>{ this.persistProfile(true); clearTimeout(this._caseT); this._caseT=setTimeout(()=>this.persistProfile("typing"), 800); }),
+      onCaseNameDone:()=>{ clearTimeout(this._caseT); this.persistProfile(); },
       profileNote:(S.caseName?"התיק נשמר בדפדפן הזה אחרי כל שינוי, ויוצע בפעם הבאה. ":"בלי שם תיק נשמרת רק הרשימה האחרונה. ")+(S.profileDirty?"הדפדפן אינו גיבוי: «ייצוא לקובץ» שומר את התיק גם אם נתוני הדפדפן יימחקו.":"נשמר גם בקובץ."),
       hasPeoSug:S.peoSug.some(x=>!S.peo.some(p=>S.E.norm(p.value)===S.E.norm(x.value))&&!(S.peoKept||[]).some(k=>S.E.norm(k.value)===S.E.norm(x.value))),
       peoSugItems:S.peoSug.filter(x=>!S.peo.some(p=>S.E.norm(p.value)===S.E.norm(x.value))&&!(S.peoKept||[]).some(k=>S.E.norm(k.value)===S.E.norm(x.value))).map(x=>({

@@ -26,7 +26,7 @@
   "L_NEIGHBOURHOOD": "place: neighbourhood",
   "L_STREET": "place: street",
   "T_PLONI": "trap: פלוני / פלונית",
-  "T_NUMBERS": "trap: case numbers, dates, section references",
+  "T_NUMBERS": "trap: section references and other numbers that identify no one",
   "T_IDIOM": "trap: idiom or public title beside a same-word name",
   "P_ROLE_COLON": "person: party by role word and colon, first name only",
   "P_AFTER_LEAD": "person: name right after a discourse word (כאמור, משכך, לדבריה)",
@@ -42,6 +42,7 @@
   "I_EMAIL": "pii: email address",
   "I_BANK": "pii: bank account",
   "I_PLATE": "pii: licence plate",
+  "I_CASE": "pii: court or registry case number (deleted by default)",
   "I_DATE": "pii: full date (omitted by default)",
   "I_DOB": "pii: date of birth",
   "P_SPEAKERLINE": "person: speaker written on a line of its own (no colon)",
@@ -561,12 +562,21 @@
      "note": ""
     },
     {
+     "cat": "I_CASE",
+     "kind": "PII",
+     "must": true,
+     "canonical": "12345-06-24",
+     "surfaces": [
+      "12345-06-24"
+     ],
+     "note": "case number, deleted by default (settings note, help page)"
+    },
+    {
      "cat": "T_NUMBERS",
      "kind": "TRAP",
      "must": false,
-     "canonical": "תלה\"מ 12345-06-24",
+     "canonical": "סעיף 7(ב)",
      "surfaces": [
-      "תלה\"מ 12345-06-24",
       "סעיף 7(ב)"
      ],
      "note": ""
@@ -732,10 +742,19 @@
      "must": false,
      "canonical": "סעיף 2",
      "surfaces": [
-      "סעיף 2",
-      "ת\"פ 4471-02-26"
+      "סעיף 2"
      ],
      "note": ""
+    },
+    {
+     "cat": "I_CASE",
+     "kind": "PII",
+     "must": true,
+     "canonical": "4471-02-26",
+     "surfaces": [
+      "4471-02-26"
+     ],
+     "note": "case number, deleted by default (settings note, help page)"
     },
     {
      "cat": "I_DATE",
@@ -2167,14 +2186,14 @@
      "note": ""
     },
     {
-     "cat": "T_NUMBERS",
-     "kind": "TRAP",
-     "must": false,
-     "canonical": "תיק 4471/26",
+     "cat": "I_CASE",
+     "kind": "PII",
+     "must": true,
+     "canonical": "4471/26",
      "surfaces": [
-      "תיק 4471/26"
+      "4471/26"
      ],
-     "note": ""
+     "note": "case number, deleted by default (settings note, help page)"
     },
     {
      "cat": "I_DATE",
@@ -2339,12 +2358,21 @@
      "note": ""
     },
     {
+     "cat": "I_CASE",
+     "kind": "PII",
+     "must": true,
+     "canonical": "118/26",
+     "surfaces": [
+      "118/26"
+     ],
+     "note": "case number, deleted by default (settings note, help page)"
+    },
+    {
      "cat": "T_NUMBERS",
      "kind": "TRAP",
      "must": false,
-     "canonical": "תיק 118/26",
+     "canonical": "סעיף 2",
      "surfaces": [
-      "תיק 118/26",
       "סעיף 2"
      ],
      "note": ""

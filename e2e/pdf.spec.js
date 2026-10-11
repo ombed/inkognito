@@ -48,6 +48,33 @@ test("a Hebrew PDF is read in reading order, line by line, also when a line is s
   expect(got.text.split("\n").filter(Boolean)).toEqual(LINES.map(([, logical]) => logical));
 });
 
+/* The hunt of 11.10: every visual line of a PDF became a paragraph of its own, and the details are found one
+   paragraph at a time, so a phone wrapped after «052-» and an address wrapped after «ברחוב» reached the AI
+   whole, under a green bar. A paragraph's wrapped lines (they fill the text block, one line apart) are one
+   paragraph again; a line ending in a hyphen joins the next without a space. The paragraphs above, each one
+   short line, still come back one per line. */
+test("a paragraph wrapped across lines is read as one, so a wrapped phone or address is found", async ({ page, context, browserName }) => {
+  test.info().annotations.push({ type: "no-self-check" }); // no document is loaded into the app here
+  const para = "המבקשת רחל פרידמן מתגוררת עם ילדיה בדירה שכורה ברחוב<br>הזית 12 בחיפה, וניתן להשיג אותה בכל שעה בטלפון 052-<br>123-4567 וכן בדואר, בכל יום מימות השבוע.";
+  const pdf = await printPdf(context, browserName, `<!doctype html><html lang="he" dir="rtl"><meta charset="utf-8"><body style="font-family:Arial,sans-serif;font-size:16px;line-height:1.6;margin:40px"><p style="margin:0 0 24px;text-align:justify;text-align-last:justify">${para}</p><p style="margin:0">1. סעיף נפרד שאינו חלק מהפסקה.</p></body></html>`);
+  await H.servePdfJsLocally(page);
+  await page.goto("/index.html");
+  const got = await page.evaluate(async (bytes) => {
+    const { pdfToText } = await import("./pdf-text.js");
+    return pdfToText(new Uint8Array(bytes).buffer);
+  }, [...pdf]);
+  const lines = got.text.split("\n").filter(Boolean);
+  expect(lines[0]).toBe("המבקשת רחל פרידמן מתגוררת עם ילדיה בדירה שכורה ברחוב הזית 12 בחיפה, וניתן להשיג אותה בכל שעה בטלפון 052-123-4567 וכן בדואר, בכל יום מימות השבוע.");
+  expect(lines[1]).toBe("1. סעיף נפרד שאינו חלק מהפסקה.");
+  // and what the engine makes of that line: the phone and the street, whole
+  const found = await page.evaluate(async (t) => {
+    const E = await import("./redact-engine.js");
+    const on = new Set(["PHONE_MOBILE", "ADDRESS_STREET"]);
+    return new E.Engine([], [], { on, flag: new Set(), mode: "real", near: false, body: false, prefixes: "normal" }, t).detect(t).map((h) => h.text);
+  }, lines[0]);
+  expect(found).toEqual(expect.arrayContaining(["052-123-4567", "ברחוב הזית 12"]));
+});
+
 /* Suspicion from the review, confirmed here: `scanned` was "fewer than 40 characters a page", so
    a scanned document whose pages each carry a printed court header came through as text, and
    she was never told that the body is a picture. A page counts as a picture when what is left

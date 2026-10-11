@@ -151,7 +151,7 @@ module.exports = function more(Doc, C) {
     const [pl] = d.ent("I_PLATE", "PII", true, "34-712-58", ["34-712-58"]);
     const [st, stb] = d.ent("L_STREET", "PLACE", true, "רחוב הדקל 7", ["רחוב הדקל 7", "הדקל"]);
     d.ent("O_PUBLIC", "ORG", false, PUBLIC[4], [PUBLIC[4]]);
-    d.ent("T_NUMBERS", "TRAP", false, "תיק 4471/26", ["תיק 4471/26"]);
+    d.ent("I_CASE", "PII", true, "4471/26", ["4471/26"], "case number, deleted by default (settings note, help page)");
     d.ent("I_DATE", "PII", true, "23.5.2026", ["23.5.2026"], "full date, omitted by default");
     d.p(`${PUBLIC[4]} — הודעת עד, תיק 4471/26`)
      .p(`${rn}, ${id}, טלפון ${ph}, מוסר:`)
@@ -184,7 +184,8 @@ module.exports = function more(Doc, C) {
     const [ph] = d.ent("I_PHONE", "PII", true, "058-6104477", ["058-6104477"]);
     const [pl] = d.ent("I_PLATE", "PII", true, "92-118-34", ["92-118-34"]);
     const [em] = d.ent("I_EMAIL", "PII", true, "denis.v@outlook.com", ["denis.v@outlook.com"]);
-    d.ent("T_NUMBERS", "TRAP", false, "תיק 118/26", ["תיק 118/26", "סעיף 2"]);
+    d.ent("I_CASE", "PII", true, "118/26", ["118/26"], "case number, deleted by default (settings note, help page)");
+    d.ent("T_NUMBERS", "TRAP", false, "סעיף 2", ["סעיף 2"]);
     d.p("הודעת חשוד — תיק 118/26")
      .p(`${ru1}, טלפון ${ph}, דוא"ל ${em}, נחקר באזהרה:`)
      .p(`שאלה: האם הרכב ${pl} שלך? תשובה: כן. שאלה: מה הקשר שלך ל${s2}? תשובה: ${s2b} היא גרושתי.`)
@@ -409,6 +410,7 @@ module.exports = function more(Doc, C) {
     I_EMAIL: "pii: email address",
     I_BANK: "pii: bank account",
     I_PLATE: "pii: licence plate",
+    I_CASE: "pii: court or registry case number (deleted by default)",
     I_DATE: "pii: full date (omitted by default)",
     I_DOB: "pii: date of birth",
   });
