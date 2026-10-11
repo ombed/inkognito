@@ -373,6 +373,31 @@ console.log("\n— a town that is also a word is never a substitute: «ערער�
   }
 }
 
+console.log("\n— no pool and no map gives a word, a first name, a phrase or an ambiguous name as a substitute —");
+{
+  // «מושב» gave נחלים, צופית and אבשלום, «קיבוץ» עין השופט, עמיעד and מגן, «שכונה» נווה שלום, the general pool
+  // פתח תקווה, and the distance map יבנה, שדרות and קדימה: each comes back from the AI's own words as the real town
+  const BAD = (n) => C.AMBIG.has(n) || C.TOWNWORD.has(n) || !!C.IDIOM[n];
+  const values = [...C.PLACES.map((p) => p.n), ...C.GAZ.slice(0, 300)];
+  for (const kind of ["מושב", "קיבוץ", "כפר", "שכונה", "רחוב", null]) {
+    const got = new Set();
+    for (const v of values) { const f = C.fakePlace(v, new Set(), new Set(), kind); if (f && BAD(f)) got.add(f); }
+    ok(!got.size, "fakePlace for «" + (kind || "no kind") + "» over " + values.length + " towns gives none: " + JSON.stringify([...got]));
+  }
+  for (const [t, v] of [["המשפחה גרה במושב בית חנן.", "בית חנן"], ["המשפחה גרה בקיבוץ גבעת ברנר.", "גבעת ברנר"], ["המשפחה גרה בשכונת נווה יעקב.", "נווה יעקב"]]) {
+    const eng = new C.Engine([{ value: v, kind: "PLACE" }], [], OPT, t);
+    const h = eng.detect(t).find((x) => x.src === "list"), rep = h && eng.repFor(h);
+    ok(rep && !BAD(rep), "«" + t + "» — the typed place «" + v + "» gets «" + rep + "»");
+  }
+  // sets where the map picked טירה, מעלות, יבנה, גדרה, נשר and זכרון יעקב (each map takes a moment)
+  for (const set of [["אום אל-פחם", "קרית ביאליק", "יהוד"], ["עכו", "מעלה אדומים", "שפרעם"], ["אור יהודה", "יהוד", "בית דגן"],
+    ["טמרה", "שפרעם", "כפר קאסם"], ["מגדל העמק", "קצרין", "יקנעם"], ["פרדס חנה", "כפר קאסם", "בית אל"]]) {
+    const g = C.geoMap(set, 0, [], new Set());
+    const hit = g ? g.map.filter((m) => BAD(m.to)).map((m) => m.from + "→" + m.to) : [];
+    ok(g && !hit.length, "the distance map for " + set.join(", ") + " gives none: " + JSON.stringify(hit));
+  }
+}
+
 console.log("\n— a name of several parts gets a substitute of the same character as the city at its head —");
 for (const [whole, head] of [["מודיעין-מכבים-רעות", "מודיעין"], ["תל אביב - יפו", "תל אביב"], ["יהוד-מונוסון", "יהוד"], ["פרדס חנה-כרכור", "פרדס חנה"]]) {
   const f = C.fakePlace(whole, new Set(), new Set());

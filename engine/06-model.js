@@ -535,20 +535,23 @@ function placeKind(text,s){
   for(const [rx,k] of PLACE_KIND_HEADS) if(rx.test(back))return k;
   return null;
 }
+/* תחליף ליישוב אינו שם דו-משמעי, מילה, שם פרטי או צירוף: ההחזרה הייתה הופכת את המילה בתשובת ה-AI ליישוב
+   האמיתי — «ערערה» ("המבקשת ערערה"), «קדימה», «פתח תקווה». בכל מאגר: לפי סוג ("מושב" נתן נחלים וצופית, "קיבוץ"
+   נתן עין השופט ומגן), הכללי, ומפת המרחקים (הביקורת של 11.10) */
+const placeSubOK=n=>!!n&&!AMBIG.has(n)&&!placeCond(n);
 function placePool(kind,value){
   const gaz=(typeof GAZ!=="undefined"&&Array.isArray(GAZ))?GAZ:[];
   const all=PLACES.map(p=>p.n).concat(gaz);
   const tagged=t=>(typeof ATLAS_TAGS!=="undefined")?PLACES.map(p=>p.n).filter(n=>(ATLAS_TAGS[n]||"").split("|")[0]===t):[];
-  if(kind==="שכונה")return NEIGHBORHOODS;
-  if(kind==="רחוב")return STREETS;
-  if(kind==="מושב"){const p=tagged("מושב"); if(p.length>=8)return p;}
-  if(kind==="קיבוץ"){const p=tagged("קיבוץ"); if(p.length>=8)return p;}
-  if(kind==="כפר"){const p=all.filter(n=>/^כפר\s+\S/.test(n)).map(n=>n.replace(/^כפר\s+/,"")); if(p.length>=8)return p;}
+  if(kind==="שכונה")return NEIGHBORHOODS.filter(placeSubOK);
+  if(kind==="רחוב")return STREETS.filter(placeSubOK);
+  if(kind==="מושב"){const p=tagged("מושב").filter(placeSubOK); if(p.length>=8)return p;}
+  if(kind==="קיבוץ"){const p=tagged("קיבוץ").filter(placeSubOK); if(p.length>=8)return p;}
+  if(kind==="כפר"){const p=all.filter(n=>/^כפר\s+\S/.test(n)).map(n=>n.replace(/^כפר\s+/,"")).filter(placeSubOK); if(p.length>=8)return p;}
   // "שמות אקראיים" (Q7 בגרסה 3): רק יישובים מתויגים, ולעולם לא המאגר הלא-מתויג —
   // ירושלים הפכה ל"משמר הנגב" ומודיעין ל"אמונים" כי המאגר הגדול אינו יודע מה הם.
   // יישוב מתויג מקבל יישוב מאותו אופי (אוכלוסייה, דת, עירוני/כפרי); הגודל רשאי לזוז.
-  // לא שם דו-משמעי, ולא יישוב שהוא גם מילה: ההחזרה הייתה הופכת את המילה בתשובת ה-AI ליישוב האמיתי
-  const base=PLACES.map(p=>p.n).filter(n=>n&&n.length>=3&&!AMBIG.has(n)&&!TOWNWORD.has(n));
+  const base=PLACES.map(p=>p.n).filter(n=>n&&n.length>=3&&placeSubOK(n));
   let v=norm(String(value||"")).trim();
   // שם של כמה חלקים מוחלף כולו (הציד של 11.10), ואופיו הוא של העיר שבראשו: «מודיעין-מכבים-רעות» כמו «מודיעין»
   if(v&&typeof ATLAS_TAGS!=="undefined"&&!ATLAS_TAGS[v]){const h=v.split(/\s*-\s*/)[0]; if(h!==v&&ATLAS_TAGS[h])v=h;}
@@ -913,8 +916,8 @@ function geoMap(names,variant,avoid,forbidden){
   const offs=orig.map(p=>({x:(p.o-cO)*cosC,y:p.a-cA}));
   const block=new Set(names);
   for(const n of avoid||[]) block.add(n);
-  // יישוב שהוא גם מילה אינו תחליף: «ערערה» בתשובת ה-AI ("המבקשת ערערה") חזר ליישוב האמיתי (הציד של 11.10)
-  for(const n of TOWNWORD.keys()) block.add(n);
+  // תחליף אינו מילה, שם דו-משמעי או צירוף (placeSubOK): «ערערה» או «קדימה» בתשובת ה-AI חזרו ליישוב האמיתי
+  for(const p of PLACES) if(!placeSubOK(p.n)) block.add(p.n);
   if(forbidden&&forbidden.size) for(const p of PLACES){
     if(block.has(p.n))continue;
     for(const w of norm(p.n).split(/\s+/)){
