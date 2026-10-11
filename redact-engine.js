@@ -1554,14 +1554,14 @@ const STOP=new Set(("בית המשפט משפט הדין דין המחוזי ה�
 const NWD="[\u05d0-\u05ea][\u05d0-\u05ea'\"\u05f3\u05f4-]{1,14}";
 const PART="בן|בת|בר|אבו|אל|דה|ואן|לה";
 const NME=`${NWD}(?:\\s+(?:${PART})(?![\u05d0-\u05ea-]))?(?:\\s+${NWD})?`;
-/* \u05e9\u05dd \u05e9\u05dc \u05d0\u05d3\u05dd \u05d1\u05d0\u05d5\u05ea\u05d9\u05d5\u05ea \u05dc\u05d8\u05d9\u05e0\u05d9\u05d5\u05ea (\u05d4\u05e6\u05d9\u05d3 \u05e9\u05dc 11.10): \u05de\u05d9\u05dc\u05d4 \u05e9\u05e0\u05e4\u05ea\u05d7\u05ea \u05d1\u05d0\u05d5\u05ea \u05d2\u05d3\u05d5\u05dc\u05d4, \u05d2\u05dd \u05e2\u05dd \u05de\u05e7\u05e3 \u05d5\u05d0\u05d5\u05ea\u05d9\u05d5\u05ea \u05de\u05d5\u05d8\u05e2\u05de\u05d5\u05ea ("Dubois-Levi", "L\u00e9a"),
-   \u05d5\u05de\u05d9\u05dc\u05d5\u05ea \u05d7\u05d9\u05d1\u05d5\u05e8 \u05e7\u05d8\u05e0\u05d5\u05ea \u05d1\u05ea\u05d5\u05da \u05e9\u05dd ("de", "van", "bin"). LATN: \u05e9\u05ea\u05d9\u05d9\u05dd \u05e2\u05d3 \u05d0\u05e8\u05d1\u05e2 \u05de\u05d9\u05dc\u05d9\u05dd; LATN1: \u05d2\u05dd \u05de\u05d9\u05dc\u05d4 \u05d0\u05d7\u05ea (\u05e9\u05dd \u05de\u05e9\u05e4\u05d7\u05d4 \u05d0\u05d7\u05e8\u05d9 \u05ea\u05d5\u05d0\u05e8) */
+/* שם של אדם באותיות לטיניות (הציד של 11.10): מילה שנפתחת באות גדולה, גם עם מקף ואותיות מוטעמות ("Dubois-Levi", "Léa"),
+   ומילות חיבור קטנות בתוך שם ("de", "van", "bin"). LATN: שתיים עד ארבע מילים; LATN1: גם מילה אחת (שם משפחה אחרי תואר) */
 const LAT_W="[A-Z\u00c0-\u00d6\u00d8-\u00de][A-Za-z\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u00ff'\u2019]*(?:-[A-Z\u00c0-\u00d6\u00d8-\u00dea-z\u00df-\u00f6\u00f8-\u00ff][A-Za-z\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u00ff'\u2019]*)*",
   LAT_P="(?:de|da|del|della|di|du|des|van|von|der|den|la|le|el|al|bin|ben|ibn|y|e|ter|op)",
   LATN=`${LAT_W}(?:\\s+(?:${LAT_P}\\s+){0,2}${LAT_W}){1,3}`, LATN1=`${LAT_W}(?:\\s+(?:${LAT_P}\\s+){0,2}${LAT_W}){0,3}`;
-// \u05ea\u05d5\u05d0\u05e8 \u05dc\u05d5\u05e2\u05d6\u05d9 \u05dc\u05e4\u05e0\u05d9 \u05d4\u05e9\u05dd ("Mr. John Smith", "Me Pierre Martin"): \u05e0\u05e9\u05d0\u05e8 \u05d1\u05d8\u05e7\u05e1\u05d8, \u05d5\u05d0\u05d9\u05e0\u05d5 \u05d4\u05e9\u05dd
+// תואר לועזי לפני השם ("Mr. John Smith", "Me Pierre Martin"): נשאר בטקסט, ואינו השם
 const LAT_TITLE="(?:(?:Mr|Mrs|Ms|Miss|Mx|Dr|Prof|Adv|Atty|Esq|Mme|Mlle|Me|Herr|Frau|Sr|Sra|Sig|Sir|Lady|Rabbi|Rev)\\.?\\s+)?";
-// \u05de\u05d9\u05dc\u05d9\u05dd \u05e9\u05d0\u05d5\u05de\u05e8\u05d5\u05ea \u05e9\u05de\u05d4 \u05e9\u05d1\u05d0 \u05d0\u05d7\u05e8\u05d9 \u05d4\u05ea\u05d5\u05d5\u05d9\u05ea \u05d4\u05d5\u05d0 \u05d2\u05d5\u05e3 \u05d0\u05d5 \u05d3\u05d1\u05e8, \u05dc\u05d0 \u05d0\u05d3\u05dd ("\u05d4\u05ea\u05d5\u05d1\u05e2\u05ea: Microsoft Israel Ltd")
+// מילים שאומרות שמה שבא אחרי התווית הוא גוף או דבר, לא אדם ("התובעת: Microsoft Israel Ltd")
 const LAT_NOT=/^(?:mr|mrs|ms|miss|mx|dr|prof|adv|atty|esq|mme|mlle|herr|frau|sir|lady|rabbi|rev|ltd|inc|llc|llp|lp|corp|corporation|company|co|gmbh|sa|ag|bv|nv|plc|pty|bank|group|holdings?|university|college|school|hospital|court|supreme|district|ministry|department|office|state|states|republic|kingdom|united|street|road|avenue|center|centre|international|global|services|solutions|technologies|systems|partners|associates|foundation|association|society|insurance|microsoft|google|apple|amazon|meta|facebook|whatsapp|instagram|gmail|outlook|word|excel|pdf|zoom|teams|tel|aviv|jerusalem|haifa|israel|hague|convention|the|of|and|for)$/i;
 const latinOK=c=>{const ws=c.split(/[\s-]+/); return !ws.some(w=>LAT_NOT.test(w))&&!ws.every(w=>w.length>1&&w===w.toUpperCase()&&ws.length===1)};
 // התאום הלועזי בסוגריים, אחרי השם העברי או לפניו (Engine.twins)
