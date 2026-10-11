@@ -261,8 +261,9 @@ async function redactDocx(buf,subs,allow,opt){
     const hits=eng.detect(blk.text);if(!hits.length)continue;
     const reps=[];
     for(const h of hits){
+      // type: הסוג נשמר עם התיק (currentKinds בדף), כדי שתאריך, יישוב או גוף מתיק שנפתח לא יחזרו כאדם (הציד של 11.10)
       const rec={value:h.text,label:h.label,part:partName(blk.part),why:h.why,
-        ctx:ctxHTML(blk.text,h.s,h.e),review:!!h.review,src:h.src,base:h.base||undefined};
+        ctx:ctxHTML(blk.text,h.s,h.e),review:!!h.review,src:h.src,base:h.base||undefined,type:h.type};
       // הכינוי הבסיסי נרשם לפי הערך שברשימה, לא לפי הטקסט שנתפס: "לנרות מאירות"
       // אינו מפתח, ובלעדיו ההחזרה קיבלה "לגפן" ככינוי ואיבדה את "בגפן".
       if(h.apply){const nw=eng.repFor(h);rec.rep=nw;
@@ -388,7 +389,7 @@ async function redactDocx(buf,subs,allow,opt){
         if(zones.some(([a,b])=>a<=s&&e<=b))continue;
         const out=inf.of?addPre(m[1]||"",nw):nw;
         reps.push([s,e,out]);
-        applied.push({value:blk.text.slice(s,e),
+        applied.push({value:blk.text.slice(s,e),type:inf.place?"PLACE":"NAME",
           label:inf.of?(inf.place?"מקום (חלק)":"שם (חלק)"):"הופעה נוספת",part:partName(blk.part),
           why:inf.of?(inf.place
                 ?(inf.wordy?`שם הרחוב מתוך «${inf.of}» — אבל גם מילה. הוחלף רק כשעומד לבד; ודאו שזה המקום`

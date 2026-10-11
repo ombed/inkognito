@@ -2925,9 +2925,26 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
   mkRule({value, kind, replacement, auto, g, ...rest}){
     return {value:String(value), kind:kind||"NAME", replacement:String(replacement||"").trim(), auto:!!auto, g:g||null, ...rest};
   }
+  /* הסוג של כל ערך במפת התיק (שם, יישוב, גוף, תאריך…), לפי הסוג שהמנוע מצא או לפי הכלל. בלעדיו תיק שנפתח הפך כל זוג
+     במפה לאדם: «12.3.2026» → «16.1.2027» חזר ככלל של שם, והיישוב והגוף שהמנוע מצא — גם (הציד של 11.10) */
+  currentKinds(){
+    const k=Object.create(null), RES=this.state.res, C=(this.state.E&&this.state.E.CANON)||{};
+    if(RES) for(const r of RES.applied){ const v=r.base||r.value; if(v&&r.type&&!(v in k)) k[v]=(Object.prototype.hasOwnProperty.call(C,r.type)?C[r.type]:[r.type])[0]; }
+    for(const r of this.state.rules) if(r&&r.value&&r.kind) k[r.value]=r.kind;
+    return k;
+  }
+  // הסוג של ערך שהתיק מחזיר: מה שנשמר איתו; בתיק שנשמר לפני 11.10 — תאריך לפי צורתו, יישוב לפי הרשימה, ומה שאחרי כמו קודם
+  caseKind(value, replacement, kinds){
+    const E=this.state.E, K=(E&&E.KINDLBL)||{}, own=(o,k)=>!!o&&Object.prototype.hasOwnProperty.call(o,k);
+    const t=own(kinds,value)&&typeof kinds[value]==="string"?kinds[value]:"";
+    if(t) return t==="DATE"?"DATE":(own(K,t)?t:"OTHER");
+    if(E&&E.parseDate&&E.parseDate(value)) return "DATE";
+    if(E&&E.PLACE_BY&&own(E.PLACE_BY,E.norm(String(value)).trim())) return "PLACE";
+    return /^\[|^[\d\s+()-]+$/.test(replacement)?"OTHER":"NAME";
+  }
   profileObj(){
     return {v:1, created:(this.state.profile&&this.state.profile.created)||new Date().toISOString(), updated:new Date().toISOString(),
-      name:this.state.caseName||"", mode:this.state.mode, rules:this.state.rules, allow:this.state.allow, map:this.currentMap(),
+      name:this.state.caseName||"", mode:this.state.mode, rules:this.state.rules, allow:this.state.allow, map:this.currentMap(), kinds:this.currentKinds(),
       removed:this.removedNow(), sent:this.sentAll(),
       // הבחירה על מספרים ועל תאריכים היא של התיק, לא של הלשונית (Q1 בגרסה 5)
       styles:{num:this.state.o.numStyle||"blank", date:this.state.o.dateStyle||"name"}};
@@ -2964,7 +2981,7 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     const opt=(x,f)=>x===undefined||x===null||f(x), strs=x=>Array.isArray(x)&&x.every(str);
     return obj(p)&&p.v===1&&(named?str(p.name)&&p.name!=="":opt(p.name,str))
       &&Array.isArray(p.rules)&&p.rules.every(r=>obj(r)&&str(r.value)&&["replacement","kind","style","sameAs"].every(k=>opt(r[k],str)))
-      &&opt(p.map,m=>obj(m)&&Object.values(m).every(str))&&opt(p.allow,strs)&&opt(p.removed,strs)
+      &&opt(p.map,m=>obj(m)&&Object.values(m).every(str))&&opt(p.kinds,m=>obj(m)&&Object.values(m).every(str))&&opt(p.allow,strs)&&opt(p.removed,strs)
       &&opt(p.sent,s=>obj(s)&&Object.values(s).every(strs))&&opt(p.styles,s=>obj(s)&&opt(s.num,str)&&opt(s.date,str))
       &&["mode","created","updated"].every(k=>opt(p[k],str));
   }
@@ -3003,10 +3020,11 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     for(const r of prev.rules||[]) if(r&&r.value&&!curRules.has(n(r.value))&&!curAllow.has(n(r.value))&&!gone.has(n(r.value))) rules.push(r);
     const allow=(cur.allow||[]).slice();
     for(const a of prev.allow||[]) if(a&&!curRules.has(n(a))&&!curAllow.has(n(a))) allow.push(a);
-    const map={...(prev.map||{})};
+    const map={...(prev.map||{})}, kinds={...(prev.kinds||{})};
     for(const k of Object.keys(map)) if(curAllow.has(n(k))||gone.has(n(k))) delete map[k];
-    Object.assign(map, cur.map||{});
-    return {...cur, created:prev.created||cur.created, rules, allow, map, removed};
+    for(const k of Object.keys(kinds)) if(!(k in map)&&!(k in (cur.map||{}))) delete kinds[k];
+    Object.assign(map, cur.map||{}); Object.assign(kinds, cur.kinds||{});
+    return {...cur, created:prev.created||cur.created, rules, allow, map, kinds, removed};
   }
   /* מחיקת תיק מוחקת את השמות (ביקורת M1): כל פרופיל נכתב גם ל"פרופיל אחרון", ומחיקת התיק ניקתה רק
      את רשימת התיקים — מפת השמות האמיתיים נשארה בדפדפן בטקסט גלוי. ואם התיק שנמחק הוא זה שפתוח,
@@ -3526,8 +3544,11 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
       for(const [value, replacement] of Object.entries(prof.map||{})){
         if(!value||!replacement||goneP.has(nn(value))) continue;
         const ex=rules.find(r=>r.value===value);
-        if(ex){ if(!ex.replacement) ex.replacement=replacement; }
-        else rules.push(this.mkRule({value, kind:/^\[|^[\d\s+()-]+$/.test(replacement)?"OTHER":"NAME", replacement, auto:true}));
+        if(ex){ if(!ex.replacement) ex.replacement=replacement; continue; }
+        const kind=this.caseKind(value, replacement, prof.kinds);
+        // תאריך זז לפי המסמך שהוא בו (הבחירה של 15.9): התאריך שהוזז במסמך קודם של התיק אינו כלל כאן, וגם לא אדם
+        if(kind==="DATE") continue;
+        rules.push(this.mkRule({value, kind, replacement, auto:true}));
       }
       const own=open?this.state.rules||[]:[], ownAllow=open?this.state.allow||[]:[];
       const ownR=new Set(own.map(r=>nn(r&&r.value))), ownA=new Set(ownAllow.map(nn));
