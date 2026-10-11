@@ -1,10 +1,11 @@
 /* ══════════════════════════ מנוע ══════════════════════════ */
-function findPatterns(text,on,flag){
+// more: שמות שתווית בפסקה או בתא שלידו מעידה עליהם (labelNext), כבר במיקומים של הטקסט הזה
+function findPatterns(text,on,flag,more){
   const n=norm(text),hits=[];
   if(on.has("NAME_ANCHORED")||flag.has("NAME_ANCHORED"))
     // העוגן הפרוזאי (rolep) מזין רק את ההצעות ב-discover, לא את ההשחרה: ניחוש
     // שגוי שם עולה הקשה אחת; כאן הוא היה דוחק החלפה אמיתית מאותם תווים.
-    for(const h of anchored(text)){if(h.anchor==="rolep")continue;h.apply=on.has("NAME_ANCHORED");hits.push(h)}
+    for(const h of anchored(text).concat(more||[])){if(h.anchor==="rolep")continue;h.apply=on.has("NAME_ANCHORED");hits.push(h)}
   if(on.has("PLACES")||flag.has("PLACES"))
     for(const h of findPlaces(text)){
       if(!on.has("PLACES"))h.apply=false;
@@ -206,7 +207,7 @@ class Engine{
     for(const s of subs) if(s.replacement) this.map[ckey(s.kind,s.value)]??=s.replacement;
   }
   blocked(s,e,zones){return zones.some(([a,b])=>a<=s&&e<=b)}
-  detect(text){
+  detect(text,more){
     const n=norm(text),zones=[];
     const AGE=ageZones(n);
     // רשימת ההיתר תופסת גם צורות עם אות שימוש, ו-ש היא אות שימוש: "אל תחליפו" על
@@ -246,7 +247,7 @@ class Engine{
           why:r.auto?"התגלה אוטומטית מההקשר":(r.pre?`מהרשימה שהגדרתם, עם אות השימוש "${r.pre}" שנשמרה`:"מהרשימה שהגדרתם"),
           review:!!r.pre,conf:"high"});
       }}
-    for(const h of findPatterns(text,this.opt.on,this.opt.flag)){
+    for(const h of findPatterns(text,this.opt.on,this.opt.flag,more)){
       if(this.blocked(h.s,h.e,zones))continue;
       // גיל אינו מזהה, וההבטחה הייתה "הכול חוץ מגילאים": "בת 9", "בן 12", "גיל 7",
       // "3 שנים" — מספר בהקשר של גיל נשאר גם כשמספרים מושמטים. צר ומבוסס הקשר בלבד.

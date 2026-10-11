@@ -13,8 +13,30 @@ const DML="http://schemas.openxmlformats.org/drawingml/2006/main";
 // טקסט חלופי של תמונה אינו חלק מגוף הטקסט: לא נסרק לשמות חדשים ולא מוצג כפסקה
 const hiddenPart=p=>p.includes("טקסט חלופי")||p.includes("קוד שדה")||p.includes("הגדרות עיצוב");
 const VML="urn:schemas-microsoft-com:vml";
+/* התא של פסקה בטבלה: הטבלה, מספר השורה בה, השורה והטור, כולל תאים ריקים. כותרת של כתב טענות ערוכה לא פעם
+   כטבלה, "התובעת:" בתא אחד והשם בתא שלידו, וכך גם טופס, וטבלת ילדים ששורת הכותרת שלה "שם הקטין"; העוגנים ראו
+   פסקה אחת בכל פעם (הציד של 11.10, labelNext). פסקה בתיבת טקסט שבתוך תא אינה חלק מהשורה. */
+function cellOf(p,part,T){
+  const isW=(n,ln)=>n&&n.nodeType===1&&n.localName===ln&&n.namespaceURI===W;
+  const up=(n,ln)=>{let x=n.parentNode; while(x&&!isW(x,ln))x=x.parentNode; return x};
+  for(let n=p.parentNode;n&&n.nodeType===1;n=n.parentNode){
+    if(n.localName==="txbxContent")return null;
+    if(!isW(n,"tc"))continue;
+    const tr=up(n,"tr"); if(!tr)return null;
+    let r=T.rows.get(tr);
+    if(!r){
+      const tbl=up(tr,"tbl");
+      let t=tbl&&T.tbls.get(tbl);
+      if(tbl&&!t){t={id:part+"#t"+(T.tbls.size+1),trs:Array.from(tbl.getElementsByTagNameNS(W,"tr")).filter(x=>up(x,"tbl")===tbl)}; T.tbls.set(tbl,t)}
+      r={id:part+"#"+(T.rows.size+1),cells:Array.from(tr.getElementsByTagNameNS(W,"tc")).filter(c=>up(c,"tr")===tr),
+        tbl:t?t.id:null,r:t?t.trs.indexOf(tr):0};
+      T.rows.set(tr,r);
+    }
+    return {row:r.id,col:r.cells.indexOf(n),tbl:r.tbl,r:r.r};
+  }
+  return null}
 function flatten(doc,part){
-  const out=[];
+  const out=[], T={rows:new Map(),tbls:new Map()};
   // SmartArt וגרפים כותבים פסקאות DrawingML (a:p), לא פסקאות Word
   const dml=/\/(diagrams|charts)\//.test(part);
   for(const p of doc.getElementsByTagNameNS(dml?DML:W,"p")){
@@ -24,7 +46,10 @@ function flatten(doc,part){
       if(el.sep){spans.push({el:el.el,s:pos,e:pos+1,sep:true});txt+=el.sep;pos++;continue}
       const t=el.textContent||"";if(!t)continue;
       spans.push({el,s:pos,e:pos+t.length,attr:null});txt+=t;pos+=t.length}
-    if(txt.trim())out.push({text:txt,spans,part});
+    if(!txt.trim())continue;
+    const blk={text:txt,spans,part}, cell=dml?null:cellOf(p,part,T);
+    if(cell)blk.cell=cell;
+    out.push(blk);
   }
   // תוויות בגרף: שם קטגוריה או סדרה במטמון המחרוזות
   // (גרף מורחב, chartEx, כותב את אותן תוויות כ-pt בתוך lvl)
@@ -257,8 +282,11 @@ async function redactDocx(buf,subs,allow,opt){
   // ה-XML משתנה במקום, ולכן flatten אחרי ההחלפה מחזיר את הטקסט המושחר.
   // בלי צילום מראש, סורק הגוף מציע לה בחזרה את השמות הבדויים שהמצאנו.
   const ORIG=blocks.map(b=>({part:b.part,text:b.text,label:!!b.label}));
+  // שם שתווית בתא או בפסקה שלידו מעידה עליו נבדק כמו שם שאחרי תווית באותה שורה (labelNext)
+  const nextTo=new Map();
+  for(const {i,h} of labelNext(blocks)){const l=nextTo.get(blocks[i])||[]; l.push(h); nextTo.set(blocks[i],l)}
   for(const blk of blocks){
-    const hits=eng.detect(blk.text);if(!hits.length)continue;
+    const hits=eng.detect(blk.text,nextTo.get(blk));if(!hits.length)continue;
     const reps=[];
     for(const h of hits){
       const rec={value:h.text,label:h.label,part:partName(blk.part),why:h.why,
@@ -357,15 +385,18 @@ async function redactDocx(buf,subs,allow,opt){
      ושהוא שם של אדם אמיתי אחר במסמך הוחלף שוב, בכינוי של האדם האחר — שרשרת — וכך גם כינוי
      שמכיל שם משפחה אמיתי של מישהו אחר */
   const pseudoWritten=[...new Set(applied.map(r=>norm(String(r.rep||"")).trim()).filter(w=>w.length>=2))];
+  // הבדיקה המהירה רופפת כמו התבנית שאחריה (flex): "בן עמיאל" ברווח הוא "בן-עמיאל" שברשימה, וניקוד בין
+  // האותיות אינו מפריד. בבדיקה המדויקת שם המשפחה של שולח בשיחה נשאר בטקסט (הציד של 11.10)
+  const loose=s=>s.replace(/\u0000/g,"").replace(/[\s-]+/g," ");
   for(const blk of blocks2){
-    const n=norm(blk.text),reps=[];
+    const n=norm(blk.text),nl=loose(n),reps=[];
     const zones=[];
     for(const rx0 of eng.allow){rx0.lastIndex=0;let z;
       while((z=rx0.exec(n)))zones.push([z.index,z.index+z[0].length])}
     for(const w of pseudoWritten){let i=n.indexOf(w);
       while(i>=0){zones.push([i,i+w.length]);i=n.indexOf(w,i+1)}}
     for(const [o,inf] of Object.entries(sweep)){
-      if(!n.includes(o))continue;
+      if(!nl.includes(loose(o)))continue;
       const nw=inf.rep;
       // חלק של שם מופיע בעברית עם אות שימוש ("לגולדשמיט"), ולכן
       // הסריקה חייבת לקלוט אותה ולהחזיר אותה לתחליף.
@@ -633,6 +664,64 @@ async function verify(buf,secrets){
   for(const l of leaks){const k=l.part+"|"+l.value;if(!seen.has(k)){seen.add(k);uniq.push(l)}}
   return {passed:!uniq.length,leaks:uniq,parts:n,embedded:emb}}
 
+/* השם שבשכן של תווית שעומדת לבדה (labelOf, הציד של 11.10). בטבלה: הפסקה הבאה באותו תא, ואם אין — התא שליד
+   התווית באותה שורה, אחריה כשהשורה נפתחת בתווית ולפניה כשהיא נגמרת בתווית ("נגה טרכטנגוט | התובעת:"). תא ריק
+   אחרי תווית הוא שדה ריק, לא רמז לשורה הבאה. מחוץ לטבלה: הפסקה הבאה באותו חלק. אחרי כותרת של רשימה: כל שורה
+   שלה, ממוספרת או קצרה (המספור של Word אינו בטקסט). מה שהעוגנים כבר מצאו בשכן עצמו אינו נספר פעמיים.
+   כל תוצאה: {i: מקום הבלוק, h: הממצא בתוכו}. */
+const LIST_LINE=/^(?:\(?\d{1,2}[.)]|[א-ט][.)]|[-•·*])\s*[א-ת]/u;
+// תא שנראה כתווית או ככותרת של טור: תווית של שם, נקודתיים בסוף, או רק מילים של טופס ("מספר זהות", "ת.ז.", "תפקיד")
+const HEAD_WORDS=new Set(["ת.ז","ת.ז.","ת\"ז","תז","לידה","זהות","גיל","תפקיד","קרבה","מין","עיסוק","מקצוע","נייד","דרכון","משפחתי"]);
+function labelLike(t){
+  const x=norm(String(t||"")).replace(/\u0000/g,"").trim();
+  if(!x||/\d/.test(x))return false;
+  if(labelOf(x,true)||/:$/.test(x))return true;
+  return x.split(/\s+/).every(w=>{const b=w.replace(/[.'"]+$/,"");
+    return FORMLABEL.has(w)||HEAD_WORDS.has(w)||HEAD_WORDS.has(b)||COMMON.has(b)||STOP.has(b)||(b.length>3&&PFX.has(b[0])&&(COMMON.has(b.slice(1))||STOP.has(b.slice(1))))})}
+function labelNext(blocks){
+  const out=[], rows=new Map(), grid=new Map(), last=new Map(), txt=b=>String(b.text||"");
+  const labs=blocks.map(b=>hiddenPart(b.part||"")?null:labelOf(txt(b),!!b.cell));
+  blocks.forEach((b,i)=>{
+    if(!b.cell)return;
+    const r=rows.get(b.cell.row)||[]; r.push(i); rows.set(b.cell.row,r);
+    const g=b.cell.tbl+"|"+b.cell.r+"|"+b.cell.col; if(!grid.has(g))grid.set(g,i);
+    last.set(b.cell.tbl,Math.max(last.get(b.cell.tbl)||0,b.cell.r));
+  });
+  const at=(c,r,col)=>grid.get(c.tbl+"|"+r+"|"+col);
+  // שורת חתימה ("__________") או קו בין התווית לשם אינה השכן: מדלגים על עד שתי שורות בלי אות
+  const after=i=>{let j=i+1; while(j<blocks.length&&j<=i+3&&blocks[j].part===blocks[i].part&&!/[א-ת]/.test(txt(blocks[j])))j++; return j};
+  for(let i=0;i<blocks.length;i++){
+    const lab=labs[i], b=blocks[i], ni=after(i), nb=blocks[ni]; if(!lab)continue;
+    const next=[];
+    if(lab.list){
+      for(let j=i+1;j<blocks.length&&next.length<40;j++){
+        const t=norm(txt(blocks[j])).trim();
+        // "נ ג ד" סוגר את רשימת הצד הראשון
+        if(blocks[j].part!==b.part||labs[j]||/^-?\s*(?:נ\s+ג\s+ד|נגד)\s*-?$/u.test(t)||!(LIST_LINE.test(t)||(t.split(/\s+/).length<=4&&!/[.:;]$/.test(t))))break;
+        next.push(j);
+      }
+    }else if(b.cell&&!(nb&&nb.cell&&nb.cell.row===b.cell.row&&nb.cell.col===b.cell.col)){
+      const row=rows.get(b.cell.row), others=row.filter(k=>blocks[k].cell.col!==b.cell.col), below=at(b.cell,b.cell.r+1,b.cell.col);
+      if(b.cell.tbl&&below!==undefined&&!labelLike(txt(blocks[below]))&&others.every(k=>labelLike(txt(blocks[k])))){
+        // שורת כותרות ("שם העד | תפקיד", "שם הקטין | ת.ז."): התווית היא כותרת של טור, והשמות מתחתיה, לא בתא שלידה
+        for(let r=b.cell.r+1;r<=Math.min(last.get(b.cell.tbl),b.cell.r+40);r++){
+          const k=at(b.cell,r,b.cell.col); if(k===undefined)continue;
+          if(labelLike(txt(blocks[k])))break;
+          next.push(k); if(!lab.keys.includes("field"))break;
+        }
+      }else{
+        const at1=c=>row.find(k=>blocks[k].cell.col===c), cols=row.map(k=>blocks[k].cell.col);
+        const dir=labs[at1(Math.min(...cols))]?1:labs[at1(Math.max(...cols))]?-1:1;
+        const k=at1(b.cell.col+dir); if(k!==undefined)next.push(k);
+      }
+    }else if(nb&&nb.part===b.part)next.push(ni);
+    for(const j of next){
+      if(labs[j]||hiddenPart(blocks[j].part||""))continue;
+      const own=new Set(anchored(txt(blocks[j])).map(h=>h.s+":"+h.e));
+      for(const h of anchored(txt(blocks[j]),lab)) if(!own.has(h.s+":"+h.e)) out.push({i:j,h});
+    }
+  }
+  return out}
 function discover(blocks){
   const found={};
   // יש תמלולים שמסמנים דובר בשורה משל עצמה, בלי נקודתיים: פסקה שכולה שם ואחריה
@@ -659,6 +748,9 @@ function discover(blocks){
     // תווית דובר היא שם חשוף: בלי פיסוק בתוכה, בלי רבים ובלי שייכות.
     // "תראי, עקרונים", "לטפל בפצעים", "הפצעים נקרות", "מניסיון שלך" נראו כמו שורת דובר.
     if(/[,;:"'()׳״]/.test(t))continue;
+    // "בית המשפט הנכבד" מתחת ל"לכבוד" הוצע כאדם בשם «הנכבד»: שורה שהניקוי קיצץ ממנה מילה שאינה תואר
+    // אינה שורה שכולה שם (הציד של 11.10)
+    {const kept=c.split(/\s+/); if(w.some(x=>!kept.includes(x)&&!TITLE_RX.test(x+" ")))continue;}
     if(c.split(/\s+/).some(x=>/(?:ים|ות|יים|יות)$/.test(norm(x))&&!KNOWN_FIRST.has(norm(x))))continue;
     if(c.split(/\s+/).some(x=>/^של[ךכםןנהוי]?$/.test(norm(x))))continue;
     const s0=blocks[bi].text.indexOf(c); if(s0<0)continue;
@@ -671,7 +763,7 @@ function discover(blocks){
     r.count++;r.why.add(h.why);r.spk=(r.spk||0)+1;
     if(!r.ctx)r.ctx=ctxHTML(b.text,h.s,h.e);
   }
-  for(const b of blocks) for(const h of anchored(b.text)){
+  const take=(b,h)=>{
     const r=found[h.text]||(found[h.text]={count:0,why:new Set(),conf:"medium",ctx:"",role:null,g:null,gf:0,gm:0});
     r.count++;r.why.add(h.why);
     if(h.role&&!r.role)r.role=h.role;
@@ -682,7 +774,10 @@ function discover(blocks){
     // דובר הוא מי שחוזר: "מועד אחרון לתגובה:" הוא תווית של טופס, גם כשיש בה שתי מילים.
     // שתי מילים בפעם אחת היו "גבוה" ומולאו אוטומטית; עכשיו רק חזרה מעלה את הביטחון.
     if(h.anchor==="speaker"){r.spk=(r.spk||0)+1; if(r.spk>=2)r.conf="high";}
-    if(!r.ctx)r.ctx=ctxHTML(b.text,h.s,h.e)}
+    if(!r.ctx)r.ctx=ctxHTML(b.text,h.s,h.e)};
+  for(const b of blocks) for(const h of anchored(b.text))take(b,h);
+  // שם שתווית בתא או בפסקה שלידו מעידה עליו: "התובעת:" בתא אחד והשם בתא שלידו מילא את הרשימה כמו בשורה אחת
+  for(const {i,h} of labelNext(blocks))take(blocks[i],h);
   // "מאורי בן-שחר" הוא "אורי בן-שחר" עם אות שימוש — לא מועמד נפרד
   // אין איחוד אוטומטי לפי האות הראשונה: "שרון לוי" אינו "רון לוי"
   // עם אות שימוש, ומיזוג שגוי נותן לשני אנשים אותו כינוי.

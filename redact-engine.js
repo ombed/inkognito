@@ -1300,6 +1300,8 @@ const TITLES=`עו"ד|עוה"ד|ד"ר|דר'|פרופ'|רו"ח|הרב|ח"כ|מר|
    במלואן, הארוכה לפני הקצרה. שאר הרשימה נגמרת בע', ש', ב', ר' או ח' ולכן
    תקינה, ו-tests/regex_t.js שומר על זה. */
 const ROLES="התובע(?:ת)?|הנתבע(?:ת)?|המבקש(?:ת)?|המשיב(?:ה)?|הנאשמת|הנאשם|המערער(?:ת)?|המנוח(?:ה)?|הקטינה|הקטינים|הקטינות|הקטין";
+// צד ברבים: "התובעים:" ואחריו רשימה ממוספרת של שמות, או עד שני שמות באותה שורה (הציד של 11.10)
+const ROLES_PL="התובעים|התובעות|הנתבעים|הנתבעות|המבקשים|המבקשות|המשיבים|המשיבות|המערערים|המערערות";
 // הזנב של תפקיד מורכב, המילה שבאה אחרי מילת תפקיד טיפולית ואינה שם: "מדריך נוער",
 // "אחות ראשית", "פסיכולוגית קלינית", "מטפלת משפחתית". רשימה קטנה ומכוונת.
 const CARE_TAIL=new Set(["נוער","ילדים","משפחה","משפחות","קהילה","שיקום","חינוך","בית","גן","כיתה",
@@ -1320,9 +1322,12 @@ const BD="(?<![\\u0590-\\u05ff])";
 // מילות פתיחה של משפט שהמודל מדביק לשם שאחריהן
 const LEAD=new Set(["כאמור","משכך","יוזכר","יצוין","יודגש","לדבריו","לדבריה","לדבריהם","בנוסף","ולכן","לכן","אולם","ואולם","אך","גם","כי","כאשר","שכן","לפיכך","בהתאם","עוד","כן","אכן","ואכן","אמנם","כלומר","דהיינו","למשל","ואילו","אבל","או"]);
 // מילות תפקיד שהמודל מסמן כשם: אפוטרופוס בכל כתיב, סניגור, מומחה…
-const ROLEWORD=/^(?:ה)?(?:יועץ|יועצת|פרקליט(?:ה)?|תובע(?:ת)?|סניגור(?:ית)?|ממונה|נציב(?:ה)?|מפקח(?:ת)?|רכז(?:ת)?|אפו?טרופ(?:א|וס|סית|וסים|ה)|האפו?טרופ(?:א|וס|סית)|סניגור(?:ית)?|מומח(?:ה|ית)|פסיכולוג(?:ית)?|עו"?ס|קטין|קטינה|הקטין|הקטינה|המבקש(?:ת)?|המשיב(?:ה)?|התובע(?:ת)?|הנתבע(?:ת)?|האם|האב|ההורים|ההורה)$/u;
+// גם הצדדים ברבים: "התובעים:" הוצע כדובר בשם «התובעים» (הציד של 11.10)
+const ROLEWORD=/^(?:ה)?(?:יועץ|יועצת|פרקליט(?:ה)?|תובע(?:ת)?|סניגור(?:ית)?|ממונה|נציב(?:ה)?|מפקח(?:ת)?|רכז(?:ת)?|אפו?טרופ(?:א|וס|סית|וסים|ה)|האפו?טרופ(?:א|וס|סית)|סניגור(?:ית)?|מומח(?:ה|ית)|פסיכולוג(?:ית)?|עו"?ס|קטין|קטינה|הקטין|הקטינה|המבקש(?:ת)?|המשיב(?:ה)?|התובע(?:ת)?|הנתבע(?:ת)?|האם|האב|ההורים|ההורה|תובעים|תובעות|נתבעים|נתבעות|מבקשים|מבקשות|משיבים|משיבות|מערערים|מערערות|קטינים|קטינות)$/u;
 // תוויות של טופס וכתב טענות שנפתחות בנקודתיים ואינן דוברים: "מועד אחרון לתגובה:"
-const FORMLABEL=new Set(["מועד","תאריך","שעה","מקום","נושא","עניין","בעניין","הערות","הערה","החלטה","החלטת","תגובה","לתגובה","סימוכין","מספר","מס'","שם","כתובת","טלפון","פקס","דוא\"ל","מייל","נספח","נספחים","סעיף","עמוד","המצאת","אחרון","ראשון","לכבוד","אל","מאת","תיק","בפני","לפני","הנדון","סיכום","המלצה","המלצות","מטרה","רקע","דיון","תוצאה","מסקנות","מסקנה","נוכחים","משתתפים","סדר","יום","פרוטוקול","שאלה","תשובה","ש","ת"]);
+// גם מילות התווית של שדה שם ושל דוא"ל מודפס: "שם פרטי:" הוצע כאדם בשם «פרטי» (הציד של 11.10)
+const FORMLABEL=new Set(["מועד","תאריך","שעה","מקום","נושא","עניין","בעניין","הערות","הערה","החלטה","החלטת","תגובה","לתגובה","סימוכין","מספר","מס'","שם","כתובת","טלפון","פקס","דוא\"ל","מייל","נספח","נספחים","סעיף","עמוד","המצאת","אחרון","ראשון","לכבוד","אל","מאת","תיק","בפני","לפני","הנדון","סיכום","המלצה","המלצות","מטרה","רקע","דיון","תוצאה","מסקנות","מסקנה","נוכחים","משתתפים","סדר","יום","פרוטוקול","שאלה","תשובה","ש","ת",
+  "פרטי","משפחה","נעורים","נשלח","עותק","העתק"]);
 function anchorOK(c){
   const ws=c.split(/\s+/);
   if(ws.some(w=>VRB.has(w)||COMMON.has(w)||STOP.has(w)||FORMLABEL.has(w)||TRAIL.has(w)||ROLEWORD.test(w)||TITLE_RX.test(w+" ")))return false;
@@ -1338,29 +1343,55 @@ function anchorOK(c){
   // חלק של שם (בן, בת, אבו, אל, דה, בר) היא כינוי או מילת שאלה
   if(ws.some(w=>/^הח["״]מ$/.test(w)||(w.replace(/['"׳״-]/g,"").length<=2&&!["בן","בת","אבו","אל","דה","בר","ון","דל"].includes(w))))return false;
   return true}
+/* ייצוא של וואטסאפ פותח כל הודעה בחותמת זמן לפני השולח (הציד של 11.10): "[12.3.2026, 21:15] נגה …:" באייפון,
+   "12.3.2026, 21:15 - נגה …:" באנדרואיד, "[3/12/26, 9:15:03 PM] …" באנגלית. עוגן הדוברים דרש שם בראש הפסקה, ולכן
+   בייצוא שלם אף שולח לא נמצא: אפס מתוך שישה בארבע השיחות של הבנצ'מרק. סימן כיוון לפני החותמת ואחריה הוא \0 אחרי norm */
+const CHAT_STAMP="\\u0000*\\[?\\d{1,2}[./]\\d{1,2}[./](?:\\d{4}|\\d{2}),?\\s+\\d{1,2}:\\d{2}(?::\\d{2})?(?:\\s?[AaPp]\\.?[Mm]\\.?)?\\]?\\s*(?:-\\s*)?\\u0000*";
+/* שדה של שם בכל כתיב רגיל של טופס (הציד של 11.10): "שם פרטי:", "שם משפחה:", "שם האב:", "שם הקטין/ה:",
+   "שם פרטי ושם משפחה:", "שם בן/בת הזוג:", "שם נעורים:". עד כאן רק "שם:", "שם מלא:" ושם המצהיר, העד או הצד,
+   ומ"שם פרטי:" עוגן הדוברים הציע אדם בשם «פרטי» */
+const FIELD_NAME="שם\\s+(?:מלא|פרטי(?:\\s+ו(?:שם\\s+)?משפחה)?|משפחה|המשפחה|נעורים|קודם|האב|האם|הצד|"+
+  "ה(?:קטינה|קטין|ילדה|ילד|מבקשת|מבקש|משיבה|משיב|תובעת|תובע|נתבעת|נתבע|מצהירה|מצהיר|עדה|עד)(?:\\s*[/(]\\s*[הת]\\s*\\)?)?|"+
+  "ב[ןת]\\s*(?:/\\s*ב[ןת]\\s+)?(?:ה)?זוג)|שם";
+// אות ראשונה ונקודה או גרש לפני שם המשפחה ("עו"ד ש. ולדמן", "התובעת: נ. טרכטנגוט", הציד של 11.10): שם המשפחה,
+// מילה אחת, הוא השם, והאות נשארת בטקסט. גרש בלי רווח אחריו הוא חלק מהשם ("ג'ני"). שתי קבוצות: אחת מהן נתפסת
+const NMI=`(?:[א-ת](?:\\.\\s?|'\\s)(${NWD})|(${NME}))`;
 // גבול מילה לפני התואר: "מר" בתוך "אמר" סימן את המילה שאחריו כשם
-const ANCH=[["title",`${BD}(?:${TITLES})[,\\s]+(${NME})`,"מופיע אחרי תואר"],
+const ANCH=[["title",`${BD}(?:${TITLES})[,\\s]+${NMI}`,"מופיע אחרי תואר"],
  ["hcm",`אני\\s+הח"מ[,\\s]+(${NME})`,'מופיע אחרי "אני הח"מ" בתצהיר'],
  ["warned",`(${NME})[,\\s]+(?=לאחר\\s+שהוזהרת)`,"מופיע לפני נוסח האזהרה בתצהיר"],
  ["repby",`(?:מיוצג(?:ת)?\\s+ע"?י|באמצעות\\s+ב"כ|ע"י\\s+ב"כ)[,\\s]+(?:(?:${TITLES})[,\\s]+)?(${NME})`,"מופיע אחרי ציון ייצוג"],
  ["deliver",`(?:מען|כתובת)\\s+להמצאת\\s+כתבי\\s+בי[- ]?דין[:\\s]*(${NME})`,"מופיע במען להמצאה"],
  ["sworn",`(?:אני\\s+הח"מ|אני\\s+הנני|אני\\s+החתומ(?:ה)?\\s+מטה)\\s*,?\\s*(${NME})`,
    "מופיע בפתיח התצהיר"],
- ["field",`(?:שם\\s+מלא|שם\\s+המצהיר(?:ה)?|שם\\s+העד(?:ה)?|שם\\s+הצד|שם)\\s*:\\s*(${NME})`,
+ ["field",`(?:${FIELD_NAME})\\s*:\\s*${NMI}`,
    'מופיע אחרי שדה "שם:"'],
+ // כותרת של מכתב או של דוא"ל מודפס: "מאת: נגה טרכטנגוט", "אל: …", "עותק: …" (הציד של 11.10). שורה שנפתחת
+ // בתווית, והשם נגמר בסוף השורה, בפסיק או בכתובת; "לכבוד החג קיבלו" ו"הגיעו לכבוד בר המצווה" הם פרוזה
+ ["mail",`^[\\s\\u0000]*(?:מאת|אל|עותק|העתק)\\s*:\\s*["']?(?:(?:${TITLES})[,\\s]+)?${NMI}(?=\\s*(?:$|[,;<\\[("'A-Za-zו]))`,
+   'מופיע אחרי "מאת:" או "אל:"'],
+ // ועוד נמען באותה שורה, אחרי פסיק, נקודה-פסיק או ו ("אל: נגה טרכטנגוט; אליאב פרוינדליך"), רק בשורה שנפתחת בתווית כזו
+ ["mail",`(?:[,;]|\\sו-?)\\s*["']?(?:(?:${TITLES})[,\\s]+)?${NMI}(?=\\s*(?:$|[,;<\\[("'A-Za-zו]))`,
+   'מופיע אחרי "מאת:" או "אל:"',/^[\s\u0000]*(?:מאת|אל|עותק|העתק)\s*:/u],
+ // הנמען של מכתב: "לכבוד נגה טרכטנגוט", ובשורה שאחרי "לכבוד" שעומדת לבדה
+ ["addressee",`^[\\s\\u0000]*לכבוד\\s*[:,]?\\s*(?:(?:${TITLES})[,\\s]+)?${NMI}(?=\\s*(?:$|[,;]))`,
+   'מופיע אחרי "לכבוד"'],
+ // "בעניין: נגה טרכטנגוט" בכותרת של בקשה, ובשורה שאחרי "בעניין:" שעומדת לבדה
+ ["matter",`^[\\s\\u0000]*בעניין\\s*:\\s*(?:(?:${TITLES})[,\\s]+)?${NMI}(?=\\s*(?:$|[,;(]))`,"מופיע בכותרת תיק"],
  ["idfield",`(?:מס'?\\s*זהות|מספר\\s+זהות|ת\\.?ז\\.?)\\s*:?[^\\n]{0,40}?\\b(${NME})\\s*$`,
    'מופיע בשורת זהות'],
  // "הציג בפני הצעה שאינה סופית": בפרוזה "בפני" הוא מילת יחס, לא פתיח של תצהיר.
  // רק תואר אחריו ("נחתם בפני עו\"ד X") הופך אותו לעוגן.
  ["before",`${BD}(?:בפני|אישר(?:ה)?\\s+בפני|נחתם\\s+בפני|הופיע(?:ה)?\\s+בפני)\\s+(?:${TITLES})[,\\s]+(${NME})`,
    'מופיע אחרי "בפני"'],
- ["signed",`(?:בכבוד\\s+רב|ולראיה\\s+באתי\\s+על\\s+החתום|חתימה)\\s*[,:\\-–]?\\s*(${NME})`,
+ ["signed",`(?:בכבוד\\s+רב|ולראיה\\s+באתי\\s+על\\s+החתום|חתימה)\\s*[,:\\-–]?\\s*${NMI}`,
    "מופיע באזור החתימה"],
  // מילת תפקיד לפני שם. עם נקודתיים זו כותרת ("התובעת: רונית לוי") — כמעט ודאי,
  // ולכן ביטחון גבוה ומילוי אוטומטי. בלי נקודתיים, בגוף הטקסט ("התובעת רונית לוי"),
  // זה אות אמיתי אבל חלש יותר: "התובעת הגישה בקשה" נראה אותו דבר. לכן ביטחון בינוני,
  // כלומר הצעה שהמשתמשת מאשרת, לא מילוי אוטומטי.
- ["role",`(?:${ROLES})\\s*[:\\-–]\\s*(${NME})`,"מופיע אחרי תפקיד ונקודתיים"],
+ ["role",`(?:${ROLES})\\s*[:\\-–]\\s*${NMI}`,"מופיע אחרי תפקיד ונקודתיים"],
+ ["role",`(?:${ROLES_PL})\\s*[:\\-–]\\s*(?:\\(?\\d{1,2}[.)]\\s*)?${NMI}(?:\\s*(?:[,;]|ו-?)\\s*(?:\\(?\\d{1,2}[.)]\\s*)?${NMI})?`,"מופיע אחרי תפקיד ונקודתיים"],
  ["rolep",`(?:${ROLES})\\s+(${NME})`,"מופיע אחרי מילת תפקיד בגוף הטקסט"],
  // מילות תפקיד של הטיפול והחינוך: "למורה ולנטינה", "הגננת רינה", "העו"ס שירן".
  // בתסקיר ובראיון מוקלט אלה לפעמים העוגנים היחידים לשם פרטי זר בלי שם משפחה, ובלעדיהם
@@ -1379,9 +1410,54 @@ const ANCH=[["title",`${BD}(?:${TITLES})[,\\s]+(${NME})`,"מופיע אחרי ת
  // תור דיבור בתמלול: פסקה שנפתחת בשם ואחריו נקודתיים. "דליה לב שדה: תודה רבה".
  // זה העוגן היחיד שיש לתמלול, ובלי המודל אין לו כמעט שום דבר אחר. תואר
  // לפני השם ("היו\"ר אורלי לוי") נבלע; "מוזמנים:" בלי טקסט אחריו לא נתפס.
- ["speaker",`^(?:(?:${TITLES}|היו"ר|היו״ר|יו"ר|יו״ר|השר|השרה)\\s+)?(${NWD}(?:\\s+${NWD}){0,2})\\s*:\\s`,"פותח תור דיבור בתמלול"],
- ["vs",`(${NME})\\s+נ'\\s+(${NME})`,"מופיע בכותרת תיק"]]
- .map(([k,r,w])=>({k,rx:new RegExp(r,"gu"),w}));
+ // חותמת של ייצוא שיחה לפני השם נבלעת גם היא (CHAT_STAMP), וכך גם סמל אחרי שם של איש קשר ("נגה 🌸:")
+ ["speaker",`^(?:${CHAT_STAMP})?(?:(?:${TITLES}|היו"ר|היו״ר|יו"ר|יו״ר|השר|השרה)\\s+)?(${NWD}(?:\\s+${NWD}){0,2})(?:\\s*[\\p{Extended_Pictographic}\\uFE0F\\u0000]+)?\\s*:\\s`,"פותח תור דיבור בתמלול"],
+ ["vs",`(${NME})\\s+נ'\\s+(${NME})`,"מופיע בכותרת תיק"],
+ // שורה ברשימת עדים: "1. נגה טרכטנגוט", "(2) ד"ר אליאב פרוינדליך", "- …", או שורה חשופה כשהמספור של Word
+ // אינו בטקסט. רק אחרי כותרת של רשימה (labelOf), לעולם לא בשורה לבדה
+ ["listitem",`^\\s*(?:\\(?\\d{1,2}[.)]|[א-ט][.)]|[-•·*])?\\s*(?:(?:${TITLES})[,\\s]+)?${NMI}`,"מופיע ברשימת עדים"]]
+ // gate: עוגן שרץ רק כשהטקסט כולו מתאים לו (עוד נמען, רק בשורה של "אל:")
+ .map(([k,r,w,gate])=>({k,rx:new RegExp(r,"gu"),w,gate}));
+// עוגנים חלשים: מה שאחרי התווית אינו תמיד אדם ("לכבוד בית המשפט", "מאת: מזכירות בית המשפט"), ולכן slotOK
+const WEAK_ANCH=new Set(["mail","addressee","matter","listitem"]);
+/* עוגן חלש מקבל שם רק כשהוא פותח את מה שאחרי התווית כמו שהוא: מה שהניקוי קיצץ ממנו ("ראש העירייה",
+   "מזכירות בית המשפט") אינו שם, וגם לא גוף ציבורי, גוף עם מילת סוג, מילת תפקיד או צירוף סמיכות של תפקיד
+   ("פקידת הסעד", "נציג המוסד"). "עיריית חיפה" הוא גוף: ORG_RX אינו תופס אותו, כי \b אינו גבול אחרי אות עברית */
+const SLOT_HEAD=new Set(["ראש","נציג","נציגת","נציגות","סגן","סגנית","ממלא","ממלאת","פקיד","פקידת","מזכירות","לשכת","מחלקת","הנהלת","צוות","יחידת","אגף","מדור",
+  "עיריית","עירית","מועצת","מועצה","רשות","משטרת","תחנת","נציבות","הסתדרות","ועדת","קופת","סניף","שות'"]);
+function slotOK(raw,c){
+  if(raw.trim().split(/\s+/).join(" ")!==c)return false;
+  if(PUBLIC_ORG.test(c)||ORG_HEADS.test(c))return false;
+  const ws=c.split(/\s+/);
+  if(ws.some(w=>SLOT_HEAD.has(w)||ROLE1.includes(w)))return false;
+  // "החג", "הגננת של הילדה": מילה מיודעת בראש אינה שם, אלא אם היא שם מוכר ("הדס", "הראל")
+  if(ws[0][0]==="ה"&&!KNOWN_FIRST.has(ws[0])&&!POOL.he_s.includes(ws[0]))return false;
+  // "הסעד", "המוסד": מילה רגילה עם ה' הידיעה אחרי המילה הראשונה היא צירוף סמיכות, לא שם משפחה
+  return !ws.slice(1).some(w=>w[0]==="ה"&&(COMMON.has(w.slice(1))||STOP.has(w)||STOP.has(w.slice(1))))}
+/* תווית שעומדת לבדה בפסקה או בתא, והשם שלה בשכן (הציד של 11.10). העוגנים ראו פסקה אחת בכל פעם, ולכן
+   "התובעת:" בתא אחד והשם בתא שלידו, "בכבוד רב," והשם בשורה הבאה, "לכבוד" מעל הנמען ורשימת עדים לא נמצאו
+   בלי המודל. מחזיר את מה שקורא השכן צריך (anchored, labelNext): lead — התווית כפי שהעוגן מכיר אותה, שנקראת
+   לפני טקסט השכן; keys — העוגנים שרצים עליו; weak — תווית שגם משהו אחר עומד אחריה; list — כותרת של רשימה,
+   וכל שורה שלה היא שכן. בתא, גבול התא הוא הנקודתיים: "התובעת" לבדה בתא היא תווית; בפסקה רק עם נקודתיים,
+   כי "התובעת" לבדה בשורה באה בכותרת אחרי השם, לא לפניו. */
+const LBL_ROLE=new RegExp(`^(${ROLES})\\s*([:\\-–])?$`,"u"), LBL_FIELD=new RegExp(`^(${FIELD_NAME})\\s*(:)?$`,"u"),
+  LBL_PARTIES=new RegExp(`^(?:${ROLES_PL}|הקטינים|הקטינות)\\s*([:\\-–])?$`,"u"),
+  // "עדי" לבדה היא גם שם פרטי: "עדי טרכטנגוט" בשורה משלה הוא אדם, "עדי התביעה" כותרת
+  LBL_LIST=/^(?:רשימת\s+)?(?:העדים|עדים|עדי(?=\s+ה))(?:\s+(?:מטעם\s+)?[א-ת"']+){0,2}\s*:?$/u;
+function labelOf(text,inCell){
+  const t=norm(String(text||"")).replace(/\u0000/g,"").trim();
+  if(!t||t.length>40)return null;
+  let m;
+  // צדדים ברבים: רשימה, וכל שורה בה היא צד כמו "התובעת: …" (as)
+  if((m=LBL_PARTIES.exec(t))&&(m[1]||inCell))return {lead:"",keys:["listitem"],weak:true,list:true,as:"role",why:ANCH.find(a=>a.k==="role").w};
+  if((m=LBL_ROLE.exec(t))&&(m[2]||inCell))return {lead:m[1]+": ",keys:["role"]};
+  if(/^בעניין\s*:$/u.test(t)||(inCell&&t==="בעניין"))return {lead:"בעניין: ",keys:["matter"],weak:true};
+  if((m=LBL_FIELD.exec(t))&&(m[2]||inCell))return {lead:m[1]+": ",keys:["field"]};
+  if((m=/^(מאת|אל|עותק|העתק)\s*:$/u.exec(t)))return {lead:m[1]+": ",keys:["mail"],weak:true};
+  if(/^לכבוד\s*[:,]?$/u.test(t))return {lead:"לכבוד ",keys:["addressee"],weak:true};
+  if(/^(?:בכבוד\s+רב|ולראיה\s+באתי\s+על\s+החתום|חתימה)\s*[,.:-]?$/u.test(t))return {lead:"בכבוד רב, ",keys:["signed"],weak:true};
+  if(LBL_LIST.test(t))return {lead:"",keys:["listitem"],weak:true,list:true};
+  return null}
 const PFX=new Set(["מ","ב","ל","ו","ה","ש","כ"]);
 // סימני מגדר חייבים גבול מילה: בלי זה "תמר" מכיל "מר" והשם נקרא כזכר.
 const GF=new RegExp(BD+"(?:גב'|גברת|השופטת|הרשמת|המצהירה|העדה|התובעת|הנתבעת|המבקשת|"+
@@ -1399,13 +1475,21 @@ function cleanName(raw){
   for(const x of w) if(bad(x)||x.replace(/['"-]/g,"").length<2)return null;
   return w.join(" ");
 }
-function anchored(text){
-  const n=norm(text),out=[],seen=new Set();
-  for(const a of ANCH){a.rx.lastIndex=0;let m;
+/* ctx: תווית שעומדת לבדה בשכן (labelOf). הטקסט נקרא כאילו התווית עומדת לפניו, רק בעוגנים שלה, והמיקומים
+   חוזרים לטקסט עצמו. בלי ctx, שורת רשימה אינה עוגן. */
+function anchored(text,ctx){
+  const lead=ctx?ctx.lead:"", L=lead.length;
+  const n=norm(lead+text),out=[],seen=new Set();
+  for(const a of ANCH){
+    if(ctx?!ctx.keys.includes(a.k):a.k==="listitem")continue;
+    if(a.gate&&!a.gate.test(n))continue;
+    a.rx.lastIndex=0;let m;
     while((m=a.rx.exec(n))){
       for(let g=1;g<m.length;g++){
         if(!m[g])continue;
-        let c=cleanName(m[g]); if(!c)continue;
+        // גרשיים בסוף מילה הם מירכאה שנסגרת, לא חלק מהשם: 'מאת: "נגה טרכטנגוט" <…>'
+        const raw=m[g].replace(/"+$/,"");
+        let c=cleanName(raw); if(!c)continue;
         // "פלוני", "פלונית", "אלמוני" הם מציין-מקום של בית המשפט, לא שם. "פלוני בדיון"
         // נתפס כאן כשם ואז הוחלף, וההחלפה מחקה את המילה שנועדה להסתיר.
         if(["פלוני","פלונית","אלמוני","אלמונית"].includes(c.split(" ")[0]))continue;
@@ -1455,6 +1539,10 @@ function anchored(text){
         if(a.k==="speaker"){const f0=norm(c.split(/\s+/)[0]); if(/(?:נו|תי)$/.test(f0)&&!KNOWN_FIRST.has(f0)&&(!/\s/.test(c)||f0.length>3))continue;}
         let s=m.index+m[0].indexOf(m[g]); const o=m[g].indexOf(c); if(o>0)s+=o;
         const e=s+c.length,k=s+":"+e; if(seen.has(k))continue; seen.add(k);
+        if(s<L)continue;
+        // בשכן של תווית השם פותח את השורה: "התובעת:" ואחריה "המשרד להגנת הסביבה" אינה «להגנת»
+        if(ctx&&o>0)continue;
+        if((WEAK_ANCH.has(a.k)||(ctx&&ctx.weak))&&!slotOK(raw,c))continue;
         let role=null;
         if(a.k==="role"||a.k==="rolep"){
           const rm=/(התובע(?:ת)?|הנתבע(?:ת)?|המבקש(?:ת)?|המשיב(?:ה)?|הנאשמת|הנאשם|המערער(?:ת)?|המנוח(?:ה)?)/.exec(m[0]);
@@ -1463,8 +1551,8 @@ function anchored(text){
         // המסמך עצמו מעיד על המגדר טוב יותר מכל ניחוש לפי השם
         const ctx0=n.slice(Math.max(0,m.index-26),s+c.length+26);
         const gh=GF.test(ctx0)?"f":GM.test(ctx0)?"m":null;
-        out.push({s,e,type:"NAME_ANCHORED",label:"שם (לפי הקשר)",text:text.slice(s,e),
-          why:a.w,anchor:a.k,src:"pattern",prio:2,conf:"medium",role,g:gh});
+        out.push({s:s-L,e:e-L,type:"NAME_ANCHORED",label:"שם (לפי הקשר)",text:text.slice(s-L,e-L),
+          why:(ctx&&ctx.why)||a.w,anchor:(ctx&&ctx.as)||a.k,src:"pattern",prio:2,conf:"medium",role,g:gh});
       }}}
   return out}
 
@@ -1804,12 +1892,13 @@ function geoMap(names,variant,avoid,forbidden){
 }
 
 /* ══════════════════════════ מנוע ══════════════════════════ */
-function findPatterns(text,on,flag){
+// more: שמות שתווית בפסקה או בתא שלידו מעידה עליהם (labelNext), כבר במיקומים של הטקסט הזה
+function findPatterns(text,on,flag,more){
   const n=norm(text),hits=[];
   if(on.has("NAME_ANCHORED")||flag.has("NAME_ANCHORED"))
     // העוגן הפרוזאי (rolep) מזין רק את ההצעות ב-discover, לא את ההשחרה: ניחוש
     // שגוי שם עולה הקשה אחת; כאן הוא היה דוחק החלפה אמיתית מאותם תווים.
-    for(const h of anchored(text)){if(h.anchor==="rolep")continue;h.apply=on.has("NAME_ANCHORED");hits.push(h)}
+    for(const h of anchored(text).concat(more||[])){if(h.anchor==="rolep")continue;h.apply=on.has("NAME_ANCHORED");hits.push(h)}
   if(on.has("PLACES")||flag.has("PLACES"))
     for(const h of findPlaces(text)){
       if(!on.has("PLACES"))h.apply=false;
@@ -2011,7 +2100,7 @@ class Engine{
     for(const s of subs) if(s.replacement) this.map[ckey(s.kind,s.value)]??=s.replacement;
   }
   blocked(s,e,zones){return zones.some(([a,b])=>a<=s&&e<=b)}
-  detect(text){
+  detect(text,more){
     const n=norm(text),zones=[];
     const AGE=ageZones(n);
     // רשימת ההיתר תופסת גם צורות עם אות שימוש, ו-ש היא אות שימוש: "אל תחליפו" על
@@ -2051,7 +2140,7 @@ class Engine{
           why:r.auto?"התגלה אוטומטית מההקשר":(r.pre?`מהרשימה שהגדרתם, עם אות השימוש "${r.pre}" שנשמרה`:"מהרשימה שהגדרתם"),
           review:!!r.pre,conf:"high"});
       }}
-    for(const h of findPatterns(text,this.opt.on,this.opt.flag)){
+    for(const h of findPatterns(text,this.opt.on,this.opt.flag,more)){
       if(this.blocked(h.s,h.e,zones))continue;
       // גיל אינו מזהה, וההבטחה הייתה "הכול חוץ מגילאים": "בת 9", "בן 12", "גיל 7",
       // "3 שנים" — מספר בהקשר של גיל נשאר גם כשמספרים מושמטים. צר ומבוסס הקשר בלבד.
@@ -2151,8 +2240,30 @@ const DML="http://schemas.openxmlformats.org/drawingml/2006/main";
 // טקסט חלופי של תמונה אינו חלק מגוף הטקסט: לא נסרק לשמות חדשים ולא מוצג כפסקה
 const hiddenPart=p=>p.includes("טקסט חלופי")||p.includes("קוד שדה")||p.includes("הגדרות עיצוב");
 const VML="urn:schemas-microsoft-com:vml";
+/* התא של פסקה בטבלה: הטבלה, מספר השורה בה, השורה והטור, כולל תאים ריקים. כותרת של כתב טענות ערוכה לא פעם
+   כטבלה, "התובעת:" בתא אחד והשם בתא שלידו, וכך גם טופס, וטבלת ילדים ששורת הכותרת שלה "שם הקטין"; העוגנים ראו
+   פסקה אחת בכל פעם (הציד של 11.10, labelNext). פסקה בתיבת טקסט שבתוך תא אינה חלק מהשורה. */
+function cellOf(p,part,T){
+  const isW=(n,ln)=>n&&n.nodeType===1&&n.localName===ln&&n.namespaceURI===W;
+  const up=(n,ln)=>{let x=n.parentNode; while(x&&!isW(x,ln))x=x.parentNode; return x};
+  for(let n=p.parentNode;n&&n.nodeType===1;n=n.parentNode){
+    if(n.localName==="txbxContent")return null;
+    if(!isW(n,"tc"))continue;
+    const tr=up(n,"tr"); if(!tr)return null;
+    let r=T.rows.get(tr);
+    if(!r){
+      const tbl=up(tr,"tbl");
+      let t=tbl&&T.tbls.get(tbl);
+      if(tbl&&!t){t={id:part+"#t"+(T.tbls.size+1),trs:Array.from(tbl.getElementsByTagNameNS(W,"tr")).filter(x=>up(x,"tbl")===tbl)}; T.tbls.set(tbl,t)}
+      r={id:part+"#"+(T.rows.size+1),cells:Array.from(tr.getElementsByTagNameNS(W,"tc")).filter(c=>up(c,"tr")===tr),
+        tbl:t?t.id:null,r:t?t.trs.indexOf(tr):0};
+      T.rows.set(tr,r);
+    }
+    return {row:r.id,col:r.cells.indexOf(n),tbl:r.tbl,r:r.r};
+  }
+  return null}
 function flatten(doc,part){
-  const out=[];
+  const out=[], T={rows:new Map(),tbls:new Map()};
   // SmartArt וגרפים כותבים פסקאות DrawingML (a:p), לא פסקאות Word
   const dml=/\/(diagrams|charts)\//.test(part);
   for(const p of doc.getElementsByTagNameNS(dml?DML:W,"p")){
@@ -2162,7 +2273,10 @@ function flatten(doc,part){
       if(el.sep){spans.push({el:el.el,s:pos,e:pos+1,sep:true});txt+=el.sep;pos++;continue}
       const t=el.textContent||"";if(!t)continue;
       spans.push({el,s:pos,e:pos+t.length,attr:null});txt+=t;pos+=t.length}
-    if(txt.trim())out.push({text:txt,spans,part});
+    if(!txt.trim())continue;
+    const blk={text:txt,spans,part}, cell=dml?null:cellOf(p,part,T);
+    if(cell)blk.cell=cell;
+    out.push(blk);
   }
   // תוויות בגרף: שם קטגוריה או סדרה במטמון המחרוזות
   // (גרף מורחב, chartEx, כותב את אותן תוויות כ-pt בתוך lvl)
@@ -2395,8 +2509,11 @@ async function redactDocx(buf,subs,allow,opt){
   // ה-XML משתנה במקום, ולכן flatten אחרי ההחלפה מחזיר את הטקסט המושחר.
   // בלי צילום מראש, סורק הגוף מציע לה בחזרה את השמות הבדויים שהמצאנו.
   const ORIG=blocks.map(b=>({part:b.part,text:b.text,label:!!b.label}));
+  // שם שתווית בתא או בפסקה שלידו מעידה עליו נבדק כמו שם שאחרי תווית באותה שורה (labelNext)
+  const nextTo=new Map();
+  for(const {i,h} of labelNext(blocks)){const l=nextTo.get(blocks[i])||[]; l.push(h); nextTo.set(blocks[i],l)}
   for(const blk of blocks){
-    const hits=eng.detect(blk.text);if(!hits.length)continue;
+    const hits=eng.detect(blk.text,nextTo.get(blk));if(!hits.length)continue;
     const reps=[];
     for(const h of hits){
       const rec={value:h.text,label:h.label,part:partName(blk.part),why:h.why,
@@ -2495,15 +2612,18 @@ async function redactDocx(buf,subs,allow,opt){
      ושהוא שם של אדם אמיתי אחר במסמך הוחלף שוב, בכינוי של האדם האחר — שרשרת — וכך גם כינוי
      שמכיל שם משפחה אמיתי של מישהו אחר */
   const pseudoWritten=[...new Set(applied.map(r=>norm(String(r.rep||"")).trim()).filter(w=>w.length>=2))];
+  // הבדיקה המהירה רופפת כמו התבנית שאחריה (flex): "בן עמיאל" ברווח הוא "בן-עמיאל" שברשימה, וניקוד בין
+  // האותיות אינו מפריד. בבדיקה המדויקת שם המשפחה של שולח בשיחה נשאר בטקסט (הציד של 11.10)
+  const loose=s=>s.replace(/\u0000/g,"").replace(/[\s-]+/g," ");
   for(const blk of blocks2){
-    const n=norm(blk.text),reps=[];
+    const n=norm(blk.text),nl=loose(n),reps=[];
     const zones=[];
     for(const rx0 of eng.allow){rx0.lastIndex=0;let z;
       while((z=rx0.exec(n)))zones.push([z.index,z.index+z[0].length])}
     for(const w of pseudoWritten){let i=n.indexOf(w);
       while(i>=0){zones.push([i,i+w.length]);i=n.indexOf(w,i+1)}}
     for(const [o,inf] of Object.entries(sweep)){
-      if(!n.includes(o))continue;
+      if(!nl.includes(loose(o)))continue;
       const nw=inf.rep;
       // חלק של שם מופיע בעברית עם אות שימוש ("לגולדשמיט"), ולכן
       // הסריקה חייבת לקלוט אותה ולהחזיר אותה לתחליף.
@@ -2771,6 +2891,64 @@ async function verify(buf,secrets){
   for(const l of leaks){const k=l.part+"|"+l.value;if(!seen.has(k)){seen.add(k);uniq.push(l)}}
   return {passed:!uniq.length,leaks:uniq,parts:n,embedded:emb}}
 
+/* השם שבשכן של תווית שעומדת לבדה (labelOf, הציד של 11.10). בטבלה: הפסקה הבאה באותו תא, ואם אין — התא שליד
+   התווית באותה שורה, אחריה כשהשורה נפתחת בתווית ולפניה כשהיא נגמרת בתווית ("נגה טרכטנגוט | התובעת:"). תא ריק
+   אחרי תווית הוא שדה ריק, לא רמז לשורה הבאה. מחוץ לטבלה: הפסקה הבאה באותו חלק. אחרי כותרת של רשימה: כל שורה
+   שלה, ממוספרת או קצרה (המספור של Word אינו בטקסט). מה שהעוגנים כבר מצאו בשכן עצמו אינו נספר פעמיים.
+   כל תוצאה: {i: מקום הבלוק, h: הממצא בתוכו}. */
+const LIST_LINE=/^(?:\(?\d{1,2}[.)]|[א-ט][.)]|[-•·*])\s*[א-ת]/u;
+// תא שנראה כתווית או ככותרת של טור: תווית של שם, נקודתיים בסוף, או רק מילים של טופס ("מספר זהות", "ת.ז.", "תפקיד")
+const HEAD_WORDS=new Set(["ת.ז","ת.ז.","ת\"ז","תז","לידה","זהות","גיל","תפקיד","קרבה","מין","עיסוק","מקצוע","נייד","דרכון","משפחתי"]);
+function labelLike(t){
+  const x=norm(String(t||"")).replace(/\u0000/g,"").trim();
+  if(!x||/\d/.test(x))return false;
+  if(labelOf(x,true)||/:$/.test(x))return true;
+  return x.split(/\s+/).every(w=>{const b=w.replace(/[.'"]+$/,"");
+    return FORMLABEL.has(w)||HEAD_WORDS.has(w)||HEAD_WORDS.has(b)||COMMON.has(b)||STOP.has(b)||(b.length>3&&PFX.has(b[0])&&(COMMON.has(b.slice(1))||STOP.has(b.slice(1))))})}
+function labelNext(blocks){
+  const out=[], rows=new Map(), grid=new Map(), last=new Map(), txt=b=>String(b.text||"");
+  const labs=blocks.map(b=>hiddenPart(b.part||"")?null:labelOf(txt(b),!!b.cell));
+  blocks.forEach((b,i)=>{
+    if(!b.cell)return;
+    const r=rows.get(b.cell.row)||[]; r.push(i); rows.set(b.cell.row,r);
+    const g=b.cell.tbl+"|"+b.cell.r+"|"+b.cell.col; if(!grid.has(g))grid.set(g,i);
+    last.set(b.cell.tbl,Math.max(last.get(b.cell.tbl)||0,b.cell.r));
+  });
+  const at=(c,r,col)=>grid.get(c.tbl+"|"+r+"|"+col);
+  // שורת חתימה ("__________") או קו בין התווית לשם אינה השכן: מדלגים על עד שתי שורות בלי אות
+  const after=i=>{let j=i+1; while(j<blocks.length&&j<=i+3&&blocks[j].part===blocks[i].part&&!/[א-ת]/.test(txt(blocks[j])))j++; return j};
+  for(let i=0;i<blocks.length;i++){
+    const lab=labs[i], b=blocks[i], ni=after(i), nb=blocks[ni]; if(!lab)continue;
+    const next=[];
+    if(lab.list){
+      for(let j=i+1;j<blocks.length&&next.length<40;j++){
+        const t=norm(txt(blocks[j])).trim();
+        // "נ ג ד" סוגר את רשימת הצד הראשון
+        if(blocks[j].part!==b.part||labs[j]||/^-?\s*(?:נ\s+ג\s+ד|נגד)\s*-?$/u.test(t)||!(LIST_LINE.test(t)||(t.split(/\s+/).length<=4&&!/[.:;]$/.test(t))))break;
+        next.push(j);
+      }
+    }else if(b.cell&&!(nb&&nb.cell&&nb.cell.row===b.cell.row&&nb.cell.col===b.cell.col)){
+      const row=rows.get(b.cell.row), others=row.filter(k=>blocks[k].cell.col!==b.cell.col), below=at(b.cell,b.cell.r+1,b.cell.col);
+      if(b.cell.tbl&&below!==undefined&&!labelLike(txt(blocks[below]))&&others.every(k=>labelLike(txt(blocks[k])))){
+        // שורת כותרות ("שם העד | תפקיד", "שם הקטין | ת.ז."): התווית היא כותרת של טור, והשמות מתחתיה, לא בתא שלידה
+        for(let r=b.cell.r+1;r<=Math.min(last.get(b.cell.tbl),b.cell.r+40);r++){
+          const k=at(b.cell,r,b.cell.col); if(k===undefined)continue;
+          if(labelLike(txt(blocks[k])))break;
+          next.push(k); if(!lab.keys.includes("field"))break;
+        }
+      }else{
+        const at1=c=>row.find(k=>blocks[k].cell.col===c), cols=row.map(k=>blocks[k].cell.col);
+        const dir=labs[at1(Math.min(...cols))]?1:labs[at1(Math.max(...cols))]?-1:1;
+        const k=at1(b.cell.col+dir); if(k!==undefined)next.push(k);
+      }
+    }else if(nb&&nb.part===b.part)next.push(ni);
+    for(const j of next){
+      if(labs[j]||hiddenPart(blocks[j].part||""))continue;
+      const own=new Set(anchored(txt(blocks[j])).map(h=>h.s+":"+h.e));
+      for(const h of anchored(txt(blocks[j]),lab)) if(!own.has(h.s+":"+h.e)) out.push({i:j,h});
+    }
+  }
+  return out}
 function discover(blocks){
   const found={};
   // יש תמלולים שמסמנים דובר בשורה משל עצמה, בלי נקודתיים: פסקה שכולה שם ואחריה
@@ -2797,6 +2975,9 @@ function discover(blocks){
     // תווית דובר היא שם חשוף: בלי פיסוק בתוכה, בלי רבים ובלי שייכות.
     // "תראי, עקרונים", "לטפל בפצעים", "הפצעים נקרות", "מניסיון שלך" נראו כמו שורת דובר.
     if(/[,;:"'()׳״]/.test(t))continue;
+    // "בית המשפט הנכבד" מתחת ל"לכבוד" הוצע כאדם בשם «הנכבד»: שורה שהניקוי קיצץ ממנה מילה שאינה תואר
+    // אינה שורה שכולה שם (הציד של 11.10)
+    {const kept=c.split(/\s+/); if(w.some(x=>!kept.includes(x)&&!TITLE_RX.test(x+" ")))continue;}
     if(c.split(/\s+/).some(x=>/(?:ים|ות|יים|יות)$/.test(norm(x))&&!KNOWN_FIRST.has(norm(x))))continue;
     if(c.split(/\s+/).some(x=>/^של[ךכםןנהוי]?$/.test(norm(x))))continue;
     const s0=blocks[bi].text.indexOf(c); if(s0<0)continue;
@@ -2809,7 +2990,7 @@ function discover(blocks){
     r.count++;r.why.add(h.why);r.spk=(r.spk||0)+1;
     if(!r.ctx)r.ctx=ctxHTML(b.text,h.s,h.e);
   }
-  for(const b of blocks) for(const h of anchored(b.text)){
+  const take=(b,h)=>{
     const r=found[h.text]||(found[h.text]={count:0,why:new Set(),conf:"medium",ctx:"",role:null,g:null,gf:0,gm:0});
     r.count++;r.why.add(h.why);
     if(h.role&&!r.role)r.role=h.role;
@@ -2820,7 +3001,10 @@ function discover(blocks){
     // דובר הוא מי שחוזר: "מועד אחרון לתגובה:" הוא תווית של טופס, גם כשיש בה שתי מילים.
     // שתי מילים בפעם אחת היו "גבוה" ומולאו אוטומטית; עכשיו רק חזרה מעלה את הביטחון.
     if(h.anchor==="speaker"){r.spk=(r.spk||0)+1; if(r.spk>=2)r.conf="high";}
-    if(!r.ctx)r.ctx=ctxHTML(b.text,h.s,h.e)}
+    if(!r.ctx)r.ctx=ctxHTML(b.text,h.s,h.e)};
+  for(const b of blocks) for(const h of anchored(b.text))take(b,h);
+  // שם שתווית בתא או בפסקה שלידו מעידה עליו: "התובעת:" בתא אחד והשם בתא שלידו מילא את הרשימה כמו בשורה אחת
+  for(const {i,h} of labelNext(blocks))take(blocks[i],h);
   // "מאורי בן-שחר" הוא "אורי בן-שחר" עם אות שימוש — לא מועמד נפרד
   // אין איחוד אוטומטי לפי האות הראשונה: "שרון לוי" אינו "רון לוי"
   // עם אות שימוש, ומיזוג שגוי נותן לשני אנשים אותו כינוי.
