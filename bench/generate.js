@@ -49,7 +49,7 @@ const C = {
   L_NEIGHBOURHOOD: "place: neighbourhood",
   L_STREET: "place: street",
   T_PLONI: "trap: פלוני / פלונית",
-  T_NUMBERS: "trap: case numbers, dates, section references",
+  T_NUMBERS: "trap: section references and other numbers that identify no one",
   T_IDIOM: "trap: idiom or public title beside a same-word name",
 };
 const EXEMPT_FROM_DISJOINT = new Set(["P_WORD", "T_IDIOM", "P_WORD_VERB"]);
@@ -181,7 +181,8 @@ const PUBLIC = ["בית המשפט לענייני משפחה", "משרד הרו�
   const [l1] = d.ent("L_TOWN", "PLACE", true, "בית זית", ["בית זית"]);
   const [st] = d.ent("L_STREET", "PLACE", true, "רחוב התאנה 4", ["רחוב התאנה 4"]);
   d.ent("T_PLONI", "TRAP", false, "פלונית", ["פלונית", "פלוני"]);
-  d.ent("T_NUMBERS", "TRAP", false, 'תלה"מ 12345-06-24', ['תלה"מ 12345-06-24', "סעיף 7(ב)"]);
+  d.ent("I_CASE", "PII", true, "12345-06-24", ["12345-06-24"], "case number, deleted by default (settings note, help page)");
+  d.ent("T_NUMBERS", "TRAP", false, "סעיף 7(ב)", ["סעיף 7(ב)"]);
   d.ent("I_DATE", "PII", true, "3.6.2026", ["3.6.2026"], "full date, omitted by default");
   d.p(`ב${PUBLIC[0]} בירושלים`)
    .p('תלה"מ 12345-06-24')
@@ -211,7 +212,8 @@ const PUBLIC = ["בית המשפט לענייני משפחה", "משרד הרו�
   d.ent("O_PUBLIC", "ORG", false, PUBLIC[1], [PUBLIC[1]]);
   const [nb] = d.ent("L_NEIGHBOURHOOD", "PLACE", true, "שכונת גני אביב", ["שכונת גני אביב"]);
   d.ent("T_PLONI", "TRAP", false, "פלוני", ["פלוני"]);
-  d.ent("T_NUMBERS", "TRAP", false, "סעיף 2", ["סעיף 2", 'ת"פ 4471-02-26']);
+  d.ent("T_NUMBERS", "TRAP", false, "סעיף 2", ["סעיף 2"]);
+  d.ent("I_CASE", "PII", true, "4471-02-26", ["4471-02-26"], "case number, deleted by default (settings note, help page)");
   d.ent("I_DATE", "PII", true, "18.7.2026", ["18.7.2026"], "full date, omitted by default");
   d.ent("T_IDIOM", "TRAP", false, "בגיל 8", ["בגיל 8", "עם שחר"], "בגיל 8 beside גיל; עם שחר beside שחר");
   d.p(`בקשה לצו הגנה — ${PUBLIC[0]}`)

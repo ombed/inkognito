@@ -15,7 +15,7 @@ The interface is in Hebrew; the Hebrew documentation follows this section.
 
 ## How I know it works
 
-- **Benchmark** ([bench/results.md](bench/results.md)): 43 invented documents with 332 keyed entries: 268 identifying details the tool must replace and 64 traps it must leave alone (public bodies, idioms, «פלוני»), built to cover the hard cases (prefix letters, nikud, transcription typos, look-alike surnames, names hidden in headers, footnotes and alt text). With the model on: 2 missed, 2 leaked, 5 false positives.
+- **Benchmark** ([bench/results.md](bench/results.md)): 43 invented documents with 335 keyed entries: 272 identifying details the tool must replace and 63 traps it must leave alone (public bodies, idioms, «פלוני»), built to cover the hard cases (prefix letters, nikud, transcription typos, look-alike surnames, names hidden in headers, footnotes and alt text). With the model on: 2 missed, 2 leaked, 3 false positives.
 - It scores **the whole pipeline**, not the model alone: it runs the same chain as the page and checks the output file a user would send, so a leak in any layer counts.
 - A **blocking CI gate** ([bench/gate.js](bench/gate.js)) runs the deterministic layers on every change and compares each entity with itself in the committed baseline; any entity that gets worse fails the build. The model-on run downloads the weights, so it is run by hand.
 - **Model choice** ([docs/model-eval/](docs/model-eval/README.md)): 16 configurations of 9 local Hebrew models, with the decision rule written and committed before any run. Only one passed: DictaBERT-parse's NER head with a corrected tokenizer, which now ships.
@@ -122,13 +122,13 @@ GitHub Pages או כל אירוח סטטי מספיק. **כתובת `https` הי
 
 | קובץ | שורה | המחרוזת | תפקיד |
 |---|---|---|---|
-| `index.html` | 1371 | `<div id="ver">גרסה v73.3</div>` | השבב התחתון — מה שנראה על המסך |
-| `index.html` | 291 | `console.log("… גרסה v73.3")` | שורת הפתיחה בקונסול |
-| `index.html` | 338 | `if(served==="v73.3") return;` | **בדיקת ההשוואה** מול מה שהעובד מגיש |
-| `index.html` | 339 | `el.innerHTML='גרסה v73.3 · …'` | תווית האזהרה שמוצגת כשיש פער |
-| `sw.js` | 8 | `const V="hedact-v73.3";` | מפתח המטמון |
+| `index.html` | 1371 | `<div id="ver">גרסה v73.4</div>` | השבב התחתון — מה שנראה על המסך |
+| `index.html` | 291 | `console.log("… גרסה v73.4")` | שורת הפתיחה בקונסול |
+| `index.html` | 338 | `if(served==="v73.4") return;` | **בדיקת ההשוואה** מול מה שהעובד מגיש |
+| `index.html` | 339 | `el.innerHTML='גרסה v73.4 · …'` | תווית האזהרה שמוצגת כשיש פער |
+| `sw.js` | 8 | `const V="hedact-v73.4";` | מפתח המטמון |
 
-מספרי השורות נכונים לגרסה v73.3 והם עזר בלבד — לחפש את המחרוזת, לא לסמוך
+מספרי השורות נכונים לגרסה v73.4 והם עזר בלבד — לחפש את המחרוזת, לא לסמוך
 על המספר.
 
 **בדיקת ההשוואה (`if(served===…)`, השורה השלישית בטבלה) היא הכי קלה לפספוס, והפספוס שקט-למחצה.** אם השבב והקונסול

@@ -20,6 +20,7 @@ function findPatterns(text,on,flag){
       // לא הופיע ברשימה, ולכן הגיע ל-AI כמו שהוא בלי שום סימן. תשע ספרות שנראות
       // כמו ת"ז הן החשד הכי מובהק שיש, ולכן הן עולות לבדיקה במקום להימחק.
       const bad=!!(p.v&&!p.v(m[0]));
+      if(bad&&p.strict)continue;
       const g=p.g, s=g? m.index+m[0].indexOf(m[g]) : m.index, e=s+(g?m[g].length:m[0].length);
       if(g&&!m[g])continue; if(e<=s)continue;
       hits.push({s,e,type:p.n,label:p.l,text:text.slice(s,e),apply:bad?false:on.has(p.n),

@@ -35,7 +35,7 @@ console.log("\n— profileOk and the readers are found in the page —");
 const profileOk = asFunction("static profileOk(p, named){", "profileOk");
 const profilePairs = asFunction("profilePairs(prof, max=3){", "profilePairs");
 const profileCount = asFunction("profileCount(prof){", "profileCount");
-const applyProfile = asFunction("applyProfile(prof){", "applyProfile");
+const applyProfile = asFunction("applyProfile(prof, name){", "applyProfile");
 const mergeCase = asFunction("mergeCase(prev, cur){", "mergeCase");
 const mkRule = asFunction("mkRule({value, kind, replacement, auto, g, ...rest}){", "mkRule");
 for (const [n, f] of Object.entries({ profileOk, profilePairs, profileCount, applyProfile, mergeCase, mkRule })) ok(typeof f === "function", n + " is found in index.html");
@@ -174,7 +174,7 @@ ok(/profileOk\(/.test(body("readLast")) && /\.rules\.length/.test(body("readLast
 }
 {
   const f = body("onProfFile");
-  ok(/profileOk\(prof\)/.test(f) && f.indexOf("profileOk(prof)") < f.indexOf("applyProfile(prof)"), "a profile file is checked by profileOk before it is applied");
+  ok(/profileOk\(prof\)/.test(f) && f.indexOf("profileOk(prof)") < f.indexOf("applyProfile(prof,"), "a profile file is checked by profileOk before it is applied");
 }
 // the members of the component class, by position
 const heads = [...code.matchAll(/\n {2}(?:static |async )?([A-Za-z_$][\w$]*)(?:\([^)\n]*\)\s*\{| = )/g)].map((m) => [m.index, m[1]]);
@@ -188,9 +188,9 @@ const app0 = code.indexOf('type="text/x-dc"');
 const DISPLAY = /^localStorage\.getItem\("redact-(?:theme|intro-seen|tour-seen)"\)/;
 const reads = [...code.matchAll(/localStorage\.getItem\(/g)].filter((m) => app0 > 0 && m.index > app0 && !DISPLAY.test(code.slice(m.index, m.index + 50)))
   .map((m) => memberAt(m.index));
-const RAW = ["readCases", "readLast", "writeCase", "deleteCase", "importCases"];
+const RAW = ["readCases", "readLast", "writeCase", "deleteCase", "importCases", "dropStored"];
 ok(reads.length >= 7, "the reads of the case keys are found: " + reads.length);
-ok(reads.every((n) => RAW.includes(n)), "a case key is read only in " + RAW.join(", ") + " (the last three only write the stored map back, or compare a name): " + reads.join(", "));
+ok(reads.every((n) => RAW.includes(n)), "a case key is read only in " + RAW.join(", ") + " (the last four only write the stored map back, or compare a name): " + reads.join(", "));
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exitCode = fail ? 1 : 0;
