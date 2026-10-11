@@ -21,11 +21,11 @@ async function toPeople(page) {
   await H.startScan(page);
   await expect(H.goButton(page)).toBeVisible({ timeout: 10000 });
 }
-// the places screen always follows the people screen; its button leads to the check screen
+// the places screen follows the people screen when the document has places; its button leads to the check screen
 async function toWork(page) {
   const run = page.getByRole("button", { name: /החלת הקבוצה|המשך לבדיקה|המשך לעיבוד/ }).first();
-  await expect(run).toBeVisible({ timeout: 15000 });
-  await run.click();
+  await expect(run.or(page.locator("[data-bar]")).first()).toBeVisible({ timeout: 15000 });
+  await H.throughPlaces(page, run);
   await expect(page.locator("[data-bar]")).toBeVisible({ timeout: 20000 });
 }
 const sugChips = (page) => page.locator("button").filter({ hasText: /^\+ / });

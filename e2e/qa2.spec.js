@@ -296,7 +296,7 @@ test("H4: no town in the document is offered as another town's pseudonym, so not
   // take the ambiguous town too, then run
   const extra = page.locator("[data-wrap]").filter({ hasText: "רחובות" }).first();
   await extra.getByRole("checkbox", { name: "להחליף" }).check();
-  await page.getByRole("button", { name: /החלת הקבוצה|המשך לבדיקה/ }).first().click();
+  await H.throughPlaces(page, page.getByRole("button", { name: /החלת הקבוצה|המשך לבדיקה/ }).first());
   await expect(page.locator("[data-bar]")).toBeVisible({ timeout: 20000 });
   const text = await sheet(page).innerText();
   for (const t of TOWNS) expect(text).not.toContain(t);

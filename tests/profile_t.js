@@ -38,7 +38,9 @@ const profileCount = asFunction("profileCount(prof){", "profileCount");
 const applyProfile = asFunction("applyProfile(prof, name){", "applyProfile");
 const mergeCase = asFunction("mergeCase(prev, cur){", "mergeCase");
 const mkRule = asFunction("mkRule({value, kind, replacement, auto, g, ...rest}){", "mkRule");
-for (const [n, f] of Object.entries({ profileOk, profilePairs, profileCount, applyProfile, mergeCase, mkRule })) ok(typeof f === "function", n + " is found in index.html");
+const caseKind = asFunction("caseKind(value, replacement, kinds){", "caseKind");
+const currentKinds = asFunction("currentKinds(){", "currentKinds");
+for (const [n, f] of Object.entries({ profileOk, profilePairs, profileCount, applyProfile, mergeCase, mkRule, caseKind, currentKinds })) ok(typeof f === "function", n + " is found in index.html");
 const check = profileOk || (() => false);
 
 console.log("\n— every shape the tool has written is accepted —");
@@ -108,7 +110,7 @@ const VALUES = [undefined, null, true, false, 0, 7, -1.5, "", "x", "שם", [], [
   [{ value: "x" }], [{ value: 5 }], [{ value: "x", replacement: 5 }], {}, { a: 1 }, { a: "x" }, { a: ["x"] }, { a: [1] }, { a: null },
   { num: "blank" }, { num: 1 }, { date: [] }];
 const shapes = [];
-for (const k of ["v", "name", "rules", "map", "allow", "removed", "sent", "styles", "mode", "created", "updated"])
+for (const k of ["v", "name", "rules", "map", "kinds", "allow", "removed", "sent", "styles", "mode", "created", "updated"])
   for (const x of VALUES) shapes.push({ ...NOW, [k]: x });
 for (const k of ["value", "replacement", "kind", "style", "sameAs", "g", "auto", "pinned"])
   for (const x of VALUES) shapes.push({ ...NOW, rules: [{ ...RULE, [k]: x }, RULE] });
@@ -130,7 +132,7 @@ const component = () => {
   const c = { state: { E: { norm: (s) => String(s) }, mode: "real", o: { numStyle: "blank" }, res: null, screen: "entry", peo: [], err: "" },
     constructor: { BAD_PROFILE: "bad" }, pushHistory() {}, rerun() {} };
   c.setState = (o, cb) => { c.state = { ...c.state, ...(typeof o === "function" ? o(c.state) : o) }; if (cb) cb(); };
-  c.mkRule = mkRule;
+  c.mkRule = mkRule; c.caseKind = caseKind;
   return c;
 };
 const broke = [];
@@ -158,6 +160,47 @@ for (const p of shapes) {
   if (bad && check(p, true)) breaks.push(JSON.stringify(p).slice(0, 120));
 }
 ok(breaks.length === 0, "no shape that breaks the saved-cases list is accepted: " + breaks.slice(0, 3).join(" · "));
+
+console.log("\n— a case gives each value back as its kind (the hunt of 11.10) —");
+{
+  // every pair in a case's map came back as a person: «12.3.2026» → «16.1.2027» was a rule for a name, and so was a town
+  // or an organisation the rules had found. The case now keeps each value's kind; a case saved before keeps working
+  const C = require("./core.js");
+  const E = { norm: C.norm, KINDLBL: C.KINDLBL, CANON: C.CANON, parseDate: C.parseDate, PLACE_BY: C.PLACE_BY };
+  const use = (p) => {
+    const c = { state: { E, mode: "real", o: { numStyle: "blank" }, res: null, screen: "entry", peo: [], err: "" }, constructor: { BAD_PROFILE: "bad" }, pushHistory() {}, rerun() {} };
+    c.setState = (o, cb) => { c.state = { ...c.state, ...(typeof o === "function" ? o(c.state) : o) }; if (cb) cb(); };
+    c.mkRule = mkRule; c.caseKind = caseKind;
+    applyProfile.call(c, p);
+    return Object.fromEntries(c.state.rules.map((r) => [r.value, r.kind]));
+  };
+  const map = { "12.3.2026": "16.1.2027", "חולון": "בת ים", "חברת אלפא תוכנה בע\"מ": "חברת בטא מערכות בע\"מ", "מיכאל פלדמן": "יואב כרמי", "034567128": "[ת\"ז א׳]", "054-1234567": "052-7654321", "רחוב הזית 12": "רחוב האלון 4" };
+  const kinds = { "12.3.2026": "DATE", "חולון": "PLACE", "חברת אלפא תוכנה בע\"מ": "ORG", "מיכאל פלדמן": "NAME", "034567128": "ID", "054-1234567": "PHONE", "רחוב הזית 12": "ADDRESS" };
+  const now = use({ ...NOW, rules: [], map, kinds });
+  ok(!("12.3.2026" in now), "a shifted date is no rule: each document shifts its own dates — " + JSON.stringify(now));
+  ok(now["חולון"] === "PLACE" && now["חברת אלפא תוכנה בע\"מ"] === "ORG" && now["מיכאל פלדמן"] === "NAME", "a town is a place, an organisation a body, a person a person");
+  ok(now["034567128"] === "ID" && now["054-1234567"] === "PHONE" && now["רחוב הזית 12"] === "ADDRESS", "an ID, a phone and an address keep their kinds");
+  // in «פלוני א׳» mode a date gets a label: it stays a rule, so the case keeps the label for it and gives it to no other date
+  const labelled = use({ ...NOW, rules: [], map: { "12.3.2026": "[תאריך א׳]", "15.3.2026": "16.1.2027" }, kinds: { "12.3.2026": "DATE", "15.3.2026": "DATE" } });
+  ok(labelled["12.3.2026"] === "OTHER" && !("15.3.2026" in labelled), "a labelled date stays a rule, a shifted one does not: " + JSON.stringify(labelled));
+  const old = use({ ...NOW, rules: [], map });
+  ok(!("12.3.2026" in old), "a case saved before: a value shaped as a date is no rule either — " + JSON.stringify(old));
+  ok(old["חולון"] === "PLACE" && old["מיכאל פלדמן"] === "NAME" && old["034567128"] === "OTHER", "a known town is a place, a person stays a person, a bracketed label stays «other», as before");
+  // a value that is a key of every object is not a kind, a date or a town
+  const odd = use({ ...NOW, rules: [], map: { constructor: "מרים", toString: "יעל" }, kinds: { toString: "NAME" } });
+  ok(odd.constructor === "NAME" && odd.toString === "NAME", "«constructor» and «toString» are read as the values they are: " + JSON.stringify(odd));
+  ok(use({ ...NOW, rules: [], map: { "רונית לוי": "מרים" }, kinds: { "רונית לוי": "SOMETHING_NEW" } })["רונית לוי"] === "OTHER", "a kind this page does not know comes back as «other»");
+  // what the page saves: the engine's type of each replacement, in its family, and the kind of each rule
+  const c = { state: { E, res: { applied: [{ value: "12.3.2026", type: "DATE" }, { value: "בחולון", base: "חולון", type: "PLACE_CITY" }, { value: "מיכאל פלדמן", type: "NAME_ANCHORED" }, { value: "054-1234567", type: "PHONE_MOBILE" }, { value: "ישן", rep: "x" }] },
+    rules: [{ value: "רונית לוי", kind: "NAME" }, { value: "קריית ביאליק", kind: "PLACE" }] } };
+  const saved = { ...currentKinds.call(c) };
+  ok(JSON.stringify(saved) === JSON.stringify({ "12.3.2026": "DATE", "חולון": "PLACE", "מיכאל פלדמן": "NAME", "054-1234567": "PHONE", "רונית לוי": "NAME", "קריית ביאליק": "PLACE" }), "currentKinds: " + JSON.stringify(saved));
+  ok(check({ ...NOW, kinds: saved }, true) && !check({ ...NOW, kinds: { a: 1 } }, true) && !check({ ...NOW, kinds: ["DATE"] }, true), "profileOk takes kinds as a map of strings, and refuses anything else");
+  // saving into a case keeps the kinds of both, and a value the case dropped loses its kind
+  const merged = mergeCase.call(component(), { ...NOW, map: { "חולון": "בת ים", "רונית לוי": "מרים" }, kinds: { "חולון": "PLACE", "רונית לוי": "NAME" }, removed: [] },
+    { ...NOW, rules: [], map: { "12.3.2026": "16.1.2027" }, kinds: { "12.3.2026": "DATE" }, removed: ["רונית לוי"] });
+  ok(JSON.stringify(merged.kinds) === JSON.stringify({ "חולון": "PLACE", "12.3.2026": "DATE" }), "mergeCase: " + JSON.stringify(merged.kinds));
+}
 
 console.log("\n— every read of a stored case goes through profileOk —");
 const body = (name) => member(name + "(") || member(name + " = ") || "";

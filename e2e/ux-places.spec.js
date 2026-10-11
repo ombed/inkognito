@@ -112,7 +112,7 @@ test("UX #10: a place already confirmed on the list shows as checked, and unchec
   await expect(extra).toContainText("אושר ברשימה");
   // what the screen shows is what happens: unchecked means kept
   await box.uncheck();
-  await page.getByRole("button", { name: "המשך לבדיקה" }).click();
+  await H.throughPlaces(page, page.getByRole("button", { name: "המשך לבדיקה" }));
   await expect(page.locator("[data-bar]")).toBeVisible({ timeout: 20000 });
   await expect(sheet(page)).toContainText("בנשר");
 });
@@ -125,7 +125,7 @@ test("UX #10: checked means replaced", async ({ page }) => {
   const extra = page.locator("[data-wrap]").filter({ hasText: "נשר" }).first();
   await expect(extra.getByRole("checkbox", { name: "להחליף" })).toBeChecked({ timeout: 15000 });
   const to = await extra.locator('input[type="text"], input:not([type])').first().inputValue();
-  await page.getByRole("button", { name: "המשך לבדיקה" }).click();
+  await H.throughPlaces(page, page.getByRole("button", { name: "המשך לבדיקה" }));
   await expect(page.locator("[data-bar]")).toBeVisible({ timeout: 20000 });
   const text = await sheet(page).innerText();
   expect(text).not.toContain("נשר");
@@ -135,7 +135,7 @@ test("UX #10: checked means replaced", async ({ page }) => {
 test("UX #17: the profile buttons say export and import, and export says where the file went", async ({ page }) => {
   await toPeople(page, ["סיכום", "מר דני כהן הגיע. דני כהן חייך."].join("\n"), ["דני כהן"]);
   await H.goOn(page);
-  await page.getByRole("button", { name: /המשך לבדיקה|החלת הקבוצה/ }).first().click();
+  await H.throughPlaces(page, page.getByRole("button", { name: /המשך לבדיקה|החלת הקבוצה/ }).first());
   await expect(page.locator("[data-bar]")).toBeVisible({ timeout: 20000 });
   await page.getByRole("button", { name: /התיק ורשימת השמות/ }).click();
   await expect(page.getByRole("button", { name: "ייבוא מקובץ" })).toBeVisible();
@@ -149,7 +149,7 @@ test("UX #17: the profile buttons say export and import, and export says where t
 test("UX #19 / #20: restore is disabled while empty; the result has a heading with a count, and copy becomes primary", async ({ page }) => {
   await toPeople(page, ["סיכום", "מר יואב ברקוביץ׳ הגיע. יואב ברקוביץ׳ חייך."].join("\n"), ["יואב ברקוביץ'"]);
   await H.goOn(page);
-  await page.getByRole("button", { name: /המשך לבדיקה|החלת הקבוצה/ }).first().click();
+  await H.throughPlaces(page, page.getByRole("button", { name: /המשך לבדיקה|החלת הקבוצה/ }).first());
   await expect(page.locator("[data-bar]")).toBeVisible({ timeout: 20000 });
   const fake = (await page.locator("[data-mark]").first().textContent()).trim();
   await page.getByRole("button", { name: "החזרת שמות מתשובת AI" }).click();
