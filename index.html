@@ -288,7 +288,7 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
 </div></div>
 <script>
 (function(){
-  console.log("אינקוגניטו — גרסה v73.7");
+  console.log("אינקוגניטו — גרסה v73.8");
   var stuck=setTimeout(function(){
     var b=document.getElementById("boot"); if(!b) return;
     b.className="stuck";
@@ -335,8 +335,8 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
         console.log("עובד שירות: "+served);
         var el=document.getElementById("ver"); if(!el) return;
         if(chip===null) chip=el.innerHTML; else el.innerHTML=chip;
-        if(served==="v73.7") return;
-        el.innerHTML='גרסה v73.7 · <b style="color:var(--warn)">יש גרסה חדשה: רעננו עם Ctrl+Shift+R</b>';
+        if(served==="v73.8") return;
+        el.innerHTML='גרסה v73.8 · <b style="color:var(--warn)">יש גרסה חדשה: רעננו עם Ctrl+Shift+R</b>';
       });
       var ask=function(){ if(sw.controller) sw.controller.postMessage("version") };
       sw.ready.then(ask);
@@ -1371,7 +1371,7 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
 
 </div>
 </x-dc>
-<footer><nav data-foot aria-label="מידע ומסמכים משפטיים"><a href="https://inkognito.co.il/" target="_blank" rel="noopener">עמוד הבית</a><a href="https://inkognito.co.il/terms" target="_blank" rel="noopener">תנאי שימוש</a><a href="https://inkognito.co.il/privacy" target="_blank" rel="noopener">מדיניות פרטיות</a><a href="https://inkognito.co.il/accessibility" target="_blank" rel="noopener">הצהרת נגישות</a><a href="mailto:contact@inkognito.co.il">יצירת קשר</a></nav><div id="ver">גרסה v73.7</div></footer>
+<footer><nav data-foot aria-label="מידע ומסמכים משפטיים"><a href="https://inkognito.co.il/" target="_blank" rel="noopener">עמוד הבית</a><a href="https://inkognito.co.il/terms" target="_blank" rel="noopener">תנאי שימוש</a><a href="https://inkognito.co.il/privacy" target="_blank" rel="noopener">מדיניות פרטיות</a><a href="https://inkognito.co.il/accessibility" target="_blank" rel="noopener">הצהרת נגישות</a><a href="mailto:contact@inkognito.co.il">יצירת קשר</a></nav><div id="ver">גרסה v73.8</div></footer>
 <script type="text/x-dc" data-dc-script data-props="{&quot;docFont&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;serif&quot;,&quot;sans&quot;],&quot;default&quot;:&quot;serif&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;עיצוב&quot;},
 &quot;railWidth&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:340,&quot;max&quot;:500,&quot;step&quot;:4,&quot;default&quot;:404,&quot;unit&quot;:&quot;px&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;עיצוב&quot;}}">
 class Component extends DCLogic {
@@ -2429,10 +2429,12 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
 
   /* "קבוצה אחרת" (L12 בביקורת השנייה): תחליף שהקלידה ביד נזרק בלי מילה. המפה החדשה
      מחליפה רק את מה שלא נגעה בו; מה שהקלידה נשאר, לפי שם היישוב ולא לפי המקום בשורה. */
-  geoAlt = () => { const E=this.state.E; const v=this.state.geoV+1;
-    const old=this.state.geo, edits=this.state.geoEdits||{}, byName={};
-    if(old) old.map.forEach((m,i)=>{ if(edits[i]!=null) byName[m.from]=edits[i]; });
-    const geo=E.geoMap(this.state.geoNames, v, this._geoAvoid, this._geoForbid);
+  geoAlt = () => { const E=this.state.E;
+    const old=this.state.geo, edits=this.state.geoEdits||{}, byName={}, prev={};
+    if(old) old.map.forEach((m,i)=>{ if(edits[i]!=null) byName[m.from]=edits[i]; else prev[m.from]=m.to; });
+    // הקבוצה הבאה שמחליפה את כל מה שלא הקלידה (prev), ומקומה בדירוג הוא ההמשך של הלחיצה הבאה
+    const geo=E.geoMap(this.state.geoNames, this.state.geoV+1, this._geoAvoid, this._geoForbid, prev);
+    const v=geo&&geo.variant!=null?geo.variant:this.state.geoV+1;
     const kept={}; if(geo) geo.map.forEach((m,i)=>{ if(byName[m.from]!=null) kept[i]=byName[m.from]; });
     const n=Object.keys(kept).length;
     this.setState({geoV:v, geo, geoEdits:kept, notice:n?`${n===1?"התחליף שהקלדתם נשאר":n+" התחליפים שהקלדתם נשארו"}; השאר הוחלפו בקבוצה חדשה.`:this.state.notice, noticeUndo:false}); };
@@ -2719,6 +2721,12 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     // צעד ביטול רק כשמשהו משתנה (L11): הוספה שנדחתה השאירה צעד ריק, ושני "ביטול" לא עשו דבר
     if(!this.state.rules.some(r=>E.norm(r.value).trim()===E.norm(value).trim())) this.pushHistory();
     const E2=this.state.E, ex=this.state.rules.find(r=>E2.norm(r.value).trim()===E2.norm(value).trim());
+    // מקום מהתיק שמוחלף רק במופע שהוא מקום (cond): ההחלטה שלה להחליף אותו הופכת אותו לכלל רגיל, בכל מופע.
+    // בלי זה «החלפה» על המופע שנשאל לא עשתה כלום, כי הכלל כבר ברשימה
+    if(ex&&ex.cond&&(kind||"NAME")===ex.kind){
+      this.pushHistory();
+      this.setState({rules:this.state.rules.map(r=>r===ex?{...r, cond:false}:r), popup:null, err:""}, ()=>this.rerun());
+      return; }
     if(ex){
       // כבר ברשימה: במקום שגיאה בראש העמוד, מסמנים את הכרטיס שלו ומספרים שם
       if(this.state.res) this.setState({sel:"a|"+E2.norm(ex.value).trim(), open:this.openWith("findings"), popup:null, err:"«"+ex.value+"» כבר ברשימה — הכרטיס שלו מסומן."});
@@ -3761,7 +3769,9 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
         // תאריך זז לפי המסמך שהוא בו (הבחירה של 15.9): התאריך שהוזז במסמך קודם של התיק אינו כלל כאן, וגם לא אדם.
         // תאריך שקיבל תווית («[תאריך א׳]») נשאר כלל: אותו תאריך מקבל את אותה תווית בכל מסמך בתיק, והתווית לא תינתן לתאריך אחר
         if(kind==="DATE"&&!/^\[/.test(replacement)) continue;
-        rules.push(this.mkRule({value, kind:kind==="DATE"?"OTHER":kind, replacement, auto:true}));
+        // מקום שהמנוע החליף במסמך קודם (cond): יישוב שהוא גם מילה מוחלף כאן רק במופע שהוא מקום, באותו תחליף.
+        // כלל גורף החליף את «אני חוששת לשלומי» כי «תושבת שלומי» הוחלף במסמך הקודם (הביקורת של 11.10)
+        rules.push(this.mkRule({value, kind:kind==="DATE"?"OTHER":kind, replacement, auto:true, ...(kind==="PLACE"?{cond:true}:{})}));
       }
       const own=open?this.state.rules||[]:[], ownAllow=open?this.state.allow||[]:[];
       const ownR=new Set(own.map(r=>nn(r&&r.value))), ownA=new Set(ownAllow.map(nn));

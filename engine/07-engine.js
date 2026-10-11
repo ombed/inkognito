@@ -19,7 +19,7 @@ function findPatterns(text,on,flag){
       // לא נכון, או שהוא לא ישראלי. עד כאן מספר כזה נעלם לגמרי: לא הוחלף, לא סומן,
       // לא הופיע ברשימה, ולכן הגיע ל-AI כמו שהוא בלי שום סימן. תשע ספרות שנראות
       // כמו ת"ז הן החשד הכי מובהק שיש, ולכן הן עולות לבדיקה במקום להימחק.
-      const bad=!!(p.v&&!p.v(m[0]));
+      const bad=!!(p.v&&!p.v(m[0],n,m.index));
       if(bad&&p.strict)continue;
       const g=p.g, s=g? m.index+m[0].indexOf(m[g]) : m.index, e=s+(g?m[g].length:m[0].length);
       if(g&&!m[g])continue; if(e<=s)continue;
@@ -116,6 +116,44 @@ function pctPlain(s){
 // שכתובת ציבורית מלאה בהם ("/2024-03-12/", "18-2023"), ולא יישוב ("he.wikipedia.org/wiki/חיפה")
 const ADDR_PAT=new Set(["EMAIL","PHONE_MOBILE","PHONE_LAND","ISRAELI_ID","ISRAELI_ID_SEP","ISRAELI_ID_LABELED","IBAN",
   "URL_PERSONAL","URL_PRIVATE","ADDRESS_STREET","ADDRESS_LABELED","PASSPORT","SSN","BANK_ACCOUNT","BANK_ACCOUNT_SHORT","LAWYER_LIC"]);
+/* היסט התאריכים של מסמך (הציד של 11.10). תאריך שזז בדיוק אל תאריך אחר שבמסמך ("1.2.2026" אל "1.10.2026", כשגם
+   הוא שם) יוצא כערך אמיתי, וכך גם תאריך מלא שמכיל חודש ושנה של המסמך ("12 במרץ 2026" מכיל את "מרץ 2026"). חודש
+   ושנה זזים בחודשים שלמים, ולכן ברשימה של חודשים כמעט כל הזזה נוחתת על חודש אחר שלה.
+   ההיסט נשאר בטווח שהבעלים בחר, 30 עד 400 יום (ביקורת 11.10): עד כאן הוא עלה עד שלא נשארה התנגשות, שמונה שנים
+   לרשימה של 96 חודשים, וכל גיל ומועד שה-AI מחשב יצא שגוי בשנים; והחיפוש בנה מחרוזות לכל היסט, 15 שניות על 1,000
+   תאריכים. בתוך הטווח נבחר הראשון, מההיסט של המסמך והלאה, שאין בו התנגשות, ואם אין כזה, זה עם הכי מעט. מה שנשאר
+   אינו דליפה: הבדיקה האחרונה סופרת כמה פעמים כל תאריך נכתב כבדוי (verify). nd: הטקסט המנורמל */
+function dateOffFor(nd){
+  const base=30+(typeof hash32==="function"?hash32(nd):0)%371;
+  const P=nd&&PAT.find(p=>p.n==="DATE"); if(!P)return base;
+  // מה שהזיהוי רואה: בלי התווים הבלתי נראים (detect/squeeze)
+  const DAY=864e5, full=new Set(), dm=new Set(), my=new Set(), dms=new Map();
+  P.rx.lastIndex=0;
+  for(const m of nd.replace(/\u0000/g,"").matchAll(P.rx)){
+    const p=parseDate(m[0]); if(!p)continue;
+    if(p.d==null)my.add(p.y*12+p.m-1);
+    else if(p.y==null){dm.add(p.m*32+p.d); dms.set(p.m*32+p.d,Date.UTC(dateRefYear(p),p.m-1,p.d)/DAY)}
+    else full.add(Date.UTC(p.y,p.m-1,p.d)/DAY);
+  }
+  if(!full.size&&!dm.size&&!my.size)return base;
+  const cal=new Map(), at=k=>{let v=cal.get(k); if(!v){const t=new Date(k*DAY); v=[t.getUTCDate(),t.getUTCMonth()+1,t.getUTCFullYear()]; cal.set(k,v)} return v};
+  const fulls=[...full], dmv=[...dms.values()], myv=[...my];
+  // כמה ערכים מוזזים הם ערך אמיתי, או מכילים אחד; עוצר כשכבר אין סיכוי לשפר את הטוב ביותר
+  const clash=(off,cap)=>{
+    let c=0; const k=Math.round(off/30.4375);
+    for(const v of myv) if(my.has(v+k)&&++c>=cap)return c;
+    for(const v of dmv){const [d,mo]=at(v+off); if(dm.has(mo*32+d)&&++c>=cap)return c}
+    for(const v of fulls){const g=v+off, [d,mo,y]=at(g); if((full.has(g)||dm.has(mo*32+d)||my.has(y*12+mo-1))&&++c>=cap)return c}
+    return c;
+  };
+  let best=base, bc=Infinity;
+  for(let i=0;i<371;i++){
+    const off=30+(base-30+i)%371, c=clash(off,bc);
+    if(!c)return off;
+    if(c<bc){bc=c;best=off}
+  }
+  return best;
+}
 /* מילה שהיא גם מילה רגילה, לא רק שם: שם פרטי שהוא מילה, מילה שכיחה, מילת עצירה או פועל — או
    מילה שהטקסט עצמו כותב עם ה' הידיעה ("הכהן"). toks: המילים של הטקסט. בדיקה אחת לצורה עם אות
    שימוש של שם קצר כאן, ולחלק של שם שעומד לבד בתשובת AI (restoreNames). */
@@ -150,8 +188,8 @@ class Engine{
     // ולומר את זה, מאשר לערבב שני אנשים.
     this.collided=[];
     const nd=docText?norm(docText):"";
-    // היסט התאריכים: אחד לכל המסמך, נגזר ממנו ולכן זהה בכל ריצה חוזרת
-    this.dateOff=30+(typeof hash32==="function"?hash32(nd):0)%371;
+    // היסט התאריכים: אחד לכל המסמך, נגזר ממנו ולכן זהה בכל ריצה חוזרת, ובלי תאריך מוזז שהוא תאריך אמיתי במסמך
+    this.dateOff=dateOffFor(nd);
     // כינוי שהוצמד לכלל אחרי ריצה (pinned, ראו pinReps בממשק) תקף רק כשהסגנון הוא
     // "שם"; בתווית, ███ או ריק הוא נופל, כדי שהחלפת מצב במסך הבדיקה עדיין תעבוד.
     for(const s of subs) if(s.pinned&&s.replacement&&this.styleFor({type:s.kind,style:s.style})!=="name") s.replacement="";
@@ -188,10 +226,13 @@ class Engine{
       // "שרן" היה צריך להוסיף ביד, אחת-אחת, ו"לשי" עדיין יכול היה לצאת גלוי.
       const shortSingle = s.kind==="NAME" && nv.split(/\s+/).length===1 && nv.length<=3;
       const isWord=x=>wordish(x,this.forbidden);
+      // יישוב שהוא גם מילה או צירוף, שחזר מהתיק (cond, applyProfile בדף): מוחלף רק במופע שהטקסט מראה שהוא מקום,
+      // באותו תחליף; במופע אחר שכבת היישובים שואלת. כלל גורף החליף את «אני חוששת לשלומי» במסמך הבא (הביקורת של 11.10)
+      const cond=s.kind==="PLACE"&&!!s.cond&&typeof placeCond==="function"&&placeCond(nv);
       for(const [v,pre] of variants(s.value,lvl,protect)){
         if(seen.has(v))continue; seen.add(v);
         this.rules.push({rx:new RegExp(NW+flex(v)+NWE,"gu"),base:s.value,
-          kind:s.kind,rep:s.replacement,style:s.style||null,pre,auto:s.auto,soft:!!pre&&shortSingle&&isWord(norm(v).trim())});
+          kind:s.kind,rep:s.replacement,style:s.style||null,pre,auto:s.auto,cond,soft:!!pre&&shortSingle&&isWord(norm(v).trim())});
       }
       // "עמותת שביל הלב" אושרה: גם "שביל הלב" לבדו הוא אותו גוף, כמו שם משפחה
       // לבדו אצל אדם. אחרת המופע הראשון מוחלף והשני נשאר בטקסט.
@@ -271,9 +312,12 @@ class Engine{
         if(tok!==own&&(listed.has(tok)||SING.some(p=>tok.startsWith(p)&&tok.slice(1)!==own&&listed.has(tok.slice(1)))))continue;
         zones.push([m.index,m.index+m[0].length])}});
     const hits=[], nl=addr?n.replace(/[_+]/g," "):n;
+    let scan=null;
+    const placeHere=(s,e)=>{ if(!scan)scan=placeScan(n); const x=scan.find(y=>y.s<e&&s<y.e); return !x||placeSure(n,x,scan); };
     for(const r of this.rules){r.rx.lastIndex=0;let m;
       while((m=r.rx.exec(nl))){
         const s=m.index,e=s+m[0].length;
+        if(r.cond&&!placeHere(s,e))continue;
         /* ערך שברשימה מוחלף גם בתוך קטע ארוך יותר שהותר (v35): "לא שם"
            על קטע ארוך שהמודל הדביק ("אסתר גבאי ברזילי", דוגמה בדויה) כתב את כל הקטע
            לרשימת ההיתר, ומאז "אסתר" שברשימה נשארה גלויה בתוכו. אזור היתר
@@ -306,6 +350,8 @@ class Engine{
       // וכך גם כתובת שהוקלדה בטקסט: מתחילת המילה (http, www) ועד "?" שלה, "04-54321-12" הוא שם קובץ ולא טלפון
       if(!addr&&h.type==="PHONE_LAND"){ let a=h.s; while(a>0&&!/\s/.test(text[a-1]))a--;
         if(/^(?:https?:\/\/|www\.)/i.test(text.slice(a))&&!text.slice(a,h.s).includes("?")) continue; }
+      // "אל תחליפו" על יישוב חל על כל כתיב שלו: «נהרייה» הוא «נהריה» (PLACE_ALT, הציד של 11.10)
+      if(h.place&&(this.allowN||[]).includes(norm(h.place).trim()))continue;
       // גיל אינו מזהה, וההבטחה הייתה "הכול חוץ מגילאים": "בת 9", "בן 12", "גיל 7",
       // "3 שנים" — מספר בהקשר של גיל נשאר גם כשמספרים מושמטים. צר ומבוסס הקשר בלבד.
       if(this.blocked(h.s,h.e,AGE))continue;
