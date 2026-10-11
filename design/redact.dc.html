@@ -1104,8 +1104,8 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
         <span data-step="2" style="{{ step2Style }}">2 העתקה או הורדה<sc-if value="{{ step2Done }}"> <svg class="ic" data-icon="check" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span class="vh">✓</span></sc-if></span><span style="color:var(--ink3)"><svg class="ic" data-icon="chevron-left" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></span>
         <sc-if value="{{ step3Btn }}"><button data-step="3" onClick="{{ onReverse }}" title="מעבר למסך שבו מדביקים את תשובת ה־AI" style="{{ step3Style }}" style-hover="background:var(--accent);color:var(--panel)">3 החזרת שמות</button></sc-if><sc-if value="{{ step3Plain }}"><span data-step="3" style="{{ step3Style }}">3 החזרת שמות</span></sc-if>
       </div>
-      <button data-tour-target="copy" onClick="{{ onCopyAi }}" title="מעתיק את הטקסט עם השמות הבדויים. מדביקים אותו בכלי ה־AI, ואת התשובה מדביקים ב«החזרת שמות מתשובת AI» למעלה, והשמות האמיתיים חוזרים." style="{{ copyBtnStyle }}">{{ copyLabel }}</button>
-      <button onClick="{{ onDownload }}" title="קובץ Word עם השמות הבדויים, בשם כללי עם תאריך ולא בשם הקובץ המקורי" style="padding:11px 20px;border-radius:10px;border:1px solid var(--line);background:var(--panel);font-weight:500;font-size:14px;white-space:nowrap" style-hover="background:var(--panel2)">הורדת Word</button>
+      <button data-tour-target="copy" onClick="{{ onCopyAi }}" disabled="{{ rerunning }}" title="מעתיק את הטקסט עם השמות הבדויים. מדביקים אותו בכלי ה־AI, ואת התשובה מדביקים ב«החזרת שמות מתשובת AI» למעלה, והשמות האמיתיים חוזרים." style="{{ copyBtnStyle }}">{{ copyLabel }}</button>
+      <button onClick="{{ onDownload }}" disabled="{{ rerunning }}" title="קובץ Word עם השמות הבדויים, בשם כללי עם תאריך ולא בשם הקובץ המקורי" style="padding:11px 20px;border-radius:10px;border:1px solid var(--line);background:var(--panel);font-weight:500;font-size:14px;white-space:nowrap" style-hover="background:var(--panel2)">הורדת Word</button>
     </div>
     <!-- כלי ה־AI המוכרים בלשונית חדשה, בלי טקסט ממולא, ושורת זהירות אחת לידם (הנוסח שאושר, 7.10.2026) -->
     <div data-ai data-ai-later="{{ aiLater }}" style="max-width:1520px;margin:6px auto 0;display:flex;align-items:baseline;justify-content:flex-end;gap:3px 14px;flex-wrap:wrap;font-size:12px;color:var(--ink3)">
@@ -1349,6 +1349,8 @@ class Component extends DCLogic {
       const t=e.target, tag=t&&t.tagName;
       if(tag==="INPUT"||tag==="TEXTAREA"||(t&&t.isContentEditable)) return;
       const k=String(e.key||"").toLowerCase();
+      // ביטול וחזרה שייכים למסך הבדיקה: במסכים אחרים הם הריצו את המסמך מחדש מעל מצב שלא נראה
+      if((k==="z"||k==="y")&&this.state.screen!=="work") return;
       if(k==="z"&&!e.shiftKey){ e.preventDefault(); this.undo(); }
       else if((k==="z"&&e.shiftKey)||k==="y"){ e.preventDefault(); this.redo(); }
     };
@@ -1595,7 +1597,7 @@ class Component extends DCLogic {
       geo:null, geoV:0, geoNames:[], geoExtra:[], geoEdits:{}, geoExcluded:[],
       // מסך הבדיקה
       res:null, sel:null, hot:null, query:"", cat:"", filter:"all", addV:"", addR:"", addK:"NAME", inline:null, inlineDraft:"", popup:null, tip:null,
-      repDraft:"", approved:[], formSel:null, markIdx:0, docView:"red", exportAsk:"", notice:"", leaks:[], copied:false, copyLabel:"העתקה ל־AI", undoN:0, redoN:0,
+      repDraft:"", approved:[], formSel:null, markIdx:0, docView:"red", exportAsk:"", notice:"", leaks:[], copied:false, copyLabel:"העתקה ל־AI", undoN:0, redoN:0, rerunning:false,
       // החזרת שמות
       rvIn:"", rvOut:"", rvCount:0, rvLeft:[], rvLast:null,
       // מה שהתיק שומר (profileObj)
@@ -1695,7 +1697,7 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
 </body></html>`;
   }
   downloadReport = () => {
-    if(!this.state.res) return; if(this.tourBlocks("report")) return;
+    if(!this.state.res||this._reruns>0) return; if(this.tourBlocks("report")) return;
     const blob=new Blob([this.buildReport()],{type:"text/html;charset=utf-8"});
     const u=URL.createObjectURL(blob), a=document.createElement("a");
     a.href=u; a.download=this.safeBase()+"_דוח-החלפות.html";
@@ -1808,6 +1810,11 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     // כהצעה, והכינוי שלו מהמסמך הקודם לא הגיע לכללים.
     for(const r of this.profileRules()) if((r.kind==="NAME"||r.kind==="ORG")&&!peo.some(p=>E.norm(p.value)===E.norm(r.value)))
       peo.push({value:r.value, kind:r.kind, note:"מהתיק", auto:true, g:null});
+    /* אותו מסמך שנסרק שוב («ניסיון נוסף», «לנסות שוב», או סריקה אחרי שהמודל הופעל) שומר את הרשימה שעל המסך:
+       שמות שהוקלדו, הצעות שאושרו, סוג שתוקן, בסדר שלהם (הציד של 11.10: ניסיון חוזר בנה את הרשימה מהסריקה מחדש,
+       והשמות שהוקלדו יצאו ל-AI גלויים). מסמך חדש מתחיל ברשימה ריקה (docReset), ולכן כל מה שכבר ברשימה שייך לו. */
+    const onScreen=this.state.peo||[];
+    for(let i=onScreen.length-1;i>=0;i--){ const p=onScreen[i], at=peo.findIndex(q=>E.norm(q.value)===E.norm(p.value)); if(at>=0) peo.splice(at,1); peo.unshift(p); }
     // מה ש-discover מצא ולא מילא מעצמו לא נעלם: הוא מוצג לאישור בהקשה אחת.
     // ניחוש בינוני עולה הקשה; שם שהיא לא נשאלה עליו הוא הכשל שהכלי נועד למנוע.
     const inList=v=>peo.some(p=>E.norm(p.value)===E.norm(v));
@@ -2340,7 +2347,9 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
   async run(rows){
     const E=this.state.E;
     const rules = rows ? rows.map(r=>({...r})) : this.state.rules;
-    this.setState({rules, sel:null, screen:"busy", busyT:"מעבד את המסמך…", err:""});
+    // הרשימה נבנתה מחדש מחוץ למסך הבדיקה: היסטוריה מלפני כן אינה מתאימה לה (pushHistory)
+    this._undo=[]; this._redo=[];
+    this.setState({rules, sel:null, screen:"busy", busyT:"מעבד את המסמך…", err:"", undoN:0, redoN:0});
     try{
       const res = this.guardModel(await E.redactDocx(this.state.buf.slice(0), rules, this.state.allow, this.opts()), rules, this.state.allow);
       // מגיעים למסמך עצמו קודם: הפאנלים מקופלים, פס הסטטוס אומר מה מחכה
@@ -2359,8 +2368,10 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
   }
   async rerun(){
     const E=this.state.E; const t0=Date.now();
-    // בזמן ריצה הרשימה כבר חדשה והתוצאה עוד ישנה: הבדיקה העצמית מחכה (שכבה 5)
+    // בזמן ריצה הרשימה כבר חדשה והתוצאה עוד ישנה: הבדיקה העצמית מחכה (שכבה 5), וגם העתקה והורדה: עד כאן
+    // הן קראו את התוצאה הקודמת, והשם שסומן הרגע יצא גלוי (הציד של 11.10). הכפתורים כבויים עד שהריצה נוחתת
     this._reruns=(this._reruns||0)+1;
+    if(this._reruns===1) this.setState({rerunning:true});
     try{
       const res = this.guardModel(await E.redactDocx(this.state.buf.slice(0), this.state.rules, this.state.allow, this.opts()), this.state.rules, this.state.allow);
       this.log.add("rerun",{ms:Date.now()-t0, applied:res.applied.length, flagged:res.flagged.length});
@@ -2370,7 +2381,7 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
       const keep=sel&&(res.applied.some(r=>"a|"+n(r.of||r.base||r.value)===sel)||res.flagged.some(r=>"f|"+n(r.value)===sel));
       this.setState({res, rules:this.pinReps(this.state.rules,res), sel:keep?sel:null, err:"", inline:null}, ()=>this.persistProfile());
     }catch(e){ this.setState({err:"העדכון אחרי השינוי נכשל. אפשר לנסות שוב. (פרטים טכניים: "+(e.message||e)+")"}); }
-    finally{ this._reruns--; }
+    finally{ this._reruns--; if(!this._reruns) this.setState({rerunning:false}); }
   }
   /* C1 בביקורת השנייה: כינוי אוטומטי נבחר מתוך מאגר תוך דילוג על שמות שכבר
      נלקחו, ולכן היה תלוי בכל מה שהוקצה לפניו. שינוי כינוי של אדם אחד פינה שם
@@ -2404,7 +2415,10 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
   snapshot(){
     return {rules:(this.state.rules||[]).map(r=>({...r})), allow:[...(this.state.allow||[])], removed:[...(this.state.removed||[])]};
   }
+  /* ביטול חל על החלטות של מסך הבדיקה בלבד. צעד שנרשם במסך אחר (מספריים ב«מי בתיק», «↩» ב«יישובים»), או צעד
+     מלפני שהרשימה נבנתה מחדש, החזיר בלחיצה אחת את כל הרשימה, והשמות שנוספו אחריו יצאו גלויים (הציד של 11.10) */
   pushHistory(){
+    if(this.state.screen!=="work") return;
     this._undo=(this._undo||[]).concat([this.snapshot()]).slice(-40);
     this._redo=[];
     // הודעת סתירה חיה עד ההחלטה הבאה
@@ -2801,7 +2815,7 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     return false;
   }
   copyAi = async () => {
-    if(!this.state.res) return;
+    if(!this.state.res||this._reruns>0) return;
     if(this.tourBlocks("copy")) return;
     if(!this.exportGuard("copy")) return;
     this.log.add("copy",{applied:this.state.res.applied.length, open:this.pendingReview().blocking});
@@ -2846,7 +2860,7 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     }catch(e){ this.setState({err:"הכנת חבילת הבדיקה נכשלה. אפשר לנסות שוב. (פרטים טכניים: "+(e.message||e)+")"}); }
   };
   download = () => {
-    const RES=this.state.res; if(!RES) return; if(this.tourBlocks("download")) return;
+    const RES=this.state.res; if(!RES||this._reruns>0) return; if(this.tourBlocks("download")) return;
     if(!this.exportGuard("download")) return;
     this.log.add("download",{open:this.pendingReview().blocking});
     this.markSent();
@@ -4465,7 +4479,7 @@ const KIND_NAME={NAME:"אדם", ORG:"גוף", PLACE:"מקום"};
     v.aiLater=S.copied?undefined:"1";
     v.copyLabel=S.copyLabel;
     v.copyBtnStyle="padding:11px 20px;border-radius:10px;font-weight:600;letter-spacing:.01em;font-size:14px;white-space:nowrap;color:var(--panel);background:"+(kind==="ok"?"var(--accent)":kind==="warn"?"var(--warn)":"var(--bad)");
-    v.onCopyAi=this.copyAi; v.onDownload=this.download;
+    v.onCopyAi=this.copyAi; v.onDownload=this.download; v.rerunning=!!S.rerunning;
     // השאלה לפני ייצוא כשיש ממתינים (UX #18, #23)
     const vFail=this.verifyFailed(), vLeaks=vFail?S.res.verification.leaks:[];
     const vPartial=this.scanIncomplete();
