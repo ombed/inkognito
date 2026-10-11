@@ -56,5 +56,16 @@ console.log("\n— a folder inside the tree is refused —");
   if (saved === undefined) delete process.env.PRIVATE_BENCH; else process.env.PRIVATE_BENCH = saved;
 }
 
+console.log("\n— the benchmark shows only counts for the private documents (11.10) —");
+{
+  // the report lists their real values (what was missed, what leaked); it is written beside them and never printed,
+  // because whoever runs the benchmark, Claude or an agent among them, would read it
+  const fs = require("fs");
+  const runSrc = fs.readFileSync(path.join(PRIVATE.ROOT, "bench", "run.js"), "utf8");
+  const tail = runSrc.slice(runSrc.indexOf("const priv = PRIVATE.load();"));
+  ok(tail.length > 100 && !/console\.(log|error|info|warn)\([^)]*\bpmd\b/.test(tail), "bench/run.js never prints the private report");
+  ok(/fs\.writeFileSync\(path\.join\(priv\.dir,[^)]*\),\s*pmd\)/.test(tail), "and it still writes the report beside the documents");
+}
+
 console.log(`\n${pass} passed, ${fail} failed\n`);
 process.exit(fail ? 1 : 0);
