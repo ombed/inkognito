@@ -914,10 +914,12 @@ async function redactDocx(buf,subs,allow,opt){
     if(label&&!label.startsWith("שם"))return;
     const vw=norm(value).trim().split(/\s+/), rw=norm(rp).trim().split(/\s+/);
     const real=opt.mode==="real";
+    // מילית של שם משפחה (PART: «בן», «בר», «בת», «אבו»…) לבד אינה האדם: «הילד בן שבע», «חגג בר מצווה» (12.10)
+    const particle=new RegExp(`^(?:${PART})$`);
     const add=(p,to)=>{
       // שתי אותיות ("כץ", "נץ") הן שם משפחה של ממש; הן נכנסות למעבר, ובגלל wordy
       // מוחלפות רק כשעומדות לבד ולבדיקה. הסריקה: 2 כמו 3, 4 מוסיף שש דליפות.
-      if(!p||p.length<2||STOP.has(p)||placeOwn(p))return;
+      if(!p||p.length<2||STOP.has(p)||particle.test(p)||placeOwn(p))return;
       if(p in sweep||!to||norm(to).includes(p))return;
       const g=partOf.get(p)||{to:new Set(),of:new Set(),wordy:partWordy(p)};
       g.to.add(to); g.of.add(value); partOf.set(p,g)};
