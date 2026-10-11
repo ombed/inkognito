@@ -31,7 +31,7 @@ const js = fs.readFileSync(path.join(HERE, "app.html"), "utf8").split("<script>"
   .replace('const deflate=u8=>pipe(u8,CompressionStream,"deflate-raw");', "const deflate=async u8=>global.__deflate(u8);");
 const cut = js.indexOf("/* ══════════════════════════ ממשק ══════════════════════════ */");
 const a = js.indexOf("function pseudoRX(p){"), b = js.indexOf("function livePairs(){");
-fs.writeFileSync(path.join(HERE, "links-core.js"), js.slice(0, cut) + "\n" + js.slice(a, b) + "\nmodule.exports={redactDocx,unzip,verify,readBlocks,hiddenPart,Engine,PAT};\n");
+fs.writeFileSync(path.join(HERE, "links-core.js"), js.slice(0, cut) + "\n" + js.slice(a, b) + "\nmodule.exports={redactDocx,unzip,verify,readBlocks,hiddenPart,Engine,PAT,restoreNames};\n");
 const E = require("./links-core.js");
 const { mkzip } = require("./mkzip.js");
 
@@ -232,6 +232,11 @@ const why = (res, out) => JSON.stringify({ leaks: res.verification.leaks, bad: b
       "https://www.gov.il/he/departments/legalInfo/family-court-guide",
       "https://www.nevo.co.il/law_html/law00/71907.htm",
       "https://www.nevo.co.il/psika_html/elyon/18047870-N12.htm",
+      // nevo's decision files: a court, a year, a month and a case number that looked like a landline in the path
+      "https://www.nevo.co.il/psika_html/shalom/SH-19-06-12345-11.htm",
+      "https://www.nevo.co.il/psika_html/family/FA-21-04-54321-12.htm",
+      "https://www.nevo.co.il/psika_html/shalom/SH-18-02-23456-77.htm",
+      "https://www.nevo.co.il/psika_html/mechozi/ME-20-09-04512-88.htm",
       "https://supremedecisions.court.gov.il/Home/Download?path=HebrewVerdicts/20/030/050/e14&fileName=20050030.E14&type=4",
       "https://www.court.gov.il/NGCS.Web.Site/HomePage.aspx",
       "https://main.knesset.gov.il/Activity/Legislation/Laws/Pages/LawPrimary.aspx?t=lawlaws&st=lawlaws&lawitemid=2000593",
@@ -387,6 +392,59 @@ const why = (res, out) => JSON.stringify({ leaks: res.verification.leaks, bad: b
     const app = `<?xml version="1.0"?><Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes"><HLinks><vt:vector size="6" baseType="variant"><vt:variant><vt:i4>3473470</vt:i4></vt:variant><vt:variant><vt:i4>0</vt:i4></vt:variant><vt:variant><vt:i4>0</vt:i4></vt:variant><vt:variant><vt:i4>5</vt:i4></vt:variant><vt:variant><vt:lpwstr>https://www.facebook.com/dana.sagi.93</vt:lpwstr></vt:variant><vt:variant><vt:lpwstr></vt:lpwstr></vt:variant></vt:vector></HLinks></Properties>`;
     const { res, out } = await run(pkg({ body: P(R(`${NAME} הגישה.`)), parts: [{ name: "docProps/app.xml", body: app }] }));
     ok(!leftIn(out, "dana.sagi.93").length && sound(res, out), "the copy of the link addresses in docProps/app.xml is emptied");
+  }
+
+  console.log("\n— what the review of the first round found (11.10) —");
+  {
+    const text = P(R(`המבקשת ${NAME} הגישה את הבקשה.`));
+    // a link stored on an old-format picture or shape (VML href), in a compat-mode file and in a linked text box's fallback
+    const pic = `<w:r><w:pict><v:shape id="Picture 1" type="#_x0000_t75" href="https://www.instagram.com/dana.sagi.88/" style="width:50pt;height:50pt"><v:imagedata o:title=""/></v:shape></w:pict></w:r>`;
+    const r1 = await run(pkg({ body: text + P(pic) }));
+    ok(!leftIn(r1.out, "dana.sagi.88").length && !badXml(r1.out).length, "a link on an old-format picture is cleaned: " + why(r1.res, r1.out));
+    const box = `<w:r><mc:AlternateContent><mc:Choice Requires="wps"><w:drawing><wp:anchor><wp:docPr id="3" name="Text Box 3"><a:hlinkClick r:id="rIdH"/></wp:docPr><a:graphic><a:graphicData uri="http://schemas.microsoft.com/office/word/2010/wordprocessingShape"><wps:wsp><wps:txbx><w:txbxContent>${P(R("הפרופיל"))}</w:txbxContent></wps:txbx></wps:wsp></a:graphicData></a:graphic></wp:anchor></w:drawing></mc:Choice>` +
+      `<mc:Fallback><w:pict><v:shape id="Text Box 3" type="#_x0000_t202" href="https://www.facebook.com/dana.sagi.77" style="position:absolute"><v:textbox><w:txbxContent>${P(R("הפרופיל"))}</w:txbxContent></v:textbox></v:shape></w:pict></mc:Fallback></mc:AlternateContent></w:r>`;
+    const r2 = await run(pkg({ body: text + P(box), docRels: [rel("rIdH", "https://www.facebook.com/dana.sagi.77")] }));
+    ok(!leftIn(r2.out, "dana.sagi.77").length && !badXml(r2.out).length, "a linked text box: the link and its fallback copy are both cleaned: " + why(r2.res, r2.out));
+    // a pasted picture keeps the temporary file it came from, with the Windows user name
+    const img = `<w:r><w:pict><v:shape id="_x0000_i1026" type="#_x0000_t75" style="width:50pt;height:50pt"><v:imagedata src="file:///C:\\Users\\dana.sagi21\\Desktop\\scan.jpg" o:href="file:///C:\\Users\\dana.sagi22\\AppData\\Local\\Temp\\msohtmlclip1\\01\\clip_image002.png" o:title=""/></v:shape></w:pict></w:r>`;
+    const r3 = await run(pkg({ body: text + P(img) }));
+    ok(!leftIn(r3.out, "dana.sagi21").length && !leftIn(r3.out, "dana.sagi22").length && /clip_image002\.png/.test(r3.out["word/document.xml"]), "a pasted picture's paths keep only the file's name");
+    // a mail merge keeps the full path of the clients' file
+    const merge = '<w:mailMerge><w:mainDocumentType w:val="formLetters"/><w:linkToQuery/><w:dataType w:val="native"/>' +
+      '<w:connectString w:val="Provider=Microsoft.ACE.OLEDB.12.0;User ID=Admin;Data Source=C:\\Users\\dana.sagi30\\Documents\\clients.xlsx;Mode=Read"/>' +
+      '<w:query w:val="SELECT * FROM `C:\\Users\\dana.sagi31\\Documents\\clients.xlsx`.`Sheet1$`"/></w:mailMerge>';
+    const r4 = await run(pkg({ body: text, parts: [{ name: "word/settings.xml", body: part("settings", merge) }] }));
+    ok(!leftIn(r4.out, "dana.sagi30").length && !leftIn(r4.out, "dana.sagi31").length && !badXml(r4.out).length, "a mail merge's data source and query keep only the file's name");
+    // a HYPERLINK field keeps a binary copy of its address (w:fldData)
+    const url = "https://www.facebook.com/dana.sagi.89";
+    const b64 = Buffer.concat([Buffer.from([0xd0, 0xc9, 0xea, 0x79, 0xf9, 0xba, 0xce, 0x11]), Buffer.from(url + "\0", "utf16le")]).toString("base64");
+    const f = `<w:r><w:fldChar w:fldCharType="begin"><w:fldData xml:space="preserve">${b64}</w:fldData></w:fldChar></w:r><w:r><w:instrText xml:space="preserve"> HYPERLINK "${url}" </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r>${R("הפרופיל")}<w:r><w:fldChar w:fldCharType="end"/></w:r>`;
+    const r5 = await run(pkg({ body: text + P(f) }));
+    const data = (r5.out["word/document.xml"].match(/<w:fldData[^>]*>([^<]*)</) || [])[1] || "";
+    ok(!Buffer.from(data, "base64").toString("utf16le").includes("dana.sagi.89") && !instrOf(r5.out["word/document.xml"]).includes("dana.sagi.89"), "a link field's binary copy of the address goes with it");
+    // an external link written without TargetMode (some tools write it so)
+    const r6 = await run(pkg({ body: text + P(link("rIdN", "הפרופיל")), docRels: [rel("rIdN", "https://www.facebook.com/dana.sagi.78", false)] }));
+    ok(!leftIn(r6.out, "dana.sagi.78").length && !badXml(r6.out).length, "an address link without TargetMode is cleaned too: " + why(r6.res, r6.out));
+    // the listed name in another order, or joined by a dot, or with a direction mark as the only separator, inside an address
+    for (const [what, u] of [
+      ["surname first", "https://files.example.org/" + enc("שגיא_דנה") + ".pdf"],
+      ["surname first, with %20", "https://files.example.org/" + enc("שגיא דנה") + ".pdf"],
+      ["joined by a dot", "https://files.example.org/" + enc("דנה.שגיא") + ".pdf"],
+      ["a direction mark between the names", "https://www.example.co.il/" + enc("דנה\u200fשגיא")],
+    ]) {
+      const r = await run(pkg({ body: text + P(link("rIdO", "הקובץ")), docRels: [rel("rIdO", u)] }));
+      const rl = r.out["word/_rels/document.xml.rels"];
+      ok(!/שגיא|דנה/.test(readable(rl)) && !badXml(r.out).length, `${what}, in a link: «${targetOf(rl, "rIdO")}»`);
+      const t = await run(pkg({ body: text + P(R(`המסמך נשמר ב-${u} אתמול.`)) }));
+      ok(!/שגיא|דנה/.test(readable(t.copy)), `${what}, typed in the text: «${t.copy.split("\n").pop()}»`);
+    }
+    // an e-mail with a + tag in a query: the + is part of the address, not a space
+    const r7 = await run(pkg({ body: text + P(link("rIdQ", "צור קשר")), docRels: [rel("rIdQ", "https://www.example.co.il/c?email=dana.sagi+court@gmail.com&x=1")] }));
+    ok(!leftIn(r7.out, "dana.sagi").length, "an e-mail with a + tag in a query is cleaned: «" + targetOf(r7.out["word/_rels/document.xml.rels"], "rIdQ") + "»");
+    // the restore: an invented name written encoded inside an address comes back, encoded the same way
+    const pseudoUrl = "https://files.example.org/docs/" + enc(REP) + ".pdf";
+    const back = E.restoreNames(`הקובץ בכתובת ${pseudoUrl} מאתמול.`, [[NAME, REP]]);
+    ok(back.text.includes("https://files.example.org/docs/" + enc(NAME) + ".pdf"), "an invented name encoded in an address is restored: «" + back.text + "»");
   }
 
   console.log(`\n${pass} passed, ${fail} failed`);

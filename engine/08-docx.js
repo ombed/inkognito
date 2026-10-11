@@ -106,42 +106,56 @@ function hostRule(raw){
   return raw}
 /* כתובת של האינטרנט נקראת כמו טקסט: מפוענחת, כללי הכתובת וכל ערך שהוחלף במסמך רצים עליה, וכל פגיעה מוחלפת
    במקומה, מקודדת. פגיעה בשם השרת, או ערך שהבדיקה האחרונה הייתה מוצאת גם אחרי ההחלפה — "#". */
-function addrCtx(eng,applied,secrets){
+/* בכתובת שם מחובר גם בנקודה בין אותיות ("דנה.שגיא.pdf"), ותו בלתי נראה יכול להיות המפריד היחיד ("%E2%80%8F"
+   במקום רווח): כל אלה נקראים כרווח (הסקירה של 11.10) */
+const ADDR_JOIN=/[_+]|(?<=[א-ת])\.(?=[א-ת])/g;
+function addrCtx(eng,applied,secrets,sweep){
   const lit=new Map();
   for(const r of applied)for(const v of [r.base||r.value,r.value]){
     const k=norm(String(v||"")).trim(); if(k.length>=2&&!lit.has(k))lit.set(k,String(r.baseRep||r.rep||""))}
+  /* חלקי השם לבד, כמו שהמעבר על הטקסט מחליף אותם: משרדים קוראים לתיקייה ולקובץ בשם המשפחה קודם ("שגיא_דנה.pdf"),
+     ושם הפוך לא נמצא בכתובת. חלק שהוא גם מילה נשאר לטקסט, שם הוא מוחלף רק לבד ולבדיקה */
+  for(const [p,inf] of Object.entries(sweep||{})){const k=norm(p).trim(); if(inf&&!inf.wordy&&k.length>=2&&inf.rep&&!lit.has(k))lit.set(k,String(inf.rep))}
+  // והשם המלא בסדר הפוך, עם הכינוי בסדר הפוך: גם כשחלק מהשם הוא גם מילה ("שגיא"), צמד החלקים הוא האדם
+  for(const r of applied){
+    if(!/^NAME/.test(r.type||""))continue;
+    const w=norm(String(r.base||r.value||"")).trim().split(/\s+/), rw=String(r.baseRep||r.rep||"").trim().split(/\s+/);
+    if(w.length<2||rw.length<2)continue;
+    const rev=[w[w.length-1],...w.slice(0,-1)].join(" "), rrev=[rw[rw.length-1],...rw.slice(0,-1)].join(" ");
+    if(!lit.has(rev))lit.set(rev,rrev)}
   const lits=[...lit].sort((a,b)=>b[0].length-a[0].length).map(([k,rp])=>[new RegExp(NW+flex(k)+NWE,"gu"),rp]);
   const sec=[...new Set(secrets.concat([...lit.keys()]).map(s=>norm(String(s||"")).trim()).filter(s=>s.length>=2))].map(secretTest);
   const names=new Set();
   // ב-query, + הוא רווח
   const view=d=>{const q=d.indexOf("?");return q<0?d:d.slice(0,q)+d.slice(q).replace(/\+/g," ")};
-  const hitsIn=d=>{
+  // ds: אותה כתובת בכמה קריאות באותו אורך — עם "+" כרווח ב-query, וכמו שהיא, כי "+" במייל הוא חלק ממנו
+  const hitsIn=(...ds)=>{
     const hs=[];
-    for(const h of eng.detect(d,true))if(h.apply){
+    for(const d of ds)for(const h of eng.detect(d,true))if(h.apply){
       // כתובת שעטופה בתוך query ("google.com/url?q=…&sa=D") נגמרת ב-& הבא
       const amp=/^URL_/.test(h.type)?d.indexOf("&",h.s):-1;
       hs.push([h.s,amp>h.s&&amp<h.e?amp:h.e,eng.repFor(h)]);if(h.src==="list")names.add(norm(h.base).trim())}
-    const n=norm(d);
-    for(const x of [n,n.replace(/[_+]/g," ")])for(const [rx,rp] of lits){rx.lastIndex=0;let m;while((m=rx.exec(x)))hs.push([m.index,m.index+m[0].length,rp])}
+    const n=norm(ds[0]);
+    for(const x of [n,n.replace(ADDR_JOIN," "),n.replace(ADDR_JOIN," ").replace(/\u0000/g," ")])for(const [rx,rp] of lits){rx.lastIndex=0;let m;while((m=rx.exec(x)))hs.push([m.index,m.index+m[0].length,rp])}
     hs.sort((a,b)=>a[0]-b[0]||b[1]-a[1]);
     const out=[];let last=-1;for(const h of hs)if(h[0]>=last){out.push(h);last=h[1]}
     return out};
-  const leaks=d=>{const n=norm(d),nl=n.replace(/[_+]/g," ");return sec.some(has=>has(n)||has(nl))};
+  const leaks=d=>{const n=norm(d),nl=n.replace(ADDR_JOIN," "),n0=nl.replace(/\u0000/g," ");return sec.some(has=>has(n)||has(nl)||has(n0))};
   // שם מהרשימה בכתובת — גם בכתובת שכולה הפכה ל-"#" — נמצא במסמך, ואינו "לא מופיע במסמך"
   const seen=raw=>{for(const h of eng.detect(view(pctDecodeAll(String(raw)).d),true))if(h.src==="list")names.add(norm(h.base).trim())};
   const clean=raw=>{
     const c=hostRule(raw);
     if(c==null){seen(raw);return null}
     if(!c.trim()||c.trim()[0]==="#")return c;
-    const dd=pctDecodeAll(c), d=view(dd.d), hs=hitsIn(d);
+    const dd=pctDecodeAll(c), d=view(dd.d), hs=hitsIn(d,dd.d);
     if(!hs.length)return leaks(d)?null:c;
     const lead=d.length-d.trimStart().length;
     const host=lead+(/^(?:[A-Za-z][A-Za-z0-9+.-]*:)?\/\/[^/?#]*|^www\.[^/?#]*/i.exec(d.trimStart())||[""])[0].length;
     if(hs.some(h=>h[0]<host))return null;
     let out=c;
     for(let i=hs.length-1;i>=0;i--){const [s,e,rp]=hs[i];out=out.slice(0,dd.map[s][0])+encodeURIComponent(rp)+out.slice(dd.map[e-1][1])}
-    const d2=view(pctDecodeAll(out).d);
-    return leaks(d2)||hitsIn(d2).length?null:out};
+    const r2=pctDecodeAll(out).d, d2=view(r2);
+    return leaks(d2)||leaks(r2)||hitsIn(d2,r2).length?null:out};
   return {clean,seen,names}}
 const xunesc=s=>s.replace(/&(?:#x([0-9a-f]+)|#(\d+)|(amp|lt|gt|quot|apos));/gi,(m,h,d,nm)=>h?String.fromCodePoint(parseInt(h,16)):d?String.fromCodePoint(+d):{amp:"&",lt:"<",gt:">",quot:'"',apos:"'"}[nm.toLowerCase()]);
 /* יעד של כל קשר חיצוני בחלק .rels, מכל סוג (קישור, תמונה מקושרת, תבנית מצורפת), וכל יעד שנראה כמו מייל או
@@ -150,7 +164,8 @@ function scrubRels(s,clean,found){
   return s.replace(/<(?:[\w.-]+:)?Relationship\b(?:[^>"']|"[^"]*"|'[^']*')*>/g,tag=>{
     const tm=/\bTarget=(?:"([^"]*)"|'([^']*)')/.exec(tag); if(!tm)return tag;
     const raw=xunesc(tm[1]!=null?tm[1]:tm[2]);
-    if(!/\bTargetMode=["']External["']/.test(tag)&&!/^(?:mailto:|file:|[A-Za-z]:\\|\\\\)/i.test(raw))return tag;
+    // כתובת אינטרנט מלאה היא חיצונית גם כשהקשר לא מסומן כך (קובץ שכלי אחר כתב, הסקירה של 11.10); יעד פנימי הוא יחסי
+    if(!/\bTargetMode=["']External["']/.test(tag)&&!/^(?:mailto:|file:|https?:|[A-Za-z]:\\|\\\\)/i.test(raw))return tag;
     const c=clean(raw);
     if(c===raw)return tag;
     found.push(raw);
@@ -197,12 +212,25 @@ function fieldAddrs(instr,clean,found){
   return changed?out:instr}
 function scrubFields(doc,clean,found){
   let n=0;
-  for(const el of Array.from(doc.getElementsByTagNameNS(W,"instrText"))){
+  const all=Array.from(doc.getElementsByTagNameNS(W,"*"));
+  for(let i=0;i<all.length;i++){
+    const el=all[i]; if(el.localName!=="instrText")continue;
     const t=el.textContent||"",o=fieldAddrs(t,clean,found);
-    if(o!==t){el.textContent=o;el.setAttributeNS(XMLNS,"xml:space","preserve");n++}}
+    if(o!==t){el.textContent=o;el.setAttributeNS(XMLNS,"xml:space","preserve");n++;
+      // עותק בינארי של הכתובת שבשדה (w:fldData, ב-base64, בתחילת השדה) הולך איתה: אחרת קוד השדה נוקה, והפרופיל
+      // נשאר בקובץ בתוך הנתונים, והפס היה ירוק (הסקירה של 11.10)
+      for(let k=i-1;k>=0;k--){const b=all[k];
+        if(b.localName==="fldChar"&&(b.getAttributeNS(W,"fldCharType")||b.getAttribute("w:fldCharType"))==="begin"){
+          for(const fd of Array.from(b.getElementsByTagNameNS(W,"fldData")))fd.parentNode.removeChild(fd);break}}}}
   for(const el of Array.from(doc.getElementsByTagNameNS(W,"fldSimple"))){
     const v=el.getAttribute("w:instr")||"",o=fieldAddrs(v,clean,found);
     if(o!==v){el.setAttribute("w:instr",o);n++}}
+  /* קישור על תמונה או צורה ישנה (VML) יושב על האלמנט עצמו (href): בקובץ במצב תאימות, ובגיבוי (mc:Fallback) של
+     תיבת טקסט מקושרת. הקשר המקביל נוקה, וזה נשאר בקובץ, והפס היה ירוק (הסקירה של 11.10) */
+  for(const el of Array.from(doc.getElementsByTagNameNS(VML,"*"))){
+    const v=el.getAttribute("href"); if(!v)continue;
+    const c=clean(v); if(c===v)continue;
+    found.push(v); el.setAttribute("href",c==null?"#":c); n++}
   return n}
 /* הנתיב שממנו הגיעה תמונה, בטקסט החלופי או בכותרת שלה ("C:\Users\dana.sagi\Desktop\scan.jpg"), נושא את שם
    המשתמש במחשב ואת התיקיות (הציד של 11.10). נשאר שם הקובץ בלבד, ושאר הטקסט החלופי נסרק כרגיל */
@@ -215,10 +243,15 @@ function scrubPaths(doc){
   for(const el of Array.from(doc.getElementsByTagName("*"))){
     const ln=el.localName;
     if(ln==="docPr"||ln==="cNvPr"){for(const a of ["descr","title","name"])fix(el.getAttribute(a),v=>el.setAttribute(a,v))}
-    // תמונה ישנה (VML): טקסט חלופי, והכותרת של התמונה עצמה
+    // תמונה ישנה (VML): טקסט חלופי, והכותרת של התמונה עצמה; ותמונה שהודבקה שומרת את הקובץ הזמני שממנו באה
+    // (o:href, src: "file:///C:\Users\…\AppData\Local\Temp\…"), עם שם המשתמש (הסקירה של 11.10)
     else if(el.namespaceURI===VML){
       fix(el.getAttribute("alt"),v=>el.setAttribute("alt",v));
-      if(el.hasAttributeNS&&el.hasAttributeNS(O_NS,"title"))fix(el.getAttributeNS(O_NS,"title"),v=>el.setAttributeNS(O_NS,"o:title",v))}}
+      fix(el.getAttribute("src"),v=>el.setAttribute("src",v));
+      if(el.hasAttributeNS&&el.hasAttributeNS(O_NS,"title"))fix(el.getAttributeNS(O_NS,"title"),v=>el.setAttributeNS(O_NS,"o:title",v));
+      if(el.hasAttributeNS&&el.hasAttributeNS(O_NS,"href"))fix(el.getAttributeNS(O_NS,"href"),v=>el.setAttributeNS(O_NS,"o:href",v))}
+    // מיזוג דואר (settings.xml): מקור הנתונים והשאילתה שומרים את הנתיב המלא של קובץ הלקוחות, עם שם המשתמש
+    else if(el.namespaceURI===W&&(ln==="connectString"||ln==="query"))fix(el.getAttributeNS(W,"val"),v=>el.setAttributeNS(W,"w:val",v))}
   return n}
 /* נתון שהיא אינה רואה ואינה יכולה לסמן — משתני מסמך (docVars), וכותרת ותגית של פקד תוכן —
    אינו נסרק אלא מוסר. מערכות לניהול מסמכים שומרות שם את שם הלקוח ומספר התיק; כל עוד הערך
@@ -565,7 +598,20 @@ async function redactDocx(buf,subs,allow,opt){
   /* כתובות (הציד של 11.10): יעד של כל קשר בכל חלק .rels, וכתובת אינטרנט בקוד שדה, נקראים אחרי ההחלפה,
      עם הכינויים שכבר נבחרו ומול אותם ערכים שהבדיקה האחרונה מחפשת */
   const vsec=secrets.concat(subs.flatMap(s=>s.kind==="NAME"?variants(s.value,opt.prefixes||"normal").map(v=>v[0]):[s.value]));
-  const ac=addrCtx(eng,applied,vsec);
+  const ac=addrCtx(eng,applied,vsec,sweep);
+  /* כתובת מקודדת שהוקלדה בטקסט עצמו — לא בקישור — עוברת את אותו ניקוי: שם הפוך או מחובר בנקודה ("שגיא_דנה.pdf",
+     "דנה.שגיא") לא נמצא בה, והגיע ל-AI (הסקירה של 11.10). הטקסט כבר אחרי ההחלפות, אז מה שנשאר בה הוא מה שהן פספסו */
+  {let blocks3=[];for(const dd of docs)blocks3=blocks3.concat(flatten(dd.doc,dd.f.name));
+   for(const blk of blocks3){
+     if(!/%[0-9A-Fa-f]{2}/.test(blk.text))continue;
+     // הכתובת יכולה להיות דבוקה לאות שימוש ומקף ("נשמר ב-https://…"): מחפשים את תחילתה בתוך הטקסט
+     const reps=[],rx=/(?:https?:\/\/|www\.|file:)[^\s"<>]+|(?<![A-Za-z0-9])[A-Za-z]:\\[^\s"<>|]+|\\\\[^\s"<>|]+/gi;let m;
+     while((m=rx.exec(blk.text))){
+       const tok=m[0].replace(/[.,;:!?)\]»"']+$/,"");
+       if(!/%[0-9A-Fa-f]{2}/.test(tok))continue;
+       const c=ac.clean(tok); if(c===tok)continue;
+       reps.push([m.index,m.index+tok.length,c==null?"#":c]); rep.rels.push(tok)}
+     if(reps.length)applyReps(blk,reps)}}
   for(const dd of docs)if(TEXTPART.test(dd.f.name))scrubFields(dd.doc,ac.clean,rep.rels);
   for(const f of keep)if(f.name.endsWith(".rels")){const s=TXT.decode(f.data),o=scrubRels(s,ac.clean,rep.rels);if(o!==s)f.data=ENC.encode(o)}
   for(const dd of docs) dd.f.data=ENC.encode(serXML(dd.doc,dd.orig));
@@ -1558,6 +1604,14 @@ function restoreNames(txt,pairs){
   const back=real=>m=>(m[1]||(typeof m[2]==="string"?m[2]:"")||"")+real;
   const hits=new Map();
   for(const [pseudo,real] of longFirst(seen))hits.set(pseudo,run(pseudoRX(pseudo),back(real)));
+  /* כינוי מקודד בתוך כתובת — כמו שהכלי עצמו כותב שם בקישור ("…/%D7%99%D7%A2%D7%9C%20%D7%9B%D7%94%D7%9F.pdf") — חוזר
+     לשם האמיתי, מקודד באותה צורה ובאותו מפריד (%20, +, _, -). עד כאן נשאר הכינוי, ולא נרשם כמה שנשאר (הסקירה של 11.10) */
+  const hexI=e=>e.replace(/[.*+?^${}()|[\]\\]/g,"\\$&").replace(/%([0-9A-F]{2})/g,(m,h)=>"%(?:"+h+"|"+h.toLowerCase()+")");
+  for(const [pseudo,real] of longFirst(seen)){
+    if(!/[\u05d0-\u05ea]/.test(pseudo))continue;
+    for(const sp of ["%20","+","_","-"]){
+      const e=encodeURIComponent(pseudo).replace(/%20/g,sp), er=encodeURIComponent(real).replace(/%20/g,sp);
+      hits.set(pseudo,(hits.get(pseudo)||0)+run(new RegExp(hexI(e),"g"),()=>er))}}
   // תאריך מוזז בכתיב אחר של ה-AI. יום בדוי ששני ימים אמיתיים יצאו בו (שני מסמכים בתיק, שתי הזזות)
   // חוזר רק בכתיב שיצא, כי אין לדעת לאיזה מהם התכוון
   const days=[...seen].map(([p,r])=>({p,r,f:dateParts(p),t:dateParts(r)})).filter(x=>x.f&&x.t);
