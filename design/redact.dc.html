@@ -2260,10 +2260,12 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
 
   /* "קבוצה אחרת" (L12 בביקורת השנייה): תחליף שהקלידה ביד נזרק בלי מילה. המפה החדשה
      מחליפה רק את מה שלא נגעה בו; מה שהקלידה נשאר, לפי שם היישוב ולא לפי המקום בשורה. */
-  geoAlt = () => { const E=this.state.E; const v=this.state.geoV+1;
-    const old=this.state.geo, edits=this.state.geoEdits||{}, byName={};
-    if(old) old.map.forEach((m,i)=>{ if(edits[i]!=null) byName[m.from]=edits[i]; });
-    const geo=E.geoMap(this.state.geoNames, v, this._geoAvoid, this._geoForbid);
+  geoAlt = () => { const E=this.state.E;
+    const old=this.state.geo, edits=this.state.geoEdits||{}, byName={}, prev={};
+    if(old) old.map.forEach((m,i)=>{ if(edits[i]!=null) byName[m.from]=edits[i]; else prev[m.from]=m.to; });
+    // הקבוצה הבאה שמחליפה את כל מה שלא הקלידה (prev), ומקומה בדירוג הוא ההמשך של הלחיצה הבאה
+    const geo=E.geoMap(this.state.geoNames, this.state.geoV+1, this._geoAvoid, this._geoForbid, prev);
+    const v=geo&&geo.variant!=null?geo.variant:this.state.geoV+1;
     const kept={}; if(geo) geo.map.forEach((m,i)=>{ if(byName[m.from]!=null) kept[i]=byName[m.from]; });
     const n=Object.keys(kept).length;
     this.setState({geoV:v, geo, geoEdits:kept, notice:n?`${n===1?"התחליף שהקלדתם נשאר":n+" התחליפים שהקלדתם נשארו"}; השאר הוחלפו בקבוצה חדשה.`:this.state.notice, noticeUndo:false}); };

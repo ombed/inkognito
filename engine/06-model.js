@@ -997,7 +997,7 @@ function hav(a1,o1,a2,o2){
    שני יישובים אמיתיים הפכו לאחד, וההחלפה של רחובות עצמה נשרשרה. avoid הוא כל
    מה שנמצא במסמך; forbidden — מילות המסמך, כמו ב-fakePlace: יישוב שאחת ממילותיו
    כבר בטקסט (גם עם אות שימוש) אינו יעד. */
-function geoMap(names,variant,avoid,forbidden){
+function geoMap(names,variant,avoid,forbidden,prev){
   const orig=names.map(n=>PLACE_BY[n]).filter(Boolean);
   if(orig.length<2)return null;
   const cA=orig.reduce((s,p)=>s+p.a,0)/orig.length;
@@ -1066,6 +1066,18 @@ function geoMap(names,variant,avoid,forbidden){
     if(seen.has(k))continue; seen.add(k); uniq.push(r);
     if(uniq.length>40)break;
   }
-  return uniq[(variant||0)%uniq.length];
+  const v0=(variant||0)%uniq.length;
+  if(!prev)return uniq[v0];
+  /* "קבוצה אחרת" (prev: התחליף הנוכחי של כל יישוב שהיא לא הקלידה): מכאן והלאה בדירוג, הקבוצה הראשונה שמחליפה את כולם,
+     ואם אין כזו, זו שמחליפה הכי הרבה. הקבוצות הקרובות בדירוג נבדלות לפעמים רק ביישוב אחד: מאז שתחליף אינו מילה
+     (v73.8), לנתניה נשארה אשדוד בשש הקבוצות הראשונות, והכפתור לא החליף אותה. variant: מקומה בדירוג, להמשך */
+  const want=Object.keys(prev).length;
+  let best=null,bc=-1;
+  for(let k=0;k<uniq.length;k++){
+    const i=(v0+k)%uniq.length, c=uniq[i].map.filter(m=>prev[m.from]!==undefined&&prev[m.from]!==m.to).length;
+    if(c>bc){bc=c;best={...uniq[i],variant:i}}
+    if(c>=want)break;
+  }
+  return best;
 }
 
