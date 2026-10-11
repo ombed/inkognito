@@ -2321,7 +2321,10 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
       const ex=rules.find(r=>En(r.value)===En(x.name));
       if(x.on && to && ex) ex.replacement=to;
       else if(x.on && to && !ex) rules.push(this.mkRule({value:x.name, kind:"PLACE", replacement:to}));
-      else if(!x.on && x.listed){
+      /* לא מסומן: נשאר כמו שהוא — גם יישוב שהמנוע מצא בעצמו ולא היה ברשימה. עד כאן רק מקום מהרשימה נכנס להיתר, ויישוב
+         שהמנוע מצא הוחלף בכל זאת, אף שהכרטיס אומר «מסומן = יוחלף» (הציד של 11.10). יישוב שהמנוע עצמו לא מחליף (שגם מילה,
+         ושורתו מתחילה כבויה) אינו נכנס להיתר: ההיתר נשמר בתיק, ובמסמך הבא «גרה ב…» שלו היה נשאר גלוי */
+      else if(!x.on && (x.listed || !x.ambiguous)){
         for(let i=rules.length-1;i>=0;i--) if(rules[i].value===x.name) rules.splice(i,1);
         if(!allow.includes(x.name)) allow=[...allow, x.name];
       }
