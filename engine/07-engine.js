@@ -77,6 +77,37 @@ function ageZones(n){
   const b=/(?<![\d])(\d{1,3})\s+(?:שנה|שנים|שנתיים|וחצי)(?![א-ת])/gu;
   while((m=b.exec(n)))z.push([m.index,m.index+m[1].length]);
   return z}
+/* היסט התאריכים של מסמך, בלי התנגשות (הציד של 11.10). תאריך שזז בדיוק אל תאריך אחר שבמסמך ("1.2.2026" אל
+   "1.10.2026", כשגם הוא שם) יוצא כערך אמיתי: הבדיקה האחרונה קראה לו תאריך שנשאר, הפס האדום עצר את ההעתקה,
+   ושני אירועים קיבלו אותו תאריך. חודש ושנה זזים בחודשים שלמים, ולכן "ינואר 2026" ו"פברואר 2026" באותו מסמך
+   היו מתנגשים כמעט תמיד. ההיסט עולה ביום עד שאף ערך מוזז אינו ערך אמיתי, ואינו מכיל חודש ושנה אמיתיים
+   ("12 במרץ 2026" מכיל את "מרץ 2026"). מסמך בלי התנגשות שומר את ההיסט שהיה לו. nd: הטקסט המנורמל */
+function dateOffFor(nd){
+  const base=30+(typeof hash32==="function"?hash32(nd):0)%371;
+  const P=nd&&PAT.find(p=>p.n==="DATE"); if(!P)return base;
+  const reals=new Map();
+  P.rx.lastIndex=0;
+  for(const m of nd.matchAll(P.rx)){const s=m[0].replace(/\u0000/g,"").trim(), p=parseDate(s); if(p)reals.set(s,p)}
+  if(!reals.size)return base;
+  const full=new Set(), dayNoYear=new Set(), dayAny=new Set(), mon=new Set(), monRx=[];
+  for(const [s,p] of reals){
+    if(p.d==null){mon.add(p.m+"|"+p.y); monRx.push(new RegExp(esc(s)+"(?![0-9])","u")); continue}
+    dayAny.add(p.d+"|"+p.m);
+    if(p.y==null)dayNoYear.add(p.d+"|"+p.m); else full.add(p.d+"|"+p.m+"|"+p.y);
+  }
+  const clash=off=>{
+    const fakes=[];
+    for(const [s,p] of reals){
+      const f=shiftDate(p,off);
+      if(f.d==null?mon.has(f.m+"|"+f.y):f.y==null?dayAny.has(f.d+"|"+f.m):(full.has(f.d+"|"+f.m+"|"+f.y)||dayNoYear.has(f.d+"|"+f.m)))return true;
+      if(monRx.length&&f.d!=null&&f.y!=null)fakes.push(fakeDate(s,off));
+    }
+    const all=fakes.join("\n");
+    return monRx.some(rx=>rx.test(all));
+  };
+  for(let off=base;off<base+3650;off++)if(!clash(off))return off;
+  return base;
+}
 /* מילה שהיא גם מילה רגילה, לא רק שם: שם פרטי שהוא מילה, מילה שכיחה, מילת עצירה או פועל — או
    מילה שהטקסט עצמו כותב עם ה' הידיעה ("הכהן"). toks: המילים של הטקסט. בדיקה אחת לצורה עם אות
    שימוש של שם קצר כאן, ולחלק של שם שעומד לבד בתשובת AI (restoreNames). */
@@ -111,8 +142,8 @@ class Engine{
     // ולומר את זה, מאשר לערבב שני אנשים.
     this.collided=[];
     const nd=docText?norm(docText):"";
-    // היסט התאריכים: אחד לכל המסמך, נגזר ממנו ולכן זהה בכל ריצה חוזרת
-    this.dateOff=30+(typeof hash32==="function"?hash32(nd):0)%371;
+    // היסט התאריכים: אחד לכל המסמך, נגזר ממנו ולכן זהה בכל ריצה חוזרת, ובלי תאריך מוזז שהוא תאריך אמיתי במסמך
+    this.dateOff=dateOffFor(nd);
     // כינוי שהוצמד לכלל אחרי ריצה (pinned, ראו pinReps בממשק) תקף רק כשהסגנון הוא
     // "שם"; בתווית, ███ או ריק הוא נופל, כדי שהחלפת מצב במסך הבדיקה עדיין תעבוד.
     for(const s of subs) if(s.pinned&&s.replacement&&this.styleFor({type:s.kind,style:s.style})!=="name") s.replacement="";

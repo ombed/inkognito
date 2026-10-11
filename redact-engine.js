@@ -152,31 +152,62 @@ function fullYear(s){
    תאריך מספרי עם שנה היה תאריך, ו"12 במרץ 2026" או "ביום 12.3" הגיעו ל-AI אמיתיים (הבעלים, 9.10, בדוגמה
    שבדף הבית). תאריך בלי שנה נבדק מול שנה מעוברת, כדי ש-29.2 יהיה תאריך. null: אינו תאריך אמיתי. */
 const DATE_MONTHS=["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
+/* ועוד (הציד של 11.10): "מארס", חודש מקוצר עם גרש או נקודה כמו בלוח של המחשב ("ספט׳", "ספט'", "ספט."; למרץ, מאי,
+   יוני ויולי אין קיצור), "12 לחודש מרץ 2026", "12 בחודש מרץ, שנת 2026", רווח אחרי הנקודות ("12. 3. 2026"), וחודש
+   ושנה בלי יום ("מרץ 2026", "03/2026"). כל אלה הגיעו ל-AI אמיתיים, אף שהעזרה מבטיחה שכל תאריך זז */
+const DATE_ABBR=["ינו","פבר","","אפר","","","","אוג","ספט","אוק","נוב","דצמ"];
+const DATE_MON_ALT="ינואר|פברואר|מרץ|מרס|מארס|אפריל|מאי|יוני|יולי|אוגוסט|ספטמבר|אוקטובר|נובמבר|דצמבר|(?:ינו|פבר|אפר|אוג|ספט|אוק|נוב|דצמ)['.]";
+function dateMonth(tok){
+  if(/^(?:מרץ|מרס|מארס)$/.test(tok))return 3;
+  const i=DATE_MONTHS.indexOf(tok); if(i>=0)return i+1;
+  const a=/^(.+)['.]$/.exec(tok); return a&&a[1]&&DATE_ABBR.includes(a[1])?DATE_ABBR.indexOf(a[1])+1:0;
+}
+// החודש המוזז נכתב כמו שהמסמך כתב את החודש: מקוצר באותו סימן, ומרץ באותו כתיב
+function monthWord(mo,p){
+  if(p.ab&&DATE_ABBR[mo-1])return DATE_ABBR[mo-1]+p.ab;
+  return mo===3&&p.mar?p.mar:DATE_MONTHS[mo-1];
+}
 // בלי שנה: שנה רגילה, ושנה מעוברת רק ל-29.2
 const dateRefYear=p=>p.m===2&&p.d===29?2024:2025;
 function parseDate(s){
-  const t=norm(String(s||"")).replace(/\u0000/g,"").trim(), lead=x=>x.length===2&&x[0]==="0";
+  const raw=String(s||""), t=norm(raw).replace(/\u0000/g,"").trim(), lead=x=>x.length===2&&x[0]==="0";
+  // הגרש של הקיצור כמו שנכתב (׳ או '), כי norm מאחד אותם
+  const style=tok=>({ab:/\.$/.test(tok)?".":/'$/.test(tok)?((/[\u05f3\u2019']/.exec(raw)||["'"])[0]):null,mar:/^(?:מרס|מארס)$/.test(tok)?tok:null});
   let m,p=null;
-  if((m=/^(\d{1,2})([./-])(\d{1,2})(?:\2(\d{4}|\d{2}))?$/.exec(t))&&(m[4]||m[2]!=="-"))
-    p={d:+m[1],m:+m[3],y:m[4]?fullYear(m[4]):null,form:"num",sep:m[2],y2:!!m[4]&&m[4].length===2,pd:lead(m[1]),pm:lead(m[3])};
+  if((m=/^(\d{1,2})([./-])( ?)(\d{1,2})(?:\2( ?)(\d{4}|\d{2}))?$/.exec(t))&&(m[6]||(m[2]!=="-"&&!m[3])))
+    p={d:+m[1],m:+m[4],y:m[6]?fullYear(m[6]):null,form:"num",sep:m[2],g1:m[3],g2:m[5]||"",y2:!!m[6]&&m[6].length===2,pd:lead(m[1]),pm:lead(m[4])};
   else if((m=/^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(t)))
     p={d:+m[3],m:+m[2],y:+m[1],form:"iso",pd:m[3].length===2,pm:m[2].length===2};
-  else if((m=/^(\d{1,2})(\s+)([בל]?-?)(ינואר|פברואר|מר[ץס]|אפריל|מאי|יוני|יולי|אוגוסט|ספטמבר|אוקטובר|נובמבר|דצמבר)(?:(,?\s+)(\d{4}))?$/.exec(t)))
-    p={d:+m[1],m:m[4]==="מרס"?3:DATE_MONTHS.indexOf(m[4])+1,y:m[6]?+m[6]:null,form:"words",sp:m[2],conn:m[3],yc:m[5]||"",mar:m[4]==="מרס"?"מרס":null};
-  if(!p||p.d<1||p.d>31||p.m<1||p.m>12)return null;
+  else if((m=new RegExp("^(\\d{1,2})(\\s+)([בל]חודש\\s+|[בל]?-?)("+DATE_MON_ALT+")(?:(,?\\s+(?:ב?שנת\\s+)?)(\\d{4}))?$").exec(t)))
+    p={d:+m[1],m:dateMonth(m[4]),y:m[6]?+m[6]:null,form:"words",sp:m[2],conn:m[3],yc:m[5]||"",...style(m[4])};
+  else if((m=new RegExp("^("+DATE_MON_ALT+")(,?\\s+(?:ב?שנת\\s+)?)(\\d{4})$").exec(t)))
+    p={d:null,m:dateMonth(m[1]),y:+m[3],form:"mwords",yc:m[2],...style(m[1])};
+  else if((m=/^(\d{1,2})([./-])(\d{4})$/.exec(t)))
+    p={d:null,m:+m[1],y:+m[3],form:"mnum",sep:m[2],pm:lead(m[1])};
+  if(!p||p.m<1||p.m>12)return null;
+  if(p.d==null)return p;
+  if(p.d<1||p.d>31)return null;
   const c=new Date(Date.UTC(p.y??dateRefYear(p),p.m-1,p.d));
   return c.getUTCDate()===p.d&&c.getUTCMonth()===p.m-1?p:null;
+}
+/* הערך המוזז: יום בימים; חודש ושנה בלי יום בחודשים שלמים, הכי קרוב שאפשר לאותו מספר ימים, כדי שהמרווח
+   בין שני חודשים במסמך יישמר בדיוק */
+function shiftDate(p,off){
+  if(p.d==null){const i=p.y*12+p.m-1+Math.round(off/30.4375); return {d:null,m:i%12+1,y:Math.floor(i/12)}}
+  const t=new Date(Date.UTC(p.y??dateRefYear(p),p.m-1,p.d));
+  t.setUTCDate(t.getUTCDate()+off);
+  return {d:t.getUTCDate(),m:t.getUTCMonth()+1,y:p.y==null?null:t.getUTCFullYear()};
 }
 function fakeDate(s,offDays){
   const p=parseDate(s);
   if(!p)return null;
-  const t=new Date(Date.UTC(p.y??dateRefYear(p),p.m-1,p.d));
-  t.setUTCDate(t.getUTCDate()+(offDays|0));
-  const d=t.getUTCDate(), mo=t.getUTCMonth()+1, y=t.getUTCFullYear(), z=(n,pad)=>pad&&n<10?"0"+n:String(n);
+  const {d,m:mo,y}=shiftDate(p,offDays|0), z=(n,pad)=>pad&&n<10?"0"+n:String(n);
+  if(p.form==="mwords")return monthWord(mo,p)+p.yc+y;
+  if(p.form==="mnum")return z(mo,p.pm)+p.sep+y;
   if(p.form==="iso")return `${y}-${z(mo,p.pm)}-${z(d,p.pd)}`;
-  if(p.form==="words")return d+p.sp+p.conn+(mo===3&&p.mar?p.mar:DATE_MONTHS[mo-1])+(p.y==null?"":p.yc+y);
-  const dm=z(d,p.pd)+p.sep+z(mo,p.pm);
-  return p.y==null?dm:dm+p.sep+(p.y2?String(y%100).padStart(2,"0"):String(y));
+  if(p.form==="words")return d+p.sp+p.conn+monthWord(mo,p)+(p.y==null?"":p.yc+y);
+  const dm=z(d,p.pd)+p.sep+p.g1+z(mo,p.pm);
+  return p.y==null?dm:dm+p.sep+p.g2+(p.y2?String(y%100).padStart(2,"0"):String(y));
 }
 function validID(s){const d=s.replace(/\D/g,"");if(!d||d.length>9)return false;
   if(/^0+$/.test(d)||/^(\d)\1+$/.test(d))return false;
@@ -1214,9 +1245,28 @@ function nerClean(ents,text,opt){
 
 const STREET="(?:רחוב|רח'|(?<![א-ת]{2})רח(?:\\.|(?=\\s))|שדרות|שד'|סמטת|סמטה|דרך|שכונת|כיכר|ככר|מעלה|נחל|משעול)";
 const D_DAY="(?:0?[1-9]|[12][0-9]|3[01])", D_MON="(?:0?[1-9]|1[0-2])",
-  D_MONTH="(?:ינואר|פברואר|מר[ץס]|אפריל|מאי|יוני|יולי|אוגוסט|ספטמבר|אוקטובר|נובמבר|דצמבר)",
-  // "רף ה-4.1 מיליון", "ה-2.5 חדרים": מספר עם יחידה אחריו אינו תאריך (49,700 משפטי iahlt, 9.10)
-  D_UNIT='מיליון|מיליארד|אלף|אלפי|אחוז|חדר|ש"ח|₪|\\$|דולר|יורו|ק"ג|ק"מ|מ"ר|מטר|שנ|נקוד|ליטר|גרם|קילו|דונם|מעלות';
+  D_MONTH="(?:"+DATE_MON_ALT+")",
+  // "רף ה-4.1 מיליון", "ה-2.5 חדרים": מספר עם יחידה אחריו אינו תאריך (49,700 משפטי iahlt, 9.10).
+  // ויחידות זמן בכל נטייה ("ה-3.5 ימים", "ה-2.5 שבועות", "ה-1.5 שעות", "ה-1.5 חודשי שכר"), שהוזזו כתאריך (הציד של 11.10).
+  // "יום", "שעה" ו"דקה" ביחיד לא: "עד ה-12.3 יום ג'" ו"עד ה-12.3 שעה 12:00" הם תאריך
+  D_UNIT='מיליון|מיליארד|אלף|אלפי|אחוז|חדר|ש"ח|₪|\\$|דולר|יורו|שקל|ק"ג|ק"מ|מ"ר|ס"מ|מ"מ|מ"ג|מ"ל|מטר|שנ|נקוד|ליטר|גרם|קילו|טון|דונם|מעלות|פעמים|ימי|יומיים|שבוע|חודש|שעות|שעתיים|דקות|לילות',
+  // חודש ושנה במספרים ("03/2026")
+  D_MY="(?:0?[1-9]|1[0-2])[./-](?:19|20)\\d{2}";
+/* מספר של סעיף, תקנה או נספח בשלוש רמות ("סעיף 5.2.10", "תקנה 12.4.21") נראה כמו תאריך עם שנה בשתי ספרות, והוזז:
+   "סעיף 5.9.10" בהסכם, וה-AI ציטט סעיפים שאינם בו (הציד של 11.10). מספר מיד אחרי מילת סעיף, או ברצף של מספרים
+   כאלה ("בסעיפים 7.1.12 ו-7.1.13"), אינו תאריך. גם גרסה ("גרסה 1.2.10") */
+const D_CLAUSE="(?<![א-ת])[ובלמהשכ]{0,3}(?:סעיפים|סעיף|ס'|ס\"ק|תקנות|תקנה|תקנת|פרקים|פרק|נספחים|נספח|פסקאות|פסקה|פסקת|פריטים|פריט|גרסה|גרסת|גירסה|גירסת)"+
+  "(?:\\s+(?:קטן|קטנים|משנה))?\\s*(?:מס'\\s*|מספר\\s*)?(?:\\d{1,3}(?:[./]\\d{1,3})*[א-ת]?(?:\\([א-ת0-9]{1,3}\\))*\\s*(?:,|ו|או|עד|ועד|-)[-\\u0000]?\\s*)*";
+const D_CLAUSE_END=new RegExp(D_CLAUSE+"$","u"), D_UNIT_AT=new RegExp("^\\s*(?:%|"+D_UNIT+")","u");
+// תאריך במספרים עם שנה, באותו מפריד פעמיים, ולא חלק ממספר ארוך יותר באותו מפריד ("1.2.10.3"); "1.2.2026/3.2.2026" הם שניים
+const D_NUMY=sep=>`(?<![0-9]${sep})\\d{1,2}${sep}(?:\\d{1,2}${sep}(?:\\d{4}|\\d{2})|\\s?\\d{1,2}${sep}\\s?\\d{4})(?!${sep}[0-9])`;
+/* ערך של תאריך שנמצא, במקום אחר בטקסט (n מנורמל): מספר סעיף, כמות עם יחידה, או חלק ממספר ארוך יותר ("1.2.10.3")
+   אינם התאריך. מעבר האחידות לא מחליף שם, והבדיקה האחרונה לא קוראת לזה תאריך שנשאר: עד כאן "ביום 12.3" הזיז
+   גם את "סעיף 12.3" שבאותו מסמך */
+function notDateAt(n,s,e){
+  if(/[0-9][./]$/.test(n.slice(Math.max(0,s-2),s))||/^[./][0-9]/.test(n.slice(e,e+2)))return true;
+  return D_UNIT_AT.test(n.slice(e,e+12))||D_CLAUSE_END.test(n.slice(Math.max(0,s-90),s));
+}
 /* מספר תיק בכל סוג תיק (הציד של 11.10): עד כאן רק עשרה סוגים, ואף לא אחד מסוגי התיקים של בית המשפט
    לענייני משפחה מלבד תמ"ש ועמ"ש. ראשי התיבות נשארים (הם אומרים ל-AI איזה הליך זה), המספר נמחק. */
 const COURT='תלה"מ|תמ"ש|עמ"ש|רמ"ש|בע"מ|ה"ט|י"ס|ת"ע|תה"ס|ת"א|תא"מ|תא"ק|ת"ק|ת"פ|תפ"ח|ת"צ|ע"א|ע"פ|רע"א|רע"פ|בר"ע|ע"מ|ה"פ|בג"ץ|בג"צ|עת"מ|עע"ם|ע"ע|ס"ע|ב"ל|בש"א|בש"פ|פש"ר|חדל"פ|עש"א';
@@ -1228,9 +1278,17 @@ const PAT=[
  // ועוד כל כתיב רגיל אחר (9.10, parseDate): במקפים, שנה קודם, במילים, ובלי שנה. יום וחודש במספרים
  // בלי שנה נראים כמו "סעיף 12.3" או "2.5 מיליון", ולכן הם תאריך רק אחרי מילה שמבשרת תאריך; שם של
  // חודש הוא ראיה מספיקה בעצמו. מקף עברי (U+05BE) הופך ב-norm לאפס, ולכן [-\0] אחרי ה, מה וב.
- ["DATE","תאריך",`${NW}\\d{1,2}[./]\\d{1,2}[./](?:\\d{4}|\\d{2})${NWE}|${NW}${D_DAY}-${D_MON}-(?:\\d{4}|\\d{2})${NWE}|`+
-   `${NW}\\d{4}-${D_MON}-${D_DAY}${NWE}|${NW}${D_DAY}\\s+[בל]?[-\\u0000]?${D_MONTH}(?:,?\\s+\\d{4}(?![0-9]))?(?![א-ת0-9])|`+
-   `(?<=(?<![א-ת])ו?(?:ביום|מיום|ליום|בתאריך|מתאריך|לתאריך|תאריך|ה[-\\u0000]|מה[-\\u0000])[:\\s]*)${D_DAY}[./]${D_MON}(?![0-9%]|[./-][0-9]|\\s*(?:${D_UNIT}))`,0,null,5,1],
+ // ועוד (11.10): אותו מפריד פעמיים, רווח אחרי המפריד כשהשנה בארבע ספרות, לא מספר סעיף ולא חלק ממספר ארוך;
+ // "לחודש"/"בחודש" ו"שנת" במילים, ולא שבר של מספר עשרוני ("מדד של 4.8 בחודש ינואר", 49,700 משפטי iahlt);
+ // חודש ושנה במילים (לא אחרי יום, גם לא יום שאינו תקין: "32 במרץ 2026"), ובמספרים
+ // רק אחרי "חודש" או "תאריך"; ויחידה אחרי יום וחודש רק אחרי ה- ומה-, כי "תאריך: 12.3 שעה 10:00" הוא תאריך
+ ["DATE","תאריך",`${NW}(?<!${D_CLAUSE})(?:${D_NUMY("\\.")}|${D_NUMY("/")}|\\d{1,2}\\.\\d{1,2}/(?:\\d{4}|\\d{2})|\\d{1,2}/\\d{1,2}\\.(?:\\d{4}|\\d{2}))${NWE}|`+
+   `${NW}(?<!${D_CLAUSE})${D_DAY}-${D_MON}-(?:\\d{4}|\\d{2})${NWE}|`+
+   `${NW}\\d{4}-${D_MON}-${D_DAY}${NWE}|${NW}(?<![0-9][.,])${D_DAY}\\s+(?:[בל]חודש\\s+|[בל]?[-\\u0000]?)${D_MONTH}(?:,?\\s+(?:ב?שנת\\s+)?\\d{4}(?![0-9]))?(?![א-ת0-9])|`+
+   `(?<!(?:^|[^0-9.,/:])[0-9]{1,2}\\s+(?:[בל]חודש\\s+|[בל]?[-\\u0000]?))(?<=(?:^|[^א-ת])[ובלמהשכ]{0,3}[-\\u0000]?)${D_MONTH},?\\s+(?:ב?שנת\\s+)?(?:19|20)\\d{2}(?![0-9])|`+
+   `(?<=(?:(?<![א-ת])[ובלמה]{0,2}(?:חודש|חודשים|תאריך)[:\\s]*|(?<![א-ת])ו?(?:ה|מה)[-\\u0000]\\s*)(?:${D_MY}\\s*(?:,|ו|עד|ועד|-|או)[-\\u0000]?\\s*)*)${D_MY}(?![0-9]|[./][0-9])|`+
+   `(?<=(?<![א-ת])ו?(?:ביום|מיום|ליום|בתאריך|מתאריך|לתאריך|תאריך)[:\\s]*)${D_DAY}[./]${D_MON}(?![0-9%]|[./-][0-9])|`+
+   `(?<=(?<![א-ת])ו?(?:ה|מה)[-\\u0000][:\\s]*)${D_DAY}[./]${D_MON}(?![0-9%]|[./-][0-9]|\\s*(?:${D_UNIT}))`,0,null,5,1],
  // כל חלוקה של אותן ספרות (0547-712093, 054-771-20-93), קידומת בסוגריים ((03) 6123456) ורווחים סביב מקף (הציד של 11.10)
  ["PHONE_MOBILE","טלפון נייד",`${NW}(?:\\(0?5\\d\\)\\s?|(?:\\+?972[-\\s]?|0)5\\d)(?:[-\\s.]?\\d){7}${NWE}`,0,null,3,1],
  ["PHONE_LAND","טלפון קווי",`${NW}(?:\\(0?(?:[2-4689]|7\\d)\\)\\s?|(?:\\+?972[-\\s]?|0)(?:[2-4689]|7\\d)(?:\\s?-\\s?|[\\s.])?)\\d(?:[-\\s.]?\\d){6}${NWE}`,0,null,4,1],
@@ -1882,6 +1940,37 @@ function ageZones(n){
   const b=/(?<![\d])(\d{1,3})\s+(?:שנה|שנים|שנתיים|וחצי)(?![א-ת])/gu;
   while((m=b.exec(n)))z.push([m.index,m.index+m[1].length]);
   return z}
+/* היסט התאריכים של מסמך, בלי התנגשות (הציד של 11.10). תאריך שזז בדיוק אל תאריך אחר שבמסמך ("1.2.2026" אל
+   "1.10.2026", כשגם הוא שם) יוצא כערך אמיתי: הבדיקה האחרונה קראה לו תאריך שנשאר, הפס האדום עצר את ההעתקה,
+   ושני אירועים קיבלו אותו תאריך. חודש ושנה זזים בחודשים שלמים, ולכן "ינואר 2026" ו"פברואר 2026" באותו מסמך
+   היו מתנגשים כמעט תמיד. ההיסט עולה ביום עד שאף ערך מוזז אינו ערך אמיתי, ואינו מכיל חודש ושנה אמיתיים
+   ("12 במרץ 2026" מכיל את "מרץ 2026"). מסמך בלי התנגשות שומר את ההיסט שהיה לו. nd: הטקסט המנורמל */
+function dateOffFor(nd){
+  const base=30+(typeof hash32==="function"?hash32(nd):0)%371;
+  const P=nd&&PAT.find(p=>p.n==="DATE"); if(!P)return base;
+  const reals=new Map();
+  P.rx.lastIndex=0;
+  for(const m of nd.matchAll(P.rx)){const s=m[0].replace(/\u0000/g,"").trim(), p=parseDate(s); if(p)reals.set(s,p)}
+  if(!reals.size)return base;
+  const full=new Set(), dayNoYear=new Set(), dayAny=new Set(), mon=new Set(), monRx=[];
+  for(const [s,p] of reals){
+    if(p.d==null){mon.add(p.m+"|"+p.y); monRx.push(new RegExp(esc(s)+"(?![0-9])","u")); continue}
+    dayAny.add(p.d+"|"+p.m);
+    if(p.y==null)dayNoYear.add(p.d+"|"+p.m); else full.add(p.d+"|"+p.m+"|"+p.y);
+  }
+  const clash=off=>{
+    const fakes=[];
+    for(const [s,p] of reals){
+      const f=shiftDate(p,off);
+      if(f.d==null?mon.has(f.m+"|"+f.y):f.y==null?dayAny.has(f.d+"|"+f.m):(full.has(f.d+"|"+f.m+"|"+f.y)||dayNoYear.has(f.d+"|"+f.m)))return true;
+      if(monRx.length&&f.d!=null&&f.y!=null)fakes.push(fakeDate(s,off));
+    }
+    const all=fakes.join("\n");
+    return monRx.some(rx=>rx.test(all));
+  };
+  for(let off=base;off<base+3650;off++)if(!clash(off))return off;
+  return base;
+}
 /* מילה שהיא גם מילה רגילה, לא רק שם: שם פרטי שהוא מילה, מילה שכיחה, מילת עצירה או פועל — או
    מילה שהטקסט עצמו כותב עם ה' הידיעה ("הכהן"). toks: המילים של הטקסט. בדיקה אחת לצורה עם אות
    שימוש של שם קצר כאן, ולחלק של שם שעומד לבד בתשובת AI (restoreNames). */
@@ -1916,8 +2005,8 @@ class Engine{
     // ולומר את זה, מאשר לערבב שני אנשים.
     this.collided=[];
     const nd=docText?norm(docText):"";
-    // היסט התאריכים: אחד לכל המסמך, נגזר ממנו ולכן זהה בכל ריצה חוזרת
-    this.dateOff=30+(typeof hash32==="function"?hash32(nd):0)%371;
+    // היסט התאריכים: אחד לכל המסמך, נגזר ממנו ולכן זהה בכל ריצה חוזרת, ובלי תאריך מוזז שהוא תאריך אמיתי במסמך
+    this.dateOff=dateOffFor(nd);
     // כינוי שהוצמד לכלל אחרי ריצה (pinned, ראו pinReps בממשק) תקף רק כשהסגנון הוא
     // "שם"; בתווית, ███ או ריק הוא נופל, כדי שהחלפת מצב במסך הבדיקה עדיין תעבוד.
     for(const s of subs) if(s.pinned&&s.replacement&&this.styleFor({type:s.kind,style:s.style})!=="name") s.replacement="";
@@ -2388,7 +2477,7 @@ async function redactDocx(buf,subs,allow,opt){
     docs.push({f,doc:d,orig:o});
   }
   rep.bookmarks=renameBookmarks(docs.map(x=>x.doc));
-  const applied=[],flagged=[],secrets=[];
+  const applied=[],flagged=[],secrets=[],dateSecrets=[];
   let blocks=[];
   for(const dd of docs) blocks=blocks.concat(flatten(dd.doc,dd.f.name));
   const eng=new Engine(subs,allow,opt,blocks.map(b=>b.text).join("\n"));
@@ -2412,8 +2501,10 @@ async function redactDocx(buf,subs,allow,opt){
         if(nw===""){ rec.deleted=true; rec.rep="";
           if(blk.text[e]===" "&&(s===0||blk.text[s-1]===" "||/[\s(]/.test(blk.text[s-1]||" ")))e++;
           else if(blk.text[s-1]===" ")s--; }
-        reps.push([s,e,nw]);applied.push(rec);secrets.push(h.text);
-        if(h.base)secrets.push(h.base)}
+        // תאריך נבדק בסוף רק במקום שבו הוא תאריך (notDateAt), ולכן הוא ברשימה משלו
+        const sec=(CANON[h.type]||[h.type])[0]==="DATE"?dateSecrets:secrets;
+        reps.push([s,e,nw]);applied.push(rec);sec.push(h.text);
+        if(h.base)sec.push(h.base)}
       else flagged.push(rec)}
     // מיקום המחיקות בטקסט החדש, לסימון במסך הבדיקה: הערך איננו, אבל היא צריכה לראות
     // שהיה שם משהו ולוכל לבטל. כל החלפה שלפני נקודה מזיזה אותה בהפרש האורכים.
@@ -2428,7 +2519,8 @@ async function redactDocx(buf,subs,allow,opt){
     const v=norm(r.value).trim(), rp=r.baseRep||r.rep;
     // אם התחליף מכיל את הערך ("דוד" → "דוד א׳"), סריקה חוזרת
     // תתפוס את התחליף עצמו ותכפיל אותו.
-    if(v.length>=4&&!(v in sweep)&&rp&&!norm(rp).includes(v))sweep[v]={rep:rp,of:null};
+    // תאריך שנמצא מוחלף גם במקום אחר, אבל לא כשהוא שם מספר סעיף או כמות ("סעיף 12.3", "3.5 ימים"; notDateAt)
+    if(v.length>=4&&!(v in sweep)&&rp&&!norm(rp).includes(v))sweep[v]={rep:rp,of:null,date:r.label==="תאריך"||r.label==="DATE"};
   }
   // "החלפתי את תמר גולדשמיט, ובטקסט נשאר גולדשמיט לבד" — זו הדליפה
   // הכי שקטה שיש, כי חיפוש-והחלפה על השם המלא לא נוגע בו. כאן כל חלק
@@ -2514,6 +2606,7 @@ async function redactDocx(buf,subs,allow,opt){
       while((m=rx.exec(n))){
         const s=m.index,e=s+m[0].length;
         if(zones.some(([a,b])=>a<=s&&e<=b))continue;
+        if(inf.date&&notDateAt(n,s,e))continue;
         const out=inf.of?addPre(m[1]||"",nw):nw;
         reps.push([s,e,out]);
         applied.push({value:blk.text.slice(s,e),
@@ -2639,7 +2732,8 @@ async function redactDocx(buf,subs,allow,opt){
   // שם שלא נמצא אינו דליפה — הוא מוצג ב«לבדיקה» אבל לא צובע את הבר
   const remaining=[...new Set(flagged.filter(r=>r.src!=="near"&&r.src!=="nohit").map(r=>r.value))];
   const ver=await verify(outBuf,secrets.concat(subs.flatMap(s=>
-    s.kind==="NAME"?variants(s.value,opt.prefixes||"normal").map(v=>v[0]):[s.value])));
+    s.kind==="NAME"?variants(s.value,opt.prefixes||"normal").map(v=>v[0]):s.kind==="DATE"?[]:[s.value])),
+    dateSecrets.concat(subs.filter(s=>s.kind==="DATE").map(s=>s.value)));
   ver.hadList=subs.length>0;
   ver.remaining=remaining;
   ver.near=near;
@@ -2745,9 +2839,12 @@ function examplesOf(blocks,value,max=3){
   return out;
 }
 
-async function verify(buf,secrets){
+/* dates: הערכים האמיתיים של תאריכים. תאריך נחשב שנשאר רק במקום שבו הוא תאריך: "12.3" של "ביום 12.3" אינו דולף
+   ב"סעיף 12.3" או ב"3.5 ימים" (notDateAt), שהם מספר סעיף וכמות ונשארים כמו שהם (הציד של 11.10) */
+async function verify(buf,secrets,dates){
   const files=await unzip(buf);
-  const sec=[...new Set(secrets.filter(s=>s&&s.trim().length>=2))].map(s=>[s,norm(s)]);
+  const uniq2=a=>[...new Set((a||[]).filter(s=>s&&s.trim().length>=2))].map(s=>[s,norm(s)]);
+  const sec=uniq2(secrets).map(x=>[...x,false]).concat(uniq2(dates).map(x=>[...x,true]));
   const leaks=[],emb=[];let n=0;
   for(const f of files){n++;
     if(/^word\/(embeddings|media)\//.test(f.name))emb.push(f.name);
@@ -2760,10 +2857,12 @@ async function verify(buf,secrets){
         t+="\n"+t.replace(/<\/(?:w|a):p>/g,"\n").replace(/<w:(?:tab|br|cr)\b[^>]*\/>/g," ").replace(/<w:noBreakHyphen\/>/g,"-").replace(/<[^>]+>/g,"")+"\n"+t.replace(/_/g," ");
       const nt=norm(t);
       // מספר או תאריך נבדקים בגבולות ספרות: "1.3.2026" אינו דולף בתוך התאריך המוזז "11.3.2026"
-      for(const [o,nv] of sec){
+      for(const [o,nv,isDate] of sec){
         if(!nv)continue;
         const digital=/^\d/.test(nv)||/\d$/.test(nv);
-        const hit=digital?new RegExp((/^\d/.test(nv)?"(?<!\\d)":"")+esc(nv)+(/\d$/.test(nv)?"(?!\\d)":""),"u").test(nt):nt.includes(nv);
+        const src=(/^\d/.test(nv)?"(?<!\\d)":"")+esc(nv)+(/\d$/.test(nv)?"(?!\\d)":"");
+        const hit=isDate?[...nt.matchAll(new RegExp(src,"gu"))].some(m=>!notDateAt(nt,m.index,m.index+m[0].length))
+          :digital?new RegExp(src,"u").test(nt):nt.includes(nv);
         if(hit)leaks.push({value:o,part:f.name});
       }
     }}
@@ -3432,23 +3531,48 @@ function pseudoRX(p){
    "16 בנובמבר 2026", עם אפס לפני ספרה בודדת או בלעדיו. עד כאן חזר רק הכתיב שיצא מהכלי, ו-AI
    שכתב את התאריך אחרת קיבל בחזרה את התאריך המוזז (בדיקה בכלי החי, 6.10). שמות החודשים כאן רק
    לקריאה: התאריך האמיתי חוזר כפי שהמסמך כתב אותו, כמו שם. */
-const MONTHS_HE=["ינואר","פברואר","מר[ץס]","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
-// כל כתיב ש-parseDate קורא, גם תאריך במילים ותאריך בלי שנה (9.10). y: null — יום וחודש בלבד
+/* ועוד (הציד של 11.10): "לחודש"/"בחודש" ו"שנת", חודש מקוצר ("אוק׳"), "מארס", רווח אחרי המפריד, שם החודש באנגלית
+   ("April 26, 2026"), וחודש ושנה בלי יום ("אפריל 2026", "04/2026") — לא בתוך תאריך מלא ("27 באפריל 2026"). תאריך
+   שהוא סוף של טווח שמתחיל ביום לבד ("4-5.7.2027") אינו מוחזר: "4-22.12.2026" חצי בדוי וחצי אמיתי, תאריך שלא היה.
+   הוא נשאר ברשימה של מה שלא הוחזר (leftOver) */
+const MONTHS_HE=["ינואר","פברואר","מר[ץס]|מארס","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
+const MONTHS_EN=["jan(?:uary)?","feb(?:ruary)?","mar(?:ch)?","apr(?:il)?","may","june?","july?","aug(?:ust)?","sep(?:t(?:ember)?)?","oct(?:ober)?","nov(?:ember)?","dec(?:ember)?"];
+const monRX=m=>"(?:"+MONTHS_HE[m-1]+(DATE_ABBR[m-1]?"|"+DATE_ABBR[m-1]+"['\u05f3\u2019.]":"")+")";
+const NOT_RANGE_END="(?<!(?:^|[^0-9./])[0-9]{1,2}[\\s\u00a0]?[-\u2013\u2014\u05be][\\s\u00a0]?)";
+// כל כתיב ש-parseDate קורא, גם תאריך במילים ותאריך בלי שנה (9.10). y: null — יום וחודש בלבד; d: null — חודש ושנה
 function dateParts(s){
   const p=parseDate(s);
   return p?{d:p.d,m:p.m,y:p.y}:null;
 }
 const sameDay=(a,b)=>!!a&&!!b&&a.d===b.d&&a.m===b.m&&a.y===b.y;
-function dateRX(f){
-  const z=n=>n<10?"0?"+n:String(n), D=z(f.d), M=z(f.m);
-  const Y=f.y==null?"":String(f.y), YY=f.y==null?"":String(f.y%100).padStart(2,"0");
-  const B="0-9A-Za-z\u0591-\u05bd\u05bf-\u05c7\u05d0-\u05ea";
+// o.anyYear: אותו יום וחודש בכל שנה; o.range: גם סוף של טווח (לרשימה של מה שנשאר, לא להחזרה)
+function dateRX(f,o){
+  o=o||{};
+  const z=n=>n<10?"0?"+n:String(n), M=z(f.m), S="[\\s\u00a0]";
+  const Y=o.anyYear?"[0-9]{4}":String(f.y), YY=o.anyYear?"[0-9]{2}":String(f.y%100).padStart(2,"0");
+  const B="0-9A-Za-z\u0591-\u05bd\u05bf-\u05c7\u05d0-\u05ea", MON=monRX(f.m), EN="(?:"+MONTHS_EN[f.m-1]+")\\.?";
+  const CONN="(?:[בל]חודש"+S+"+|[בל]?[-\u05be]?)", YC=",?"+S+"+(?:ב?שנת"+S+"+)?";
+  let body;
+  if(f.d==null)
+    body="(?<![0-9]"+S+"*(?:[בל]חודש"+S+"+|[בל][-\u05be]?)?)(?:"+MON+YC+Y+"|"+EN+",?"+S+"+"+Y+")|(?<![0-9][./-]"+S+"?)"+M+"[./-]"+Y;
   /* יום וחודש בלי שנה חוזרים רק בלי שנה: "27.4" ו"27 באפריל", לא "27/4/2026" ולא "27 באפריל 2026",
      שבהם ה-AI הוסיף שנה משלו */
-  const body=f.y==null?D+"[./]"+M+"(?![./-]?[0-9])|"+D+"\\s+[בל]?[-\u05be]?"+MONTHS_HE[f.m-1]+"(?!,?\\s+[0-9])":
-    D+"(?<sep>[./-])"+M+"\\k<sep>(?:"+Y+"|"+YY+")|"+Y+"-"+M+"-"+D+"|"+
-    D+"\\s+[בל]?"+MONTHS_HE[f.m-1]+",?\\s+"+Y;
-  return new RegExp("(?<!["+B+"])(?<pre>(?:"+PRE_SEQ.join("|")+")[-\u05be]?)?(?:"+body+")(?!["+B+"])","gu");
+  else if(f.y==null&&!o.anyYear)
+    body=z(f.d)+"[./]"+M+"(?![./-]?[0-9])|"+z(f.d)+S+"+"+CONN+MON+"(?!"+YC+"[0-9])";
+  else{
+    const D=z(f.d);
+    body=D+"(?<sep>[./-])"+S+"?"+M+"\\k<sep>"+S+"?(?:"+Y+"|"+YY+")|"+Y+"-"+M+"-"+D+"|"+D+S+"+"+CONN+MON+YC+Y+"|"+
+      EN+S+"*"+D+"(?:st|nd|rd|th)?,?"+S+"+"+Y+"|"+D+"(?:st|nd|rd|th)?"+S+"+(?:of"+S+"+)?"+EN+",?"+S+"+"+Y;
+  }
+  return new RegExp((o.range?"":NOT_RANGE_END)+"(?<!["+B+"])(?<pre>(?:"+PRE_SEQ.join("|")+")[-\u05be]?)?(?:"+body+")(?!["+B+"])","giu");
+}
+/* כינוי של תאריך בכתיב שיצא: לא מתוך תאריך ארוך יותר ("27.4" של "27.4.2026", "אפריל 2026" של "27 באפריל 2026"),
+   ולא כסוף של טווח. עד כאן "ביום 27.4.2026" חזר כ"ביום 12.3.2026": יום אמיתי עם שנה שה-AI המציא */
+function dateGuard(p,rx){
+  const f=dateParts(p);
+  if(!f)return rx;
+  const pre=NOT_RANGE_END+"(?<![0-9][./-])"+(f.d==null?"(?<![0-9][\\s\u00a0]*(?:[בל]חודש[\\s\u00a0]+|[בל][-\u05be]?)?)":"");
+  return new RegExp(pre+rx.source+"(?![./][0-9])",rx.flags);
 }
 /* חלקי השם של אדם, כזוגות [חלק בדוי, חלק אמיתי]: השם הפרטי, שם המשפחה כולו ("בן פלדמן"), והמילה
    האחרונה בשם של שלוש מילים — כמו החלקים שהמעבר על המסמך מחליף. לכינוי שאינו שם של אדם — תווית,
@@ -3484,7 +3608,9 @@ function restoreNames(txt,pairs){
   const seen=new Map(), conflict=new Set();
   for(const [real,pseudo] of pairs){
     if(!real||!pseudo||pseudo==="███")continue;
-    if(seen.has(pseudo)&&seen.get(pseudo)!==real)conflict.add(pseudo);
+    // אותו יום בשני כתיבים ("12 במרץ 2026", "12 במרס 2026") הוא ערך אחד, לא כינוי של שניים: עד כאן לא הוחזר
+    // כלל, ונרשם "שייך ליותר מאדם אחד"
+    if(seen.has(pseudo)){if(seen.get(pseudo)!==real&&!sameDay(dateParts(seen.get(pseudo)),dateParts(real)))conflict.add(pseudo)}
     else seen.set(pseudo,real);
   }
   for(const k of conflict)seen.delete(k);
@@ -3524,12 +3650,12 @@ function restoreNames(txt,pairs){
   };
   const back=real=>m=>(m[1]||(typeof m[2]==="string"?m[2]:"")||"")+real;
   const hits=new Map();
-  for(const [pseudo,real] of longFirst(seen))hits.set(pseudo,run(pseudoRX(pseudo),back(real)));
+  for(const [pseudo,real] of longFirst(seen))hits.set(pseudo,run(dateGuard(pseudo,pseudoRX(pseudo)),back(real)));
   // תאריך מוזז בכתיב אחר של ה-AI. יום בדוי ששני ימים אמיתיים יצאו בו (שני מסמכים בתיק, שתי הזזות)
   // חוזר רק בכתיב שיצא, כי אין לדעת לאיזה מהם התכוון
   const days=[...seen].map(([p,r])=>({p,r,f:dateParts(p),t:dateParts(r)})).filter(x=>x.f&&x.t);
-  for(const x of days)if(!days.some(y=>sameDay(y.f,x.f)&&!sameDay(y.t,x.t)))
-    hits.set(x.p,hits.get(x.p)+run(dateRX(x.f),m=>(m.groups.pre||"")+x.r));
+  const lone=days.filter(x=>!days.some(y=>sameDay(y.f,x.f)&&!sameDay(y.t,x.t)));
+  for(const x of lone)hits.set(x.p,hits.get(x.p)+run(dateRX(x.f),m=>(m.groups.pre||"")+x.r));
   let n=0;const missing=[];
   for(const [pseudo] of longFirst(seen)){const h=hits.get(pseudo); if(h)n+=h; else missing.push(pseudo)}
   // שם מלא שנמצא בטקסט ולא נלקח — דבוק לאותיות שאינן אותיות שימוש, או עם סיומת — שומר על החלקים שלו
@@ -3545,7 +3671,7 @@ function restoreNames(txt,pairs){
   for(const [k,v] of parts){const rx=partRX(k,false); if(rx&&!wordish(norm(k).trim(),toks))n+=run(rx,back(v),held)}
   let out="",at=0;
   for(const [s,e,t] of took.sort((a,b)=>a[0]-b[0])){out+=txt.slice(at,s)+t;at=e}
-  const left=leftOver(txt,took,{conflict,held,bad,reals,seen,partial,toks});
+  const left=leftOver(txt,took,{conflict,held,bad,reals,seen,partial,toks,dates:lone});
   return {text:out+txt.slice(at),count:n,missing,conflict:[...conflict],left};
 }
 /* מה שנשאר בתשובה מהפרטים הבדויים שהכלי נתן ולא הוחזר, כדי שמסך ההחזרה יסמן אותו ויאמר מה לתקן ביד
@@ -3554,8 +3680,11 @@ function restoreNames(txt,pairs){
    גם מילה רגילה (wordish) אינה נספרת, כמו שהיא אינה מוחזרת לבדה: "לאור האמור" אינו "אור" שנשאר; וכך מילה
    של כינוי שאינו אדם ("ראשון" של "ראשון לציון"). תאריך בדוי של שני ימים אמיתיים בכתיב
    אחר (restoreNames) אינו נספר: אין לדעת לאיזה מהם. כל פריט: הכינוי, הערך האמיתי (null כשהוא של יותר
-   מאדם אחד) והמקומות שלו בטקסט שחוזר, לפי הסדר שבו הוא מופיע. tests/t.js */
-function leftOver(txt,took,{conflict,held,bad,reals,seen,partial,toks}){
+   מאדם אחד) והמקומות שלו בטקסט שחוזר, לפי הסדר שבו הוא מופיע. tests/t.js
+   ותאריך בדוי שנשאר (הציד של 11.10): בלי השנה שיצאה איתו ("4 ביולי" של "4.7.2027"), עם שנה שה-AI הוסיף ליום וחודש,
+   או כסוף של טווח ("4-5.7.2027"). הוא אינו מוחזר, כי אין ודאות שזה הוא; עד כאן גם לא נאמר, והמסך כתב שלא נשאר דבר.
+   tests/dateforms_t.js */
+function leftOver(txt,took,{conflict,held,bad,reals,seen,partial,toks,dates}){
   const marked=[], left=[];
   const hit=(s,e)=>took.some(t=>t[0]<e&&s<t[1])||marked.some(t=>t[0]<e&&s<t[1]);
   const add=(fake,real,s,e,from)=>{
@@ -3578,6 +3707,14 @@ function leftOver(txt,took,{conflict,held,bad,reals,seen,partial,toks}){
     const rs=reals.get(k);
     if(!rs||seen.has(k)||wordish(norm(k).trim(),toks))continue;
     each(k,rs.size===1?[...rs][0]:null);
+  }
+  for(const x of dates||[]){
+    if(x.f.d==null)continue;
+    const other=x.f.y==null?dateRX(x.f,{anyYear:true,range:true}):dateRX({d:x.f.d,m:x.f.m,y:null},{range:true});
+    for(const rx of [dateRX(x.f,{range:true}),other])for(const m of txt.matchAll(rx)){
+      const pre=((m.groups&&m.groups.pre)||"").length;
+      add(x.p,x.r,m.index+pre,m.index+m[0].length,m.index);
+    }
   }
   // המקומות בטקסט שחוזר: כל החזרה שלפני הפריט מזיזה אותו בהפרש האורכים (פריט לעולם אינו בתוך החזרה)
   const shift=p=>took.reduce((d,[s,e,t])=>e<=p?d+t.length-(e-s):d,0);
