@@ -180,6 +180,9 @@ console.log("\n— a case gives each value back as its kind (the hunt of 11.10) 
   ok(!("12.3.2026" in now), "a shifted date is no rule: each document shifts its own dates — " + JSON.stringify(now));
   ok(now["חולון"] === "PLACE" && now["חברת אלפא תוכנה בע\"מ"] === "ORG" && now["מיכאל פלדמן"] === "NAME", "a town is a place, an organisation a body, a person a person");
   ok(now["034567128"] === "ID" && now["054-1234567"] === "PHONE" && now["רחוב הזית 12"] === "ADDRESS", "an ID, a phone and an address keep their kinds");
+  // in «פלוני א׳» mode a date gets a label: it stays a rule, so the case keeps the label for it and gives it to no other date
+  const labelled = use({ ...NOW, rules: [], map: { "12.3.2026": "[תאריך א׳]", "15.3.2026": "16.1.2027" }, kinds: { "12.3.2026": "DATE", "15.3.2026": "DATE" } });
+  ok(labelled["12.3.2026"] === "OTHER" && !("15.3.2026" in labelled), "a labelled date stays a rule, a shifted one does not: " + JSON.stringify(labelled));
   const old = use({ ...NOW, rules: [], map });
   ok(!("12.3.2026" in old), "a case saved before: a value shaped as a date is no rule either — " + JSON.stringify(old));
   ok(old["חולון"] === "PLACE" && old["מיכאל פלדמן"] === "NAME" && old["034567128"] === "OTHER", "a known town is a place, a person stays a person, a bracketed label stays «other», as before");

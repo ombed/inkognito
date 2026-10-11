@@ -2109,7 +2109,10 @@ class Engine{
     let base=h.rep||this.map[k];
     if(!base){
       const [fam,lab]=CANON[h.type]||[h.type,h.label];
-      const n=(this.cnt[fam]||0)+1;this.cnt[fam]=n;
+      // תווית שכבר שייכת למישהו — כלל עם תחליף, למשל מהמסמך הקודם בתיק — אינה ניתנת שוב: «פלוני א׳ הגיש תגובה
+      // לבקשה של פלוני א׳», ו«[ת"ז א׳]» לשני מספרים, וההחזרה ויתרה על שניהם (הציד של 11.10). הספירה מדלגת עליה
+      const lbl=m=>fam==="NAME"?"פלוני "+hord(m):`[${lab} ${hord(m)}]`;
+      let n=this.cnt[fam]||0; do n++; while(this.used.has(norm(lbl(n)).trim())); this.cnt[fam]=n;
       const real=style==="name";
       if(fam==="NAME"&&real)
         base=fakeName(canonical,this.gmap[canonical]||h.g,this.used,this.forbidden,this.firstish);

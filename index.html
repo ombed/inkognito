@@ -3727,9 +3727,10 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
         const ex=rules.find(r=>r.value===value);
         if(ex){ if(!ex.replacement) ex.replacement=replacement; continue; }
         const kind=this.caseKind(value, replacement, prof.kinds);
-        // תאריך זז לפי המסמך שהוא בו (הבחירה של 15.9): התאריך שהוזז במסמך קודם של התיק אינו כלל כאן, וגם לא אדם
-        if(kind==="DATE") continue;
-        rules.push(this.mkRule({value, kind, replacement, auto:true}));
+        // תאריך זז לפי המסמך שהוא בו (הבחירה של 15.9): התאריך שהוזז במסמך קודם של התיק אינו כלל כאן, וגם לא אדם.
+        // תאריך שקיבל תווית («[תאריך א׳]») נשאר כלל: אותו תאריך מקבל את אותה תווית בכל מסמך בתיק, והתווית לא תינתן לתאריך אחר
+        if(kind==="DATE"&&!/^\[/.test(replacement)) continue;
+        rules.push(this.mkRule({value, kind:kind==="DATE"?"OTHER":kind, replacement, auto:true}));
       }
       const own=open?this.state.rules||[]:[], ownAllow=open?this.state.allow||[]:[];
       const ownR=new Set(own.map(r=>nn(r&&r.value))), ownA=new Set(ownAllow.map(nn));
