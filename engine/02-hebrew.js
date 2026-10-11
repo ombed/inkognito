@@ -83,31 +83,62 @@ function fullYear(s){
    תאריך מספרי עם שנה היה תאריך, ו"12 במרץ 2026" או "ביום 12.3" הגיעו ל-AI אמיתיים (הבעלים, 9.10, בדוגמה
    שבדף הבית). תאריך בלי שנה נבדק מול שנה מעוברת, כדי ש-29.2 יהיה תאריך. null: אינו תאריך אמיתי. */
 const DATE_MONTHS=["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
+/* ועוד (הציד של 11.10): "מארס", חודש מקוצר עם גרש או נקודה כמו בלוח של המחשב ("ספט׳", "ספט'", "ספט."; למרץ, מאי,
+   יוני ויולי אין קיצור), "12 לחודש מרץ 2026", "12 בחודש מרץ, שנת 2026", רווח אחרי הנקודות ("12. 3. 2026"), וחודש
+   ושנה בלי יום ("מרץ 2026", "03/2026"). כל אלה הגיעו ל-AI אמיתיים, אף שהעזרה מבטיחה שכל תאריך זז */
+const DATE_ABBR=["ינו","פבר","","אפר","","","","אוג","ספט","אוק","נוב","דצמ"];
+const DATE_MON_ALT="ינואר|פברואר|מרץ|מרס|מארס|אפריל|מאי|יוני|יולי|אוגוסט|ספטמבר|אוקטובר|נובמבר|דצמבר|(?:ינו|פבר|אפר|אוג|ספט|אוק|נוב|דצמ)['.]";
+function dateMonth(tok){
+  if(/^(?:מרץ|מרס|מארס)$/.test(tok))return 3;
+  const i=DATE_MONTHS.indexOf(tok); if(i>=0)return i+1;
+  const a=/^(.+)['.]$/.exec(tok); return a&&a[1]&&DATE_ABBR.includes(a[1])?DATE_ABBR.indexOf(a[1])+1:0;
+}
+// החודש המוזז נכתב כמו שהמסמך כתב את החודש: מקוצר באותו סימן, ומרץ באותו כתיב
+function monthWord(mo,p){
+  if(p.ab&&DATE_ABBR[mo-1])return DATE_ABBR[mo-1]+p.ab;
+  return mo===3&&p.mar?p.mar:DATE_MONTHS[mo-1];
+}
 // בלי שנה: שנה רגילה, ושנה מעוברת רק ל-29.2
 const dateRefYear=p=>p.m===2&&p.d===29?2024:2025;
 function parseDate(s){
-  const t=norm(String(s||"")).replace(/\u0000/g,"").trim(), lead=x=>x.length===2&&x[0]==="0";
+  const raw=String(s||""), t=norm(raw).replace(/\u0000/g,"").trim(), lead=x=>x.length===2&&x[0]==="0";
+  // הגרש של הקיצור כמו שנכתב (׳ או '), כי norm מאחד אותם
+  const style=tok=>({ab:/\.$/.test(tok)?".":/'$/.test(tok)?((/[\u05f3\u2019']/.exec(raw)||["'"])[0]):null,mar:/^(?:מרס|מארס)$/.test(tok)?tok:null});
   let m,p=null;
-  if((m=/^(\d{1,2})([./-])(\d{1,2})(?:\2(\d{4}|\d{2}))?$/.exec(t))&&(m[4]||m[2]!=="-"))
-    p={d:+m[1],m:+m[3],y:m[4]?fullYear(m[4]):null,form:"num",sep:m[2],y2:!!m[4]&&m[4].length===2,pd:lead(m[1]),pm:lead(m[3])};
+  if((m=/^(\d{1,2})([./-])( ?)(\d{1,2})(?:\2( ?)(\d{4}|\d{2}))?$/.exec(t))&&(m[6]||(m[2]!=="-"&&!m[3])))
+    p={d:+m[1],m:+m[4],y:m[6]?fullYear(m[6]):null,form:"num",sep:m[2],g1:m[3],g2:m[5]||"",y2:!!m[6]&&m[6].length===2,pd:lead(m[1]),pm:lead(m[4])};
   else if((m=/^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(t)))
     p={d:+m[3],m:+m[2],y:+m[1],form:"iso",pd:m[3].length===2,pm:m[2].length===2};
-  else if((m=/^(\d{1,2})(\s+)([בל]?-?)(ינואר|פברואר|מר[ץס]|אפריל|מאי|יוני|יולי|אוגוסט|ספטמבר|אוקטובר|נובמבר|דצמבר)(?:(,?\s+)(\d{4}))?$/.exec(t)))
-    p={d:+m[1],m:m[4]==="מרס"?3:DATE_MONTHS.indexOf(m[4])+1,y:m[6]?+m[6]:null,form:"words",sp:m[2],conn:m[3],yc:m[5]||"",mar:m[4]==="מרס"?"מרס":null};
-  if(!p||p.d<1||p.d>31||p.m<1||p.m>12)return null;
+  else if((m=new RegExp("^(\\d{1,2})(\\s*)([בל]חודש\\s+|[בל]?-?)("+DATE_MON_ALT+")(?:(,?\\s*(?:ב?שנת\\s+)?)(\\d{4}))?$").exec(t)))
+    p={d:+m[1],m:dateMonth(m[4]),y:m[6]?+m[6]:null,form:"words",sp:m[2],conn:m[3],yc:m[5]||"",...style(m[4])};
+  else if((m=new RegExp("^("+DATE_MON_ALT+")(,?\\s+(?:ב?שנת\\s+)?)(\\d{4})$").exec(t)))
+    p={d:null,m:dateMonth(m[1]),y:+m[3],form:"mwords",yc:m[2],...style(m[1])};
+  else if((m=/^(\d{1,2})([./-])(\d{4})$/.exec(t)))
+    p={d:null,m:+m[1],y:+m[3],form:"mnum",sep:m[2],pm:lead(m[1])};
+  if(!p||p.m<1||p.m>12)return null;
+  if(p.d==null)return p;
+  if(p.d<1||p.d>31)return null;
   const c=new Date(Date.UTC(p.y??dateRefYear(p),p.m-1,p.d));
   return c.getUTCDate()===p.d&&c.getUTCMonth()===p.m-1?p:null;
+}
+/* הערך המוזז: יום בימים; חודש ושנה בלי יום בחודשים שלמים, הכי קרוב שאפשר לאותו מספר ימים, כדי שהמרווח
+   בין שני חודשים במסמך יישמר בדיוק */
+function shiftDate(p,off){
+  if(p.d==null){const i=p.y*12+p.m-1+Math.round(off/30.4375); return {d:null,m:i%12+1,y:Math.floor(i/12)}}
+  const t=new Date(Date.UTC(p.y??dateRefYear(p),p.m-1,p.d));
+  t.setUTCDate(t.getUTCDate()+off);
+  return {d:t.getUTCDate(),m:t.getUTCMonth()+1,y:p.y==null?null:t.getUTCFullYear()};
 }
 function fakeDate(s,offDays){
   const p=parseDate(s);
   if(!p)return null;
-  const t=new Date(Date.UTC(p.y??dateRefYear(p),p.m-1,p.d));
-  t.setUTCDate(t.getUTCDate()+(offDays|0));
-  const d=t.getUTCDate(), mo=t.getUTCMonth()+1, y=t.getUTCFullYear(), z=(n,pad)=>pad&&n<10?"0"+n:String(n);
+  const {d,m:mo,y}=shiftDate(p,offDays|0), z=(n,pad)=>pad&&n<10?"0"+n:String(n);
+  if(p.form==="mwords")return monthWord(mo,p)+p.yc+y;
+  if(p.form==="mnum")return z(mo,p.pm)+p.sep+y;
   if(p.form==="iso")return `${y}-${z(mo,p.pm)}-${z(d,p.pd)}`;
-  if(p.form==="words")return d+p.sp+p.conn+(mo===3&&p.mar?p.mar:DATE_MONTHS[mo-1])+(p.y==null?"":p.yc+y);
-  const dm=z(d,p.pd)+p.sep+z(mo,p.pm);
-  return p.y==null?dm:dm+p.sep+(p.y2?String(y%100).padStart(2,"0"):String(y));
+  if(p.form==="words")return d+p.sp+p.conn+monthWord(mo,p)+(p.y==null?"":p.yc+y);
+  const dm=z(d,p.pd)+p.sep+p.g1+z(mo,p.pm);
+  return p.y==null?dm:dm+p.sep+p.g2+(p.y2?String(y%100).padStart(2,"0"):String(y));
 }
 function validID(s){const d=s.replace(/\D/g,"");if(!d||d.length>9)return false;
   if(/^0+$/.test(d)||/^(\d)\1+$/.test(d))return false;

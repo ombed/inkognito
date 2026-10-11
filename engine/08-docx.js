@@ -697,20 +697,21 @@ function stripRsid(doc){let n=0;
    מוחלף בכינוי שלו, ובלי כינוי ב"[הוסר]". מה שנשאר גם אחרי זה — שם שמפוצל בין תגיות, או
    בתוך קובץ מוטמע — האימות עדיין תופס, וזה נכון: שם הוא לא יכול לנקות. */
 const XESC=v=>String(v).split("&").join("&amp;").split("<").join("&lt;").split(">").join("&gt;").split('"').join("&quot;").split("'").join("&apos;");
-function residuePass(files,walked,subs,applied){
-  const repOf=new Map();
-  const put=(v,r)=>{for(const k of [String(v||"").trim(),norm(String(v||"")).trim()]) if(k.length>=2&&!repOf.has(k))repOf.set(k,r)};
-  for(const r of applied)put(r.base||r.value,r.baseRep||r.rep||"");
-  for(const s of subs)put(s.value,s.replacement||"[הוסר]");
+// dateOut: לכל תאריך שהוחלף כאן, התאריך הבדוי שנכתב במקומו (הבדיקה האחרונה סופרת אותם, verify)
+function residuePass(files,walked,subs,applied,dateOut){
+  const repOf=new Map(), dateKey=new Set();
+  const put=(v,r,d)=>{for(const k of [String(v||"").trim(),norm(String(v||"")).trim()]) if(k.length>=2&&!repOf.has(k)){repOf.set(k,r); if(d)dateKey.add(k)}};
+  for(const r of applied)put(r.base||r.value,r.baseRep||r.rep||"",(CANON[r.type]||[r.type])[0]==="DATE");
+  for(const s of subs)put(s.value,s.replacement||"[הוסר]",s.kind==="DATE");
   const vals=[...repOf.keys()].sort((a,b)=>b.length-a.length);
   const done=[];
   for(const f of files){
     if(walked.has(f.name)||!f.name.endsWith(".xml")||f.name==="[Content_Types].xml"||f.name==="docProps/core.xml"||f.name==="docProps/app.xml")continue;
     const o=TXT.decode(f.data); let s=o;
     for(const v of vals){
-      const r=XESC(repOf.get(v));
+      const r=XESC(repOf.get(v)), d=dateOut&&dateKey.has(v);
       for(const form of new Set([v,XESC(v)]))
-        s=s.replace(new RegExp("(?<![א-ת])"+esc(form)+"(?![א-ת])","gu"),()=>r);
+        s=s.replace(new RegExp("(?<![א-ת])"+esc(form)+"(?![א-ת])","gu"),()=>{if(d)dateOut.push(repOf.get(v)); return r});
     }
     if(s!==o){f.data=ENC.encode(s);done.push(f.name)}
   }
@@ -781,7 +782,8 @@ async function redactDocx(buf,subs,allow,opt){
   for(const dd of docs)for(const el of Array.from(dd.doc.getElementsByTagNameNS(W,"date"))){
     const sdt=el.parentNode&&el.parentNode.parentNode, c=kidW(sdt,"sdtContent");
     if(c&&el.getAttribute("w:fullDate"))picks.push({el,c,was:wText(c)})}
-  const applied=[],flagged=[],secrets=[];
+  // dateFakes: כל תאריך בדוי שנכתב, כמה פעמים שנכתב, לבדיקה האחרונה (verify)
+  const applied=[],flagged=[],secrets=[],dateSecrets=[],dateFakes=[];
   let blocks=[];
   for(const dd of docs) blocks=blocks.concat(flatten(dd.doc,dd.f.name));
   twinParts(blocks);
@@ -811,9 +813,12 @@ async function redactDocx(buf,subs,allow,opt){
         if(nw===""){ rec.deleted=true; rec.rep="";
           if(blk.text[e]===" "&&(s===0||blk.text[s-1]===" "||/[\s(]/.test(blk.text[s-1]||" ")))e++;
           else if(blk.text[s-1]===" ")s--; }
-        reps.push([s,e,nw]);applied.push(rec);secrets.push(h.text);
-        if(h.dtext)secrets.push(h.dtext);
-        if(h.base)secrets.push(h.base)}
+        // תאריך נבדק בסוף רק במקום שבו הוא תאריך (notDateAt), ולכן הוא ברשימה משלו
+        const sec=(CANON[h.type]||[h.type])[0]==="DATE"?dateSecrets:secrets;
+        reps.push([s,e,nw]);applied.push(rec);sec.push(h.text);
+        if(h.dtext)sec.push(h.dtext);
+        if(h.base)sec.push(h.base);
+        if(sec===dateSecrets&&nw)dateFakes.push(nw)}
       else flagged.push(rec)}
     // מיקום המחיקות בטקסט החדש, לסימון במסך הבדיקה: הערך איננו, אבל היא צריכה לראות
     // שהיה שם משהו ולוכל לבטל. כל החלפה שלפני נקודה מזיזה אותה בהפרש האורכים.
@@ -829,7 +834,8 @@ async function redactDocx(buf,subs,allow,opt){
     const v=norm(r.value).trim(), rp=r.baseRep||r.rep;
     // אם התחליף מכיל את הערך ("דוד" → "דוד א׳"), סריקה חוזרת
     // תתפוס את התחליף עצמו ותכפיל אותו.
-    if(v.length>=4&&!(v in sweep)&&rp&&!norm(rp).includes(v))sweep[v]={rep:rp,of:null};
+    // תאריך שנמצא מוחלף גם במקום אחר, אבל לא כשהוא שם מספר סעיף או כמות ("סעיף 12.3", "3.5 ימים"; notDateAt)
+    if(v.length>=4&&!(v in sweep)&&rp&&!norm(rp).includes(v))sweep[v]={rep:rp,of:null,date:r.label==="תאריך"||r.label==="DATE"};
   }
   // "החלפתי את תמר גולדשמיט, ובטקסט נשאר גולדשמיט לבד" — זו הדליפה
   // הכי שקטה שיש, כי חיפוש-והחלפה על השם המלא לא נוגע בו. כאן כל חלק
@@ -927,8 +933,9 @@ async function redactDocx(buf,subs,allow,opt){
       while((m=rx.exec(n))){
         const s=m.index,e=s+m[0].length;
         if(zones.some(([a,b])=>a<=s&&e<=b))continue;
+        if(inf.date&&notDateAt(n,s,e))continue;
         const out=inf.of?addPre(m[1]||"",nw):nw;
-        reps.push([s,e,out]);
+        reps.push([s,e,out]); if(inf.date)dateFakes.push(out);
         applied.push({value:blk.text.slice(s,e),type:inf.place?"PLACE":"NAME",
           label:inf.of?(inf.place?"מקום (חלק)":"שם (חלק)"):"הופעה נוספת",part:partName(blk.part),
           why:inf.of?(inf.place
@@ -961,7 +968,7 @@ async function redactDocx(buf,subs,allow,opt){
   /* כתובות (הציד של 11.10): יעד של כל קשר בכל חלק .rels, וכתובת אינטרנט בקוד שדה, נקראים אחרי ההחלפה,
      עם הכינויים שכבר נבחרו ומול אותם ערכים שהבדיקה האחרונה מחפשת */
   const vsec=secrets.concat(subs.flatMap(s=>s.kind==="NAME"?variants(s.value,opt.prefixes||"normal").map(v=>v[0]):[s.value]));
-  const ac=addrCtx(eng,applied,vsec,sweep);
+  const ac=addrCtx(eng,applied,vsec.concat(dateSecrets),sweep);
   /* כתובת מקודדת שהוקלדה בטקסט עצמו — לא בקישור — עוברת את אותו ניקוי: שם הפוך או מחובר בנקודה ("שגיא_דנה.pdf",
      "דנה.שגיא") לא נמצא בה, והגיע ל-AI (הסקירה של 11.10). הטקסט כבר אחרי ההחלפות, אז מה שנשאר בה הוא מה שהן פספסו */
   {let blocks3=[];for(const dd of docs)blocks3=blocks3.concat(flatten(dd.doc,dd.f.name));
@@ -982,7 +989,7 @@ async function redactDocx(buf,subs,allow,opt){
     const iso=isoDateIn(now), full=x.el.getAttribute("w:fullDate");
     if(iso)x.el.setAttribute("w:fullDate",iso+full.slice(10)); else x.el.removeAttribute("w:fullDate")}
   for(const dd of docs) dd.f.data=ENC.encode(serXML(dd.doc,dd.orig));
-  rep.residue=residuePass(keep,new Set(docs.map(d=>d.f.name)),subs,applied);
+  rep.residue=residuePass(keep,new Set(docs.map(d=>d.f.name)),subs,applied,dateFakes);
   /* מי שערך: w:author ו-w:initials שנשארו בחלק כלשהו — גם בחלק שהכלי אינו קורא, כמו הסגנונות של רכיבים
      מהירים — מתרוקנים. קבלת השינויים מוחקת את הרשומות עצמן; זו הרשת שמתחתיה (הציד של 11.10). */
   for(const f of keep){
@@ -1090,7 +1097,8 @@ async function redactDocx(buf,subs,allow,opt){
   const outBuf=await blob.arrayBuffer();
   // שם שלא נמצא אינו דליפה — הוא מוצג ב«לבדיקה» אבל לא צובע את הבר
   const remaining=[...new Set(flagged.filter(r=>r.src!=="near"&&r.src!=="nohit").map(r=>r.value))];
-  const ver=await verify(outBuf,vsec);
+  const dsubs=new Set(subs.filter(s=>s.kind==="DATE").map(s=>s.value));
+  const ver=await verify(outBuf,vsec.filter(v=>!dsubs.has(v)),dateSecrets.concat([...dsubs]),dateFakes);
   ver.hadList=subs.length>0;
   ver.remaining=remaining;
   ver.near=near;
@@ -1203,30 +1211,54 @@ function secretTest(nv){
   if(!(/^\d/.test(nv)||/\d$/.test(nv)))return nt=>nt.includes(nv);
   const rx=new RegExp((/^\d/.test(nv)?"(?<!\\d)":"")+esc(nv)+(/\d$/.test(nv)?"(?!\\d)":""),"u");
   return nt=>rx.test(nt)}
-async function verify(buf,secrets){
+/* dates: הערכים האמיתיים של תאריכים, ו-fakes: כל תאריך בדוי שנכתב, כמה פעמים שנכתב. תאריך נחשב שנשאר רק במקום
+   שבו הוא תאריך: "12.3" של "ביום 12.3" אינו דולף ב"סעיף 12.3" או ב"3.5 ימים" (notDateAt), שהם מספר סעיף וכמות
+   ונשארים כמו שהם (הציד של 11.10). תאריך נקרא על הטקסט בלי התגיות ועל ערכי התכונות, לא על ה-XML כמו שהוא: שם
+   ריצה של Word בין "סעיף" למספר הסתירה את מילת הסעיף, והסעיף שנשאר נקרא תאריך שדלף (ביקורת 11.10). ותאריך דולף
+   רק כשהוא מופיע יותר פעמים משנכתב בתוך תאריכים בדויים: במסמך צפוף, ההיסט לא תמיד מוצא מקום פנוי (dateOffFor),
+   ותאריך בדוי שהוא גם תאריך אמיתי של המסמך אינו התאריך האמיתי שנשאר */
+async function verify(buf,secrets,dates,fakes){
   const files=await unzip(buf);
-  const sec=[...new Set(secrets.filter(s=>s&&s.trim().length>=2))].map(s=>[s,norm(s)]).map(([o,nv])=>[o,nv,secretTest(nv)]);
-  const leaks=[],emb=[];let n=0;
+  const uniq2=a=>[...new Set((a||[]).filter(s=>s&&s.trim().length>=2))].map(s=>[s,norm(s)]);
+  const sec=uniq2(secrets).map(([o,nv])=>[o,nv,secretTest(nv)]), dsec=uniq2(dates).map(([o,nv])=>[o,nv.replace(/\u0000/g,"")]);
+  const dateRX=nv=>new RegExp((/^\d/.test(nv)?"(?<!\\d)":"")+esc(nv)+(/\d$/.test(nv)?"(?!\\d)":""),"gu");
+  const dateHits=(t,nv)=>{let c=0; for(const m of t.matchAll(dateRX(nv)))if(!notDateAt(t,m.index,m.index+m[0].length))c++; return c};
+  const leaks=[],emb=[],dateIn=new Map();let n=0;
   for(const f of files){n++;
     if(/^word\/(embeddings|media)\//.test(f.name))emb.push(f.name);
     for(const enc of ["utf-8","utf-16le"]){
       let t;try{t=new TextDecoder(enc).decode(f.data)}catch(_){continue}
+      let dv=t;
       /* הבדיקה קראה רק את ה-XML כמו שהוא, ושם שמפוצל בין ריצות, מופרד בטאב או כתוב
          עם קו תחתון ("רחל_פרידמן") לא נראה לה כלל (שכבה 1ב). קוראים גם את הטקסט בלי
          תגיות, כשטאב, טאב מיקום ומעבר שורה הם רווח וקו תחתון הוא רווח. */
       if(/\.(xml|rels)$/.test(f.name)&&enc==="utf-8"){
         const raw=t;
+        const tv=t.replace(/<\/(?:w|a):p>/g,"\n").replace(/<w:(?:tab|ptab|br|cr)\b[^>]*\/>/g," ").replace(/<w:noBreakHyphen\b[^>]*\/>/g,"-").replace(/<[^>]+>/g,"");
+        // ומה שאינו טקסט ואינו תגית: ערכי תכונות והערות XML
+        dv=tv+"\n"+[...t.matchAll(/=(?:"([^"]*)"|'([^']*)')|<!--([\s\S]*?)-->/g)].map(m=>m[1]??m[2]??m[3]).join("\n");
         // + הוא רווח בכתובת ("?q=דנה+שגיא"), כמו קו תחתון
-        t+="\n"+t.replace(/<\/(?:w|a):p>/g,"\n").replace(/<w:(?:tab|ptab|br|cr)\b[^>]*\/>/g," ").replace(/<w:noBreakHyphen\b[^>]*\/>/g,"-").replace(/<[^>]+>/g,"")+"\n"+t.replace(/[_+]/g," ");
+        t+="\n"+tv+"\n"+t.replace(/[_+]/g," ");
         // וגם כמו שדפדפן קורא כתובת: "%D7%93" הוא "ד". שם מקודד ביעד של קישור עבר את הבדיקה (הציד של 11.10)
         if(/%[0-9A-Fa-f]{2}/.test(raw)){const d=pctPlain(raw);t+="\n"+d+"\n"+d.replace(/[+_]/g," ")}
       }
-      const nt=norm(t);
+      const nt=norm(t), nd=norm(dv).replace(/\u0000/g,"");
       for(const [o,nv,has] of sec){
         if(!nv)continue;
         if(has(nt))leaks.push({value:o,part:f.name});
       }
+      for(const [o,nv] of dsec){
+        if(!nv)continue;
+        const c=dateHits(nd,nv); if(!c)continue;
+        const d=dateIn.get(o)||{n:0,parts:[]}; d.n+=c; d.parts.push(f.name); dateIn.set(o,d);
+      }
     }}
+  // התאריכים הבדויים בשורות נפרדות: אין בהם מילת סעיף או יחידה, ולכן כל אחד נקרא בהקשר של עצמו
+  const wrote=(fakes||[]).map(x=>norm(String(x||"")).replace(/\u0000/g,"")).join("\n");
+  for(const [o,nv] of dsec){
+    const d=dateIn.get(o); if(!d)continue;
+    if(d.n>dateHits(wrote,nv))for(const p of d.parts)leaks.push({value:o,part:p});
+  }
   const uniq=[],seen=new Set();
   for(const l of leaks){const k=l.part+"|"+l.value;if(!seen.has(k)){seen.add(k);uniq.push(l)}}
   return {passed:!uniq.length,leaks:uniq,parts:n,embedded:emb}}
@@ -1892,23 +1924,48 @@ function pseudoRX(p){
    "16 בנובמבר 2026", עם אפס לפני ספרה בודדת או בלעדיו. עד כאן חזר רק הכתיב שיצא מהכלי, ו-AI
    שכתב את התאריך אחרת קיבל בחזרה את התאריך המוזז (בדיקה בכלי החי, 6.10). שמות החודשים כאן רק
    לקריאה: התאריך האמיתי חוזר כפי שהמסמך כתב אותו, כמו שם. */
-const MONTHS_HE=["ינואר","פברואר","מר[ץס]","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
-// כל כתיב ש-parseDate קורא, גם תאריך במילים ותאריך בלי שנה (9.10). y: null — יום וחודש בלבד
+/* ועוד (הציד של 11.10): "לחודש"/"בחודש" ו"שנת", חודש מקוצר ("אוק׳"), "מארס", רווח אחרי המפריד, שם החודש באנגלית
+   ("April 26, 2026"), וחודש ושנה בלי יום ("אפריל 2026", "04/2026") — לא בתוך תאריך מלא ("27 באפריל 2026"). תאריך
+   שהוא סוף של טווח שמתחיל ביום לבד ("4-5.7.2027") אינו מוחזר: "4-22.12.2026" חצי בדוי וחצי אמיתי, תאריך שלא היה.
+   הוא נשאר ברשימה של מה שלא הוחזר (leftOver) */
+const MONTHS_HE=["ינואר","פברואר","מר[ץס]|מארס","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
+const MONTHS_EN=["jan(?:uary)?","feb(?:ruary)?","mar(?:ch)?","apr(?:il)?","may","june?","july?","aug(?:ust)?","sep(?:t(?:ember)?)?","oct(?:ober)?","nov(?:ember)?","dec(?:ember)?"];
+const monRX=m=>"(?:"+MONTHS_HE[m-1]+(DATE_ABBR[m-1]?"|"+DATE_ABBR[m-1]+"['\u05f3\u2019.]":"")+")";
+const NOT_RANGE_END="(?<!(?:^|[^0-9./])[0-9]{1,2}[\\s\u00a0]?[-\u2013\u2014\u05be][\\s\u00a0]?)";
+// כל כתיב ש-parseDate קורא, גם תאריך במילים ותאריך בלי שנה (9.10). y: null — יום וחודש בלבד; d: null — חודש ושנה
 function dateParts(s){
   const p=parseDate(s);
   return p?{d:p.d,m:p.m,y:p.y}:null;
 }
 const sameDay=(a,b)=>!!a&&!!b&&a.d===b.d&&a.m===b.m&&a.y===b.y;
-function dateRX(f){
-  const z=n=>n<10?"0?"+n:String(n), D=z(f.d), M=z(f.m);
-  const Y=f.y==null?"":String(f.y), YY=f.y==null?"":String(f.y%100).padStart(2,"0");
-  const B="0-9A-Za-z\u0591-\u05bd\u05bf-\u05c7\u05d0-\u05ea";
+// o.anyYear: אותו יום וחודש בכל שנה; o.range: גם סוף של טווח (לרשימה של מה שנשאר, לא להחזרה)
+function dateRX(f,o){
+  o=o||{};
+  const z=n=>n<10?"0?"+n:String(n), M=z(f.m), S="[\\s\u00a0]";
+  const Y=o.anyYear?"[0-9]{4}":String(f.y), YY=o.anyYear?"[0-9]{2}":String(f.y%100).padStart(2,"0");
+  const B="0-9A-Za-z\u0591-\u05bd\u05bf-\u05c7\u05d0-\u05ea", MON=monRX(f.m), EN="(?:"+MONTHS_EN[f.m-1]+")\\.?";
+  const CONN="(?:[בל]חודש"+S+"+|[בל]?[-\u05be]?)", YC=",?"+S+"+(?:ב?שנת"+S+"+)?";
+  let body;
+  if(f.d==null)
+    body="(?<![0-9]"+S+"*(?:[בל]חודש"+S+"+|[בל][-\u05be]?)?)(?:"+MON+YC+Y+"|"+EN+",?"+S+"+"+Y+")|(?<![0-9][./-]"+S+"?)"+M+"[./-]"+Y;
   /* יום וחודש בלי שנה חוזרים רק בלי שנה: "27.4" ו"27 באפריל", לא "27/4/2026" ולא "27 באפריל 2026",
      שבהם ה-AI הוסיף שנה משלו */
-  const body=f.y==null?D+"[./]"+M+"(?![./-]?[0-9])|"+D+"\\s+[בל]?[-\u05be]?"+MONTHS_HE[f.m-1]+"(?!,?\\s+[0-9])":
-    D+"(?<sep>[./-])"+M+"\\k<sep>(?:"+Y+"|"+YY+")|"+Y+"-"+M+"-"+D+"|"+
-    D+"\\s+[בל]?"+MONTHS_HE[f.m-1]+",?\\s+"+Y;
-  return new RegExp("(?<!["+B+"])(?<pre>(?:"+PRE_SEQ.join("|")+")[-\u05be]?)?(?:"+body+")(?!["+B+"])","gu");
+  else if(f.y==null&&!o.anyYear)
+    body=z(f.d)+"[./]"+M+"(?![./-]?[0-9])|"+z(f.d)+S+"+"+CONN+MON+"(?!"+YC+"[0-9])";
+  else{
+    const D=z(f.d);
+    body=D+"(?<sep>[./-])"+S+"?"+M+"\\k<sep>"+S+"?(?:"+Y+"|"+YY+")|"+Y+"-"+M+"-"+D+"|"+D+S+"+"+CONN+MON+YC+Y+"|"+
+      EN+S+"*"+D+"(?:st|nd|rd|th)?,?"+S+"+"+Y+"|"+D+"(?:st|nd|rd|th)?"+S+"+(?:of"+S+"+)?"+EN+",?"+S+"+"+Y;
+  }
+  return new RegExp((o.range?"":NOT_RANGE_END)+"(?<!["+B+"])(?<pre>(?:"+PRE_SEQ.join("|")+")[-\u05be]?)?(?:"+body+")(?!["+B+"])","giu");
+}
+/* כינוי של תאריך בכתיב שיצא: לא מתוך תאריך ארוך יותר ("27.4" של "27.4.2026", "אפריל 2026" של "27 באפריל 2026"),
+   ולא כסוף של טווח. עד כאן "ביום 27.4.2026" חזר כ"ביום 12.3.2026": יום אמיתי עם שנה שה-AI המציא */
+function dateGuard(p,rx){
+  const f=dateParts(p);
+  if(!f)return rx;
+  const pre=NOT_RANGE_END+"(?<![0-9][./-])"+(f.d==null?"(?<![0-9][\\s\u00a0]*(?:[בל]חודש[\\s\u00a0]+|[בל][-\u05be]?)?)":"");
+  return new RegExp(pre+rx.source+"(?![./][0-9])",rx.flags);
 }
 /* חלקי השם של אדם, כזוגות [חלק בדוי, חלק אמיתי]: השם הפרטי, שם המשפחה כולו ("בן פלדמן"), והמילה
    האחרונה בשם של שלוש מילים — כמו החלקים שהמעבר על המסמך מחליף. לכינוי שאינו שם של אדם — תווית,
@@ -1944,7 +2001,9 @@ function restoreNames(txt,pairs){
   const seen=new Map(), conflict=new Set();
   for(const [real,pseudo] of pairs){
     if(!real||!pseudo||pseudo==="███")continue;
-    if(seen.has(pseudo)&&seen.get(pseudo)!==real)conflict.add(pseudo);
+    // אותו יום בשני כתיבים ("12 במרץ 2026", "12 במרס 2026") הוא ערך אחד, לא כינוי של שניים: עד כאן לא הוחזר
+    // כלל, ונרשם "שייך ליותר מאדם אחד"
+    if(seen.has(pseudo)){if(seen.get(pseudo)!==real&&!sameDay(dateParts(seen.get(pseudo)),dateParts(real)))conflict.add(pseudo)}
     else seen.set(pseudo,real);
   }
   for(const k of conflict)seen.delete(k);
@@ -1984,7 +2043,7 @@ function restoreNames(txt,pairs){
   };
   const back=real=>m=>(m[1]||(typeof m[2]==="string"?m[2]:"")||"")+real;
   const hits=new Map();
-  for(const [pseudo,real] of longFirst(seen))hits.set(pseudo,run(pseudoRX(pseudo),back(real)));
+  for(const [pseudo,real] of longFirst(seen))hits.set(pseudo,run(dateGuard(pseudo,pseudoRX(pseudo)),back(real)));
   /* כינוי מקודד בתוך כתובת — כמו שהכלי עצמו כותב שם בקישור ("…/%D7%99%D7%A2%D7%9C%20%D7%9B%D7%94%D7%9F.pdf") — חוזר
      לשם האמיתי, מקודד באותה צורה ובאותו מפריד (%20, +, _, -). עד כאן נשאר הכינוי, ולא נרשם כמה שנשאר (הסקירה של 11.10) */
   const hexI=e=>e.replace(/[.*+?^${}()|[\]\\]/g,"\\$&").replace(/%([0-9A-F]{2})/g,(m,h)=>"%(?:"+h+"|"+h.toLowerCase()+")");
@@ -1996,8 +2055,8 @@ function restoreNames(txt,pairs){
   // תאריך מוזז בכתיב אחר של ה-AI. יום בדוי ששני ימים אמיתיים יצאו בו (שני מסמכים בתיק, שתי הזזות)
   // חוזר רק בכתיב שיצא, כי אין לדעת לאיזה מהם התכוון
   const days=[...seen].map(([p,r])=>({p,r,f:dateParts(p),t:dateParts(r)})).filter(x=>x.f&&x.t);
-  for(const x of days)if(!days.some(y=>sameDay(y.f,x.f)&&!sameDay(y.t,x.t)))
-    hits.set(x.p,hits.get(x.p)+run(dateRX(x.f),m=>(m.groups.pre||"")+x.r));
+  const lone=days.filter(x=>!days.some(y=>sameDay(y.f,x.f)&&!sameDay(y.t,x.t)));
+  for(const x of lone)hits.set(x.p,hits.get(x.p)+run(dateRX(x.f),m=>(m.groups.pre||"")+x.r));
   let n=0;const missing=[];
   for(const [pseudo] of longFirst(seen)){const h=hits.get(pseudo); if(h)n+=h; else missing.push(pseudo)}
   // שם מלא שנמצא בטקסט ולא נלקח — דבוק לאותיות שאינן אותיות שימוש, או עם סיומת — שומר על החלקים שלו
@@ -2013,7 +2072,7 @@ function restoreNames(txt,pairs){
   for(const [k,v] of parts){const rx=partRX(k,false); if(rx&&!wordish(norm(k).trim(),toks))n+=run(rx,back(v),held)}
   let out="",at=0;
   for(const [s,e,t] of took.sort((a,b)=>a[0]-b[0])){out+=txt.slice(at,s)+t;at=e}
-  const left=leftOver(txt,took,{conflict,held,bad,reals,seen,partial,toks});
+  const left=leftOver(txt,took,{conflict,held,bad,reals,seen,partial,toks,dates:lone});
   return {text:out+txt.slice(at),count:n,missing,conflict:[...conflict],left};
 }
 /* מה שנשאר בתשובה מהפרטים הבדויים שהכלי נתן ולא הוחזר, כדי שמסך ההחזרה יסמן אותו ויאמר מה לתקן ביד
@@ -2022,8 +2081,11 @@ function restoreNames(txt,pairs){
    גם מילה רגילה (wordish) אינה נספרת, כמו שהיא אינה מוחזרת לבדה: "לאור האמור" אינו "אור" שנשאר; וכך מילה
    של כינוי שאינו אדם ("ראשון" של "ראשון לציון"). תאריך בדוי של שני ימים אמיתיים בכתיב
    אחר (restoreNames) אינו נספר: אין לדעת לאיזה מהם. כל פריט: הכינוי, הערך האמיתי (null כשהוא של יותר
-   מאדם אחד) והמקומות שלו בטקסט שחוזר, לפי הסדר שבו הוא מופיע. tests/t.js */
-function leftOver(txt,took,{conflict,held,bad,reals,seen,partial,toks}){
+   מאדם אחד) והמקומות שלו בטקסט שחוזר, לפי הסדר שבו הוא מופיע. tests/t.js
+   ותאריך בדוי שנשאר (הציד של 11.10): בלי השנה שיצאה איתו ("4 ביולי" של "4.7.2027"), עם שנה שה-AI הוסיף ליום וחודש,
+   או כסוף של טווח ("4-5.7.2027"). הוא אינו מוחזר, כי אין ודאות שזה הוא; עד כאן גם לא נאמר, והמסך כתב שלא נשאר דבר.
+   tests/dateforms_t.js */
+function leftOver(txt,took,{conflict,held,bad,reals,seen,partial,toks,dates}){
   const marked=[], left=[];
   const hit=(s,e)=>took.some(t=>t[0]<e&&s<t[1])||marked.some(t=>t[0]<e&&s<t[1]);
   const add=(fake,real,s,e,from)=>{
@@ -2046,6 +2108,14 @@ function leftOver(txt,took,{conflict,held,bad,reals,seen,partial,toks}){
     const rs=reals.get(k);
     if(!rs||seen.has(k)||wordish(norm(k).trim(),toks))continue;
     each(k,rs.size===1?[...rs][0]:null);
+  }
+  for(const x of dates||[]){
+    if(x.f.d==null)continue;
+    const other=x.f.y==null?dateRX(x.f,{anyYear:true,range:true}):dateRX({d:x.f.d,m:x.f.m,y:null},{range:true});
+    for(const rx of [dateRX(x.f,{range:true}),other])for(const m of txt.matchAll(rx)){
+      const pre=((m.groups&&m.groups.pre)||"").length;
+      add(x.p,x.r,m.index+pre,m.index+m[0].length,m.index);
+    }
   }
   // המקומות בטקסט שחוזר: כל החזרה שלפני הפריט מזיזה אותו בהפרש האורכים (פריט לעולם אינו בתוך החזרה)
   const shift=p=>took.reduce((d,[s,e,t])=>e<=p?d+t.length-(e-s):d,0);
