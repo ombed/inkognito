@@ -125,6 +125,18 @@ const textOf = (items) => items.flatMap((x) => (typeof x === "string" ? [x] : x.
     ok(!r2.out.includes(want.split(" ")[1]), label + ": once accepted, the surname is gone — " + show(r2));
   }
 
+  console.log("\n— a relative after the name is not its surname —");
+  for (const [items, kin] of [[["התובעת: נגה ובתה"], "בתה"], [["לכבוד נגה ומשפחתה"], "משפחתה"], [["מאת: נגה וילדיה"], "ילדיה"], [["המבקש: אורי ואשתו"], "אשתו"]]) {
+    const r = await run(items);
+    const all = [...r.cands.map((c) => c.value), ...r.flagged];
+    ok(!all.some((v) => v.includes(kin)), "«" + items[0] + "»: «" + kin + "» is not part of a name — " + show(r));
+  }
+  {
+    // a couple's second first name that is also a word of kinship is still a name
+    const r = await run(["התובעת: נגה ובני כהן"]);
+    ok([...r.auto, ...r.sug, ...r.flagged].includes("בני כהן"), "«נגה ובני כהן»: a couple, «בני כהן» is found — " + show(r));
+  }
+
   console.log("\n— a party's name in a name field, and surnames that end like a plural —");
   for (const role of ["התובעת", "התובע", "הנתבעת", "המבקשת", "המבקש", "המשיב", "הקטין", "הקטינה", "המנוח", "המנוחה", "המערער"]) {
     const r = await run(["שם " + role + ": נגה טרכטנגוט"]);

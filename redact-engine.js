@@ -1508,9 +1508,15 @@ const NOT_PERSON=new Set(("מהנדס מהנדסת מכונאי מכונאית �
   "מודה מכחיש מכחישה מסכים מסכימה מתנגד מתנגדת טוען טוענת חוזר חוזרת מצטער מצטערת לחלוטין בתשובה "+
   "חוג כדורגל כדורסל אימון משחק תור משמרת חופשה מחלה משטרה חג שיעור מבחן בחינה שכנים שכן שכנה בבניין "+
   "צה\"ל בסדיר במילואים חוץ רכב תוכנה חשבונות ביטוח משאית מוסך בתפקיד בתורנות למקור").split(" "));
+/* קרוב משפחה בכינוי שייכות אינו חלק משם: "התובעת: נגה ובתה", "לכבוד נגה ומשפחתה", "מאת: נגה וילדיה" נקראו כשם אחד,
+   והקרוב נמחק עם השם. לא צורה שהיא גם שם פרטי מוכר ("בני", "אמה"): KNOWN_FIRST גובר (ביקורת עצמית, 11.10) */
+const KIN_OF=new Set(("בעלה בעלי אשתו אשתי ילדיה ילדיו ילדיהם ילדיהן ילדי ילדינו בנה בנו בנם בתה בתו בתם בתי משפחתה משפחתו "+
+  "משפחתם משפחתי הוריה הוריו הוריהם הורי אמו אביה אביו אבי אחיה אחיו אחותה אחותו אחיותיה אחיותיו נכדיה נכדיו "+
+  "חמותה חמותו חמיה חמיו גיסה גיסו גיסתה גיסתו נכדתה נכדתו נכדה נכדו בת-זוגו בן-זוגה זוגתו").split(" "));
+const kin=w=>{const b=w.replace(/^ו-?/,""); return KIN_OF.has(b)&&!KNOWN_FIRST.has(b)};
 function anchorOK(c){
   const ws=c.split(/\s+/);
-  if(ws.some(w=>VRB.has(w)||COMMON.has(w)||STOP.has(w)||FORMLABEL.has(w)||NOT_NAME.has(w)||TRAIL.has(w)||ROLEWORD.test(w)||TITLE_RX.test(w+" ")))return false;
+  if(ws.some(w=>VRB.has(w)||COMMON.has(w)||STOP.has(w)||FORMLABEL.has(w)||NOT_NAME.has(w)||TRAIL.has(w)||ROLEWORD.test(w)||TITLE_RX.test(w+" ")||kin(w)))return false;
   // "הצעה שאינה", "וערכית אינו": מילת שלילה אינה חלק משם, גם עם אות שימוש
   if(ws.some(w=>/^[בהולמכש]?(?:אינ[הוםן]|איני|אין|לא|בלי|ללא)$/.test(w)))return false;
   // "להשיג", "לקטין": ל+פועל או ל+מילת תפקיד
@@ -1587,7 +1593,7 @@ function slotWords(c,one){
   return ws.every((w,i)=>{
     if(knownName(w))return true;
     const w0=w.replace(/^ו/,"");
-    if(FILLER.has(w)||FILLER.has(w0)||NOT_NAME.has(w)||NOT_NAME.has(w0))return false;
+    if(FILLER.has(w)||FILLER.has(w0)||NOT_NAME.has(w)||NOT_NAME.has(w0)||kin(w))return false;
     if(fn&&i>0)return !STOP.has(w)&&!COMMON.has(w)&&!VRB.has(w)&&!NOT_PERSON.has(w)&&w.length>=2;
     // מקצוע, מצב, עמדה או תווית ביומן; בינוני של התפעל ("מתחרטת", "מתנגד"); שותפות ("כהן ושות'"); וסמיכות של שם
     // פעולה ("החלפת משמרת", "העברת כספים")
