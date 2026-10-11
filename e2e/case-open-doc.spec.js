@@ -116,14 +116,33 @@ test("a case name typed on the work screen is saved once, when the field is left
   const field = page.getByPlaceholder(/שם התיק/);
   await field.click();
   await page.keyboard.type("ליה נ׳ טננבאום");
-  // while typing, no case per keystroke
-  expect(Object.keys(await cases(page))).toEqual([CASE_A.name]);
-  await field.blur();
+  // a moment after typing stops, one case for the name: none per keystroke
   await expect.poll(async () => Object.keys(await cases(page)).sort()).toEqual([CASE_A.name, "ליה נ׳ טננבאום"].sort());
+  await field.blur();
+  expect(Object.keys(await cases(page)).sort()).toEqual([CASE_A.name, "ליה נ׳ טננבאום"].sort());
   // renamed: the case this letter made under the first name goes; the case that was there before stays
   await field.click();
   await page.keyboard.type(" 2");
   await field.blur();
   await expect.poll(async () => Object.keys(await cases(page)).sort()).toEqual([CASE_A.name, "ליה נ׳ טננבאום 2"].sort());
+  expect((await cases(page))[CASE_A.name]).toEqual(CASE_A);
+});
+
+test("a pause on a name that is another case's does not write the letter into that case", async ({ page }) => {
+  await H.serveEngineWithStub(page);
+  await seed(page, { "redact-cases": { [CASE_A.name]: CASE_A } });
+  await H.boot(page);
+  await letterToWork(page);
+  await page.getByRole("button", { name: /התיק ורשימת השמות/ }).click();
+  const field = page.getByPlaceholder(/שם התיק/);
+  await field.click();
+  // typed so far: the other client's case name, and a pause longer than the moment the case list waits for
+  await page.keyboard.type(CASE_A.name);
+  await page.waitForTimeout(1500);
+  expect((await cases(page))[CASE_A.name]).toEqual(CASE_A);
+  // the name goes on, and the letter gets a case of its own; the other one is as it was
+  await page.keyboard.type(" 2");
+  await field.blur();
+  await expect.poll(async () => Object.keys(await cases(page)).sort()).toEqual([CASE_A.name, CASE_A.name + " 2"].sort());
   expect((await cases(page))[CASE_A.name]).toEqual(CASE_A);
 });

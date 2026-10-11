@@ -1383,6 +1383,9 @@ class Component extends DCLogic {
       }
     };
     addEventListener("beforeunload", this._unload);
+    // דף שנסגר או נטען מחדש באמצע הקלדת שם התיק: רשימת התיקים נשמרת לפניו (persistProfile)
+    this._caseOnHide = () => { clearTimeout(this._caseT); this.persistProfile(); };
+    addEventListener("pagehide", this._caseOnHide);
     addEventListener("popstate", this._pop);
     // the document's history entry waits for a click or a key (canPush): it is pushed by the first one
     this._histNow = () => {
@@ -1451,7 +1454,7 @@ class Component extends DCLogic {
     }
   }
   componentWillUnmount(){ document.removeEventListener("mousedown", this._docClick); document.removeEventListener("keydown", this._keys); document.removeEventListener("keyup", this._selKeys); removeEventListener("resize", this._resize);
-    removeEventListener("beforeunload", this._unload); removeEventListener("popstate", this._pop); document.removeEventListener("click", this._histNow, true); document.removeEventListener("keydown", this._histNow, true);
+    removeEventListener("beforeunload", this._unload); removeEventListener("pagehide", this._caseOnHide); clearTimeout(this._caseT); removeEventListener("popstate", this._pop); document.removeEventListener("click", this._histNow, true); document.removeEventListener("keydown", this._histNow, true);
     removeEventListener("scroll", this._follow, true); removeEventListener("resize", this._follow); removeEventListener("animationend", this._follow, true); removeEventListener("transitionend", this._follow, true);
     removeEventListener("scroll", this._scNudge, {capture:true}); removeEventListener("resize", this._scNudge); if(this._scT) clearTimeout(this._scT); removeEventListener("storage", this._storage); document.removeEventListener("focusin", this._helpFocus); removeEventListener("error", this._pageErr); removeEventListener("unhandledrejection", this._pageErr);
     if(this._barObs) this._barObs.disconnect(); if(this._headObs) this._headObs.disconnect(); document.removeEventListener("focusin", this._focusKeep); document.removeEventListener("keydown", this._keyMark, true); }
@@ -3292,7 +3295,11 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
       tourNudge:!!(this.state.tour&&this.state.tour.nudge===this.state.tour.i), onTourBlocked:e=>{ if(e&&e.preventDefault) e.preventDefault(); this.log.add("tour",{at:"blocked-click"}); this.setState({tour:{...this.state.tour, nudge:this.state.tour.i}}); },
       onTourNext:this.tourNext, onTourBack:this.tourBack, onTourClose:this.tourClose};
   }
-  persistProfile(){
+  /* how: true — רק «הרשימה האחרונה», ולא רשימת התיקים, כך ששם התיק נשמר בכל הקשה בלי שאות אחרי אות תיווצר
+     רשומה בתיקים; "typing" — רגע אחרי שההקלדה נעצרת, אבל לא לתוך תיק קיים אחר ששמו הוא מה שהוקלד עד כאן: זה
+     מחכה ליציאה מהשדה (הציד של 11.10: כל אות שמרה תיק, ושם חלקי התמזג לתיק קיים) */
+  persistProfile(how){
+    const onlyLast=how===true;
     // המסמך לדוגמה של הסיור אינו תיק: שום דבר ממנו לא נשמר בדפדפן
     if(this.state.tour) return;
     // רשימה ריקה נשמרת גם היא כשיש מה לזכור: קודם, מחיקה של כל הכללים לא שמרה דבר, והתיק הישן החזיק את כולם
@@ -3300,7 +3307,9 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     if(!this.state.rules.length&&!(this.state.allow||[]).length&&!this.removedNow().length) return;
     const prof=this.profileObj();
     try{ localStorage.setItem(this.caseKey("redact-profile-last"), JSON.stringify(prof)); }catch(_){}
+    if(onlyLast) return;
     const was=this._caseSaved;
+    if(how==="typing"&&prof.name&&!(was&&was.name===prof.name)&&this.readCases().some(c=>c.name===prof.name)) return;
     if(was&&was.name!==prof.name&&!was.existed){ this.dropStored(was.name); this._caseSaved=null; }
     if(prof.name){
       const existed=was&&was.name===prof.name?was.existed:this.readCases().some(c=>c.name===prof.name);
@@ -3953,8 +3962,10 @@ const KIND_NAME={NAME:"אדם", ORG:"גוף", PLACE:"מקום"};
       lastMorePairs:S.lastProfile?(n=>n>3?"ועוד "+(n-3):"")(this.profileCount(S.lastProfile)):"",
       onResumeLast:this.resumeLast, onDismissLast:this.dismissLast,
       engineFailed:!!S.engineFailed, onEngineRetry:()=>{ try{ location.reload(); }catch(_){} },
-      // שם התיק נשמר כשעוזבים את השדה, לא בכל הקשה: כל אות שמרה תיק משלה, עם השמות האמיתיים (הציד של 11.10)
-      caseName:S.caseName, onCaseName:e=>this.setState({caseName:e.target.value}), onCaseNameDone:()=>this.persistProfile(),
+      // שם התיק: הרשימה האחרונה נשמרת בכל הקשה, ורשימת התיקים כשעוזבים את השדה או את הדף. כל אות שמרה קודם תיק
+      // משלו, עם השמות האמיתיים (הציד של 11.10)
+      caseName:S.caseName, onCaseName:e=>this.setState({caseName:e.target.value}, ()=>{ this.persistProfile(true); clearTimeout(this._caseT); this._caseT=setTimeout(()=>this.persistProfile("typing"), 800); }),
+      onCaseNameDone:()=>{ clearTimeout(this._caseT); this.persistProfile(); },
       profileNote:(S.caseName?"התיק נשמר בדפדפן הזה אחרי כל שינוי, ויוצע בפעם הבאה. ":"בלי שם תיק נשמרת רק הרשימה האחרונה. ")+(S.profileDirty?"הדפדפן אינו גיבוי: «ייצוא לקובץ» שומר את התיק גם אם נתוני הדפדפן יימחקו.":"נשמר גם בקובץ."),
       hasPeoSug:S.peoSug.some(x=>!S.peo.some(p=>S.E.norm(p.value)===S.E.norm(x.value))&&!(S.peoKept||[]).some(k=>S.E.norm(k.value)===S.E.norm(x.value))),
       peoSugItems:S.peoSug.filter(x=>!S.peo.some(p=>S.E.norm(p.value)===S.E.norm(x.value))&&!(S.peoKept||[]).some(k=>S.E.norm(k.value)===S.E.norm(x.value))).map(x=>({
