@@ -39,7 +39,7 @@
  "license_t.js": 2,
  "failopen_t.js": 15,
  "gate_t.js": 6,
- "vendor_t.js": 21,
+ "vendor_t.js": 38,
  "lintpage_t.js": 5,
  "gender_t.js": 7,
  "chain_t.js": 3,
