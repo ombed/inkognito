@@ -486,6 +486,18 @@ const AMBIG=new Set(["דן","מגן","כרמל","עלי","שילה","דליה","
   "אזור","רחובות","מעלות","שדרות","אריאל","עומר","מיתר","ירוחם","נירית","אורן",
   "יבנה","גדרה","חורה","נשר","ברקן","יקיר","כפר","ראש","עמק",
   "צורן","קדימה","חריש","אפרת"]);
+/* יישובים ששמם גם מילה, נטייה, צירוף או שם פרטי, אבל לא דו-משמעיים כמו AMBIG (הציד של 11.10). «אני חוששת
+   לשלומי» יצא «אני חוששת לראש העין» בבקשה לצו הגנה, «ההליך תקוע» יצא «ההליך ניצנה», «ישנה בחדרה» יצא
+   «ישנה במודיעין», ו«המבקשת ערערה» יצא שם של יישוב. כאן היישוב מוחלף מעצמו רק בהקשר של מקום (placeCtx);
+   בלי הקשר הוא שאלה, כמו AMBIG, ואינו נבחר כתחליף. מילה בעברית רגילה: תקוע (נתקע), אופקים, רעננה (טרייה),
+   מודיעין, חדרה (החדר שלה), ערערה (הגישה ערעור), נתיבות, נחלים, רכסים, להבים; צירוף שגור בפסיקה: "היה
+   לראש פינה", "לא נעלם מעין השופט". שם פרטי: לידו "עברה ל" ו"העיר" אינם הקשר של מקום ("המשמורת עברה
+   לאלעד", "העיר שלומי כי"). מילים נדירות (רביבים, נירים, חצבה) נשארו בחוץ: במסמך משפטי הן כמעט תמיד
+   היישוב. כל שם כאן מופיע ב-tests/towns_t.js עם משפט שמראה שהוא מילה */
+const TOWNWORD=new Map([["תקוע","word"],["אופקים","word"],["רעננה","word"],["מודיעין","word"],["חדרה","word"],
+  ["ערערה","word"],["נתיבות","word"],["נחלים","word"],["רכסים","word"],["להבים","word"],["ראש פינה","word"],["עין השופט","word"],
+  ["שלומי","name"],["שוהם","name"],["אילת","name"],["אלעד","name"],["עמנואל","name"],["אלקנה","name"],
+  ["אבשלום","name"],["עמיעד","name"],["צופית","name"]]);
 /* תחליף ליישוב.
 
    ליישוב לא היה מחולל תחליפים בכלל. שם היה מקבל «מיכל ברנע», אבל יישוב קיבל
@@ -534,8 +546,11 @@ function placePool(kind,value){
   // "שמות אקראיים" (Q7 בגרסה 3): רק יישובים מתויגים, ולעולם לא המאגר הלא-מתויג —
   // ירושלים הפכה ל"משמר הנגב" ומודיעין ל"אמונים" כי המאגר הגדול אינו יודע מה הם.
   // יישוב מתויג מקבל יישוב מאותו אופי (אוכלוסייה, דת, עירוני/כפרי); הגודל רשאי לזוז.
-  const base=PLACES.map(p=>p.n).filter(n=>n&&n.length>=3&&!AMBIG.has(n));
-  const v=norm(String(value||"")).trim();
+  // לא שם דו-משמעי, ולא יישוב שהוא גם מילה: ההחזרה הייתה הופכת את המילה בתשובת ה-AI ליישוב האמיתי
+  const base=PLACES.map(p=>p.n).filter(n=>n&&n.length>=3&&!AMBIG.has(n)&&!TOWNWORD.has(n));
+  let v=norm(String(value||"")).trim();
+  // שם של כמה חלקים מוחלף כולו (הציד של 11.10), ואופיו הוא של העיר שבראשו: «מודיעין-מכבים-רעות» כמו «מודיעין»
+  if(v&&typeof ATLAS_TAGS!=="undefined"&&!ATLAS_TAGS[v]){const h=v.split(/\s*-\s*/)[0]; if(h!==v&&ATLAS_TAGS[h])v=h;}
   if(v&&typeof ATLAS_TAGS!=="undefined"&&ATLAS_TAGS[v]&&typeof atlasPenalty==="function"){
     // הקרובים ביותר באופי: לפחות שישה, כדי שיהיה מבחר, ובלי אוכלוסייה שונה לעולם
     const scored=base.filter(n=>n!==v).map(n=>[n,atlasPenalty(v,n)]).filter(x=>x[1]!==Infinity).sort((a,b)=>a[1]-b[1]);
@@ -567,11 +582,53 @@ function fakePlace(value,used,forbidden,kind){
   return kind?fakePlace(value,used,forbidden,null):null;
 }
 
-const PLACE_RX=new RegExp(
-  "(?<![\\u0590-\\u05ff])(?:[בהולמכש]|ו[בהלמכ]|כש|מה|לכ)?("+
-  PLACES.map(p=>p.n).sort((a,b)=>b.length-a.length)
-    .map(n=>n.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("|")+
-  ")(?![\\u0590-\\u05ff])","gu");
+/* שם יישוב בכל כתיב רגיל (הציד של 11.10). עד כאן השמות נתפסו רק כפי שנכתבו ברשימה, ולכן «בתל-אביב»,
+   «בבאר-שבע», «בתל־אביב» (מקף עברי), «בקריית ביאליק», «בפתח תקוה», «בזיכרון יעקב» ו«באום אל פחם» יצאו כמו
+   שהם, ומסך היישובים היה ריק. בין מילות השם רווח, מקף ומקף עברי שקולים; כתיב חסר ומלא לפי SPELL
+   (02-hebrew.js); כתיבים אחרים של יישוב מסוים ב-PLACE_ALT. כל כתיב חוזר לשם שברשימה (placeKey), וכך לכולם
+   אותו תחליף. שם במקף בלבד שחלק בו קצר ("אלי-עד", "טל-אל") נתפס רק במקף: ברווח הוא צירוף רגיל
+   ("הגיע אלי עד הבית") */
+const PLACE_ALT={"נהריה":["נהרייה"],"הרצליה":["הרצלייה"],"יקנעם":["יוקנעם"],"יקנעם עילית":["יוקנעם עילית"],
+  "סח'נין":["סחנין","סכנין"],"עוספיא":["עספיא"],"מג'אר":["מגאר"],"כסייפה":["כסיפה"],
+  "דאלית אל-כרמל":["דלית אל-כרמל","דליית אל-כרמל"],"טירת כרמל":["טירת הכרמל"],"נוף הגליל":["נצרת עילית"]};
+const PLACE_SEP="[ \\t\\u0000-]+";
+const placeWords=s=>norm(String(s||"")).trim().split(/[ \t]*[-\u0000][ \t]*|[ \t]+/).filter(Boolean);
+const placeFold=w=>{for(const sp of SPELL){const m=sp.rx.exec(w); if(m&&!m[1])return sp} return null};
+function placeKey(s){return placeWords(s).map(w=>{const sp=placeFold(w); return sp?sp.key:w}).join(" ")}
+// השם כרצף של [מפריד, מילה] בביטוי; לפני המילה הראשונה אין מפריד
+function placeParts(name){
+  const v=norm(name).trim(), w=placeWords(v);
+  const strict=!/\s/.test(v)&&w.length===2&&w.some(x=>x.replace(/['"]/g,"").length<4);
+  return w.map((x,i)=>{const sp=placeFold(x);
+    return [i?(strict?"[-\\u0000]":PLACE_SEP):"",sp?sp.L.map(l=>esc(l.c)+(l.opt?"?":"")).join(""):esc(x)]});
+}
+/* הביטוי נבנה כעץ של מילים: ראש משותף ("בית", "כפר", "גבעת") והמפריד שאחריו נבדקים פעם אחת ולא פעם לכל
+   שם. כרשימה שטוחה של מאות שמות עם מפריד גמיש, סריקת המאגר הייתה איטית פי חמישה-עשר. המשך ארוך נבדק לפני
+   סוף השם ("תל אביב - יפו" לפני "תל אביב"), ומילה ארוכה לפני מילה שהיא תחילתה ("ביתר" לפני "בית") */
+function placeTrie(list){
+  const root={kids:new Map()};
+  for(const parts of list){let node=root;
+    for(const [sep,w] of parts){const k=sep+"\u0001"+w; if(!node.kids.has(k))node.kids.set(k,{sep,w,kids:new Map(),end:false}); node=node.kids.get(k);}
+    node.end=true;}
+  const emit=node=>{
+    const alts=[...node.kids.values()].sort((a,b)=>b.w.length-a.w.length)
+      .map(c=>c.sep+c.w+(c.kids.size?(c.end?"(?:"+emit(c)+")?":emit(c)):""));
+    return alts.length===1?alts[0]:"(?:"+alts.join("|")+")";
+  };
+  return emit(root);
+}
+// מילון כתיב → שם, והביטוי שתופס את כולם, עם אות שימוש לפניו. skip: כתיבים שכבר ברשימה אחרת
+function placeIndex(names,skip){
+  const keys=new Map(), list=[];
+  for(const n of names) for(const sf of [n,...(PLACE_ALT[n]||[])]){
+    const k=placeKey(sf); if(keys.has(k)||(skip&&skip.has(k)))continue;
+    keys.set(k,n); list.push(placeParts(sf));
+  }
+  return {keys,rx:new RegExp("(?<![\\u0590-\\u05ff])(?:[בהולמכש]|ו[בהלמכ]|כש|מה|לכ)?("+
+    placeTrie(list)+")(?![\\u0590-\\u05ff])","gu")};
+}
+const PLACE_IX=placeIndex(PLACES.map(p=>p.n),null);
+const PLACE_RX=PLACE_IX.rx;
 const VENUE=[
  ["בית\\s+(?:ה)?ספר|ביה\"ס|בי\"ס|תיכון|חטיבת\\s+ביניים|אולפנת|ישיבת|גן\\s+ילדים","מוסד חינוך"],
  ["אוניברסיטת|מכללת|המכללה\\s+ל","מוסד אקדמי"],
@@ -586,10 +643,15 @@ const VENUE=[
 const PLACE_HEAD=new Set(PLACES.filter(p=>p.n.includes(" ")).map(p=>p.n.split(" ")[0]));
 // "סופר יוחננוף באשדוד" — שם העסק נגמר לפני שם היישוב
 function trimPlace(v){
+  // יישוב בסוף, בכל כתיב ועם אות השימוש שלו, הוא המקום של המוסד ולא שמו. בלי זה "בית הספר נמצא בתל-אביב"
+  // בולע את היישוב לתוך שם המוסד ("נמצא בתל-אביב"), שעולה רק לבדיקה, והיישוב אינו מוחלף (הציד של 11.10)
+  {const n=norm(v), all=placeScan(n), z=all[all.length-1]; if(z&&!n.slice(z.e).trim())v=v.slice(0,z.i).trim();}
+  if(!v)return "";
   const w=v.split(/\s+/);
   while(w.length>1){
     const last=w[w.length-1], bare=last.replace(/^[בהולמכש]/,"");
-    if(PLACE_BY[last]||PLACE_BY[bare]||PLACE_HEAD.has(bare)||PLACE_HEAD.has(last)||
+    // ראש של שם יישוב בכל כתיב: "נמצא בקריית" שהמילה הבאה נחתכה ממנו הוא "נמצא"
+    if(PLACE_BY[last]||PLACE_BY[bare]||PLACE_HEAD.has(placeKey(bare))||PLACE_HEAD.has(placeKey(last))||
        (w.length>2&&PLACE_BY[w.slice(-2).join(" ")])||
        // "שכונת הפרדס בעקבות קריאה": מילת יחס או פועל אחרי השם אינם חלק ממנו
        TRAIL.has(last)||VRB.has(last)) w.pop();
@@ -598,49 +660,80 @@ function trimPlace(v){
   return w.join(" ");
 }
 
+/* כל היישובים בטקסט המנורמל, מהרשימה עם הקואורדינטות ומהמאגר (07-gazetteer.js), בלי חפיפות: שם ארוך גובר
+   על שם שבתוכו. «מודיעין-מכבים-רעות» הפך ל«מעלה אדומים-מכבים-רעות» כי רק «מודיעין» הוחלף, והזנב שנשאר
+   עדיין אמר איזו עיר זו (הציד של 11.10); ומסך היישובים הציע את «מודיעין» לבד. מהמאגר רק שמות של שתי מילים
+   ומעלה (שם במקף הוא כזה): הזנב הארוך של שמות בני מילה אחת הוא ברובו מילים רגילות ("קדימה", "לשם", "חבר",
+   "גבעות"), ועל ארבעה מסמכים אמיתיים נתן שנים-עשר סימונים מיותרים ואפס תפיסות (docs/measurements.md).
+   שם מהמאגר שהוא חלק משם של גוף ציבורי ("משרד הרווחה") אינו מקום. name הוא השם שברשימה, בכל כתיב */
+function placeScan(n){
+  const out=[];
+  const run=(ix,mappable)=>{
+    ix.rx.lastIndex=0; let m;
+    while((m=ix.rx.exec(n))){
+      const name=ix.keys.get(placeKey(m[1])), e=m.index+m[0].length, s=e-m[1].length;
+      if(!name)continue;
+      if(!mappable){const back=n.slice(Math.max(0,m.index-30),m.index).split(/\s+/).filter(Boolean).slice(-2); const full=m[0].trim(); const c2=[...back,full].join(" "), c1=[...back.slice(-1),full].join(" ");
+        if([c2,c1].some(x=>PUBLIC_ORG.test(x)||PUBLIC_ORG.test(x.replace(/^[בהולמכש]/,""))))continue;}
+      out.push({s,e,i:m.index,pre:m[0].slice(0,s-m.index),name,mappable});
+    }};
+  run(PLACE_IX,true);
+  if(typeof GAZ_IX!=="undefined")run(GAZ_IX,false);
+  out.sort((a,b)=>a.s-b.s||(b.e-b.s)-(a.e-a.s));
+  const keep=[]; let end=-1;
+  for(const x of out) if(x.s>=end){x.k=keep.length; keep.push(x); end=x.e}
+  return keep;
+}
+/* הקשר של מקום סביב יישוב מ-TOWNWORD (הציד של 11.10), בטקסט המנורמל ובאותה שורה. כל אחד מאלה מספיק:
+   ב- אחרי פועל של מגורים ("גרה באופקים", "מתגוררת עם ילדיה בשלומי"); ל-/מ- אחרי פועל של מעבר, לא ליד
+   שם פרטי ("עברו לרעננה"); מילת יישוב לפניו ("תושבת שלומי", "בעיר רעננה", "מושב נחלים"); כתובת ("ברחוב
+   הנרקיס 9 ברעננה", "הנרקיס 9, רעננה", מיקוד אחריו, "כתובת:"); בית משפט או מוסד לפני ב- ("בבית המשפט
+   לענייני משפחה ברעננה"); אזור ("באזור רעננה", "מצפון לרעננה"); או יישוב אחר צמוד ("מחיפה לרעננה",
+   "בין רעננה לכפר סבא"). "אני חוששת לשלומי", "ההליך תקוע" ו"נקודת מבט רעננה" אינם אף אחד מהם.
+   בין הפועל ליישוב עד שלוש מילים, ולא מילה שפותחת ב-ו משפט חדש: "גרה אצל אמה וישנה בחדרה" הוא החדר
+   שלה. מילות בית ודירה אינן הקשר מאותה סיבה */
+const CTX_GAP="(?:[\\s,]+(?:ו(?:ילדיה|ילדיו|ילדיהם|בעלה|אשתו|הקטינים|הקטינות|הקטינה|הקטין|הילדים|הילדה|הילד|בנה|בנו|בתה|בתו|הוריה|הוריו|אמה|אמו|אביה|אביו)|(?!ו)[^\\s.;:!?]+))";
+const CTX_RES=new RegExp("(?:^|[^א-ת])[וש]?(?:כש)?(?:גר|גרה|גרים|גרות|גרנו|גרתי|גרו|לגור|מתגורר|מתגוררת|מתגוררים|מתגוררות|התגורר|התגוררה|התגוררו|התגוררנו|התגוררתי|להתגורר|נולד|נולדה|נולדו|נולדתי|גדל|גדלה|גדלו|גדלתי|התיישב|התיישבה|התיישבו|שוכן|שוכנת|ממוקם|ממוקמת|מגורים|מגוריה|מגוריו|מגוריהם|מגוריהן|מגוריי|מגורינו|מגורי)"+CTX_GAP+"{0,3}[\\s,]*$","u");
+const CTX_MOVE=new RegExp("(?:^|[^א-ת])[וש]?(?:כש)?(?:עבר|עברה|עברו|עברנו|עברתי|לעבור|עובר|עוברת|עוברים|עוברות|נסע|נסעה|נסעו|נסענו|נסעתי|לנסוע|נוסע|נוסעת|נוסעים|נוסעות|עקר|עקרה|עקרו|עקרנו|לעקור|העתיק|העתיקה|העתיקו|הועבר|הועברה|הועברו)"+CTX_GAP+"{0,2}[\\s,]*$","u");
+const CTX_NOUN=/(?:^|[^א-ת])[והשבלמכ]{0,3}(?:עיריית|יישוב|היישוב|הישוב|מושב|המושב|קיבוץ|הקיבוץ|עיירה|העיירה|תושב|תושבת|תושבי|תושבים|תושבות|מועצת|מועצה\s+(?:ה)?(?:מקומית|אזורית)|המועצה\s+ה(?:מקומית|אזורית)|משטרת|(?:[בלמ]|מה)ה?עיר)\s*$/u;
+const CTX_CITY=/(?:^|[^א-ת])ו?ה?עיר\s*$/u;
+// כתובת: מילת רחוב, שם ומספר בית; או מילה ומספר קטן ופסיק ("הנרקיס 9, רעננה"), לא "סעיף 9," ולא שנה; או תווית
+const CTX_ADDR=/(?:(?:^|[^א-ת])[בהולמכש]{0,2}(?:רחוב|רח'|רח\.?|שדרות|שד'|סמטת|דרך|שכונת|ככר|כיכר)\s+[^\n.;:!?]{1,30}?\s\d{1,4}[א-ת]?(?:\s*[/\\]\s*\d{1,3}[א-ת]?)?\s*,?|(?:^|[^א-ת])(?!(?:סעיף|סעיפים|תקנה|תקנות|פרק|עמוד|עמ'|בת|בן|גיל|מס'|מספר|נספח|שנת|יום|ביום|שעה|בשעה|גוש|חלקה)\s)[א-ת"']{2,}\s\d{1,3}[א-ת]?(?:\s*[/\\]\s*\d{1,3}[א-ת]?)?\s*,|(?:^|[^א-ת])(?:עיר|יישוב|ישוב|כתובת|מען|מקום\s+(?:ה)?(?:מגורים|לידה))\s*:)\s*$/u;
+const CTX_COURT=/(?:בית\s+ה?משפט|ביהמ"ש|בימ"ש|בית\s+ה?דין|ביה"ד|בי"ד|ה?הוצאה\s+לפועל|הוצל"פ|לשכת\s+ה?רווחה|המחלקה\s+לשירותים\s+חברתיים|מחלקת\s+ה?רווחה|תחנת\s+ה?משטרה|בית\s+ה?ספר|ביה"ס|בי"ס|בית\s+ה?חולים|ביה"ח|קופת\s+חולים(?:\s+[א-ת]+)?|מרפאת|סניף)(?:\s+(?:ה?שלום|ה?מחוזי|ה?רבני|ה?אזורי|ה?שרעי|ה?מנהלי|ה?עליון|לנוער|לעבודה|לענייני\s+משפחה|לעניני\s+משפחה|לתביעות\s+קטנות|לתעבורה))*(?:\s+["'][^"'\n]{1,30}["'])?\s*$/u;
+const CTX_AREA=/(?:^|[^א-ת])ו?(?:באזור|בסביבת|בסביבות|בקרבת|במרכז|בצפון|בדרום|במזרח|במערב|בפאתי|במבואות)\s*$/u;
+const CTX_NEAR=/(?:^|[^א-ת])ו?(?:בסמוך|סמוך|מצפון|מדרום|ממזרח|ממערב|צפונית|דרומית|מזרחית|מערבית)\s*$/u;
+function placeCtx(n,x,all){
+  const person=TOWNWORD.get(x.name)==="name";
+  const ln=n.lastIndexOf("\n",x.i-1)+1, before=n.slice(Math.max(ln,x.i-90),x.i);
+  const loc=/[בלמ]$/.test(x.pre)?x.pre.slice(-1):"";
+  if(loc==="ב"&&(CTX_RES.test(before)||CTX_COURT.test(before)))return true;
+  if((loc==="ל"||loc==="מ")&&!person&&CTX_MOVE.test(before))return true;
+  if(!x.pre&&(CTX_NOUN.test(before)||(!person&&CTX_CITY.test(before))||CTX_AREA.test(before)))return true;
+  if(loc==="ל"&&CTX_NEAR.test(before))return true;
+  if((!x.pre||loc==="ב")&&CTX_ADDR.test(before))return true;
+  // מיקוד אחריו, ולא מספר תיק
+  if(/^\s*,?\s*\d{5,7}(?![\d/-])/.test(n.slice(x.e,x.e+12)))return true;
+  // יישוב אחר צמוד, ברשימה או בטווח: רווח ואות שימוש מחברת, או מקף ולוכסן
+  const k=x.k, solid=y=>!!y&&!AMBIG.has(y.name)&&!TOWNWORD.has(y.name);
+  const joined=(gap,pre)=>/^[ \t]*[\/-][ \t]*$/.test(gap)||(/^[ \t]+$/.test(gap)&&/[לבו]/.test(pre));
+  const p=all[k-1], q=all[k+1];
+  if(solid(p)&&joined(n.slice(p.e,x.i),x.pre))return true;
+  if(solid(q)&&joined(n.slice(x.e,q.i),q.pre))return true;
+  return false;
+}
 function findPlaces(text){
   const n=norm(text),out=[],seen=new Set();
   const docTokP=new Set(n.match(WRX)||[]);
-  PLACE_RX.lastIndex=0; let m;
-  while((m=PLACE_RX.exec(n))){
-    const nm=m[1], s=m.index+m[0].indexOf(nm), e=s+nm.length;
-    const k=s+":"+e; if(seen.has(k))continue; seen.add(k);
-    const risky=nm.length<=3||AMBIG.has(nm);
-    out.push({s,e,type:"PLACE_CITY",label:"יישוב",text:text.slice(s,e),
-      why:"שם יישוב מוכר"+(risky?" — אבל המילה דו-משמעית, אשרו ידנית":""),
+  const all=placeScan(n);
+  for(const x of all){
+    const nm=x.name, k=x.s+":"+x.e; seen.add(k);
+    // שם קצר, שם דו-משמעי, ושם שהוא גם מילה בלי הקשר של מקום: לבדיקה, לא להחלפה
+    const risky=nm.length<=3||AMBIG.has(nm)||(TOWNWORD.has(nm)&&!placeCtx(n,x,all));
+    out.push({s:x.s,e:x.e,type:"PLACE_CITY",label:"יישוב",text:text.slice(x.s,x.e),
+      why:(x.mappable?"שם יישוב מוכר":"שם יישוב מהמאגר")+(risky?" — אבל המילה דו-משמעית, אשרו ידנית":""),
       apply:!risky,src:"pattern",prio:2,conf:risky?"medium":"high",
-      review:risky,place:nm});
-  }
-  // מאגר היישובים המלא (07-gazetteer.js): בלי קואורדינטות, אז בלי מיפוי מרחקים.
-  // הכלל שהקוד שומר: מהמאגר נתפסים רק יישובים בני שתי מילים ומעלה. יישוב בן מילה אחת
-  // מהמאגר לא נתפס כלל — לא מוחלף ולא מסומן לבדיקה (הנימוק למטה וב-docs/measurements.md).
-  // שם בן שתי מילים כמעט אינו דו-משמעי: הוא מסומן לבדיקה רק אם הוא עד שלוש אותיות או
-  // ב-AMBIG, ומדולג אם הוא חלק משם של גוף ציבורי. הכלל המקורי של PLAN-v18 Q10
-  // (הומוגרף בן מילה אחת מסומן לבדיקה ולא מוחלף) הוחלף בזה.
-  if(typeof GAZ_RX!=="undefined"){
-    const docTokG=new Set(n.match(WRX)||[]);
-    GAZ_RX.lastIndex=0;
-    while((m=GAZ_RX.exec(n))){
-      const nm=m[1], s=m.index+m[0].indexOf(nm), e=s+nm.length;
-      const k=s+":"+e; if(seen.has(k))continue; seen.add(k);
-      // רק שמות בני שתי מילים ומעלה מהמאגר. הזנב הארוך של שמות יישוב בני מילה אחת
-      // הוא ברובו מילים רגילות ("קדימה", "לשם", "חבר", "מתן", "דברת", "גבעות"), ועל ארבעה
-      // מסמכים אמיתיים הוא נתן שנים-עשר סימונים מיותרים ואפס תפיסות. הערים הגדולות
-      // ממילא ב-PLACES עם קואורדינטות. ראו docs/measurements.md.
-      if(!nm.includes(" "))continue;
-      // מכאן כל שם הוא בן שתי מילים ומעלה, אז one תמיד false, ושני הענפים שבודקים אותו
-      // (דילוג על שם פרטי או מילה מהרשימות, וסימון לבדיקה של הומוגרף) אינם פעילים.
-      const one=false;
-      if(one&&(WORDLIKE.has(nm)||KNOWN_FIRST.has(nm)||FEM.has(nm)||MASC.has(nm)))continue;
-      // "משרד הרווחה" ליד היישוב רווחה הוא גוף ציבורי, לא מקום
-      {const back=n.slice(Math.max(0,m.index-30),m.index).split(/\s+/).filter(Boolean).slice(-2); const full=m[0].trim(); const c2=[...back,full].join(" "), c1=[...back.slice(-1),full].join(" ");
-       if([c2,c1].some(x=>PUBLIC_ORG.test(x)||PUBLIC_ORG.test(x.replace(/^[בהולמכש]/,""))))continue;}
-      const risky=nm.length<=3||AMBIG.has(nm)||(one&&(COMMON.has(nm)||WORDLIKE.has(nm)||KNOWN_FIRST.has(nm)||STOP.has(nm)||FEM.has(nm)||MASC.has(nm)||docTokG.has("ה"+nm)));
-      out.push({s,e,type:"PLACE_CITY",label:"יישוב",text:text.slice(s,e),
-        why:"שם יישוב מהמאגר"+(risky?" — אבל המילה דו-משמעית, אשרו ידנית":""),
-        apply:!risky,src:"pattern",prio:2,conf:risky?"medium":"high",
-        review:risky,place:nm});
-    }
+      // הבסיס הוא השם שברשימה: «קריית ביאליק» ו«קרית ביאליק» מקבלים אותו תחליף
+      review:risky,place:nm,base:nm});
   }
   for(const v of VENUE){
     v.rx.lastIndex=0; let g;
@@ -679,13 +772,20 @@ function findPlaces(text){
    לבדיקה ועם ההקשר לצדו, ושם אפשר להחליט עליו לפי מה שכתוב במסמך.
 
    אורך השם אינו קריטריון כאן, בניגוד ל-findPlaces: «צפת» ו«עכו» חד-משמעיים,
-   ומי שמאשרת אותם במסך הזה יודעת על מה היא מסתכלת. */
+   ומי שמאשרת אותם במסך הזה יודעת על מה היא מסתכלת.
+
+   ומאותה סיבה יישוב מ-TOWNWORD שמופיע ולו פעם אחת בלי הקשר של מקום אינו מוצע כאן: הכלל הגורף היה מחליף
+   גם את «נקודת מבט רעננה» שבמסמך שבו גם «גרה ברעננה» (הציד של 11.10). */
+function townWords(n,all){
+  const out=new Set();
+  for(const x of all) if(TOWNWORD.has(x.name)&&!placeCtx(n,x,all)) out.add(x.name);
+  return out;
+}
 function geoNames(text){
-  const n=norm(String(text||"")), out=[], seen=new Set();
-  PLACE_RX.lastIndex=0; let m;
-  while((m=PLACE_RX.exec(n))){
-    const nm=m[1];
-    if(seen.has(nm)||AMBIG.has(nm))continue;
+  const n=norm(String(text||"")), out=[], seen=new Set(), all=placeScan(n), word=townWords(n,all);
+  for(const x of all){
+    const nm=x.name;
+    if(!x.mappable||seen.has(nm)||AMBIG.has(nm)||word.has(nm))continue;
     seen.add(nm); out.push(nm);
   }
   return out;
@@ -699,21 +799,14 @@ function geoNames(text){
    בזמן שהזיהוי דווקא מצא אותם. היא ראתה מקומות בכלי, ומסך מקומות ריק.
 
    כאן מוחזר הכול, עם שתי תכונות שהמסך צריך כדי להחליט מה להציע: האם היישוב
-   ניתן למיפוי (יש לו קואורדינטות), והאם שמו גם מילה עברית רגילה. */
+   ניתן למיפוי (יש לו קואורדינטות), והאם שמו גם מילה עברית רגילה — כולל יישוב
+   מ-TOWNWORD שמופיע בלי הקשר של מקום. הסריקה היא של findPlaces (placeScan), ולכן
+   השם הוא השם שברשימה בכל כתיב, ושם ארוך אינו מוצע גם כחלק שלו. */
 function placesFound(text){
-  const n=norm(String(text||"")), out=[], seen=new Set();
-  const add=(nm,mappable)=>{
-    if(!nm||seen.has(nm))return;
-    seen.add(nm); out.push({name:nm, mappable, ambiguous:AMBIG.has(nm)});
-  };
-  let m;
-  PLACE_RX.lastIndex=0;
-  while((m=PLACE_RX.exec(n))) add(m[1], true);
-  if(typeof GAZ_RX!=="undefined"){
-    GAZ_RX.lastIndex=0;
-    // מהמאגר רק שמות בני שתי מילים ומעלה, אותה החלטה שב-findPlaces: הזנב הארוך
-    // של שמות בני מילה אחת הוא ברובו מילים רגילות
-    while((m=GAZ_RX.exec(n))) if(m[1] && m[1].includes(" ")) add(m[1], false);
+  const n=norm(String(text||"")), out=[], seen=new Set(), all=placeScan(n), word=townWords(n,all);
+  for(const x of all){
+    const nm=x.name; if(seen.has(nm))continue;
+    seen.add(nm); out.push({name:nm, mappable:x.mappable, ambiguous:AMBIG.has(nm)||word.has(nm)});
   }
   return out;
 }
@@ -739,6 +832,8 @@ function geoMap(names,variant,avoid,forbidden){
   const offs=orig.map(p=>({x:(p.o-cO)*cosC,y:p.a-cA}));
   const block=new Set(names);
   for(const n of avoid||[]) block.add(n);
+  // יישוב שהוא גם מילה אינו תחליף: «ערערה» בתשובת ה-AI ("המבקשת ערערה") חזר ליישוב האמיתי (הציד של 11.10)
+  for(const n of TOWNWORD.keys()) block.add(n);
   if(forbidden&&forbidden.size) for(const p of PLACES){
     if(block.has(p.n))continue;
     for(const w of norm(p.n).split(/\s+/)){

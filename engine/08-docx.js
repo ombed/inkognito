@@ -288,6 +288,9 @@ async function redactDocx(buf,subs,allow,opt){
   const sweep={};
   for(const r of applied){
     const v=norm(r.value).trim(), rp=r.baseRep||r.rep;
+    // יישוב שהוא גם מילה הוחלף רק במופע שיש בו הקשר של מקום; במופע אחר זו המילה ("גרה ברעננה" ו"נקודת
+    // מבט רעננה", הציד של 11.10). findPlaces כבר שקל כל מופע, והמעבר לא דורס את השאלה שהוא שאל
+    if(r.label==="יישוב"&&r.src==="pattern"&&TOWNWORD.has(norm(r.base||r.value).trim()))continue;
     // אם התחליף מכיל את הערך ("דוד" → "דוד א׳"), סריקה חוזרת
     // תתפוס את התחליף עצמו ותכפיל אותו.
     if(v.length>=4&&!(v in sweep)&&rp&&!norm(rp).includes(v))sweep[v]={rep:rp,of:null};
@@ -591,7 +594,8 @@ function ctxHTML(t,s,e,w=55){
 function examplesOf(blocks,value,max=3){
   const v=norm(String(value||"")).trim();
   if(v.length<2)return [];
-  const rx=new RegExp(NW+"(?:[בהולמכש]|ו[בהלמכ]|כש|מה|לכ)?"+flex(v)+NWE,"gu");
+  // flex מקבל את הערך כפי שהוקלד: אחרי norm המקף העברי שבו כבר אינו מקף
+  const rx=new RegExp(NW+"(?:[בהולמכש]|ו[בהלמכ]|כש|מה|לכ)?"+flex(String(value).trim())+NWE,"gu");
   const out=[];
   for(const b of blocks||[]){
     const t=b&&typeof b.text==="string"?b.text:typeof b==="string"?b:"";

@@ -248,6 +248,8 @@ class Engine{
       }}
     for(const h of findPatterns(text,this.opt.on,this.opt.flag)){
       if(this.blocked(h.s,h.e,zones))continue;
+      // "אל תחליפו" על יישוב חל על כל כתיב שלו: «נהרייה» הוא «נהריה» (PLACE_ALT, הציד של 11.10)
+      if(h.place&&(this.allowN||[]).includes(norm(h.place).trim()))continue;
       // גיל אינו מזהה, וההבטחה הייתה "הכול חוץ מגילאים": "בת 9", "בן 12", "גיל 7",
       // "3 שנים" — מספר בהקשר של גיל נשאר גם כשמספרים מושמטים. צר ומבוסס הקשר בלבד.
       if(this.blocked(h.s,h.e,AGE))continue;
