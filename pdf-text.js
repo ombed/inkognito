@@ -26,6 +26,22 @@ export async function pdfToText(buf){
       const key = best===null?y:best;
       (rows.get(key) || rows.set(key,[]).get(key)).push(it);
     }
+    /* טקסט שאינו בתוכן העמוד (הציד של 11.10): טופס שמולא שומר את הערכים בשדות, ו«מילוי וחתימה» של Acrobat כותב
+       בתיבות טקסט. רק התוויות נקראו: טופס קצר נראה סרוק, וטופס ארוך נטען בלי הערכים, בלי שום הודעה. כל ערך
+       נכנס לשורה שבגובה השדה שלו, ליד התווית שלו */
+    let ann=[]; try{ ann=await page.getAnnotations(); }catch(_){}
+    for(const a of ann){
+      if(!a||a.hidden||!Array.isArray(a.rect)) continue;
+      let v=null;
+      if(a.subtype==="Widget"&&a.fieldType!=="Btn") v=Array.isArray(a.fieldValue)?a.fieldValue.join(" "):a.fieldValue;
+      else if(a.subtype==="FreeText") v=(a.contentsObj&&a.contentsObj.str)||(Array.isArray(a.textContent)?a.textContent.join(" "):"");
+      if(typeof v!=="string"||!v.trim()) continue;
+      const [x1,y1,x2,y2]=a.rect, yc=(y1+y2)/2, half=Math.abs(y2-y1)/2+2;
+      let key=null;
+      for(const k of rows.keys()) if(Math.abs(k-yc)<=half){key=k;break}
+      if(key===null){ key=Math.round(yc); rows.set(key,[]); }
+      rows.get(key).push({str:v.replace(/\s+/g," ").trim(), transform:[12,0,0,12,Math.min(x1,x2),key], width:Math.abs(x2-x1)});
+    }
     const lines=[];
     [...rows.entries()].sort((a,b)=>b[0]-a[0]).forEach(([y,items])=>{
       /* שורה עברית נקראת מימין לשמאל, ולכן הפריט הראשון שלה הוא הימני ביותר. מיון עולה לפי x
@@ -35,7 +51,19 @@ export async function pdfToText(buf){
       // שורה בלי אותיות בכלל (מספרים בלבד) הולכת אחרי הכיוון של העמוד
       const he=count(items,/[א-ת]/g), la=count(items,/[A-Za-z]/g), rtl=he+la?he>=la:pageRtl;
       items.sort((a,b)=>rtl?b.transform[4]-a.transform[4]:a.transform[4]-b.transform[4]);
-      const line=items.map(i=>i.str).join("").replace(/\s+/g," ").trim();
+      /* פריטים סמוכים שביניהם רווח בעמוד ולא בטקסט (הציד של 11.10): קטעי שורה עברית שנכתבו כל אחד לבד מימין לשמאל —
+         מילה מודגשת באמצע שורה — יצאו דבוקים, «המבקשתרחל פרידמןהגישה», ושם שברשימה לא נמצא. pdf.js מוסיף רווח רק
+         כשהכתיבה מתקדמת ימינה. מרווח של יותר מ-0.15 מגודל הגופן, בלי רווח באף צד, הוא רווח; פריטים צמודים נשארים מילה */
+      let line="";
+      items.forEach((it,k)=>{
+        if(k){
+          const p=items[k-1], t=it.transform, fs=Math.hypot(t[2],t[3])||Math.abs(t[0])||10;
+          const gap=rtl?p.transform[4]-(t[4]+(it.width||0)):t[4]-(p.transform[4]+(p.width||0));
+          if(gap>0.15*fs&&!/\s$/.test(line)&&!/^\s/.test(it.str)) line+=" ";
+        }
+        line+=it.str;
+      });
+      line=line.replace(/\s+/g," ").trim();
       if(line) lines.push({y, line, rtl, x0:Math.min(...items.map(i=>i.transform[4])), x1:Math.max(...items.map(i=>i.transform[4]+(i.width||0)))});
     });
     /* שורה שנשברה באמצע פסקה היא לא פסקה חדשה (הציד של 11.10): כל שורה חזותית נעשתה פסקה, והזיהוי רץ

@@ -88,7 +88,7 @@ test("UX #12: the work screen shows one step model, and the places button says w
   await expect(H.goButton(page)).toBeVisible({ timeout: 10000 });
   await H.goOn(page);
   await expect(page.getByRole("button", { name: "המשך לבדיקה" })).toBeVisible({ timeout: 15000 });
-  await page.getByRole("button", { name: "המשך לבדיקה" }).click();
+  await H.throughPlaces(page, page.getByRole("button", { name: "המשך לבדיקה" }));
   await expect(page.locator("[data-bar]")).toBeVisible({ timeout: 20000 });
   await expect(page.locator("header nav")).toHaveCount(0);
   await expect(page.locator("[data-steps]")).toContainText("2 העתקה או הורדה");
