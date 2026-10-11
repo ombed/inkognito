@@ -1,10 +1,11 @@
 /* ══════════════════════════ מנוע ══════════════════════════ */
-function findPatterns(text,on,flag){
+// more: שמות שתווית בפסקה או בתא שלידו מעידה עליהם (labelNext), כבר במיקומים של הטקסט הזה
+function findPatterns(text,on,flag,more){
   const n=norm(text),hits=[];
   if(on.has("NAME_ANCHORED")||flag.has("NAME_ANCHORED"))
     // העוגן הפרוזאי (rolep) מזין רק את ההצעות ב-discover, לא את ההשחרה: ניחוש
     // שגוי שם עולה הקשה אחת; כאן הוא היה דוחק החלפה אמיתית מאותם תווים.
-    for(const h of anchored(text)){if(h.anchor==="rolep")continue;h.apply=on.has("NAME_ANCHORED");hits.push(h)}
+    for(const h of anchored(text).concat(more||[])){if(h.anchor==="rolep")continue;h.apply=on.has("NAME_ANCHORED");hits.push(h)}
   if(on.has("PLACES")||flag.has("PLACES"))
     for(const h of findPlaces(text)){
       if(!on.has("PLACES"))h.apply=false;
@@ -287,16 +288,20 @@ class Engine{
   }
   blocked(s,e,zones){return zones.some(([a,b])=>a<=s&&e<=b)}
   // תווים בלתי נראים (squeeze): הזיהוי רץ על מה שהקורא רואה, והמיקומים חוזרים לטקסט המקורי. ההחלפה מכסה את
-  // התווים שבתוך הערך; סימני כיוון שלפניו ואחריו נשארים מחוצה לה, כדי שזוגות הבידוד יישארו שלמים
-  // addr: הטקסט הוא כתובת מפוענחת. שם בה מחובר ב-_ או ב-+ ("דנה_שגיא.pdf", "?q=דנה+שגיא"), ורק כללי הכתובת רצים
-  detect(text,addr){
+  // התווים שבתוך הערך; סימני כיוון שלפניו ואחריו נשארים מחוצה לה, כדי שזוגות הבידוד יישארו שלמים.
+  // addr: הטקסט הוא כתובת מפוענחת. שם בה מחובר ב-_ או ב-+ ("דנה_שגיא.pdf", "?q=דנה+שגיא"), ורק כללי הכתובת רצים.
+  // more: שמות שתווית בשכן מעידה עליהם (labelNext), במיקומים של הטקסט המקורי; עוברים לטקסט שהקורא רואה
+  detect(text,addr,more){
     const q=squeeze(text);
-    if(!q) return this.detectSeen(text,addr);
-    const hits=this.detectSeen(q.t,addr);
+    if(!q) return this.detectSeen(text,addr,more&&more.map(h=>({...h})));
+    // כמה תווים נראים יש לפני המקום x בטקסט המקורי: זה המקום שלו בטקסט שבלי התווים
+    const seen=x=>{let lo=0,hi=q.pos.length; while(lo<hi){const m=(lo+hi)>>1; if(q.pos[m]<x)lo=m+1; else hi=m} return lo};
+    const m2=(more||[]).map(h=>{const s=seen(h.s),e=seen(h.e); return {...h,s,e,text:q.t.slice(s,e)}}).filter(h=>h.e>h.s);
+    const hits=this.detectSeen(q.t,addr,m2);
     for(const h of hits){ h.s=q.pos[h.s]; h.e=q.pos[h.e-1]+1; h.text=text.slice(h.s,h.e); }
     return hits;
   }
-  detectSeen(text,addr){
+  detectSeen(text,addr,more){
     const n=norm(text),zones=[];
     const AGE=ageZones(n);
     // רשימת ההיתר תופסת גם צורות עם אות שימוש, ו-ש היא אות שימוש: "אל תחליפו" על
@@ -340,7 +345,7 @@ class Engine{
           review:!!r.pre,conf:"high"});
       }}
     const on=addr?(this._addrOn||(this._addrOn=new Set([...this.opt.on].filter(k=>ADDR_PAT.has(k))))):this.opt.on;
-    for(const h of findPatterns(text,on,addr?new Set():this.opt.flag)){
+    for(const h of findPatterns(text,on,addr?new Set():this.opt.flag,addr?null:more)){
       if(this.blocked(h.s,h.e,zones))continue;
       // בכתובת, הקישור האישי שהוא הכתובת עצמה כבר נשפט לפי השרת שלה, והוא היה מסתיר את מה שבתוכה
       if(addr&&/^URL_/.test(h.type)&&/^[\s("'<[]*$/.test(text.slice(0,h.s)))continue;

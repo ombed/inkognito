@@ -6,10 +6,10 @@
 
 | category | found | missed | leaked | false positives |
 |---|---|---|---|---|
-| person: Arabic name | 6 | 4 | 4 | 0 |
+| person: Arabic name | 8 | 2 | 2 | 0 |
 | person: name that is also a common word (lexicon-aided) | 6 | 1 | 1 | 0 |
 | person: title attached | 7 | 1 | 1 | 0 |
-| person: same person, one clean and one corrupted spelling | 9 | 3 | 10 | 0 |
+| person: same person, one clean and one corrupted spelling | 9 | 3 | 9 | 0 |
 | person: name split across two runs mid-word | 2 | 1 | 1 | 0 |
 | org: private body, must be redacted | 8 | 2 | 3 | 0 |
 | place: town (lexicon-aided) | 11 | 2 | 2 | 0 |
@@ -18,24 +18,24 @@
 | trap: idiom or public title beside a same-word name | – | – | – | 1 |
 | person: full name, surname alone, first name alone | 9 | 0 | 3 | 0 |
 | person: only in prose, never before a speech verb | 7 | 0 | 0 | 0 |
-| person: Ethiopian name | 5 | 3 | 3 | 0 |
+| person: Ethiopian name | 6 | 2 | 2 | 0 |
 | person: role word directly before, no colon | 6 | 0 | 0 | 0 |
 | org: body whose name reads like a person's | 3 | 0 | 0 | 0 |
 | place: neighbourhood | 4 | 2 | 2 | 0 |
 | person: two people sharing a surname | 10 | 0 | 4 | 0 |
-| person: Russian name | 6 | 2 | 2 | 0 |
+| person: Russian name | 7 | 1 | 1 | 0 |
 | person: nikud on one occurrence | 0 | 3 | 3 | 0 |
 | person: once, only with a prefix letter (expected to fail) | 0 | 3 | 3 | 0 |
 | person: name that reads like a body's | 0 | 3 | 3 | 0 |
 | org: public body, must not be redacted | – | – | – | 0 |
 | person: two people edit-distance 1 apart (must not merge) | 2 | 4 | 4 | 0 |
 | person: only in corrupted form, never cleanly (expected to fail) | 2 | 2 | 2 | 0 |
-| person: hyphenated surname, elsewhere with a space | 2 | 3 | 3 | 0 |
+| person: hyphenated surname, elsewhere with a space | 3 | 2 | 2 | 0 |
 | person: minor, first name only | 1 | 9 | 9 | 0 |
 | place: street | 8 | 0 | 0 | 0 |
 | trap: פלוני / פלונית | – | – | – | 0 |
 | pii: court or registry case number (deleted by default) | 4 | 0 | 0 | 0 |
-| person: two-letter surname | 0 | 5 | 5 | 0 |
+| person: two-letter surname | 1 | 4 | 4 | 0 |
 | person: minor introduced by הקטין / הקטינה | 6 | 1 | 1 | 0 |
 | pii: ID number | 10 | 0 | 0 | 0 |
 | pii: mobile phone | 10 | 0 | 0 | 0 |
@@ -69,8 +69,8 @@
 | welfare | 22 | 5 | 7 | 0 |
 | medical | 15 | 4 | 4 | 0 |
 | police | 22 | 3 | 3 | 0 |
-| bank | 16 | 2 | 2 | 0 |
-| chat | 16 | 7 | 8 | 0 |
+| bank | 17 | 1 | 1 | 0 |
+| chat | 21 | 2 | 2 | 0 |
 | position | 12 | 1 | 2 | 2 |
 | audio | 17 | 3 | 8 | 0 |
 | interview | 8 | 3 | 3 | 0 |
@@ -141,16 +141,9 @@ Counted, not optimised for: the list is read, accept-all is not how the tool is 
 - p1 · person: same person, one clean and one corrupted spelling · ארטיום מורוזוב: missed, **leaked**: ארטיום מורוזוב, מורוזב
 - p2 · place: town · גבעת עדה: missed, **leaked**: גבעת עדה
 - p3 · person: two-letter surname · עלמה כץ: missed, **leaked**: עלמה כץ, כץ
-- b2 · person: Arabic name · טהא עודה: missed, **leaked**: טהא עודה, עודה
 - b2 · org: private body, must be redacted · חברת קו הזהב הובלות: missed, **leaked**: חברת קו הזהב הובלות, קו הזהב
-- c1 · person: two-letter surname · מיקי צח: missed, **leaked**: מיקי צח, צח
 - c1 · person: minor, first name only · טרקה: missed, **leaked**: טרקה
 - c1 · place: town · נופית: missed, **leaked**: נופית
-- c2 · person: Arabic name · מייסא סרחאן: missed, **leaked**: מייסא סרחאן, סרחאן
-- c2 · person: hyphenated surname, elsewhere with a space · ליעד בן-עמיאל: missed, **leaked**: ליעד בן-עמיאל, בן עמיאל
-- c3 · person: Ethiopian name · ברהאנה וורקנה: missed, **leaked**: ברהאנה וורקנה, וורקנה
-- c4 · person: Russian name · פולינה סמירנובה: missed, **leaked**: פולינה סמירנובה, סמירנובה
-- c4 · person: same person, one clean and one corrupted spelling · קסאי אלמו: found via suggest+applied as «עלמו», **leaked**: קסאי אלמו
 - x1 · person: minor introduced by הקטין / הקטינה · אביתר: missed, **leaked**: אביתר, האח אביתר
 - x3 · person: name right after a discourse word (כאמור, משכך, לדבריה) · יונס: found via discover+applied as «יונס פעמיים», **leaked**: יונס
 - a1 · person: same person, one clean and one corrupted spelling · בוסקילה: missed, **leaked**: בוסקילה, בושקילה
@@ -178,46 +171,46 @@ Counted, not optimised for: the list is read, accept-all is not how the tool is 
 
 | doc | genre | ms | rules confirmed | unlisted |
 |---|---|---|---|---|
-| m1 | meeting | 94 | 4 | 1 |
-| m2 | meeting | 33 | 6 | 0 |
-| m3 | meeting | 29 | 3 | 0 |
-| m4 | meeting | 25 | 3 | 1 |
-| f1 | filing | 51 | 10 | 1 |
-| f2 | filing | 64 | 12 | 1 |
-| f3 | filing | 27 | 5 | 0 |
-| f4 | filing | 37 | 8 | 3 |
-| t1 | transcript | 31 | 6 | 0 |
-| t2 | transcript | 23 | 5 | 1 |
-| t3 | transcript | 27 | 6 | 1 |
-| t4 | transcript | 31 | 8 | 1 |
-| w1 | welfare | 12 | 1 | 0 |
-| w2 | welfare | 27 | 3 | 0 |
-| w3 | welfare | 24 | 2 | 0 |
-| w4 | welfare | 35 | 4 | 1 |
-| h1 | medical | 27 | 6 | 2 |
-| h2 | medical | 21 | 2 | 0 |
-| h3 | medical | 21 | 4 | 3 |
-| p1 | police | 23 | 2 | 1 |
-| p2 | police | 16 | 3 | 1 |
-| p3 | police | 13 | 1 | 0 |
-| p4 | police | 25 | 4 | 0 |
-| b1 | bank | 22 | 4 | 2 |
-| b2 | bank | 10 | 0 | 0 |
-| b3 | bank | 12 | 1 | 0 |
-| c1 | chat | 13 | 1 | 0 |
-| c2 | chat | 14 | 2 | 1 |
-| c3 | chat | 12 | 1 | 0 |
-| c4 | chat | 14 | 2 | 0 |
-| x1 | position | 32 | 5 | 1 |
-| x2 | position | 23 | 4 | 0 |
-| x3 | position | 22 | 4 | 0 |
-| a1 | audio | 14 | 3 | 0 |
-| a2 | audio | 22 | 5 | 0 |
-| a3 | audio | 28 | 7 | 1 |
-| a4 | audio | 24 | 4 | 0 |
-| v1 | interview | 28 | 2 | 0 |
-| v2 | interview | 22 | 3 | 0 |
-| v3 | interview | 13 | 2 | 0 |
-| s1 | structure | 33 | 4 | 2 |
-| s2 | structure | 25 | 4 | 2 |
-| s3 | structure | 24 | 4 | 2 |
+| m1 | meeting | 223 | 4 | 1 |
+| m2 | meeting | 57 | 6 | 0 |
+| m3 | meeting | 32 | 3 | 0 |
+| m4 | meeting | 40 | 3 | 1 |
+| f1 | filing | 74 | 10 | 1 |
+| f2 | filing | 79 | 12 | 1 |
+| f3 | filing | 37 | 5 | 0 |
+| f4 | filing | 40 | 8 | 3 |
+| t1 | transcript | 45 | 6 | 0 |
+| t2 | transcript | 38 | 5 | 1 |
+| t3 | transcript | 45 | 6 | 1 |
+| t4 | transcript | 61 | 8 | 1 |
+| w1 | welfare | 32 | 1 | 0 |
+| w2 | welfare | 37 | 3 | 0 |
+| w3 | welfare | 31 | 2 | 0 |
+| w4 | welfare | 34 | 4 | 1 |
+| h1 | medical | 47 | 6 | 2 |
+| h2 | medical | 29 | 2 | 0 |
+| h3 | medical | 38 | 4 | 3 |
+| p1 | police | 32 | 2 | 1 |
+| p2 | police | 44 | 3 | 1 |
+| p3 | police | 30 | 1 | 0 |
+| p4 | police | 42 | 4 | 0 |
+| b1 | bank | 40 | 4 | 2 |
+| b2 | bank | 24 | 1 | 0 |
+| b3 | bank | 16 | 1 | 0 |
+| c1 | chat | 21 | 2 | 0 |
+| c2 | chat | 36 | 4 | 1 |
+| c3 | chat | 29 | 2 | 0 |
+| c4 | chat | 56 | 4 | 0 |
+| x1 | position | 46 | 5 | 1 |
+| x2 | position | 33 | 4 | 0 |
+| x3 | position | 39 | 4 | 0 |
+| a1 | audio | 24 | 3 | 0 |
+| a2 | audio | 36 | 5 | 0 |
+| a3 | audio | 47 | 7 | 1 |
+| a4 | audio | 54 | 4 | 0 |
+| v1 | interview | 41 | 2 | 0 |
+| v2 | interview | 52 | 3 | 0 |
+| v3 | interview | 19 | 2 | 0 |
+| s1 | structure | 49 | 4 | 2 |
+| s2 | structure | 30 | 4 | 2 |
+| s3 | structure | 41 | 4 | 2 |
