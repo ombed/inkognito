@@ -193,6 +193,15 @@ for (const how of ["pasted text", "a file"]) {
     await expect(out).toContainText(`גרה ב${town}.`);
     await expect(out).not.toContainText("רחל פרידמן");
     await expect(out).not.toContainText("חיפה");
+    // and they are marked as left over, not passed: the screen said «לא נמצא בתשובה פרט בדוי שלא הוחזר.» while the last
+    // document's invented names were still in the answer (the hunt of 11.10, ux.md)
+    await expect(page.locator("[data-rv-left]")).toContainText(r);
+    await expect(page.locator("[data-rv-left]")).toContainText(town);
+    await expect(page.locator("[data-rv-left-none]")).toHaveCount(0);
+    // an answer with only the last document's names still says it may belong to another document
+    await restore(page, `${r} גרה ב${town}.`);
+    await expect(page.getByRole("alert")).toContainText("ייתכן שהתשובה שייכת למסמך או לתיק אחר");
+    await expect(page.locator("[data-rv-left]")).toContainText(r);
   });
 }
 
