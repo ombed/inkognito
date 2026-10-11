@@ -5309,7 +5309,9 @@ function lev(a,b){
   return d[a.length][b.length]}
 // זוגות [שם אמיתי, כינוי]. מחזיר טקסט, כמה הוחזרו, ומה לא נמצא —
 // כינוי שלא נמצא הוא לא בהכרח תקלה, אבל כדאי לדעת עליו.
-function restoreNames(txt,pairs){
+/* earlier: שמות בדויים של מסמכים קודמים בסשן הזה, בלי האמיתיים שלהם (המסך שומר אותם בזיכרון בלבד). מה שמהם נמצא
+   בתשובה נרשם כמה שנשאר, כדי שהמסך לא יאמר שלא נשאר בה פרט בדוי (הציד של 11.10) */
+function restoreNames(txt,pairs,earlier){
   // כל צורה של כל אדם (restoreForms). "מה לא נמצא" נשאר של הזוגות עצמם
   const own=new Set(pairs.map(p=>p[1])); pairs=restoreForms(pairs);
   const seen=new Map(), conflict=new Set();
@@ -5436,7 +5438,7 @@ function restoreNames(txt,pairs){
   }
   let out="",at=0;
   for(const [s,e,t] of took.sort((a,b)=>a[0]-b[0])){out+=txt.slice(at,s)+t;at=e}
-  const left=leftOver(txt,took,{conflict,held,bad,reals,seen,partial,toks,dates:lone,wordOne,toksOnly});
+  const left=leftOver(txt,took,{conflict,held,bad,reals,seen,partial,toks,dates:lone,wordOne,toksOnly,earlier});
   return {text:out+txt.slice(at),count:n,missing,conflict:[...conflict],left};
 }
 /* מה שנשאר בתשובה מהפרטים הבדויים שהכלי נתן ולא הוחזר, כדי שמסך ההחזרה יסמן אותו ויאמר מה לתקן ביד
@@ -5449,7 +5451,7 @@ function restoreNames(txt,pairs){
    ותאריך בדוי שנשאר (הציד של 11.10): בלי השנה שיצאה איתו ("4 ביולי" של "4.7.2027"), עם שנה שה-AI הוסיף ליום וחודש,
    או כסוף של טווח ("4-5.7.2027"). הוא אינו מוחזר, כי אין ודאות שזה הוא; עד כאן גם לא נאמר, והמסך כתב שלא נשאר דבר.
    tests/dateforms_t.js */
-function leftOver(txt,took,{conflict,held,bad,reals,seen,partial,toks,dates,wordOne,toksOnly}){
+function leftOver(txt,took,{conflict,held,bad,reals,seen,partial,toks,dates,wordOne,toksOnly,earlier}){
   const marked=[], left=[];
   const hit=(s,e)=>took.some(t=>t[0]<e&&s<t[1])||marked.some(t=>t[0]<e&&s<t[1]);
   const add=(fake,real,s,e,from)=>{
@@ -5473,6 +5475,8 @@ function leftOver(txt,took,{conflict,held,bad,reals,seen,partial,toks,dates,word
   for(const [p,r] of wordOne||[])each(p,r);
   // חלק שהוא מילה רק בתשובה הזאת ("המזרחי"): במקום שבו הוא עומד לבד, בלי אות שימוש
   for(const [k,v] of toksOnly||[])each(k,v,"");
+  // שם בדוי של מסמך קודם בסשן (restoreNames, earlier): האמיתי אינו נשמר, והוא מסומן כמו שהוא
+  for(const p of earlier||[])if(p&&!seen.has(p)&&p!=="███"){each(p,null);const it=left.find(x=>x.fake===p);if(it)it.earlier=true}
   // חלק קצר (שתיים-שלוש אותיות) חוזר רק אחרי תואר או עם חלק מאותיות השימוש: במקום שלא חזר הוא נשאר
   const short=[...partial.keys()].filter(k=>norm(k).replace(/[^א-ת]/g,"").length<4);
   for(const k of [...bad,...short]){

@@ -58,5 +58,13 @@ console.log("\n— what is listed as left over —");
   ok(r2.left.some((l) => l.fake === "מזרחי" && l.at.length === 1), "a bare part the answer also uses as a word is listed where it stands bare — left «" + leftOf(r2) + "»");
 }
 
+console.log("\n— invented names of an earlier document in this session (ux.md, the answer covers two documents) —");
+{
+  const r = C.restoreNames("סרגיי אלבז לא הגיע, ונועה ברק דיברה.", [["דנה לוי", "נועה ברק"]], ["סרגיי אלבז", "נועה ברק"]);
+  eq(r.text, "סרגיי אלבז לא הגיע, ודנה לוי דיברה.", "this document's name comes back, the earlier one does not");
+  ok(r.left.some((l) => l.fake === "סרגיי אלבז" && l.real === null && l.earlier) && !r.left.some((l) => l.fake === "נועה ברק"),
+    "the earlier one is listed as left over, without a real name — left «" + leftOf(r) + "»");
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exitCode = fail ? 1 : 0;

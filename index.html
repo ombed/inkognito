@@ -1779,6 +1779,13 @@ class Component extends DCLogic {
       if(typeof this.docEnd==="function") this.docEnd("new-doc");
       this.log.add("new-doc",{});
     }
+    /* השמות הבדויים של המסמך שנגמר — רק הם, בלי האמיתיים, ובזיכרון בלבד — כדי שמסך ההחזרה יסמן אותם בתשובה שמכסה גם
+       אותו, ולא יאמר «לא נמצא בתשובה פרט בדוי שלא הוחזר» כשהם בה (הציד של 11.10). השמות האמיתיים שלהם אינם נשמרים */
+    if(S.res&&!S.tour){
+      const keep=this._earlierFakes||(this._earlierFakes=new Set());
+      for(const [v,f] of Object.entries(this.currentMap())) if(f&&f!=="███"&&f!==v) keep.add(f);
+      for(const [v,arr] of Object.entries(this.sentAll())) for(const f of arr||[]) if(f&&f!==v) keep.add(f);
+    }
     this._undo=[]; this._redo=[]; this._modelFound=null; this._lastScan=null; this._scannedBuf=null;
     // סריקה של המסמך הקודם שעוד רצה ברקע (אחרי «לא לחכות למודל») נגמרת איתו: התשובה שלה נכתבה לכללים של הבא
     this._scan=(this._scan||0)+1; this._goneAhead=null; this._caseSaved=null;
@@ -3644,13 +3651,16 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     const pairs=Object.entries(map).map(([real,fake])=>[surface(real),fake]);
     // כינויים שיצאו קודם ושונו מאז חוזרים גם הם לאדם שלהם (H1); כינוי שכבר במפה לא נכפל
     for(const [real,arr] of Object.entries(rvP?(rvP.sent||{}):this.sentAll())) for(const fake of arr) if(!pairs.some(p=>p[1]===fake)) pairs.push([surface(real),fake]);
-    const r=E.restoreNames(S.rvIn, pairs);
+    // שמות בדויים של מסמכים קודמים בסשן (docReset), שאינם של המפה הזו: מסומנים כמה שנשאר, לא מוחזרים
+    const mine=new Set(pairs.map(p=>p[1])), earlier=[...(this._earlierFakes||[])].filter(f=>!mine.has(f));
+    const r=E.restoreNames(S.rvIn, pairs, earlier);
     // ההחזרה בסיור היא של המסמך לדוגמה: ביומן נרשם הסיור עצמו
     if(!S.tour) this.log.add("restore",{count:r.count, left:(r.left||[]).length});
     // כינוי שמשותף ליותר מאדם אחד אינו "לא נמצא" — הוא נמצא ולא הוחזר, וזה מה שנאמר (M3)
     const conflictMsg=(r.conflict&&r.conflict.length)?`«${r.conflict.join("», «")}» ${r.conflict.length===1?"הוא שם בדוי":"הם שמות בדויים"} של יותר מאדם אחד במסמך הזה, ולכן לא הוחזר${r.conflict.length===1?"":"ו"}; אפשר לתקן את זה בכרטיס של אחד מהם.`:"";
     // "לא נמצא אף שם בדוי" רק כשבאמת לא נמצא: כינוי שנשאר בתשובה נמצא, והרשימה שלו אומרת מה נשאר
-    const none=!r.count&&!(r.left||[]).length;
+    // שם בדוי של מסמך קודם (earlier) אינו מהרשימה הזו: תשובה שיש בה רק כאלה היא של מסמך אחר, וזה מה שנאמר, לצד הרשימה שלהם
+    const none=!r.count&&!(r.left||[]).some(x=>!x.earlier);
     this.setState({rvOut:r.text, rvCount:r.count, rvLeft:r.left||[], err: conflictMsg||(none?"לא נמצא בתשובה אף שם בדוי מהרשימה. ייתכן שהתשובה שייכת למסמך או לתיק אחר.":"")},
       ()=>{ const el=document.querySelector("[data-rv-result]"); if(el&&el.scrollIntoView) el.scrollIntoView({block:"start", behavior:(window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches)?"auto":"smooth"});
         // בצעד ההחזרה של הסיור, ההחזרה עצמה מעבירה לצעד הבא, בכפתור שבמסך כמו בכפתור הכרטיס
@@ -3660,6 +3670,8 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
   // שורה ברשימת מה שנשאר בתשובה: «בדוי» במקום «אמיתי», וכמה פעמים כשיותר מפעם אחת; כינוי של יותר מאדם אחד — בלי אמיתי
   leftLine(x){
     const n=x.at.length;
+    // שם בדוי של מסמך קודם בסשן: האמיתי אינו ידוע כאן, והשם מסומן כמו שהוא
+    if(x.earlier) return `«${x.fake}»`+(n>1?` · ${n} פעמים`:"");
     return x.real==null?`«${x.fake}» · שייך ליותר מאדם אחד`:`«${x.fake}» במקום «${x.real}»`+(n>1?` · ${n} פעמים`:"");
   }
   // התשובה שחזרה, בקטעים: מה שנשאר בה מהפרטים הבדויים מסומן, והשורה שלו מהרשימה היא התיאור שלו
