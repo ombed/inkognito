@@ -2191,9 +2191,55 @@ function partRX(k,title){
   const pre=n>=4?PRE_SEQ.filter(x=>!x.endsWith("ה")):["וכש","וש","כש","ו","ש"];
   return new RegExp("(?<!["+L+"])((?:"+pre.join("|")+")[-\u05be]?)?"+pat+"(?!["+L+"])","gu");
 }
+/* צורות של כינוי שה-AI כותב אחרת (הציד של 11.10): "סרגי לוי" במקום "סרגיי לוי", "חווה" במקום "חוה", "סווטלנה" במקום
+   "סבטלנה", "איל" במקום "אייל", "וולדימיר" במקום "ולדימיר", גרש בסוף ("ברקוביץ'"), באנגלית ("Sergei Levi") וראשי תיבות
+   ("ס. לוי", "סרגיי ל."). עד כאן חזר רק שם המשפחה, ליד השם הפרטי הבדוי: "סרגי אלמגור", אדם שאינו קיים, תחת "הוחזרו".
+   כל צורה היא שם שלם, שתי המילים, כדי שמילה רגילה ("שיירה") לא תחזור לבדה כאדם; צורה שהיא מילה או שם מוכר אחר אינה
+   נוצרת */
+
+function wordForms(w){
+  const out=new Set(), add=v=>{if(v!==w&&v.length>=2)out.add(v)};
+  // יוד או וו כפולות ↔ אחת, ואחת ↔ כפולה (לא האות הראשונה)
+  add(w.replace(/יי/,"י")); add(w.replace(/(?<=.)וו/,"ו"));
+  for(let i=1;i<w.length;i++)if((w[i]==="י"||w[i]==="ו")&&w[i-1]!==w[i]&&w[i+1]!==w[i])add(w.slice(0,i+1)+w[i]+w.slice(i+1));
+  // ב ↔ וו באמצע שם (סבטלנה/סווטלנה), ו ↔ וו בראשו (ולדימיר/וולדימיר)
+  for(let i=1;i<w.length-1;i++)if(w[i]==="ב")add(w.slice(0,i)+"וו"+w.slice(i+1));
+  add(w.replace(/(?<=.)וו(?=.)/,"ב")); if(/^ו[^ו]/.test(w))add("ו"+w); if(/^וו/.test(w))add(w.slice(1));
+  // גרש בסוף שם משפחה לועזי
+  if(/[ץצגזש]$/.test(w))add(w+"'"); if(/'$/.test(w))add(w.slice(0,-1));
+  /* הכללים רק מכפילים, מחסירים או מחליפים אות שכבר בשם: "איל" הוא "אייל" בכתיב אחר, לא שם אחר ("דנה" לא תהיה "דינה").
+     מה שנפסל הוא צורה שהיא מילה ("ניר" ← "נייר") */
+  return [...out].filter(v=>!COMMON.has(v)&&!STOP.has(v)&&!(typeof VRB!=="undefined"&&VRB.has(v)));
+}
+// הזוגות ועוד הצורות של כל אדם בשתי מילים; צורה מסומנת (שלישי), ואינה נותנת חלקים לבד (restoreNames)
+function restoreForms(pairs){
+  const out=pairs.map(p=>[p[0],p[1]]), have=new Set(pairs.map(p=>p[1]));
+  const add=(r,f)=>{if(f&&!have.has(f)){have.add(f);out.push([r,f,1])}};
+  for(const [real,fake] of pairs){
+    if(!real||!fake||fake==="███")continue;
+    const fw=String(fake).trim().split(/\s+/), rw=String(real).trim().split(/\s+/);
+    if(fw.length!==2||rw.length<2||!nameParts(fake,real).length)continue;
+    for(let i=0;i<2;i++)for(const v of wordForms(fw[i]))add(real,i?fw[0]+" "+v:v+" "+fw[1]);
+    // באנגלית: האיות הלועזי של שם מהמאגר (LATIN), לא תעתיק מנוחש
+    if(fw.every(w=>w.split("-").every(p=>LATIN[p.replace(/׳/g,"'")])))add(real,latinOf(fake));
+    // ראשי תיבות: של השם הפרטי לפני שם המשפחה, ושל שם המשפחה אחרי השם הפרטי
+    out.push([rw[0][0]+". "+rw.slice(1).join(" "),fw[0][0]+". "+fw[1],1]);
+    out.push([rw.slice(0,-1).join(" ")+" "+rw[rw.length-1][0]+".",fw[0]+" "+fw[1][0]+".",1]);
+  }
+  return out;
+}
+// מרחק עריכה, לשם פרטי בדוי שה-AI שיבש (restoreNames)
+function lev(a,b){
+  const d=Array.from({length:a.length+1},(_,i)=>[i]);
+  for(let j=1;j<=b.length;j++)d[0][j]=j;
+  for(let i=1;i<=a.length;i++)for(let j=1;j<=b.length;j++)
+    d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));
+  return d[a.length][b.length]}
 // זוגות [שם אמיתי, כינוי]. מחזיר טקסט, כמה הוחזרו, ומה לא נמצא —
 // כינוי שלא נמצא הוא לא בהכרח תקלה, אבל כדאי לדעת עליו.
 function restoreNames(txt,pairs){
+  // כל צורה של כל אדם (restoreForms). "מה לא נמצא" נשאר של הזוגות עצמם
+  const own=new Set(pairs.map(p=>p[1])); pairs=restoreForms(pairs);
   const seen=new Map(), conflict=new Set();
   for(const [real,pseudo] of pairs){
     if(!real||!pseudo||pseudo==="███")continue;
@@ -2209,8 +2255,9 @@ function restoreNames(txt,pairs){
      כהן" ושני החלקים של "יפעת בן פלדמן" נשארו בדויים (בדיקה בכלי החי, 6.10).
      reals: כל החלקים האמיתיים של כל חלק של אדם, גם של חלק שלא יוחזר, בשביל מה שנשאר בתשובה (leftOver) */
   const partial=new Map(), bad=new Set(), reals=new Map();
-  for(const [real,pseudo] of pairs){
-    if(!real||!pseudo||pseudo==="███")continue;
+  for(const [real,pseudo,form] of pairs){
+    // צורה (restoreForms) חוזרת רק כשם שלם: אין לה חלקים לבד
+    if(!real||!pseudo||pseudo==="███"||form)continue;
     const ps=nameParts(pseudo,real);
     for(const [k,v] of ps){if(!reals.has(k))reals.set(k,new Set()); reals.get(k).add(v)}
     if(conflict.has(pseudo)||!ps.length){
@@ -2254,7 +2301,22 @@ function restoreNames(txt,pairs){
   const lone=days.filter(x=>!days.some(y=>sameDay(y.f,x.f)&&!sameDay(y.t,x.t)));
   for(const x of lone)hits.set(x.p,hits.get(x.p)+run(dateRX(x.f),m=>(m.groups.pre||"")+x.r));
   let n=0;const missing=[];
-  for(const [pseudo] of longFirst(seen)){const h=hits.get(pseudo); if(h)n+=h; else missing.push(pseudo)}
+  for(const [pseudo] of longFirst(seen)){const h=hits.get(pseudo); if(h)n+=h; else if(own.has(pseudo))missing.push(pseudo)}
+  /* שם פרטי בדוי שה-AI שיבש, צמוד לשם המשפחה הבדוי שלו ("סרגאי לוי", "וסרגי לוי"): האדם כולו חוזר, לא שם המשפחה האמיתי
+     ליד שם פרטי בדוי, אדם שאינו קיים. רק כשהמילה שלפני אינה שם מוכר אחר (אז זה אדם אחר באותה משפחה, "יעל לוי") ומרחק
+     העריכה ממנה קטן */
+  for(const [pseudo,real] of seen){
+    const fw=pseudo.split(/\s+/), rw=String(real).split(/\s+/);
+    if(!own.has(pseudo)||fw.length!==2||rw.length<2||!nameParts(pseudo,real).length)continue;
+    const f=norm(fw[0]).trim(), rx=new RegExp("(?<![א-ת])([א-ת'׳]{2,})[\\s ]+"+pseudoPat(fw[1])+"(?![א-ת])","gu");
+    for(const m of txt.matchAll(rx)){
+      const s=m.index,e=s+m[0].length; if(!free(s,e))continue;
+      const w=norm(m[1]).replace(/['׳]/g,"").trim(), near=x=>x!==f&&!KNOWN_FIRST.has(x)&&lev(x,f)<=(f.length>4?2:1);
+      const pre=PFX.has(w[0])&&!near(w)&&near(w.slice(1))?m[1][0]:"";
+      if(!pre&&!near(w))continue;
+      took.push([s,e,pre+real]); n++;
+    }
+  }
   // שם מלא שנמצא בטקסט ולא נלקח — דבוק לאותיות שאינן אותיות שימוש, או עם סיומת — שומר על החלקים שלו
   for(const [,pseudo] of pairs){
     const p=typeof pseudo==="string"?pseudo.trim():"";
