@@ -1,6 +1,6 @@
 # Benchmark results
 
-43 documents, 332 keyed entities: 268 identifying details the tool must replace, and 64 traps and public bodies it must leave alone. Model on (q8, same artifact as the browser). Generated 2026-10-10.
+43 documents, 335 keyed entities: 272 identifying details the tool must replace, and 63 traps and public bodies it must leave alone. Model on (q8, same artifact as the browser). Generated 2026-10-11.
 
 ## Per category
 
@@ -13,7 +13,7 @@
 | person: name split across two runs mid-word | 3 | 0 | 0 | 0 |
 | org: private body, must be redacted | 10 | 0 | 1 | 0 |
 | place: town (lexicon-aided) | 12 | 1 | 0 | 0 |
-| trap: case numbers, dates, section references | – | – | – | 1 |
+| trap: section references and other numbers that identify no one | – | – | – | 0 |
 | pii: full date (omitted by default) | 18 | 0 | 0 | 0 |
 | trap: idiom or public title beside a same-word name | – | – | – | 1 |
 | person: full name, surname alone, first name alone | 9 | 0 | 0 | 0 |
@@ -34,6 +34,7 @@
 | person: minor, first name only | 10 | 0 | 0 | 0 |
 | place: street | 8 | 0 | 0 | 0 |
 | trap: פלוני / פלונית | – | – | – | 0 |
+| pii: court or registry case number (deleted by default) | 4 | 0 | 0 | 0 |
 | person: two-letter surname | 5 | 0 | 0 | 0 |
 | person: minor introduced by הקטין / הקטינה | 7 | 0 | 0 | 0 |
 | pii: ID number | 10 | 0 | 0 | 0 |
@@ -63,11 +64,11 @@
 | genre | found | missed | leaked | false positives |
 |---|---|---|---|---|
 | meeting | 27 | 0 | 0 | 0 |
-| filing | 39 | 0 | 0 | 2 |
+| filing | 41 | 0 | 0 | 1 |
 | transcript | 33 | 0 | 0 | 0 |
 | welfare | 27 | 0 | 0 | 0 |
 | medical | 19 | 0 | 0 | 0 |
-| police | 22 | 1 | 0 | 0 |
+| police | 24 | 1 | 0 | 0 |
 | bank | 18 | 0 | 1 | 0 |
 | chat | 23 | 0 | 0 | 0 |
 | position | 13 | 0 | 0 | 2 |
@@ -99,7 +100,6 @@ Counted, not optimised for: the list is read, accept-all is not how the tool is 
 
 ## Traps and public bodies touched
 
-- f2 · trap: case numbers, dates, section references · סעיף 2: suggested as «ת"פ 4471-02-26 [flagged]»; altered: ת"פ 4471-02-26
 - f2 · trap: idiom or public title beside a same-word name · בגיל 8: altered: עם שחר
 - x1 · trap: ordinary word that is also a locality name (קדימה, לשם, גבעות) · לשם: suggested as «קדימה [flagged]»; altered: קדימה
 - x2 · trap: ordinary word that is also a locality name (קדימה, לשם, גבעות) · אורה: suggested as «עלי [flagged]»; altered: עלי
@@ -108,46 +108,46 @@ Counted, not optimised for: the list is read, accept-all is not how the tool is 
 
 | doc | genre | ms | rules confirmed | unlisted |
 |---|---|---|---|---|
-| m1 | meeting | 422 | 9 | 1 |
-| m2 | meeting | 222 | 12 | 1 |
-| m3 | meeting | 179 | 7 | 0 |
-| m4 | meeting | 213 | 9 | 1 |
-| f1 | filing | 303 | 15 | 2 |
-| f2 | filing | 266 | 16 | 1 |
-| f3 | filing | 227 | 8 | 0 |
-| f4 | filing | 276 | 11 | 3 |
-| t1 | transcript | 191 | 8 | 0 |
-| t2 | transcript | 222 | 13 | 1 |
-| t3 | transcript | 218 | 11 | 1 |
-| t4 | transcript | 188 | 12 | 1 |
-| w1 | welfare | 165 | 4 | 0 |
-| w2 | welfare | 143 | 5 | 0 |
-| w3 | welfare | 150 | 6 | 0 |
-| w4 | welfare | 153 | 6 | 1 |
-| h1 | medical | 124 | 6 | 2 |
-| h2 | medical | 196 | 5 | 1 |
-| h3 | medical | 166 | 7 | 3 |
-| p1 | police | 139 | 5 | 1 |
-| p2 | police | 121 | 4 | 2 |
-| p3 | police | 121 | 2 | 0 |
-| p4 | police | 104 | 3 | 0 |
-| b1 | bank | 124 | 6 | 2 |
-| b2 | bank | 99 | 3 | 0 |
-| b3 | bank | 93 | 3 | 0 |
-| c1 | chat | 142 | 4 | 0 |
-| c2 | chat | 164 | 5 | 1 |
-| c3 | chat | 129 | 2 | 0 |
-| c4 | chat | 143 | 5 | 0 |
-| x1 | position | 222 | 7 | 1 |
-| x2 | position | 152 | 5 | 0 |
-| x3 | position | 150 | 5 | 0 |
-| a1 | audio | 162 | 7 | 0 |
-| a2 | audio | 155 | 7 | 0 |
-| a3 | audio | 148 | 8 | 1 |
-| a4 | audio | 122 | 6 | 0 |
-| v1 | interview | 167 | 3 | 0 |
-| v2 | interview | 153 | 5 | 0 |
-| v3 | interview | 105 | 3 | 0 |
-| s1 | structure | 149 | 4 | 2 |
-| s2 | structure | 171 | 5 | 2 |
-| s3 | structure | 144 | 5 | 2 |
+| m1 | meeting | 609 | 9 | 1 |
+| m2 | meeting | 343 | 12 | 1 |
+| m3 | meeting | 255 | 7 | 0 |
+| m4 | meeting | 307 | 9 | 1 |
+| f1 | filing | 403 | 15 | 2 |
+| f2 | filing | 425 | 15 | 1 |
+| f3 | filing | 288 | 8 | 0 |
+| f4 | filing | 339 | 11 | 3 |
+| t1 | transcript | 257 | 8 | 0 |
+| t2 | transcript | 343 | 13 | 1 |
+| t3 | transcript | 320 | 11 | 1 |
+| t4 | transcript | 301 | 12 | 1 |
+| w1 | welfare | 234 | 4 | 0 |
+| w2 | welfare | 172 | 5 | 0 |
+| w3 | welfare | 246 | 6 | 0 |
+| w4 | welfare | 218 | 5 | 1 |
+| h1 | medical | 206 | 6 | 2 |
+| h2 | medical | 221 | 5 | 1 |
+| h3 | medical | 229 | 7 | 3 |
+| p1 | police | 209 | 5 | 1 |
+| p2 | police | 219 | 4 | 2 |
+| p3 | police | 182 | 2 | 0 |
+| p4 | police | 158 | 3 | 0 |
+| b1 | bank | 188 | 5 | 2 |
+| b2 | bank | 150 | 2 | 0 |
+| b3 | bank | 130 | 2 | 0 |
+| c1 | chat | 198 | 4 | 0 |
+| c2 | chat | 250 | 5 | 1 |
+| c3 | chat | 203 | 2 | 0 |
+| c4 | chat | 226 | 4 | 0 |
+| x1 | position | 368 | 7 | 1 |
+| x2 | position | 204 | 5 | 0 |
+| x3 | position | 212 | 5 | 0 |
+| a1 | audio | 229 | 7 | 0 |
+| a2 | audio | 214 | 7 | 0 |
+| a3 | audio | 231 | 8 | 1 |
+| a4 | audio | 162 | 6 | 0 |
+| v1 | interview | 243 | 3 | 0 |
+| v2 | interview | 219 | 5 | 0 |
+| v3 | interview | 173 | 3 | 0 |
+| s1 | structure | 234 | 4 | 2 |
+| s2 | structure | 217 | 5 | 2 |
+| s3 | structure | 271 | 5 | 2 |
