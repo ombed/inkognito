@@ -2574,7 +2574,12 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
           aReview:cnt(A,r=>r.review), fReview:cnt(F,r=>r.review&&r.src!=="nohit"), fNohit:cnt(F,r=>r.src==="nohit"), fNear:cnt(F,r=>r.src==="near"),
           fPattern:cnt(F,r=>r.src==="pattern"), fList:cnt(F,r=>r.src==="list"), fCollide:cnt(F,r=>r.src==="collide"), rules:(this.state.rules||[]).length,
           rulesAuto:cnt(this.state.rules||[],r=>r.auto!==false), allow:(this.state.allow||[]).length}); }
-      this.setState({res, rules:this.pinReps(rules,res), screen:"work", open:toReview?["review","findings","send"]:["findings","send"], pane:"doc", docView:"red", markIdx:0, copied:false}, ()=>this.persistProfile());
+      /* מה שנוסף לכללים בזמן הריצה — תשובה מאוחרת של המודל אחרי «לא לחכות למודל» — נשאר, והמסמך מעובד שוב איתו. עד כאן
+         הריצה כתבה בחזרה את העותק שלה מתחילתה, והשמות שהמודל מצא נעלמו בלי סימן, תחת פס ירוק (הציד של 11.10) */
+      const key=r=>(r.kind||"")+"|"+E.norm(String(r.value||"")).trim(), had=new Set(rules.map(key));
+      const late=(this.state.rules||[]).filter(r=>!had.has(key(r)));
+      this.setState({res, rules:[...this.pinReps(rules,res),...late], screen:"work", open:toReview?["review","findings","send"]:["findings","send"], pane:"doc", docView:"red", markIdx:0, copied:false},
+        ()=>{ this.persistProfile(); if(late.length){ this.log.add("model-late-run",{added:late.length}); this.rerun(); } });
     }catch(e){ this.setState({err:"העיבוד נכשל. אפשר לנסות שוב. (פרטים טכניים: "+(e.message||e)+")", screen:"entry", res:null}); }
   }
   async rerun(){
