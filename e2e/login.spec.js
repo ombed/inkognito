@@ -552,7 +552,8 @@ test("someone already signed in goes straight to the app, with the gate's cookie
   expect(c.path).toBe("/");
   // the WebKit the tests run reports every cookie as SameSite=None, whatever it was given (Safari keeps Lax)
   if (browserName !== "webkit") expect(c.sameSite).toBe("Lax");
-  expect(c.expires * 1000).toBeGreaterThan(Date.now() + 3500 * 1000);
+  // as long as the session (an hour), with room for a slow run: Safari's engine came within a second of 3500 s
+  expect(c.expires * 1000).toBeGreaterThan(Date.now() + 3000 * 1000);
 });
 
 test("a browser that refuses the cookie is told so, instead of being sent to a gate that would send it back", async ({ page }) => {
