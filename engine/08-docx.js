@@ -783,7 +783,9 @@ async function redactDocx(buf,subs,allow,opt){
     const sdt=el.parentNode&&el.parentNode.parentNode, c=kidW(sdt,"sdtContent");
     if(c&&el.getAttribute("w:fullDate"))picks.push({el,c,was:wText(c)})}
   // dateFakes: כל תאריך בדוי שנכתב, כמה פעמים שנכתב, לבדיקה האחרונה (verify)
-  const applied=[],flagged=[],secrets=[],dateSecrets=[],dateFakes=[];
+  const applied=[],flagged=[],secrets=[],dateSecrets=[],dateFakes=[],placeSecrets=[];
+  // יישוב שחזר מהתיק ומוחלף רק במופע שהוא מקום (cond, 07-engine.js): נבדק כמו יישוב ששכבת היישובים החליפה
+  const condV=new Set(subs.filter(s=>s.cond&&s.kind==="PLACE"&&placeCond(norm(s.value).trim())).map(s=>norm(s.value).trim()));
   let blocks=[];
   for(const dd of docs) blocks=blocks.concat(flatten(dd.doc,dd.f.name));
   twinParts(blocks);
@@ -813,12 +815,19 @@ async function redactDocx(buf,subs,allow,opt){
         if(nw===""){ rec.deleted=true; rec.rep="";
           if(blk.text[e]===" "&&(s===0||blk.text[s-1]===" "||/[\s(]/.test(blk.text[s-1]||" ")))e++;
           else if(blk.text[s-1]===" ")s--; }
-        // תאריך נבדק בסוף רק במקום שבו הוא תאריך (notDateAt), ולכן הוא ברשימה משלו
-        const sec=(CANON[h.type]||[h.type])[0]==="DATE"?dateSecrets:secrets;
-        reps.push([s,e,nw]);applied.push(rec);sec.push(h.text);
-        if(h.dtext)sec.push(h.dtext);
-        if(h.base)sec.push(h.base);
-        if(sec===dateSecrets&&nw)dateFakes.push(nw)}
+        reps.push([s,e,nw]);applied.push(rec);
+        // יישוב שהוא גם מילה או צירוף (placeCond) הוחלף רק במופע שהטקסט מראה שהוא מקום, והמופע שנשאל נשאר בכוונה.
+        // האימות מחפש אותו רק במופע כזה: בחיפוש רגיל «נקודת מבט רעננה» נספרה דליפה של «גרה ברעננה», והפס האדום
+        // חסם מסמך תקין
+        if(h.src==="pattern"&&h.type==="PLACE_CITY"&&placeCond(h.place))placeSecrets.push(h.place);
+        else if(h.src==="list"&&condV.has(norm(h.base||"").trim()))placeSecrets.push(norm(h.base).trim());
+        else{
+          // תאריך נבדק בסוף רק במקום שבו הוא תאריך (notDateAt), ולכן הוא ברשימה משלו
+          const sec=(CANON[h.type]||[h.type])[0]==="DATE"?dateSecrets:secrets;
+          sec.push(h.text);
+          if(h.dtext)sec.push(h.dtext);
+          if(h.base)sec.push(h.base);
+          if(sec===dateSecrets&&nw)dateFakes.push(nw)}}
       else flagged.push(rec)}
     // מיקום המחיקות בטקסט החדש, לסימון במסך הבדיקה: הערך איננו, אבל היא צריכה לראות
     // שהיה שם משהו ולוכל לבטל. כל החלפה שלפני נקודה מזיזה אותה בהפרש האורכים.
@@ -832,6 +841,10 @@ async function redactDocx(buf,subs,allow,opt){
   const sweep={};
   for(const r of applied){
     const v=norm(r.value).trim(), rp=r.baseRep||r.rep;
+    // יישוב שהוא גם מילה או צירוף הוחלף רק במופע שהטקסט מראה שהוא מקום; במופע אחר זו המילה ("גרה ברעננה"
+    // ו"נקודת מבט רעננה", הציד של 11.10). findPlaces כבר שקל כל מופע, והמעבר לא דורס את השאלה שהוא שאל
+    if(r.label==="יישוב"&&r.src==="pattern"&&placeCond(norm(r.base||r.value).trim()))continue;
+    if(r.src==="list"&&condV.has(norm(r.base||r.value).trim()))continue;
     // אם התחליף מכיל את הערך ("דוד" → "דוד א׳"), סריקה חוזרת
     // תתפוס את התחליף עצמו ותכפיל אותו.
     // תאריך שנמצא מוחלף גם במקום אחר, אבל לא כשהוא שם מספר סעיף או כמות ("סעיף 12.3", "3.5 ימים"; notDateAt)
@@ -851,6 +864,10 @@ async function redactDocx(buf,subs,allow,opt){
   // ובלי אות שימוש הם דולפים ("וסבג" נשאר בטקסט). מילה של ממש נתפסת ברשימות
   // ובצורת ה' הידיעה שבמסמך; שתי אותיות נשארות זהירות.
   const wordy=p=>WORDLIKE.has(p)||COMMON.has(p)||docTokAll.has("ה"+p)||p.length<=2;
+  /* חלק של שם שהוא גם יישוב, ששכבת היישובים רק שואלת עליו (placeOwn): «אלעד» מתוך «אלעד כהן» יצא לבד, ואפילו
+     הפס אמר שהשמות הוחלפו (הציד של 11.10). שם פרטי שהוא יישוב (TOWNWORD מסוג name) הוא האדם בכל צורה; כל יישוב
+     אחר — מילה, שם דו-משמעי, שם קצר, ושלומי — רק כשעומד לבד, ולבדיקה */
+  const partWordy=p=>TOWNWORD.get(p)==="name"?false:(wordy(p)||!!PLACE_BY[p]||AMBIG.has(p));
   // "רחוב הארזים 12" הוחלף, ו"ההסעות מהארזים" נשאר בטקסט: שם הרחוב לבדו הוא
   // אותו מקום. כל כתובת, רחוב או שכונה שהוחלפו תורמים את המילים שאחרי סוג
   // הרחוב, ובלי המספר; כשהשם הוא גם מילה, רק כשעומד לבד ולבדיקה. חמש
@@ -873,9 +890,9 @@ async function redactDocx(buf,subs,allow,opt){
     const add=(p,to)=>{
       // שתי אותיות ("כץ", "נץ") הן שם משפחה של ממש; הן נכנסות למעבר, ובגלל wordy
       // מוחלפות רק כשעומדות לבד ולבדיקה. הסריקה: 2 כמו 3, 4 מוסיף שש דליפות.
-      if(!p||p.length<2||STOP.has(p)||PLACE_BY[p]||AMBIG.has(p))return;
+      if(!p||p.length<2||STOP.has(p)||placeOwn(p))return;
       if(p in sweep||!to||norm(to).includes(p))return;
-      const g=partOf.get(p)||{to:new Set(),of:new Set(),wordy:wordy(p)};
+      const g=partOf.get(p)||{to:new Set(),of:new Set(),wordy:partWordy(p)};
       g.to.add(to); g.of.add(value); partOf.set(p,g)};
     /* שם משפחה כפול במקף ("לוי-אבקסיס", גם במקף עברי): כל חצי לבד הוא אותו אדם — «לדברי אבקסיס», «גם לוי
        אמרה» — ושניהם דלפו (הציד של 11.10). כל חצי מקבל את החצי שלו מהבדוי כשגם הוא כפול, ואחרת את כולו */
@@ -1011,6 +1028,14 @@ async function redactDocx(buf,subs,allow,opt){
   const ctx=wordCtx(n=>{const x=docs.find(d=>d.f.name===n);return x?x.doc:null});
   let blocks3=[];for(const dd of docs)blocks3=blocks3.concat(flatten(dd.doc,dd.f.name,ctx));
   twinParts(blocks3);
+  // שאלה של שכבת היישובים על מילה שהמעבר החליף כחלק של שם מהרשימה ("אלעד" מתוך «אלעד כהן»): כשלא נשאר ממנה
+  // מופע, אין על מה להחליט, ואישור שלה היה הופך את האדם ליישוב בריצה הבאה
+  {const fin=norm(blocks3.map(b=>b.text).join("\n"));
+   for(let i=flagged.length-1;i>=0;i--){
+     const f=flagged[i], v=norm(String(f.value||"")).trim(), sw=sweep[v];
+     if(f.src!=="pattern"||f.type!=="PLACE_CITY"||!sw||!sw.of||sw.place)continue;
+     if(!new RegExp(NW+"(?:[בהולמכש]|ו[בהלמכ]|כש|מה|לכ)?"+flex(v)+NWE,"u").test(fin))flagged.splice(i,1);
+   }}
   // פריט שנשאר לבדיקה אינו מסומן במסמך, ולכן הוא נראה בדיוק כמו טקסט שאיש לא נגע בו.
   // על מספר זה קטלני: מספר שנשאר בטקסט נקרא "הכלי פספס אותו", בעוד שבפועל הוא נמצא,
   // הוחלט שלא להחליף אותו אוטומטית, והוא מחכה להחלטה. סימון בצבע אזהרה אומר את זה.
@@ -1083,6 +1108,8 @@ async function redactDocx(buf,subs,allow,opt){
   // שם בתוך כתובת — יעד של קישור, או כתובת שהוסרה מהטקסט כולה (SharePoint) — הוא במסמך (הציד של 11.10)
   for(const r of applied) if(/%[0-9A-Fa-f]{2}|:\/\/|^www\./i.test(r.value)) ac.seen(r.value);
   for(const b of ac.names) hitBases.add(b);
+  // יישוב מהתיק שכל מופעיו כאן נשאלו (cond): הוא במסמך, ולא "לא נמצא"
+  for(const r of flagged) if(r.src==="pattern"&&r.base&&condV.has(norm(r.base).trim())) hitBases.add(norm(r.base).trim());
   const nearTargets=new Set(near.map(x=>norm(x.near.target).trim()));
   for(const s of subs){
     if(s.kind!=="NAME"&&s.kind!=="ORG"&&s.kind!=="PLACE")continue;
@@ -1098,7 +1125,8 @@ async function redactDocx(buf,subs,allow,opt){
   // שם שלא נמצא אינו דליפה — הוא מוצג ב«לבדיקה» אבל לא צובע את הבר
   const remaining=[...new Set(flagged.filter(r=>r.src!=="near"&&r.src!=="nohit").map(r=>r.value))];
   const dsubs=new Set(subs.filter(s=>s.kind==="DATE").map(s=>s.value));
-  const ver=await verify(outBuf,vsec.filter(v=>!dsubs.has(v)),dateSecrets.concat([...dsubs]),dateFakes);
+  const ver=await verify(outBuf,vsec.filter(v=>!dsubs.has(v)&&!condV.has(norm(v).trim())),dateSecrets.concat([...dsubs]),dateFakes,
+    placeSecrets.concat([...condV]));
   ver.hadList=subs.length>0;
   ver.remaining=remaining;
   ver.near=near;
@@ -1217,12 +1245,17 @@ function secretTest(nv){
    ריצה של Word בין "סעיף" למספר הסתירה את מילת הסעיף, והסעיף שנשאר נקרא תאריך שדלף (ביקורת 11.10). ותאריך דולף
    רק כשהוא מופיע יותר פעמים משנכתב בתוך תאריכים בדויים: במסמך צפוף, ההיסט לא תמיד מוצא מקום פנוי (dateOffFor),
    ותאריך בדוי שהוא גם תאריך אמיתי של המסמך אינו התאריך האמיתי שנשאר */
-async function verify(buf,secrets,dates,fakes){
+/* placeSecrets: יישובים שהם גם מילה או צירוף (placeCond) שהוחלפו במופע שהוא מקום. מופע שלהם הוא דליפה רק
+   כשהשכבה הייתה מחליפה אותו בעצמה בטקסט הקריא (placeSure, אותו מבחן של findPlaces); המופע שנשאל ("נקודת מבט
+   רעננה", "פותח פתח תקווה") אינו דליפה */
+const XUN=s=>s.replace(/&(quot|apos|lt|gt|amp);/g,(m,k)=>({quot:'"',apos:"'",lt:"<",gt:">",amp:"&"})[k]);
+async function verify(buf,secrets,dates,fakes,placeSecrets){
   const files=await unzip(buf);
   const uniq2=a=>[...new Set((a||[]).filter(s=>s&&s.trim().length>=2))].map(s=>[s,norm(s)]);
   const sec=uniq2(secrets).map(([o,nv])=>[o,nv,secretTest(nv)]), dsec=uniq2(dates).map(([o,nv])=>[o,nv.replace(/\u0000/g,"")]);
   const dateRX=nv=>new RegExp((/^\d/.test(nv)?"(?<!\\d)":"")+esc(nv)+(/\d$/.test(nv)?"(?!\\d)":""),"gu");
   const dateHits=(t,nv)=>{let c=0; for(const m of t.matchAll(dateRX(nv)))if(!notDateAt(t,m.index,m.index+m[0].length))c++; return c};
+  const ps=new Set((placeSecrets||[]).map(s=>norm(s).trim()).filter(Boolean));
   const leaks=[],emb=[],dateIn=new Map();let n=0;
   for(const f of files){n++;
     if(/^word\/(embeddings|media)\//.test(f.name))emb.push(f.name);
@@ -1232,13 +1265,14 @@ async function verify(buf,secrets,dates,fakes){
       /* הבדיקה קראה רק את ה-XML כמו שהוא, ושם שמפוצל בין ריצות, מופרד בטאב או כתוב
          עם קו תחתון ("רחל_פרידמן") לא נראה לה כלל (שכבה 1ב). קוראים גם את הטקסט בלי
          תגיות, כשטאב, טאב מיקום ומעבר שורה הם רווח וקו תחתון הוא רווח. */
+      let read=t;
       if(/\.(xml|rels)$/.test(f.name)&&enc==="utf-8"){
         const raw=t;
-        const tv=t.replace(/<\/(?:w|a):p>/g,"\n").replace(/<w:(?:tab|ptab|br|cr)\b[^>]*\/>/g," ").replace(/<w:noBreakHyphen\b[^>]*\/>/g,"-").replace(/<[^>]+>/g,"");
+        read=XUN(t.replace(/<\/(?:w|a):p>/g,"\n").replace(/<w:(?:tab|ptab|br|cr)\b[^>]*\/>/g," ").replace(/<w:noBreakHyphen\b[^>]*\/>/g,"-").replace(/<[^>]+>/g,""));
         // ומה שאינו טקסט ואינו תגית: ערכי תכונות והערות XML
-        dv=tv+"\n"+[...t.matchAll(/=(?:"([^"]*)"|'([^']*)')|<!--([\s\S]*?)-->/g)].map(m=>m[1]??m[2]??m[3]).join("\n");
+        dv=read+"\n"+[...t.matchAll(/=(?:"([^"]*)"|'([^']*)')|<!--([\s\S]*?)-->/g)].map(m=>m[1]??m[2]??m[3]).join("\n");
         // + הוא רווח בכתובת ("?q=דנה+שגיא"), כמו קו תחתון
-        t+="\n"+tv+"\n"+t.replace(/[_+]/g," ");
+        t+="\n"+read+"\n"+t.replace(/[_+]/g," ");
         // וגם כמו שדפדפן קורא כתובת: "%D7%93" הוא "ד". שם מקודד ביעד של קישור עבר את הבדיקה (הציד של 11.10)
         if(/%[0-9A-Fa-f]{2}/.test(raw)){const d=pctPlain(raw);t+="\n"+d+"\n"+d.replace(/[+_]/g," ")}
       }
@@ -1251,6 +1285,10 @@ async function verify(buf,secrets,dates,fakes){
         if(!nv)continue;
         const c=dateHits(nd,nv); if(!c)continue;
         const d=dateIn.get(o)||{n:0,parts:[]}; d.n+=c; d.parts.push(f.name); dateIn.set(o,d);
+      }
+      if(ps.size&&[...ps].some(p=>nt.includes(p.split(" ")[0]))){
+        const nr=norm(seenText(read.replace(/_/g," "))), all=placeScan(nr);
+        for(const x of all) if(ps.has(x.name)&&placeSure(nr,x,all)) leaks.push({value:x.name,part:f.name});
       }
     }}
   // התאריכים הבדויים בשורות נפרדות: אין בהם מילת סעיף או יחידה, ולכן כל אחד נקרא בהקשר של עצמו
