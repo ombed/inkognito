@@ -20,6 +20,8 @@ const OPT = { on: new Set(["DATE"]), flag: new Set(), mode: "real", near: false,
 const ALL = { on: new Set(C.PAT.filter((p) => p.on).map((p) => p.n)), flag: new Set(C.PAT.filter((p) => !p.on).map((p) => p.n)), mode: "real", near: false, body: false, prefixes: "normal", styles: { "*": "blank", DATE: "name" } };
 const dates = (text, opt) => new C.Engine([], [], opt || OPT, text).detect(text).filter((h) => h.type === "DATE");
 const found = (text, opt) => dates(text, opt).map((h) => h.text).join(" | ");
+// a right-to-left mark, as text copied from a web page carries it
+const RLM = String.fromCharCode(0x200f);
 
 console.log("\n— found, in every remaining usual form —");
 for (const [text, want] of [
@@ -42,6 +44,9 @@ for (const [text, want] of [
   ["ביום 12. 3. 2026 התקיים הדיון.", "12. 3. 2026"],
   ["ביום 12.3. 2026 התקיים הדיון.", "12.3. 2026"],
   ["ביום 12/ 3/ 2026 התקיים הדיון.", "12/ 3/ 2026"],
+  // a direction mark between the day and the month: the whole date, not the month alone beside the real day
+  ["ביום 12 " + RLM + "במרץ 2026 התקיים הדיון.", "12 " + RLM + "במרץ 2026"],
+  ["ביום 12" + RLM + " במרץ " + RLM + "2026 התקיים הדיון.", "12" + RLM + " במרץ " + RLM + "2026"],
   // a month and year with no day, in words: the month's name and a year are evidence enough
   ["במרץ 2026 עזב את הבית.", "מרץ 2026"],
   ["בחודש מרץ 2026 עזב את הבית.", "מרץ 2026"],
@@ -133,6 +138,7 @@ for (const [real, off, want] of [
   ["ספט׳ 2025", 45, "אוק׳ 2025"], ["פבר׳ 2026", 30, "מרץ 2026"], ["מארס 2026", 400, "אפריל 2027"],
   ["03/2026", 45, "04/2026"], ["3/2026", 400, "4/2027"], ["12/2026", 30, "1/2027"], ["3.2026", 75, "5.2026"],
 ]) eq(C.fakeDate(real, off), want, real + " + " + off + " days");
+eq(C.fakeDate("12 " + RLM + "במרץ 2026", 45), "26 באפריל 2026", "a direction mark inside is dropped, the date is shifted");
 for (const bad of ["31 בספט׳ 2025", "13/2026", "31 לחודש אפריל 2026"]) eq(C.fakeDate(bad, 10), null, "an impossible date is not shifted: " + bad);
 
 console.log("\n— one document, one offset, every form —");

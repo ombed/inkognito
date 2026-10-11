@@ -93,7 +93,7 @@ function parseDate(s){
     p={d:+m[1],m:+m[4],y:m[6]?fullYear(m[6]):null,form:"num",sep:m[2],g1:m[3],g2:m[5]||"",y2:!!m[6]&&m[6].length===2,pd:lead(m[1]),pm:lead(m[4])};
   else if((m=/^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(t)))
     p={d:+m[3],m:+m[2],y:+m[1],form:"iso",pd:m[3].length===2,pm:m[2].length===2};
-  else if((m=new RegExp("^(\\d{1,2})(\\s+)([בל]חודש\\s+|[בל]?-?)("+DATE_MON_ALT+")(?:(,?\\s+(?:ב?שנת\\s+)?)(\\d{4}))?$").exec(t)))
+  else if((m=new RegExp("^(\\d{1,2})(\\s*)([בל]חודש\\s+|[בל]?-?)("+DATE_MON_ALT+")(?:(,?\\s*(?:ב?שנת\\s+)?)(\\d{4}))?$").exec(t)))
     p={d:+m[1],m:dateMonth(m[4]),y:m[6]?+m[6]:null,form:"words",sp:m[2],conn:m[3],yc:m[5]||"",...style(m[4])};
   else if((m=new RegExp("^("+DATE_MON_ALT+")(,?\\s+(?:ב?שנת\\s+)?)(\\d{4})$").exec(t)))
     p={d:null,m:dateMonth(m[1]),y:+m[3],form:"mwords",yc:m[2],...style(m[1])};
