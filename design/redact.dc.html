@@ -1465,6 +1465,11 @@ class Component extends DCLogic {
      prev.screen היה undefined תמיד, ההשוואה תמיד "השתנה", ושדה from נעלם מהיומן.
      המסך האחרון נשמר על המופע ולא נלקח מההוק. */
   componentDidUpdate(){ this.applyProps(); if(this._barSize) this._barSize();
+    /* «מי בתיק»: הכללים הולכים עם הרשימה שעל המסך, בכל שינוי בה. עד כאן הם נבנו ממנה רק ב«המשך», וכל דרך אחרת
+       קדימה — «יישובים» בכותרת, «קובץ» ואז «יישובים», «בלי שמירת מרחקים» — המשיכה עם הכללים של הריצה הקודמת (ובפעם
+       הראשונה בלי כללים בכלל): שם שהוקלד כאן נשאר גלוי, מתחת לפס ירוק. ו«קובץ» ואז «מי בתיק» הוציאו שם כזה מהרשימה,
+       כי showList חשבה שהוא הוסר במסך הבדיקה (הציד של 11.10) */
+    if(this.state.screen==="people"&&this.state.peo!==this._peoSynced){ this._peoSynced=this.state.peo; this.setState({rules:this.rulesFromPeo(this.state.peo||[])}); }
     // שכבה 5: מסך, צעד בסיור, שכבה שנפתחה, תוצאה או רשימה חדשות — בדיקה עצמית כשהמסך נרגע
     { const S=this.state, sig=[S.screen, S.tour?S.tour.i:-1, S.inline, S.tip, S.res, S.rules, S.allow, S.E];
       if(!this._scSig||sig.some((x,i)=>x!==this._scSig[i])){ this._scSig=sig; this.scheduleSelfCheck(); } }
@@ -1914,6 +1919,13 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
   peoGo(){
     this.setState({sugAsk:false});
     this.toPlaces(this.rulesFromPeo(this.state.peo));
+  }
+  // «המשך» של «מי בתיק», וגם «יישובים» בכותרת כשעומדים בו: השם שהוקלד ולא נוסף, השאלה על ההצעות הפתוחות, ואז הרשימה
+  peoForward(){
+    const S=this.state; if(S.scanning) return;
+    this.peoAdd(S.peoIn); this.setState({peoIn:""});
+    if(this.openSugs().length&&!S.sugAsk){ this.log.add("sug-prompt",{open:this.openSugs().length}); this.setState({sugAsk:true}); return; }
+    this.peoGo();
   }
   profileRules(){ const p=this.state.profile; return (p&&Array.isArray(p.rules)?p.rules:[]).filter(r=>r&&r.value&&!this.wasRemoved(r.value)); }
   /* הרשימה הופכת לכללים. עד כאן כל כלל נולד ריק (replacement:""), גם כשהתיק
@@ -3836,7 +3848,8 @@ const KIND_NAME={NAME:"אדם", ORG:"גוף", PLACE:"מקום"};
       step2Off:!S.buf, step3Off:!S.buf,
       goStep1:()=>this.setState({screen:"entry", pending:!!S.buf, err:""}),
       goStep2:()=>{ if(this.unscanned()) this.start(); else this.showList(); },
-      goStep3:()=>{ if(!S.buf) return; if(this.unscanned()) this.start(); else this.toPlaces(S.rules); },
+      // מ«מי בתיק» הצעד «יישובים» הוא «המשך» (peoForward); ממסך אחר הכללים כבר הולכים עם הרשימה (componentDidUpdate)
+      goStep3:()=>{ if(!S.buf) return; if(this.unscanned()) this.start(); else if(S.screen==="people") this.peoForward(); else this.toPlaces(S.rules); },
       showBack:S.screen!=="entry",
       backLabel:back.label, onBack:this.goBack,
       pasteText:S.pasteText||"", hasPaste:(S.pasteText||"").trim().length>0,
@@ -3943,9 +3956,7 @@ const KIND_NAME={NAME:"אדם", ORG:"גוף", PLACE:"מקום"};
          כולם" — ולחיצה שנייה על "להמשיך בלעדיהם" היא החלטה. */
       sugPrompt:!!S.sugAsk&&this.openSugs().length>0,
       sugPromptText:(n=>n===1?"שם אחד שנמצא עדיין בלי החלטה — הוא יגיע ל-AI כמו שהוא.":n+" שמות שנמצאו עדיין בלי החלטה — הם יגיעו ל-AI כמו שהם.")(this.openSugs().length),
-      onPeoGo:()=>{ if(S.scanning) return; this.peoAdd(S.peoIn); this.setState({peoIn:""});
-        if(this.openSugs().length&&!S.sugAsk){ this.log.add("sug-prompt",{open:this.openSugs().length}); this.setState({sugAsk:true}); return; }
-        this.peoGo(); },
+      onPeoGo:()=>this.peoForward(),
       onPeoGoAnyway:()=>{ this.log.add("sug-prompt",{act:"skip", open:this.openSugs().length}); this.peoGo(); },
       onPeoAddAll:()=>this.peoAddAll(),
       onPeoAddAllGo:()=>{ this.log.add("sug-prompt",{act:"add-all", open:this.openSugs().length}); this.peoAddAll(); setTimeout(()=>this.peoGo(), 0); },
