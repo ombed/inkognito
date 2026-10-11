@@ -192,6 +192,8 @@ function flatten(doc,part,ctx){
     if(ns===VML||ns===O_NS){
       for(const a of Array.from(el.attributes))
         if(/^(?:alt|title|suggestedsigner2?|suggestedsigneremail|signinginstructions)$/.test(a.localName)&&(!a.namespaceURI||a.namespaceURI===O_NS))att(el,a.name,a.value," (טקסט חלופי)",true)}
+    // ScreenTip של קישור על תמונה או צורה
+    else if(ns===DML&&(ln==="hlinkClick"||ln==="hlinkHover"))att(el,"tooltip",el.getAttribute("tooltip")," (קוד שדה)");
     else if(ns===W){
       if(ln==="hyperlink")att(el,"w:tooltip",el.getAttribute("w:tooltip")," (קוד שדה)");
       else if((ln==="default"&&up&&up.localName==="textInput")||((ln==="helpText"||ln==="statusText")&&up&&up.localName==="ffData")||ln==="listEntry")

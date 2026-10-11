@@ -99,6 +99,8 @@ const chunkDoc = (target, body, ct) => ({ body: P(R("פתיח.")) + '<w:altChunk
     const cases = [
       ["an old-style picture's alt text and title", vml(`${NAME} בדיון`, `${NAME} - תעודת זהות`), pic],
       ["a link's ScreenTip", P(R("ראו ") + `<w:hyperlink w:anchor="x" w:tooltip="הפרופיל של ${NAME}">${R("לפרופיל")}</w:hyperlink>`), {}],
+      ["the ScreenTip of a link on a picture", P(`<w:r><w:drawing><wp:inline><wp:extent cx="1" cy="1"/><wp:docPr id="3" name="Picture 3"><a:hlinkClick r:id="rId31" tooltip="הפרופיל של ${NAME}"/></wp:docPr></wp:inline></w:drawing></w:r>`),
+        { rels: [`<Relationship Id="rId31" Type="${RT}/hyperlink" Target="https://www.gov.il/he" TargetMode="External"/>`] }],
       ["a form field's default, help and status text", P(`<w:r><w:fldChar w:fldCharType="begin"><w:ffData><w:name w:val="Text1"/><w:enabled/><w:calcOnExit w:val="0"/><w:helpText w:type="text" w:val="שם המבקשת: ${NAME}"/><w:statusText w:type="text" w:val="${NAME}"/><w:textInput><w:default w:val="${NAME}"/></w:textInput></w:ffData></w:fldChar></w:r><w:r><w:instrText xml:space="preserve"> FORMTEXT </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r>` + R("נועה גל") + '<w:r><w:fldChar w:fldCharType="end"/></w:r>'), {}],
       ["an old drop-down form field's choices", P(`<w:r><w:fldChar w:fldCharType="begin"><w:ffData><w:name w:val="Dropdown1"/><w:enabled/><w:ddList><w:listEntry w:val="נועה גל"/><w:listEntry w:val="${NAME}"/></w:ddList></w:ffData></w:fldChar></w:r><w:r><w:instrText xml:space="preserve"> FORMDROPDOWN </w:instrText></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r>`), {}],
       ["a drop-down control's other choices", `<w:sdt><w:sdtPr><w:dropDownList><w:listItem w:displayText="${NAME}" w:value="${NAME}"/><w:listItem w:displayText="נועה גל" w:value="נועה גל"/></w:dropDownList></w:sdtPr><w:sdtContent>${P(R("נועה גל"))}</w:sdtContent></w:sdt>`, {}],
@@ -112,11 +114,11 @@ const chunkDoc = (target, body, ct) => ({ body: P(R("פתיח.")) + '<w:altChunk
       ok(!r.copy.includes("הפרופיל של") && !r.copy.includes("תעודת זהות") && !r.copy.includes("שם המבקשת:"),`${what}: and it is not copied as if it were body text: ` + JSON.stringify(r.copy));
     }
     // with nothing on her list, a name in a picture's text is put in front of her, as in its alt text
-    for (const [what, body, more] of [cases[0], cases[5]]) {
+    for (const [what, body, more] of [cases[0], cases[6]]) {
       const r = await run({ body: P(R("הבקשה הוגשה היום.")) + body, ...more }, []);
       ok(r.res.verification.suggest.some((x) => x.value === NAME), `${what}: an unlisted name is put in front of her: ` + JSON.stringify(r.res.verification.suggest.map((x) => x.value)));
     }
-    const sig = await run({ body: cases[5][1], ...cases[5][2] });
+    const sig = await run({ body: cases[6][1], ...cases[6][2] });
     ok(!left(sig.o, "rachel.f@example.com").length, "the suggested signer's e-mail is replaced: " + left(sig.o, "rachel.f"));
   }
   {
