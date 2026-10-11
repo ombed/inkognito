@@ -54,7 +54,10 @@ export async function pdfToText(buf){
       while(wide&&pitch>0&&i+1<lines.length&&full(lines[i])&&lines[i].y-lines[i+1].y<=1.5*pitch&&
             !/^(?:\d{1,3}[.)]|\(\s*[א-ת\d]{1,3}\s*\))\s/.test(lines[i+1].line)){
         const next=lines[i+1].line;
-        text=/[-־]$/.test(text)?text+next:text+" "+next;
+        // בשורה מימין לשמאל מספר שנשבר אחרי מקף נקרא בסדר החזותי שלו, «-052» ולא «052-»: הוא חוזר לסדר
+        // הקריאה ומתחבר לשורה הבאה בלי רווח
+        if(lines[i].rtl&&/^\d/.test(next)&&/(^|\s)-\d+$/.test(text)) text=text.replace(/-(\d+)$/,"$1-")+next;
+        else text=/[-־]$/.test(text)?text+next:text+" "+next;
         i++;
       }
       out.push(text); pageLines.push(text);

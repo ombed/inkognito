@@ -45,9 +45,9 @@ async function letterToWork(page, caseName) {
   await expect(paper(page)).not.toContainText("טננבאום");
 }
 
-// «קובץ» in the header, then «שימוש בתיק הזה» on a saved case, with the letter still open
+// back to «מי בתיק» and on to the document's choice, with the letter still open, then «שימוש בתיק הזה» on a saved case
 async function useCaseFromEntry(page, name) {
-  await page.locator("header").getByRole("button", { name: "קובץ", exact: true }).click();
+  for (const label of ["מי בתיק", "קובץ"]) await page.locator("[data-back]").filter({ hasText: label }).click();
   await page.locator(`[data-case="${name}"]`).getByRole("button", { name: "שימוש בתיק הזה" }).click();
 }
 
@@ -57,7 +57,14 @@ test("a case chosen while a letter is open adds its people, and the letter's own
   await H.boot(page);
   await letterToWork(page);
   await useCaseFromEntry(page, CASE_A.name);
-  await page.getByRole("button", { name: /המשך — איתור שמות במסמך|חזרה למסמך|המשך/ }).first().click().catch(() => {});
+  // «המשך — איתור שמות במסמך»: the list keeps the letter's two typed names, and the case's person joins them
+  await H.startScan(page);
+  await expect(H.goButton(page)).toBeVisible({ timeout: 10000 });
+  expect(await H.listedNames(page)).toEqual(expect.arrayContaining(["ליה", "טננבאום", "דנה כרמי"]));
+  await H.goOn(page);
+  const run = page.getByRole("button", { name: /החלת הקבוצה והמשך|המשך לבדיקה|המשך לעיבוד/ }).first();
+  await expect(run.or(page.locator("[data-bar]")).first()).toBeVisible({ timeout: 15000 });
+  await H.throughPlaces(page, run);
   await expect(page.locator("[data-bar]")).toBeVisible({ timeout: 15000 });
   // the case's person gets the case's invented name, and the letter's own two are still replaced
   await expect(paper(page)).not.toContainText("ליה");
@@ -87,8 +94,12 @@ test("«בלי התיק הזה» keeps every name that is in the letter replaced
   await page.locator(`[data-case="${CASE_A.name}"]`).getByRole("button", { name: "שימוש בתיק הזה" }).click();
   await letterToWork(page);
   await expect(paper(page)).not.toContainText("דנה כרמי");
+  // the chip is on every screen but the review screen: here, the restore screen, then back to the letter
+  await page.getByRole("button", { name: "החזרת שמות מתשובת AI" }).click();
   await page.locator("[data-case-chip]").getByRole("button", { name: "בלי התיק הזה" }).click();
   await expect(page.locator("[data-case-chip]")).toHaveCount(0);
+  await page.locator("[data-back]").filter({ hasText: "חזרה למסמך" }).click();
+  await expect(page.locator("[data-bar]")).toBeVisible({ timeout: 15000 });
   for (const n of ["דנה כרמי", "ליה", "טננבאום"]) await expect(paper(page)).not.toContainText(n);
   // the case's person who is not in the letter is no longer on its list
   const rules = await page.evaluate(() => window.__pib.state().rules.map((r) => r.value));
