@@ -819,8 +819,34 @@ test("«יציאה מכל המכשירים» asks first, ends every session of t
   page.once("dialog", (d) => d.accept());
   await page.getByRole("button", { name: "יציאה מכל המכשירים" }).click();
   await page.waitForURL(/\/dist\/\?out=1$/);
-  expect(calls.find((c) => c.path === "/auth/v1/logout").query).toContain("scope=global");
+  // the other devices first, then this browser
+  expect(calls.filter((c) => c.path === "/auth/v1/logout").map((c) => (c.query.match(/scope=(\w+)/) || [])[1])).toEqual(["others", "local"]);
   expect((await page.context().cookies()).find((c) => c.name === "ink_at")).toBeUndefined();
+});
+
+/* A refused «יציאה מכל המכשירים» is said, and nothing else happens (the hunt of 11.10). With one global call, a
+   refusal still ended this browser's session and the home page said «יצאתם מהחשבון.», while the other devices
+   stayed signed in; she may have asked because a phone was lost. */
+test("«יציאה מכל המכשירים» that the server refuses says so, and this browser stays signed in", async ({ page }) => {
+  test.info().annotations.push({ type: "no-self-check" });
+  await hosted(page);
+  // registered after the stub, so it answers first: the server refuses to end the other sessions
+  const outs = [];
+  await page.route(PROJECT + "/auth/v1/logout**", (route) => {
+    const scope = (new URL(route.request().url()).search.match(/scope=(\w+)/) || [])[1];
+    outs.push(scope);
+    return scope === "others" ? route.fulfill({ status: 500, json: { code: 500, msg: "unexpected failure" } }) : route.fulfill({ status: 204, body: "" });
+  });
+  await boot(page);
+  await page.getByRole("button", { name: "חשבון", exact: true }).click();
+  page.once("dialog", (d) => d.accept());
+  await page.getByRole("button", { name: "יציאה מכל המכשירים" }).click();
+  await expect(page.locator("#ink-account-panel")).toContainText("היציאה לא הצליחה. אפשר לנסות שוב.");
+  await page.waitForTimeout(500);
+  expect(page.url()).not.toMatch(/\?out=1$/);
+  expect(await page.title()).not.toBe("home");
+  expect((await page.context().cookies()).find((c) => c.name === "ink_at"), "the session here is kept").toBeDefined();
+  expect(outs, "only the other devices were asked, and this browser was not signed out").toEqual(["others"]);
 });
 
 test("a Google-only account adds a password from the panel; a short one is refused before anything is sent", async ({ page }) => {

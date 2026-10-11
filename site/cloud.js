@@ -436,9 +436,14 @@
     out.addEventListener("click", async () => { leavingTo = HOME_OUT; await sb.auth.signOut({ scope: "local" }).catch(() => {}); leave(HOME_OUT); });
     outAll.addEventListener("click", async () => {
       if (!confirm("לצאת מהחשבון בכל המכשירים? כאן היציאה מיידית, ובשאר המכשירים הכניסה תסתיים תוך שעה לכל היותר.")) return;
+      /* The other devices first (scope "others"): when that call fails, supabase-js keeps this session, so the
+         failure is said here and nothing else happens. With "global" a refused call still removed this session,
+         SIGNED_OUT sent the page home with «יצאתם מהחשבון.», and the other devices stayed signed in, unsaid; she
+         may have asked because a phone was lost (the hunt of 11.10). Then this browser, as «יציאה מהחשבון» does. */
+      const { error } = await sb.auth.signOut({ scope: "others" });
+      if (error) { tell(msg, "היציאה לא הצליחה. אפשר לנסות שוב."); return; }
       leavingTo = HOME_OUT;
-      const { error } = await sb.auth.signOut({ scope: "global" });
-      if (error) { leavingTo = null; tell(msg, "היציאה לא הצליחה. אפשר לנסות שוב."); return; }
+      await sb.auth.signOut({ scope: "local" }).catch(() => {});
       leave(HOME_OUT);
     });
     const pwShow = (open) => { pwForm.hidden = !open; pwBtn.setAttribute("aria-expanded", String(open)); if (open) pwIn.focus(); };
