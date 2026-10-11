@@ -131,6 +131,45 @@ for (const t of [
   ok(!h.length, "«" + t + "» — nothing replaced, got «" + h.map((x) => x.text + "=" + x.place).join(" | ") + "»");
 }
 
+console.log("\n— a doubled yod or vav is the full spelling of the same letter —");
+// the review of the first round: only four stems were folded, and these went out as they were
+for (const [x, want] of [
+  ["נתנייה", "נתניה"], ["ירושליים", "ירושלים"], ["גבעתים", "גבעתיים"], ["טיבה", "טייבה"], ["באקה אל גרבייה", "באקה אל-גרביה"],
+  ["ג'לג'ולייה", "ג'לג'וליה"], ["לקייה", "לקיה"], ["דבורייה", "דבוריה"], ["נהרייה", "נהריה"], ["הרצלייה", "הרצליה"],
+  ["כסיפה", "כסייפה"], ["דליית אל-כרמל", "דאלית אל-כרמל"], ["דייר חנא", "דיר חנא"], ["דייר אל-אסד", "דיר אל-אסד"],
+  // a slash between the parts of one name
+  ["תל אביב/יפו", "תל אביב - יפו"], ["פרדס חנה/כרכור", "פרדס חנה-כרכור"],
+]) {
+  const t = "המבקשת מתגוררת ב" + x + " עם ילדיה.", h = cities(t);
+  ok(h.length === 1 && h[0].text === x && h[0].place === want && h[0].apply, "«" + t + "» — found " + JSON.stringify(h.map((y) => y.text + "=" + y.place + (y.apply ? "" : " (asked)"))) + ", want «" + want + "»");
+  const { out } = sent(t);
+  ok(!words(x).some((w) => w.length > 2 && out.includes(w)), "«" + t + "» — went out as «" + out + "»");
+}
+{
+  // generated, not typed (lens 10): every gazetteer name that is a coordinates town in another doubling is that town,
+  // one row and one substitute; «דייר חנא» and «דיר חנא» were two
+  const key = (s) => C.norm(s).replace(/\u0000/g, "").trim().split(/[ \t]*[-/][ \t]*|[ \t]+/).filter(Boolean).map((w) => w.replace(/(?<=.)([יו])\1(?=.)/g, "$1")).join(" ");
+  const twin = new Map(C.PLACES.map((p) => [key(p.n), p.n]));
+  const pairs = C.GAZ.filter((g) => twin.has(key(g)) && twin.get(key(g)) !== g).map((g) => [g, twin.get(key(g))]);
+  ok(pairs.length >= 3, "gazetteer names that are coordinates towns in another doubling: " + JSON.stringify(pairs));
+  for (const [g, p] of pairs) {
+    const names = C.placesFound("הוא עבר לגור ב" + g + " בשנה שעברה.").map((r) => r.name);
+    ok(names.length === 1 && names[0] === p, "«" + g + "» is «" + p + "»: the places screen lists " + JSON.stringify(names));
+  }
+}
+for (const t of [
+  // only a doubling: a single vav or yod is never added or dropped, and a doubled first name or verb is no town
+  "הוא סגר את החלון בחדר.", "איילת סיפרה כי הקטינים מפחדים.", "דלייה ציירה ציור לאמה.", "הבית ייבנה בקרוב.", "הגשם מייתר את ההשקיה.",
+  // a slash between two towns is two towns
+]) {
+  const h = cities(t).filter((x) => x.apply || x.review);
+  ok(!h.length, "«" + t + "» — read as a town: " + JSON.stringify(h.map((x) => x.text + "=" + x.place)));
+}
+{
+  const h = cities("הנסיעה חיפה/עכו נמשכת שעה.").map((x) => x.place);
+  ok(h.includes("חיפה") && h.includes("עכו") && h.length === 2, "«חיפה/עכו» is two towns: " + JSON.stringify(h));
+}
+
 /* Every town on the list of towns that are also words, with the evidence for it: an ordinary sentence
    where the word is not the town (it must stay, asked), and a real mention (it must be replaced). */
 const WORDS = {

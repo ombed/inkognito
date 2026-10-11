@@ -1642,20 +1642,28 @@ function fakePlace(value,used,forbidden,kind){
    (02-hebrew.js); כתיבים אחרים של יישוב מסוים ב-PLACE_ALT. כל כתיב חוזר לשם שברשימה (placeKey), וכך לכולם
    אותו תחליף. שם במקף בלבד שחלק בו קצר ("אלי-עד", "טל-אל") נתפס רק במקף: ברווח הוא צירוף רגיל
    ("הגיע אלי עד הבית") */
-const PLACE_ALT={"נהריה":["נהרייה"],"הרצליה":["הרצלייה"],"יקנעם":["יוקנעם"],"יקנעם עילית":["יוקנעם עילית"],
-  "סח'נין":["סחנין","סכנין"],"עוספיא":["עספיא"],"מג'אר":["מגאר"],"כסייפה":["כסיפה"],
-  "דאלית אל-כרמל":["דלית אל-כרמל","דליית אל-כרמל"],"טירת כרמל":["טירת הכרמל"],"נוף הגליל":["נצרת עילית"]};
-// מפריד: רווח או מקף (המקף העברי הוא מקף כבר ב-norm), ו-\0 של ניקוד סביבו, כמו FLEX_SEP
-const PLACE_SEP="\\u0000*[ \\t-][ \\t\\u0000-]*";
-const placeWords=s=>norm(String(s||"")).replace(/\u0000/g,"").trim().split(/[ \t]*-[ \t]*|[ \t]+/).filter(Boolean);
+// י או ו כפולה מכוסה בקיפול (placeDbl): «נהרייה», «הרצלייה», «כסיפה» ו«דליית» אינם כאן
+const PLACE_ALT={"יקנעם":["יוקנעם"],"יקנעם עילית":["יוקנעם עילית"],
+  "סח'נין":["סחנין","סכנין"],"עוספיא":["עספיא"],"מג'אר":["מגאר"],
+  "דאלית אל-כרמל":["דלית אל-כרמל"],"טירת כרמל":["טירת הכרמל"],"נוף הגליל":["נצרת עילית"]};
+// מפריד: רווח, מקף (המקף העברי הוא מקף כבר ב-norm) או לוכסן בין חלקי שם אחד ("תל אביב/יפו" השאיר את «יפו»),
+// ו-\0 של ניקוד סביבו, כמו FLEX_SEP
+const PLACE_SEP="\\u0000*[ \\t/-][ \\t\\u0000/-]*";
+const placeWords=s=>norm(String(s||"")).replace(/\u0000/g,"").trim().split(/[ \t]*[-/][ \t]*|[ \t]+/).filter(Boolean);
 const placeFold=w=>{for(const sp of SPELL){const m=sp.rx.exec(w); if(m&&!m[1])return sp} return null};
-function placeKey(s){return placeWords(s).map(w=>{const sp=placeFold(w); return sp?sp.key:w}).join(" ")}
+/* י או ו כפולה באמצע מילה היא כתיב מלא של אותה אות (הביקורת של 11.10): «נתנייה», «ירושליים», «טייבה»,
+   «ג'לג'ולייה», «דייר חנא». רק הכפלה: י או ו בודדת לא נוספת ולא נשמטת, ולכן «חלון» אינו «חולון». המפתח
+   מכווץ את הכפולה, והביטוי מרשה אותה בכל י ו-ו באמצע מילה — רק ביישוב שהשכבה מחליפה מעצמה: הכפולה של שם
+   דו-משמעי או של מילה היא שם אחר («איילת» אינה «אילת», «דלייה»), והוא נשאל בכל מקרה */
+const placeDbl=w=>w.replace(/(?<=.)([יו])\1(?=.)/g,"$1");
+const placeWordRx=(w,fold)=>{if(!fold)return esc(w); const c=[...placeDbl(w)]; return c.map((x,i)=>i>0&&i<c.length-1&&/[יו]/.test(x)?x+x+"?":esc(x)).join("")};
+function placeKey(s){return placeWords(s).map(w=>{const sp=placeFold(w); return sp?sp.key:placeDbl(w)}).join(" ")}
 // השם כרצף של [מפריד, מילה] בביטוי; לפני המילה הראשונה אין מפריד
-function placeParts(name){
+function placeParts(name,fold){
   const v=norm(name).trim(), w=placeWords(v);
   const strict=!/\s/.test(v)&&w.length===2&&w.some(x=>x.replace(/['"]/g,"").length<4);
   return w.map((x,i)=>{const sp=placeFold(x);
-    return [i?(strict?"\\u0000*-\\u0000*":PLACE_SEP):"",sp?sp.L.map(l=>esc(l.c)+(l.opt?"?":"")).join(""):esc(x)]});
+    return [i?(strict?"\\u0000*-\\u0000*":PLACE_SEP):"",sp?sp.L.map(l=>esc(l.c)+(l.opt?"?":"")).join(""):placeWordRx(x,fold)]});
 }
 /* הביטוי נבנה כעץ של מילים: ראש משותף ("בית", "כפר", "גבעת") והמפריד שאחריו נבדקים פעם אחת ולא פעם לכל
    שם. כרשימה שטוחה של מאות שמות עם מפריד גמיש, סריקת המאגר הייתה איטית פי חמישה-עשר. המשך ארוך נבדק לפני
@@ -1677,7 +1685,7 @@ function placeIndex(names,skip){
   const keys=new Map(), list=[];
   for(const n of names) for(const sf of [n,...(PLACE_ALT[n]||[])]){
     const k=placeKey(sf); if(keys.has(k)||(skip&&skip.has(k)))continue;
-    keys.set(k,n); list.push(placeParts(sf));
+    keys.set(k,n); list.push(placeParts(sf,!AMBIG.has(n)&&!TOWNWORD.has(n)));
   }
   return {keys,rx:new RegExp("(?<![\\u0590-\\u05ff])(?:[בהולמכש]|ו[בהלמכ]|כש|מה|לכ)?("+
     placeTrie(list)+")(?![\\u0590-\\u05ff])","gu")};
