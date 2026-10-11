@@ -185,20 +185,21 @@ const LEAK=/Target="(mailto:[^"]+|file:[^"]+|[A-Za-z]:\\[^"]+|\\\\[^"]+)"/g;
    מוחלף בכינוי שלו, ובלי כינוי ב"[הוסר]". מה שנשאר גם אחרי זה — שם שמפוצל בין תגיות, או
    בתוך קובץ מוטמע — האימות עדיין תופס, וזה נכון: שם הוא לא יכול לנקות. */
 const XESC=v=>String(v).split("&").join("&amp;").split("<").join("&lt;").split(">").join("&gt;").split('"').join("&quot;").split("'").join("&apos;");
-function residuePass(files,walked,subs,applied){
-  const repOf=new Map();
-  const put=(v,r)=>{for(const k of [String(v||"").trim(),norm(String(v||"")).trim()]) if(k.length>=2&&!repOf.has(k))repOf.set(k,r)};
-  for(const r of applied)put(r.base||r.value,r.baseRep||r.rep||"");
-  for(const s of subs)put(s.value,s.replacement||"[הוסר]");
+// dateOut: לכל תאריך שהוחלף כאן, התאריך הבדוי שנכתב במקומו (הבדיקה האחרונה סופרת אותם, verify)
+function residuePass(files,walked,subs,applied,dateOut){
+  const repOf=new Map(), dateKey=new Set();
+  const put=(v,r,d)=>{for(const k of [String(v||"").trim(),norm(String(v||"")).trim()]) if(k.length>=2&&!repOf.has(k)){repOf.set(k,r); if(d)dateKey.add(k)}};
+  for(const r of applied)put(r.base||r.value,r.baseRep||r.rep||"",(CANON[r.type]||[r.type])[0]==="DATE");
+  for(const s of subs)put(s.value,s.replacement||"[הוסר]",s.kind==="DATE");
   const vals=[...repOf.keys()].sort((a,b)=>b.length-a.length);
   const done=[];
   for(const f of files){
     if(walked.has(f.name)||!f.name.endsWith(".xml")||f.name==="[Content_Types].xml"||f.name==="docProps/core.xml"||f.name==="docProps/app.xml")continue;
     const o=TXT.decode(f.data); let s=o;
     for(const v of vals){
-      const r=XESC(repOf.get(v));
+      const r=XESC(repOf.get(v)), d=dateOut&&dateKey.has(v);
       for(const form of new Set([v,XESC(v)]))
-        s=s.replace(new RegExp("(?<![א-ת])"+esc(form)+"(?![א-ת])","gu"),()=>r);
+        s=s.replace(new RegExp("(?<![א-ת])"+esc(form)+"(?![א-ת])","gu"),()=>{if(d)dateOut.push(repOf.get(v)); return r});
     }
     if(s!==o){f.data=ENC.encode(s);done.push(f.name)}
   }
@@ -250,7 +251,8 @@ async function redactDocx(buf,subs,allow,opt){
     docs.push({f,doc:d,orig:o});
   }
   rep.bookmarks=renameBookmarks(docs.map(x=>x.doc));
-  const applied=[],flagged=[],secrets=[],dateSecrets=[];
+  // dateFakes: כל תאריך בדוי שנכתב, כמה פעמים שנכתב, לבדיקה האחרונה (verify)
+  const applied=[],flagged=[],secrets=[],dateSecrets=[],dateFakes=[];
   let blocks=[];
   for(const dd of docs) blocks=blocks.concat(flatten(dd.doc,dd.f.name));
   const eng=new Engine(subs,allow,opt,blocks.map(b=>b.text).join("\n"));
@@ -278,7 +280,8 @@ async function redactDocx(buf,subs,allow,opt){
         // תאריך נבדק בסוף רק במקום שבו הוא תאריך (notDateAt), ולכן הוא ברשימה משלו
         const sec=(CANON[h.type]||[h.type])[0]==="DATE"?dateSecrets:secrets;
         reps.push([s,e,nw]);applied.push(rec);sec.push(h.text);
-        if(h.base)sec.push(h.base)}
+        if(h.base)sec.push(h.base);
+        if(sec===dateSecrets&&nw)dateFakes.push(nw)}
       else flagged.push(rec)}
     // מיקום המחיקות בטקסט החדש, לסימון במסך הבדיקה: הערך איננו, אבל היא צריכה לראות
     // שהיה שם משהו ולוכל לבטל. כל החלפה שלפני נקודה מזיזה אותה בהפרש האורכים.
@@ -392,7 +395,7 @@ async function redactDocx(buf,subs,allow,opt){
         if(zones.some(([a,b])=>a<=s&&e<=b))continue;
         if(inf.date&&notDateAt(n,s,e))continue;
         const out=inf.of?addPre(m[1]||"",nw):nw;
-        reps.push([s,e,out]);
+        reps.push([s,e,out]); if(inf.date)dateFakes.push(out);
         applied.push({value:blk.text.slice(s,e),type:inf.place?"PLACE":"NAME",
           label:inf.of?(inf.place?"מקום (חלק)":"שם (חלק)"):"הופעה נוספת",part:partName(blk.part),
           why:inf.of?(inf.place
@@ -422,7 +425,7 @@ async function redactDocx(buf,subs,allow,opt){
       ctx:ctxHTML(hit.text,mm.index,mm.index+pa.p.length),review:true,src:"partAmbig"});
   }
   for(const dd of docs) dd.f.data=ENC.encode(serXML(dd.doc,dd.orig));
-  rep.residue=residuePass(keep,new Set(docs.map(d=>d.f.name)),subs,applied);
+  rep.residue=residuePass(keep,new Set(docs.map(d=>d.f.name)),subs,applied,dateFakes);
 
   // התצוגה המקדימה: סימון כל תחליף על הטקסט שאחרי ההחלפה. תחליף שעומד ליותר
   // מערך אחד, או שהופיע כבר במקור, מסומן כדו-משמעי.
@@ -517,7 +520,7 @@ async function redactDocx(buf,subs,allow,opt){
   const remaining=[...new Set(flagged.filter(r=>r.src!=="near"&&r.src!=="nohit").map(r=>r.value))];
   const ver=await verify(outBuf,secrets.concat(subs.flatMap(s=>
     s.kind==="NAME"?variants(s.value,opt.prefixes||"normal").map(v=>v[0]):s.kind==="DATE"?[]:[s.value])),
-    dateSecrets.concat(subs.filter(s=>s.kind==="DATE").map(s=>s.value)));
+    dateSecrets.concat(subs.filter(s=>s.kind==="DATE").map(s=>s.value)),dateFakes);
   ver.hadList=subs.length>0;
   ver.remaining=remaining;
   ver.near=near;
@@ -623,33 +626,53 @@ function examplesOf(blocks,value,max=3){
   return out;
 }
 
-/* dates: הערכים האמיתיים של תאריכים. תאריך נחשב שנשאר רק במקום שבו הוא תאריך: "12.3" של "ביום 12.3" אינו דולף
-   ב"סעיף 12.3" או ב"3.5 ימים" (notDateAt), שהם מספר סעיף וכמות ונשארים כמו שהם (הציד של 11.10) */
-async function verify(buf,secrets,dates){
+/* dates: הערכים האמיתיים של תאריכים, ו-fakes: כל תאריך בדוי שנכתב, כמה פעמים שנכתב. תאריך נחשב שנשאר רק במקום
+   שבו הוא תאריך: "12.3" של "ביום 12.3" אינו דולף ב"סעיף 12.3" או ב"3.5 ימים" (notDateAt), שהם מספר סעיף וכמות
+   ונשארים כמו שהם (הציד של 11.10). תאריך נקרא על הטקסט בלי התגיות ועל ערכי התכונות, לא על ה-XML כמו שהוא: שם
+   ריצה של Word בין "סעיף" למספר הסתירה את מילת הסעיף, והסעיף שנשאר נקרא תאריך שדלף (ביקורת 11.10). ותאריך דולף
+   רק כשהוא מופיע יותר פעמים משנכתב בתוך תאריכים בדויים: במסמך צפוף, ההיסט לא תמיד מוצא מקום פנוי (dateOffFor),
+   ותאריך בדוי שהוא גם תאריך אמיתי של המסמך אינו התאריך האמיתי שנשאר */
+async function verify(buf,secrets,dates,fakes){
   const files=await unzip(buf);
   const uniq2=a=>[...new Set((a||[]).filter(s=>s&&s.trim().length>=2))].map(s=>[s,norm(s)]);
-  const sec=uniq2(secrets).map(x=>[...x,false]).concat(uniq2(dates).map(x=>[...x,true]));
-  const leaks=[],emb=[];let n=0;
+  const sec=uniq2(secrets), dsec=uniq2(dates).map(([o,nv])=>[o,nv.replace(/\u0000/g,"")]);
+  const dateRX=nv=>new RegExp((/^\d/.test(nv)?"(?<!\\d)":"")+esc(nv)+(/\d$/.test(nv)?"(?!\\d)":""),"gu");
+  const dateHits=(t,nv)=>{let c=0; for(const m of t.matchAll(dateRX(nv)))if(!notDateAt(t,m.index,m.index+m[0].length))c++; return c};
+  const leaks=[],emb=[],dateIn=new Map();let n=0;
   for(const f of files){n++;
     if(/^word\/(embeddings|media)\//.test(f.name))emb.push(f.name);
     for(const enc of ["utf-8","utf-16le"]){
       let t;try{t=new TextDecoder(enc).decode(f.data)}catch(_){continue}
+      let dv=t;
       /* הבדיקה קראה רק את ה-XML כמו שהוא, ושם שמפוצל בין ריצות, מופרד בטאב או כתוב
          עם קו תחתון ("רחל_פרידמן") לא נראה לה כלל (שכבה 1ב). קוראים גם את הטקסט בלי
          תגיות, כשטאב ומעבר שורה הם רווח וקו תחתון הוא רווח. */
-      if(/\.(xml|rels)$/.test(f.name)&&enc==="utf-8")
-        t+="\n"+t.replace(/<\/(?:w|a):p>/g,"\n").replace(/<w:(?:tab|br|cr)\b[^>]*\/>/g," ").replace(/<w:noBreakHyphen\/>/g,"-").replace(/<[^>]+>/g,"")+"\n"+t.replace(/_/g," ");
-      const nt=norm(t);
-      // מספר או תאריך נבדקים בגבולות ספרות: "1.3.2026" אינו דולף בתוך התאריך המוזז "11.3.2026"
-      for(const [o,nv,isDate] of sec){
+      if(/\.(xml|rels)$/.test(f.name)&&enc==="utf-8"){
+        const tv=t.replace(/<\/(?:w|a):p>/g,"\n").replace(/<w:(?:tab|br|cr)\b[^>]*\/>/g," ").replace(/<w:noBreakHyphen\/>/g,"-").replace(/<[^>]+>/g,"");
+        // ומה שאינו טקסט ואינו תגית: ערכי תכונות והערות XML
+        dv=tv+"\n"+[...t.matchAll(/=(?:"([^"]*)"|'([^']*)')|<!--([\s\S]*?)-->/g)].map(m=>m[1]??m[2]??m[3]).join("\n");
+        t+="\n"+tv+"\n"+t.replace(/_/g," ");
+      }
+      const nt=norm(t), nd=norm(dv).replace(/\u0000/g,"");
+      // מספר נבדק בגבולות ספרות: "1.3.2026" אינו דולף בתוך התאריך המוזז "11.3.2026"
+      for(const [o,nv] of sec){
         if(!nv)continue;
         const digital=/^\d/.test(nv)||/\d$/.test(nv);
-        const src=(/^\d/.test(nv)?"(?<!\\d)":"")+esc(nv)+(/\d$/.test(nv)?"(?!\\d)":"");
-        const hit=isDate?[...nt.matchAll(new RegExp(src,"gu"))].some(m=>!notDateAt(nt,m.index,m.index+m[0].length))
-          :digital?new RegExp(src,"u").test(nt):nt.includes(nv);
+        const hit=digital?new RegExp((/^\d/.test(nv)?"(?<!\\d)":"")+esc(nv)+(/\d$/.test(nv)?"(?!\\d)":""),"u").test(nt):nt.includes(nv);
         if(hit)leaks.push({value:o,part:f.name});
       }
+      for(const [o,nv] of dsec){
+        if(!nv)continue;
+        const c=dateHits(nd,nv); if(!c)continue;
+        const d=dateIn.get(o)||{n:0,parts:[]}; d.n+=c; d.parts.push(f.name); dateIn.set(o,d);
+      }
     }}
+  // התאריכים הבדויים בשורות נפרדות: אין בהם מילת סעיף או יחידה, ולכן כל אחד נקרא בהקשר של עצמו
+  const wrote=(fakes||[]).map(x=>norm(String(x||"")).replace(/\u0000/g,"")).join("\n");
+  for(const [o,nv] of dsec){
+    const d=dateIn.get(o); if(!d)continue;
+    if(d.n>dateHits(wrote,nv))for(const p of d.parts)leaks.push({value:o,part:p});
+  }
   const uniq=[],seen=new Set();
   for(const l of leaks){const k=l.part+"|"+l.value;if(!seen.has(k)){seen.add(k);uniq.push(l)}}
   return {passed:!uniq.length,leaks:uniq,parts:n,embedded:emb}}

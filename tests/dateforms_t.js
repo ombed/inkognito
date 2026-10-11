@@ -10,6 +10,13 @@
    And two dates exactly one offset apart made the shifted one a real date of the document: the final check
    called it a date left behind and stopped the copy. A month and year moves by whole months, which would have
    made that the rule for a list of months; the offset now moves on until no shifted value is a real one.
+   The review of 11.10 found what that first round broke: a real date after a clause word, a number and a
+   connector («כאמור בסעיף 4 עד 31.12.2026») and a day and month before a time word or a ש- clause («עד ה-12.3
+   שבוע לפני», «מ-12.3 שניתנה») went out real under a green bar; an amount after a month's name («ביוני 2000
+   ש״ח») moved as a year; a clause number in its own Word run stopped the copy as a date left behind; a footnote
+   mark after a date hid it; long rows of numbers and the offset search took seconds to minutes, and the offset
+   grew to years. The offset now stays in 30–400 days, and the final check counts a shifted date that is also a
+   real one as written, not as left.
    All text is invented. */
 const C = require("./core.js");
 let pass = 0, fail = 0;
@@ -239,6 +246,104 @@ console.log("\n— what cannot come back for sure is not guessed, and is listed 
   eq(done.text + " " + done.left.length, "הדיון ב-22.12.2026. 0", "a date that came back is not listed");
 }
 
+console.log("\n— still dates, with a clause number, a unit or a time word near (review 11.10) —");
+for (const [text, want] of [
+  // a clause, regulation, exhibit or version word, a number and a connector: what follows is a date. A four-digit year
+  // never is a clause number; a two-digit year is one only right after the word, or after a number of the same shape
+  ["נספח 3 – 12.3.2026 – מכתב ההתראה.", "12.3.2026"],
+  ["גרסה 2 - 1.3.2026: עדכון ההסכם.", "1.3.2026"],
+  ["כאמור בסעיף 4 עד 31.12.2026 ישלם האב.", "31.12.2026"],
+  ["בהתאם לתקנה 5, 12.3.2026 הוגשה הבקשה.", "12.3.2026"],
+  ["כאמור בסעיפים 4 ו-5 ו-12.3.2026 נחתם.", "12.3.2026"],
+  ["נספח 3 – 12.3.26 – מכתב ההתראה.", "12.3.26"],
+  ["כאמור בסעיף 4 עד 31.12.26 ישלם האב.", "31.12.26"],
+  ["בהתאם לתקנה 5, 12.3.26 הוגשה הבקשה.", "12.3.26"],
+  ["כאמור בסעיף 4.1 עד 31.12.26 ישלם האב.", "31.12.26"],
+  // the usual abbreviations guard their own clause number, not a date after another number
+  ["כאמור בסע' 4.1.12 ובסע' 4 עד 31.12.26 ישלם האב.", "31.12.26"],
+  ["לפי תק' 12.4.21 ולפי תק' 5, 12.3.2026 הוגשה.", "12.3.2026"],
+  // a time word after a day and month: a count of time only in its count form, and only after a half
+  ["יש להגיש את התצהיר עד ה-12.3 שבוע לפני הדיון.", "12.3"],
+  ["עד ה-12.3 שבועיים לפני הדיון יוגש התצהיר.", "12.3"],
+  ["הבקשה תוגש עד ה-1.3 חודש לפני המועד.", "1.3"],
+  ["מה-1.9 שעות הביקור יורחבו.", "1.9"],
+  ["עד ה-12.3 ימים ספורים לפני הדיון.", "12.3"],
+  ["עד ה-12.5 שבועיים לפני הדיון יוגש התצהיר.", "12.5"],
+  ["עד ה-12.5 שבוע לפני הדיון יוגש התצהיר.", "12.5"],
+  ["במשך ה-3.5 ימים לא שילם, ועד ה-12.3 ימים ספורים לפני הדיון הגיש.", "12.3"],
+  ["במשך ה-1.5 שנה האחרונות לא שילם, ועד ה-1.3 שנה לפני הדיון לא הגיש.", "1.3"],
+  // a word that only starts like a unit
+  ["עד ה-12.3 שנקבע כמועד אחרון לא הוגש דבר.", "12.3"],
+  ["מה-3.5 שנות הנישואין גרו בחו\"ל, ועד ה-12.3 שנקבע לא חזרו.", "12.3"],
+  ["ה-2.5 שקלים לשעה נוספו, ועד ה-12.3 שקלה הוועדה את הבקשה.", "12.3"],
+  ["מה-1.3 מטרתו של ההסדר השתנתה.", "1.3"],
+  // an amount after the month is no year, and the day and month stay a date; a tab is a table's next column
+  ["ביום 12 ביוני 2000 ש\"ח הועברו לחשבון.", "12 ביוני"],
+  ["שולם ב-1 בינואר\t1950\nוב-1 בפברואר\t2000", "1 בינואר | 1 בפברואר"],
+  // a footnote mark after the sentence's dot, as text pasted from Word carries it
+  ["ביום 12.3.2026.3 התקיים הדיון.", "12.3.2026"],
+  ["ביום 12. 3. 2026.3 התקיים הדיון.", "12. 3. 2026"],
+]) eq(found(text), want, "«" + text + "»");
+
+console.log("\n— left alone: an amount after a month's name, the clause abbreviations, units in their other forms (review 11.10) —");
+for (const text of [
+  // child support and other sums: «ביוני 2000 ש״ח» moved to «אפריל 2001», the amount with it
+  "דמי המזונות לחודש יוני 2000 ש\"ח שולמו באיחור.",
+  "בנובמבר 2000 ש\"ח ובדצמבר 2050 ש\"ח הועברו לחשבון האם.",
+  "האם הוציאה באוגוסט 2030 ₪ על ציוד לבית הספר.",
+  "האב שילם בינואר 1950 ש\"ח בלבד, ובפברואר לא שילם כלל.",
+  "חודש\tסכום\nינואר\t1950\nפברואר\t2000\nמרץ\t2050",
+  "האב ישלם עבור יוני 2000 ש\"ח ועבור נועה 1500 ש\"ח.",
+  "שכר הדירה לספטמבר 1980 שקלים.",
+  "בינואר 2000 שח הועברו לאם.",
+  "ביולי 2000 דולר הועברו לחשבון.",
+  "במרץ 1990 ש''ח שולמו.",
+  // «סע׳» and «תק׳», in both spellings of the geresh, alone and in a list
+  "כאמור בסע' 4.1.12 להסכם.",
+  "לפי סע׳ 4.1.12 להסכם.",
+  "בהתאם לתק' 12.4.21 לתקנות.",
+  "בהתאם לתק׳ 12.4.21 לתקנות.",
+  "בסע' 4.1.12 ו-4.1.13 להסכם.",
+  // units in forms a prefix of the singular did not reach
+  "ה-2.5 מיליוני שקלים יחולקו בין הצדדים.",
+  "ה-2.5 דונמים שבמחלוקת.",
+]) {
+  eq(found(text), "", "«" + text + "»");
+  ok(dates(text, ALL).length === 0, "with the tool's defaults too: «" + text + "»");
+}
+
+console.log("\n— the offset stays in the range the owner chose, 30 to 400 days, and is found fast (review 11.10) —");
+const MON = ["ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני", "יולי", "אוגוסט", "ספטמבר", "אוקטובר", "נובמבר", "דצמבר"];
+const dayOf = (y, k) => new Date(Date.UTC(y, 0, 1 + k));
+const dnum = (y, k) => { const d = dayOf(y, k); return d.getUTCDate() + "." + (d.getUTCMonth() + 1) + "." + d.getUTCFullYear(); };
+const dwords = (y, k) => { const d = dayOf(y, k); return d.getUTCDate() + " ב" + MON[d.getUTCMonth()] + " " + d.getUTCFullYear(); };
+const pad2 = (n) => String(n).padStart(2, "0");
+{
+  for (const [name, text] of [
+    ["sixty dates over two years and 24 months of salary slips", Array.from({ length: 60 }, (_, i) => (i + 1) + ". ביום " + dnum(2024, Math.floor(i * 730 / 60) + 3) + " אירע אירוע.").join("\n") +
+      "\nתלושי השכר שצורפו: " + Array.from({ length: 24 }, (_, i) => MON[i % 12] + " " + (2024 + Math.floor(i / 12))).join(", ") + "."],
+    ["a list of 96 months", Array.from({ length: 96 }, (_, i) => "תלוש לחודש " + MON[i % 12] + " " + (2019 + Math.floor(i / 12)) + " צורף.").join("\n")],
+    ["a chat export over two years", Array.from({ length: 1500 }, (_, i) => "[" + dnum(2025, Math.floor(i / 2.05)) + ", " + pad2(i % 24) + ":" + pad2(i % 60) + "] האם: הודעה מספר " + i).join("\n")],
+  ]) {
+    const off = new C.Engine([], [], ALL, text).dateOff;
+    ok(off >= 30 && off <= 400, name + ": the offset is " + off + " days");
+  }
+  const big = Array.from({ length: 1000 }, (_, i) => "ביום " + dwords(2018, i * 3) + " אירע אירוע מספר " + (i + 1) + ".").join("\n") + "\n" +
+    Array.from({ length: 60 }, (_, i) => "תלוש לחודש " + MON[i % 12] + " " + (2020 + Math.floor(i / 12)) + " צורף.").join("\n");
+  const t0 = Date.now(), off = new C.Engine([], [], ALL, big).dateOff, took = Date.now() - t0;
+  ok(took < 2000 && off >= 30 && off <= 400, "a thousand dates and sixty months: the offset (" + off + " days) in " + took + " ms; it took 15 s");
+}
+
+console.log("\n— a long row of numbers is read in linear time (review 11.10) —");
+for (const [name, text] of [
+  ["4,000 amounts in one paragraph", "סכומים: " + Array.from({ length: 4000 }, (_, i) => (i % 9 + 1) + "," + String((i * 37) % 1000).padStart(3, "0")).join(", ")],
+  ["20,000 months and years with no date word before them", "הסכומים " + Array.from({ length: 20000 }, (_, i) => pad2(i % 12 + 1) + "/" + (2000 + Math.floor(i / 12) % 99)).join(", ") + "."],
+]) {
+  const t0 = Date.now(), e = new C.Engine([], [], ALL, text); e.detect(text);
+  const took = Date.now() - t0;
+  ok(took < 2000, name + ": read in " + took + " ms; it took tens of seconds");
+}
+
 console.log("\n— the whole document: what goes out, and the final check —");
 const xd = require("@xmldom/xmldom");
 global.DOMParser = xd.DOMParser; global.XMLSerializer = xd.XMLSerializer;
@@ -258,12 +363,15 @@ const js = fs.readFileSync(path.join(__dirname, "app.html"), "utf8").split("<scr
   .replace('const deflate=u8=>pipe(u8,CompressionStream,"deflate-raw");', "const deflate=async u8=>global.__deflate(u8);");
 const cut = js.indexOf("/* ══════════════════════════ ממשק ══════════════════════════ */");
 const a = js.indexOf("function pseudoRX(p){"), b = js.indexOf("function livePairs(){");
-fs.writeFileSync(path.join(__dirname, "dateforms-core.js"), js.slice(0, cut) + "\n" + js.slice(a, b) + "\nmodule.exports={redactDocx};\n");
+fs.writeFileSync(path.join(__dirname, "dateforms-core.js"), js.slice(0, cut) + "\n" + js.slice(a, b) + "\nmodule.exports={redactDocx,verify};\n");
 const E = require("./dateforms-core.js");
 const { mkzip } = require("./mkzip.js");
 const { P, R, base } = require("./structure-lib.js");
 const WNS = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"';
-const docOf = (lines) => `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n<w:document ${WNS}><w:body>${lines.map((l) => P(R(l))).join("")}</w:body></w:document>`;
+// a line is one run, or a list of runs, as Word splits a paragraph at each editing session
+const bodyOf = (lines) => lines.map((l) => P((Array.isArray(l) ? l : [l]).map((r) => R(r)).join(""))).join("");
+const xmlOf = (body) => `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n<w:document ${WNS}><w:body>${body}</w:body></w:document>`;
+const docOf = (lines) => xmlOf(bodyOf(lines));
 const run = async (lines) => {
   const res = await E.redactDocx(mkzip([...base, { name: "word/document.xml", body: docOf(lines) }]), [], [], ALL);
   return { res, out: res.preview.map((x) => x.text) };
@@ -316,6 +424,70 @@ const run = async (lines) => {
       ok(!out[1].includes(second) && !out[2].includes(second), "the earlier date does not go out as the later one: " + out.join(" ⏎ "));
       ok(res.verification.passed, "and the final check passes (it stopped the copy here): " + JSON.stringify(res.verification.leaks));
     }
+  }
+  // review 11.10, in the whole pipeline with the tool's defaults: each of these went out real under a green bar
+  {
+    const { res, out } = await run(["הסכם", "ביום 1.1.2026 נחתם ההסכם.", "האב ישלם לפי סעיף 4 עד 31.12.2026."]);
+    ok(!out[2].includes("31.12.2026") && res.verification.passed, "a date after a clause word, a number and «עד» moves: " + out[2]);
+  }
+  // the day found once, again after a preposition and before a ש- clause or a time word that is no count
+  for (const [first, line, day] of [
+    ["ביום 12.3 התקיים דיון.", "בהחלטה מ-12.3 שניתנה במעמד הצדדים נקבע כי האב ישלם.", "12.3"],
+    ["ביום 12.3 התקיים דיון.", "בדיון ב-12.3 שנערך בפני השופטת הוחלט כך.", "12.3"],
+    ["ביום 12.3 התקיים דיון.", "הדיון נדחה ל-12.3 שנקבע מראש.", "12.3"],
+    ["ביום 12.3 התקיים דיון.", "עד ה-12.3 שנקבע כמועד אחרון לא הוגש דבר.", "12.3"],
+    ["ביום 12.3 התקיים דיון.", "התצהיר הוגש ב-12.3 ימים ספורים לפני הדיון.", "12.3"],
+    ["ביום 12.3 התקיים דיון.", "הבקשה הוגשה ב-12.3 חודש לפני המועד.", "12.3"],
+    ["ביום 15.10 התקיים דיון.", "בהחלטה מ-15.10 שניתנה במעמד הצדדים נקבע כך.", "15.10"],
+  ]) {
+    const { res, out } = await run(["החלטה", first, line]);
+    ok(!out[2].includes(day) && res.verification.passed, "the same day moves: «" + line + "» → «" + out[2] + "» " + JSON.stringify(res.verification.leaks));
+  }
+  // an amount or a count of time keeps its number; the same day beside it, as a date, moves
+  for (const [first, line, keep, day] of [
+    ["ביום 12.3 נפגשו.", "הועברו 12.3 מיליון ש\"ח, וב-12.3 שנערך דיון נוסף הוחלט כך.", "הועברו 12.3 מיליון ש\"ח, וב-", "12.3"],
+    ["ביום 13.5 נפגשו.", "במשך 13.5 ימים לא שילם, וב-13.5 שנערך דיון נוסף הוחלט כך.", "במשך 13.5 ימים לא שילם, וב-", "13.5"],
+  ]) {
+    const { res, out } = await run(["החלטה", first, line]);
+    ok(out[2].startsWith(keep) && !out[2].slice(keep.length).includes(day) && res.verification.passed, "the amount stays, the date moves: «" + out[2] + "» " + JSON.stringify(res.verification.leaks));
+  }
+  // Word splits a paragraph into runs at each editing session and language switch: the final check reads the text
+  for (const [lines, keep] of [
+    [["החלטה", "ביום 12.3 נפגשו הצדדים.", ["לפי סעיף ", "12.3", " להסכם, האב ישלם."]], "לפי סעיף 12.3 להסכם, האב ישלם."],
+    [["החלטה", "ביום 3.5 נפגשו.", ["במשך ה-", "3.5", " ימים שחלפו לא שילם."]], "במשך ה-3.5 ימים שחלפו לא שילם."],
+    [["הסכם", "החל מה-1.9 ישלם האב את דמי החוג.", ["כאמור בסעיף ", "1.9", " להלן."]], "כאמור בסעיף 1.9 להלן."],
+  ]) {
+    const { res, out } = await run(lines);
+    ok(out[2] === keep && res.verification.passed, "a clause number or a count in its own run stays and stops nothing: «" + out[2] + "» " + JSON.stringify(res.verification.leaks));
+  }
+  {
+    const { res } = await run(["החלטה", "ביום 1.3 נפגשו, וביום 12.3 שוב.", ["נקבע ", "1.3", " כמועד."], ["לפי סעיף ", "12.3", " להסכם."]]);
+    eq(JSON.stringify(res.verification.leaks.map((l) => l.value)), '["1.3"]', "split into runs: the real day left in the text is caught, the clause is not");
+  }
+  // a direction mark beside the number: the sweep and the final check read past it, as the reader does
+  for (const line of ["הועברו ה-12.3" + RLM + " מיליון ש\"ח לחשבון.", "לפי סעיף" + RLM + " 12.3 להסכם."]) {
+    const { res, out } = await run(["החלטה", "ביום 12.3 נפגשו.", line]);
+    ok(out[2] === line && res.verification.passed, "an amount or a clause with a direction mark stays: «" + out[2] + "» " + JSON.stringify(res.verification.leaks));
+  }
+  // two years of months: within 400 days some months land on other real months of the list. They were written as
+  // pseudonyms, so they are no leak
+  {
+    const lines = ["תלושי שכר", ...Array.from({ length: 24 }, (_, i) => "תלוש לחודש " + MON[i % 12] + " " + (2024 + Math.floor(i / 12)) + " צורף.")];
+    const off = new C.Engine([], [], ALL, lines.join("\n")).dateOff;
+    const { res, out } = await run(lines);
+    ok(off >= 30 && off <= 400 && out.slice(1).every((l, i) => l !== lines[i + 1]) && res.verification.passed,
+      "24 months: offset " + off + " days, every month moves, the final check passes: " + JSON.stringify(res.verification.leaks));
+  }
+  // the final check itself
+  {
+    const zipOf = (body) => mkzip([...base, { name: "word/document.xml", body: xmlOf(body) }]);
+    const twice = zipOf(bodyOf(["ביום 26.4.2026 נפגשו.", "ביום 26.4.2026 שוב נפגשו."]));
+    const once = await E.verify(twice, [], ["26.4.2026"], ["26.4.2026"]), both = await E.verify(twice, [], ["26.4.2026"], ["26.4.2026", "26.4.2026"]);
+    ok(!once.passed && both.passed, "a real date that is also a written pseudonym counts as written; one more is the real one left (" + once.passed + ", " + both.passed + ")");
+    const fn = await E.verify(zipOf(bodyOf(["ביום 12.3.2026.3 התקיים הדיון."])), [], ["12.3.2026"], []);
+    ok(!fn.passed, "a real date before a footnote mark is a date left behind");
+    const at = await E.verify(zipOf(bodyOf([["לפי סעיף ", "12.3", " להסכם."]]) + '<w:p><w:pPr><w:pStyle w:val="12.3.2026"/></w:pPr></w:p>'), [], ["12.3", "12.3.2026"], []);
+    eq(JSON.stringify(at.leaks.map((l) => l.value)), '["12.3.2026"]', "attribute values are read; a clause number split from its word is not a date");
   }
   console.log(`\n${pass} passed, ${fail} failed\n`);
   process.exitCode = fail ? 1 : 0;

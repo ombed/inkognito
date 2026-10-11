@@ -77,36 +77,43 @@ function ageZones(n){
   const b=/(?<![\d])(\d{1,3})\s+(?:שנה|שנים|שנתיים|וחצי)(?![א-ת])/gu;
   while((m=b.exec(n)))z.push([m.index,m.index+m[1].length]);
   return z}
-/* היסט התאריכים של מסמך, בלי התנגשות (הציד של 11.10). תאריך שזז בדיוק אל תאריך אחר שבמסמך ("1.2.2026" אל
-   "1.10.2026", כשגם הוא שם) יוצא כערך אמיתי: הבדיקה האחרונה קראה לו תאריך שנשאר, הפס האדום עצר את ההעתקה,
-   ושני אירועים קיבלו אותו תאריך. חודש ושנה זזים בחודשים שלמים, ולכן "ינואר 2026" ו"פברואר 2026" באותו מסמך
-   היו מתנגשים כמעט תמיד. ההיסט עולה ביום עד שאף ערך מוזז אינו ערך אמיתי, ואינו מכיל חודש ושנה אמיתיים
-   ("12 במרץ 2026" מכיל את "מרץ 2026"). מסמך בלי התנגשות שומר את ההיסט שהיה לו. nd: הטקסט המנורמל */
+/* היסט התאריכים של מסמך (הציד של 11.10). תאריך שזז בדיוק אל תאריך אחר שבמסמך ("1.2.2026" אל "1.10.2026", כשגם
+   הוא שם) יוצא כערך אמיתי, וכך גם תאריך מלא שמכיל חודש ושנה של המסמך ("12 במרץ 2026" מכיל את "מרץ 2026"). חודש
+   ושנה זזים בחודשים שלמים, ולכן ברשימה של חודשים כמעט כל הזזה נוחתת על חודש אחר שלה.
+   ההיסט נשאר בטווח שהבעלים בחר, 30 עד 400 יום (ביקורת 11.10): עד כאן הוא עלה עד שלא נשארה התנגשות, שמונה שנים
+   לרשימה של 96 חודשים, וכל גיל ומועד שה-AI מחשב יצא שגוי בשנים; והחיפוש בנה מחרוזות לכל היסט, 15 שניות על 1,000
+   תאריכים. בתוך הטווח נבחר הראשון, מההיסט של המסמך והלאה, שאין בו התנגשות, ואם אין כזה, זה עם הכי מעט. מה שנשאר
+   אינו דליפה: הבדיקה האחרונה סופרת כמה פעמים כל תאריך נכתב כבדוי (verify). nd: הטקסט המנורמל */
 function dateOffFor(nd){
   const base=30+(typeof hash32==="function"?hash32(nd):0)%371;
   const P=nd&&PAT.find(p=>p.n==="DATE"); if(!P)return base;
-  const reals=new Map();
+  // מה שהזיהוי רואה: בלי התווים הבלתי נראים (detect/squeeze)
+  const DAY=864e5, full=new Set(), dm=new Set(), my=new Set(), dms=new Map();
   P.rx.lastIndex=0;
-  for(const m of nd.matchAll(P.rx)){const s=m[0].replace(/\u0000/g,"").trim(), p=parseDate(s); if(p)reals.set(s,p)}
-  if(!reals.size)return base;
-  const full=new Set(), dayNoYear=new Set(), dayAny=new Set(), mon=new Set(), monRx=[];
-  for(const [s,p] of reals){
-    if(p.d==null){mon.add(p.m+"|"+p.y); monRx.push(new RegExp(esc(s)+"(?![0-9])","u")); continue}
-    dayAny.add(p.d+"|"+p.m);
-    if(p.y==null)dayNoYear.add(p.d+"|"+p.m); else full.add(p.d+"|"+p.m+"|"+p.y);
+  for(const m of nd.replace(/\u0000/g,"").matchAll(P.rx)){
+    const p=parseDate(m[0]); if(!p)continue;
+    if(p.d==null)my.add(p.y*12+p.m-1);
+    else if(p.y==null){dm.add(p.m*32+p.d); dms.set(p.m*32+p.d,Date.UTC(dateRefYear(p),p.m-1,p.d)/DAY)}
+    else full.add(Date.UTC(p.y,p.m-1,p.d)/DAY);
   }
-  const clash=off=>{
-    const fakes=[];
-    for(const [s,p] of reals){
-      const f=shiftDate(p,off);
-      if(f.d==null?mon.has(f.m+"|"+f.y):f.y==null?dayAny.has(f.d+"|"+f.m):(full.has(f.d+"|"+f.m+"|"+f.y)||dayNoYear.has(f.d+"|"+f.m)))return true;
-      if(monRx.length&&f.d!=null&&f.y!=null)fakes.push(fakeDate(s,off));
-    }
-    const all=fakes.join("\n");
-    return monRx.some(rx=>rx.test(all));
+  if(!full.size&&!dm.size&&!my.size)return base;
+  const cal=new Map(), at=k=>{let v=cal.get(k); if(!v){const t=new Date(k*DAY); v=[t.getUTCDate(),t.getUTCMonth()+1,t.getUTCFullYear()]; cal.set(k,v)} return v};
+  const fulls=[...full], dmv=[...dms.values()], myv=[...my];
+  // כמה ערכים מוזזים הם ערך אמיתי, או מכילים אחד; עוצר כשכבר אין סיכוי לשפר את הטוב ביותר
+  const clash=(off,cap)=>{
+    let c=0; const k=Math.round(off/30.4375);
+    for(const v of myv) if(my.has(v+k)&&++c>=cap)return c;
+    for(const v of dmv){const [d,mo]=at(v+off); if(dm.has(mo*32+d)&&++c>=cap)return c}
+    for(const v of fulls){const g=v+off, [d,mo,y]=at(g); if((full.has(g)||dm.has(mo*32+d)||my.has(y*12+mo-1))&&++c>=cap)return c}
+    return c;
   };
-  for(let off=base;off<base+3650;off++)if(!clash(off))return off;
-  return base;
+  let best=base, bc=Infinity;
+  for(let i=0;i<371;i++){
+    const off=30+(base-30+i)%371, c=clash(off,bc);
+    if(!c)return off;
+    if(c<bc){bc=c;best=off}
+  }
+  return best;
 }
 /* מילה שהיא גם מילה רגילה, לא רק שם: שם פרטי שהוא מילה, מילה שכיחה, מילת עצירה או פועל — או
    מילה שהטקסט עצמו כותב עם ה' הידיעה ("הכהן"). toks: המילים של הטקסט. בדיקה אחת לצורה עם אות

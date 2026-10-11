@@ -1268,25 +1268,45 @@ const STREET="(?:רחוב|רח'|(?<![א-ת]{2})רח(?:\\.|(?=\\s))|שדרות|ש
 const D_DAY="(?:0?[1-9]|[12][0-9]|3[01])", D_MON="(?:0?[1-9]|1[0-2])",
   D_MONTH="(?:"+DATE_MON_ALT+")",
   // "רף ה-4.1 מיליון", "ה-2.5 חדרים": מספר עם יחידה אחריו אינו תאריך (49,700 משפטי iahlt, 9.10).
-  // ויחידות זמן בכל נטייה ("ה-3.5 ימים", "ה-2.5 שבועות", "ה-1.5 שעות", "ה-1.5 חודשי שכר"), שהוזזו כתאריך (הציד של 11.10).
-  // "יום", "שעה" ו"דקה" ביחיד לא: "עד ה-12.3 יום ג'" ו"עד ה-12.3 שעה 12:00" הם תאריך
-  D_UNIT='מיליון|מיליארד|אלף|אלפי|אחוז|חדר|ש"ח|₪|\\$|דולר|יורו|שקל|ק"ג|ק"מ|מ"ר|ס"מ|מ"מ|מ"ג|מ"ל|מטר|שנ|נקוד|ליטר|גרם|קילו|טון|דונם|מעלות|פעמים|ימי|יומיים|שבוע|חודש|שעות|שעתיים|דקות|לילות',
+  // מילה שלמה, בכל נטייה שכתובה כאן: כתחילית, "שנ" תפס גם "שנקבע" ו"שניתנה", "שקל" את "שקלה" ו"מטר" את "מטרתו",
+  // והתאריך שלפניהם דלף (ביקורת 11.10); ו"מיליון" לא תפס את "מיליוני". ש"ח גם בלי גרשיים ("2000 שח")
+  D_UNIT='(?:מיליון|מיליונים|מיליוני|מיליארד|מיליארדים|מיליארדי|אלף|אלפים|אלפי|אחוז|אחוזים|אחוזי|חדר|חדרים|חדרי|ש"ח|ש\'\'ח|שח|₪|\\$|דולר|דולרים|יורו|שקל|שקלים|'+
+    'ק"ג|ק"מ|מ"ר|ס"מ|מ"מ|מ"ג|מ"ל|מטר|מטרים|נקודה|נקודות|ליטר|ליטרים|גרם|גרמים|קילו|קילוגרם|קילוגרמים|קילומטר|קילומטרים|טון|טונות|דונם|דונמים|מעלות|פעמים)(?![א-ת])',
+  /* יחידת זמן ("ה-3.5 ימים", "ה-2.5 שבועות", "ה-1.5 חודשי שכר", הציד של 11.10) רק אחרי חצי: כמות של זמן נכתבת כמעט
+     תמיד x.5, ו"עד ה-12.3 ימים ספורים לפני הדיון" או "מה-1.9 שעות הביקור יורחבו" הם תאריך (ביקורת 11.10). ובצורת
+     הספירה בלבד: לא "שבוע" ו"חודש" ביחיד ("עד ה-12.3 שבוע לפני"), לא זוגי ("שבועיים", שכבר אומר כמה), ולא "יום"
+     ו"שעה" ("עד ה-12.3 שעה 12:00") */
+  D_TIME="(?:ימים|ימי|שבועות|חודשים|חודשי|שנים|שנות|שנה|שעות|דקות|לילות)(?![א-ת])",
   // חודש ושנה במספרים ("03/2026")
   D_MY="(?:0?[1-9]|1[0-2])[./-](?:19|20)\\d{2}";
 /* מספר של סעיף, תקנה או נספח בשלוש רמות ("סעיף 5.2.10", "תקנה 12.4.21") נראה כמו תאריך עם שנה בשתי ספרות, והוזז:
-   "סעיף 5.9.10" בהסכם, וה-AI ציטט סעיפים שאינם בו (הציד של 11.10). מספר מיד אחרי מילת סעיף, או ברצף של מספרים
-   כאלה ("בסעיפים 7.1.12 ו-7.1.13"), אינו תאריך. גם גרסה ("גרסה 1.2.10") */
-const D_CLAUSE="(?<![א-ת])[ובלמהשכ]{0,3}(?:סעיפים|סעיף|ס'|ס\"ק|תקנות|תקנה|תקנת|פרקים|פרק|נספחים|נספח|פסקאות|פסקה|פסקת|פריטים|פריט|גרסה|גרסת|גירסה|גירסת)"+
-  "(?:\\s+(?:קטן|קטנים|משנה))?\\s*(?:מס'\\s*|מספר\\s*)?(?:\\d{1,3}(?:[./]\\d{1,3})*[א-ת]?(?:\\([א-ת0-9]{1,3}\\))*\\s*(?:,|ו|או|עד|ועד|-)[-\\u0000]?\\s*)*";
-const D_CLAUSE_END=new RegExp(D_CLAUSE+"$","u"), D_UNIT_AT=new RegExp("^\\s*(?:%|"+D_UNIT+")","u");
-// תאריך במספרים עם שנה, באותו מפריד פעמיים, ולא חלק ממספר ארוך יותר באותו מפריד ("1.2.10.3"); "1.2.2026/3.2.2026" הם שניים
-const D_NUMY=sep=>`(?<![0-9]${sep})\\d{1,2}${sep}(?:\\d{1,2}${sep}(?:\\d{4}|\\d{2})|\\s?\\d{1,2}${sep}\\s?\\d{4})(?!${sep}[0-9])`;
+   "סעיף 5.9.10" בהסכם, וה-AI ציטט סעיפים שאינם בו (הציד של 11.10). מספר מיד אחרי מילת סעיף אינו תאריך, וגם לא
+   מספר ברשימה שהפריט שלפניו בה באותה צורה ("בסעיפים 7.1.12 ו-7.1.13"). פריט בצורה אחרת לפניו הוא סוף הרשימה:
+   "כאמור בסעיף 4 עד 31.12.26 ישלם" ו"נספח 3 – 12.3.26 – מכתב" הם תאריך (ביקורת 11.10). lv: מספר הרמות של המספר
+   שאחרי. הרשימה עד 60 פריטים, והמבט לאחור רץ רק במקום שמתחיל בו מספר בצורת תאריך: בלי גבול, ובכל מקום בטקסט,
+   שורה ארוכה של מספרים קצרים האטה את הזיהוי בריבוע (28 שניות על 28 אלף תווים) */
+const D_CL_ITEM="\\d{1,3}(?:[./]\\d{1,3})*[א-ת]?(?:\\([א-ת0-9]{1,3}\\))*", D_CL_SEP="\\s*(?:,|ו|או|עד|ועד|-)-?\\s*";
+const D_CLAUSE=lv=>"(?<![א-ת])[ובלמהשכ]{0,3}(?:סעיפים|סעיף|סע'|ס'|ס\"ק|תקנות|תקנה|תקנת|תק'|פרקים|פרק|נספחים|נספח|פסקאות|פסקה|פסקת|פריטים|פריט|גרסה|גרסת|גירסה|גירסת)"+
+  "(?:\\s+(?:קטן|קטנים|משנה))?\\s*(?:מס'\\s*|מספר\\s*)?(?:(?:"+D_CL_ITEM+D_CL_SEP+"){0,59}\\d{1,3}(?:[./]\\d{1,3}){"+(lv-1)+"}[א-ת]?(?:\\([א-ת0-9]{1,3}\\))*"+D_CL_SEP+")?";
+const D_CLAUSE_END={2:new RegExp(D_CLAUSE(2)+"$","u"),3:new RegExp(D_CLAUSE(3)+"$","u")},
+  D_UNIT_AT=new RegExp("^\\s*(?:%|"+D_UNIT+")","u"), D_TIME_AT=new RegExp("^\\s*"+D_TIME,"u");
+/* תאריך במספרים, באותו מפריד פעמיים ("1.2.2026/3.2.2026" הם שניים). שנה בארבע ספרות לעולם אינה מספר סעיף, והיא
+   תאריך גם כשנקודה וספרה אחריה: סימן הערת שוליים אחרי הנקודה של המשפט ("ביום 12.3.2026.3", ביקורת 11.10). שנה
+   בשתי ספרות: לא חלק ממספר ארוך יותר ("1.2.10.3") */
+const D_NUM4=sep=>`(?<![0-9]${sep})\\d{1,2}${sep}\\s?\\d{1,2}${sep}\\s?\\d{4}`,
+  D_NUM2=sep=>`(?<![0-9]${sep})\\d{1,2}${sep}\\d{1,2}${sep}\\d{2}(?!${sep}[0-9])`;
 /* ערך של תאריך שנמצא, במקום אחר בטקסט (n מנורמל): מספר סעיף, כמות עם יחידה, או חלק ממספר ארוך יותר ("1.2.10.3")
    אינם התאריך. מעבר האחידות לא מחליף שם, והבדיקה האחרונה לא קוראת לזה תאריך שנשאר: עד כאן "ביום 12.3" הזיז
-   גם את "סעיף 12.3" שבאותו מסמך */
+   גם את "סעיף 12.3" שבאותו מסמך. אותם כללים כמו בזיהוי: שנה בארבע ספרות היא תמיד תאריך, ויחידת זמן רק אחרי חצי.
+   המעבר והבדיקה קוראים את הטקסט עם התווים הבלתי נראים (\0 ב-norm), ולכן הם יוצאים מההקשר כאן */
 function notDateAt(n,s,e){
-  if(/[0-9][./]$/.test(n.slice(Math.max(0,s-2),s))||/^[./][0-9]/.test(n.slice(e,e+2)))return true;
-  return D_UNIT_AT.test(n.slice(e,e+12))||D_CLAUSE_END.test(n.slice(Math.max(0,s-90),s));
+  const v=n.slice(s,e).replace(/\u0000/g,""), pre=n.slice(Math.max(0,s-120),s).replace(/\u0000/g,""), post=n.slice(e,e+24).replace(/\u0000/g,"");
+  if(/[0-9][./]$/.test(pre))return true;
+  if(/[0-9]{4}$/.test(v))return false;
+  if(/^[./][0-9]/.test(post))return true;
+  const lv=/^\d{1,2}[./]\d{1,2}$/.test(v)?2:/^\d{1,2}[./]\d{1,2}[./]\d{2}$/.test(v)?3:0;
+  if(lv===2&&(D_UNIT_AT.test(post)||/\.5$/.test(v)&&D_TIME_AT.test(post)))return true;
+  return !!lv&&D_CLAUSE_END[lv].test(pre);
 }
 /* מספר תיק בכל סוג תיק (הציד של 11.10): עד כאן רק עשרה סוגים, ואף לא אחד מסוגי התיקים של בית המשפט
    לענייני משפחה מלבד תמ"ש ועמ"ש. ראשי התיבות נשארים (הם אומרים ל-AI איזה הליך זה), המספר נמחק. */
@@ -1298,19 +1318,24 @@ const PAT=[
  // להשאיר אותו. גיל ("בת 9") אינו תאריך ואינו נתפס כאן.
  // ועוד כל כתיב רגיל אחר (9.10, parseDate): במקפים, שנה קודם, במילים, ובלי שנה. יום וחודש במספרים
  // בלי שנה נראים כמו "סעיף 12.3" או "2.5 מיליון", ולכן הם תאריך רק אחרי מילה שמבשרת תאריך; שם של
- // חודש הוא ראיה מספיקה בעצמו. מקף עברי (U+05BE) הופך ב-norm לאפס, ולכן [-\0] אחרי ה, מה וב.
+ // חודש הוא ראיה מספיקה בעצמו.
  // ועוד (11.10): אותו מפריד פעמיים, רווח אחרי המפריד כשהשנה בארבע ספרות, לא מספר סעיף ולא חלק ממספר ארוך;
  // "לחודש"/"בחודש" ו"שנת" במילים, ולא שבר של מספר עשרוני ("מדד של 4.8 בחודש ינואר", 49,700 משפטי iahlt);
  // חודש ושנה במילים (לא אחרי יום, גם לא יום שאינו תקין: "32 במרץ 2026"), ובמספרים
  // רק אחרי "חודש" או "תאריך"; ויחידה אחרי יום וחודש רק אחרי ה- ומה-, כי "תאריך: 12.3 שעה 10:00" הוא תאריך.
- // סימן כיוון (RLM, שנעשה \0 ב-norm) בין היום לחודש: עד כאן החודש לבדו הוזז, והיום האמיתי נשאר לידו
- ["DATE","תאריך",`${NW}(?<!${D_CLAUSE})(?:${D_NUMY("\\.")}|${D_NUMY("/")}|\\d{1,2}\\.\\d{1,2}/(?:\\d{4}|\\d{2})|\\d{1,2}/\\d{1,2}\\.(?:\\d{4}|\\d{2}))${NWE}|`+
-   `${NW}(?<!${D_CLAUSE})${D_DAY}-${D_MON}-(?:\\d{4}|\\d{2})${NWE}|`+
-   `${NW}\\d{4}-${D_MON}-${D_DAY}${NWE}|${NW}(?<![0-9][.,])${D_DAY}[\\s\\u0000]+(?:[בל]חודש\\s+|[בל]?[-\\u0000]?)${D_MONTH}(?:,?[\\s\\u0000]+(?:ב?שנת\\s+)?\\d{4}(?![0-9]))?(?![א-ת0-9])|`+
-   `(?<!(?:^|[^0-9.,/:])[0-9]{1,2}[\\s\\u0000]+(?:[בל]חודש\\s+|[בל]?[-\\u0000]?))(?<=(?:^|[^א-ת])[ובלמהשכ]{0,3}[-\\u0000]?)${D_MONTH},?\\s+(?:ב?שנת\\s+)?(?:19|20)\\d{2}(?![0-9])|`+
-   `(?<=(?:(?<![א-ת])[ובלמה]{0,2}(?:חודש|חודשים|תאריך)[:\\s]*|(?<![א-ת])ו?(?:ה|מה)[-\\u0000]\\s*)(?:${D_MY}\\s*(?:,|ו|עד|ועד|-|או)[-\\u0000]?\\s*)*)${D_MY}(?![0-9]|[./][0-9])|`+
-   `(?<=(?<![א-ת])ו?(?:ביום|מיום|ליום|בתאריך|מתאריך|לתאריך|תאריך)[:\\s]*)${D_DAY}[./]${D_MON}(?![0-9%]|[./-][0-9])|`+
-   `(?<=(?<![א-ת])ו?(?:ה|מה)[-\\u0000][:\\s]*)${D_DAY}[./]${D_MON}(?![0-9%]|[./-][0-9]|\\s*(?:${D_UNIT}))`,0,null,5,1],
+ // מספר אחרי שם של חודש אינו שנה כשמטבע או יחידה אחריו ("ביוני 2000 ש"ח", "בנובמבר 1950 ₪"), וגם לא כשטאב או
+ // מעבר שורה ביניהם (טבלה של חודש וסכום): עד כאן החודש זז, והסכום השתנה כשההזזה עברה שנה (ביקורת 11.10).
+ // סימני כיוון ומקף רך יוצאים לפני הזיהוי (squeeze, v73.6), והמקף העברי הוא "-" ב-norm: אין כאן \0.
+ // בדיקה מוקדמת של צורת הערך ((?=…)) לפני כל מבט לאחור יקר, כדי שלא ירוץ בכל מקום בטקסט. רשימה של חודש ושנה
+ // במספרים: עד 120 פריטים אחרי המילה (עשר שנים של תלושים); בלי גבול, רשימה ארוכה הייתה ריבועית (ביקורת 11.10)
+ ["DATE","תאריך",`${NW}(?:${D_NUM4("\\.")}|${D_NUM4("/")}|\\d{1,2}\\.\\d{1,2}/\\d{4}|\\d{1,2}/\\d{1,2}\\.\\d{4})${NWE}|`+
+   `${NW}(?=\\d{1,2}[./]\\d{1,2}[./]\\d{2}(?![0-9]))(?<!${D_CLAUSE(3)})(?:${D_NUM2("\\.")}|${D_NUM2("/")}|\\d{1,2}\\.\\d{1,2}/\\d{2}|\\d{1,2}/\\d{1,2}\\.\\d{2})${NWE}|`+
+   `${NW}${D_DAY}-${D_MON}-\\d{4}${NWE}|${NW}(?=\\d{1,2}-\\d{1,2}-\\d{2}(?![0-9]))(?<!${D_CLAUSE(3)})${D_DAY}-${D_MON}-\\d{2}${NWE}|`+
+   `${NW}\\d{4}-${D_MON}-${D_DAY}${NWE}|${NW}(?<![0-9][.,])${D_DAY}\\s+(?:[בל]חודש\\s+|[בל]?-?)${D_MONTH}(?:,? +(?:ב?שנת\\s+)?\\d{4}(?![0-9])(?!\\s*${D_UNIT}))?(?![א-ת0-9])|`+
+   `(?=[א-ת])(?<!(?:^|[^0-9.,/:])[0-9]{1,2}\\s+(?:[בל]חודש\\s+|[בל]?-?))(?<=(?:^|[^א-ת])[ובלמהשכ]{0,3}-?)${D_MONTH},? +(?:ב?שנת\\s+)?(?:19|20)\\d{2}(?![0-9])(?!\\s*${D_UNIT})|`+
+   `(?=${D_MY})(?<=(?:(?<![א-ת])[ובלמה]{0,2}(?:חודש|חודשים|תאריך)[:\\s]*|(?<![א-ת])ו?(?:ה|מה)-\\s*)(?:${D_MY}\\s*(?:,|ו|עד|ועד|-|או)-?\\s*){0,120})${D_MY}(?![0-9]|[./][0-9])|`+
+   `(?=[0-9])(?<=(?<![א-ת])ו?(?:ביום|מיום|ליום|בתאריך|מתאריך|לתאריך|תאריך)[:\\s]*)${D_DAY}[./]${D_MON}(?![0-9%]|[./-][0-9])|`+
+   `(?=[0-9])(?<=(?<![א-ת])ו?(?:ה|מה)-[:\\s]*)${D_DAY}[./]${D_MON}(?![0-9%]|[./-][0-9]|\\s*${D_UNIT}|(?<=\\.5)\\s*${D_TIME})`,0,null,5,1],
  // כל חלוקה של אותן ספרות (0547-712093, 054-771-20-93), קידומת בסוגריים ((03) 6123456) ורווחים סביב מקף (הציד של 11.10)
  ["PHONE_MOBILE","טלפון נייד",`${NW}(?:\\(0?5\\d\\)\\s?|(?:\\+?972[-\\s]?|0)5\\d)(?:[-\\s.]?\\d){7}${NWE}`,0,null,3,1],
  ["PHONE_LAND","טלפון קווי",`${NW}(?:\\(0?(?:[2-4689]|7\\d)\\)\\s?|(?:\\+?972[-\\s]?|0)(?:[2-4689]|7\\d)(?:\\s?-\\s?|[\\s.])?)\\d(?:[-\\s.]?\\d){6}${NWE}`,0,null,4,1],
@@ -1962,36 +1987,43 @@ function ageZones(n){
   const b=/(?<![\d])(\d{1,3})\s+(?:שנה|שנים|שנתיים|וחצי)(?![א-ת])/gu;
   while((m=b.exec(n)))z.push([m.index,m.index+m[1].length]);
   return z}
-/* היסט התאריכים של מסמך, בלי התנגשות (הציד של 11.10). תאריך שזז בדיוק אל תאריך אחר שבמסמך ("1.2.2026" אל
-   "1.10.2026", כשגם הוא שם) יוצא כערך אמיתי: הבדיקה האחרונה קראה לו תאריך שנשאר, הפס האדום עצר את ההעתקה,
-   ושני אירועים קיבלו אותו תאריך. חודש ושנה זזים בחודשים שלמים, ולכן "ינואר 2026" ו"פברואר 2026" באותו מסמך
-   היו מתנגשים כמעט תמיד. ההיסט עולה ביום עד שאף ערך מוזז אינו ערך אמיתי, ואינו מכיל חודש ושנה אמיתיים
-   ("12 במרץ 2026" מכיל את "מרץ 2026"). מסמך בלי התנגשות שומר את ההיסט שהיה לו. nd: הטקסט המנורמל */
+/* היסט התאריכים של מסמך (הציד של 11.10). תאריך שזז בדיוק אל תאריך אחר שבמסמך ("1.2.2026" אל "1.10.2026", כשגם
+   הוא שם) יוצא כערך אמיתי, וכך גם תאריך מלא שמכיל חודש ושנה של המסמך ("12 במרץ 2026" מכיל את "מרץ 2026"). חודש
+   ושנה זזים בחודשים שלמים, ולכן ברשימה של חודשים כמעט כל הזזה נוחתת על חודש אחר שלה.
+   ההיסט נשאר בטווח שהבעלים בחר, 30 עד 400 יום (ביקורת 11.10): עד כאן הוא עלה עד שלא נשארה התנגשות, שמונה שנים
+   לרשימה של 96 חודשים, וכל גיל ומועד שה-AI מחשב יצא שגוי בשנים; והחיפוש בנה מחרוזות לכל היסט, 15 שניות על 1,000
+   תאריכים. בתוך הטווח נבחר הראשון, מההיסט של המסמך והלאה, שאין בו התנגשות, ואם אין כזה, זה עם הכי מעט. מה שנשאר
+   אינו דליפה: הבדיקה האחרונה סופרת כמה פעמים כל תאריך נכתב כבדוי (verify). nd: הטקסט המנורמל */
 function dateOffFor(nd){
   const base=30+(typeof hash32==="function"?hash32(nd):0)%371;
   const P=nd&&PAT.find(p=>p.n==="DATE"); if(!P)return base;
-  const reals=new Map();
+  // מה שהזיהוי רואה: בלי התווים הבלתי נראים (detect/squeeze)
+  const DAY=864e5, full=new Set(), dm=new Set(), my=new Set(), dms=new Map();
   P.rx.lastIndex=0;
-  for(const m of nd.matchAll(P.rx)){const s=m[0].replace(/\u0000/g,"").trim(), p=parseDate(s); if(p)reals.set(s,p)}
-  if(!reals.size)return base;
-  const full=new Set(), dayNoYear=new Set(), dayAny=new Set(), mon=new Set(), monRx=[];
-  for(const [s,p] of reals){
-    if(p.d==null){mon.add(p.m+"|"+p.y); monRx.push(new RegExp(esc(s)+"(?![0-9])","u")); continue}
-    dayAny.add(p.d+"|"+p.m);
-    if(p.y==null)dayNoYear.add(p.d+"|"+p.m); else full.add(p.d+"|"+p.m+"|"+p.y);
+  for(const m of nd.replace(/\u0000/g,"").matchAll(P.rx)){
+    const p=parseDate(m[0]); if(!p)continue;
+    if(p.d==null)my.add(p.y*12+p.m-1);
+    else if(p.y==null){dm.add(p.m*32+p.d); dms.set(p.m*32+p.d,Date.UTC(dateRefYear(p),p.m-1,p.d)/DAY)}
+    else full.add(Date.UTC(p.y,p.m-1,p.d)/DAY);
   }
-  const clash=off=>{
-    const fakes=[];
-    for(const [s,p] of reals){
-      const f=shiftDate(p,off);
-      if(f.d==null?mon.has(f.m+"|"+f.y):f.y==null?dayAny.has(f.d+"|"+f.m):(full.has(f.d+"|"+f.m+"|"+f.y)||dayNoYear.has(f.d+"|"+f.m)))return true;
-      if(monRx.length&&f.d!=null&&f.y!=null)fakes.push(fakeDate(s,off));
-    }
-    const all=fakes.join("\n");
-    return monRx.some(rx=>rx.test(all));
+  if(!full.size&&!dm.size&&!my.size)return base;
+  const cal=new Map(), at=k=>{let v=cal.get(k); if(!v){const t=new Date(k*DAY); v=[t.getUTCDate(),t.getUTCMonth()+1,t.getUTCFullYear()]; cal.set(k,v)} return v};
+  const fulls=[...full], dmv=[...dms.values()], myv=[...my];
+  // כמה ערכים מוזזים הם ערך אמיתי, או מכילים אחד; עוצר כשכבר אין סיכוי לשפר את הטוב ביותר
+  const clash=(off,cap)=>{
+    let c=0; const k=Math.round(off/30.4375);
+    for(const v of myv) if(my.has(v+k)&&++c>=cap)return c;
+    for(const v of dmv){const [d,mo]=at(v+off); if(dm.has(mo*32+d)&&++c>=cap)return c}
+    for(const v of fulls){const g=v+off, [d,mo,y]=at(g); if((full.has(g)||dm.has(mo*32+d)||my.has(y*12+mo-1))&&++c>=cap)return c}
+    return c;
   };
-  for(let off=base;off<base+3650;off++)if(!clash(off))return off;
-  return base;
+  let best=base, bc=Infinity;
+  for(let i=0;i<371;i++){
+    const off=30+(base-30+i)%371, c=clash(off,bc);
+    if(!c)return off;
+    if(c<bc){bc=c;best=off}
+  }
+  return best;
 }
 /* מילה שהיא גם מילה רגילה, לא רק שם: שם פרטי שהוא מילה, מילה שכיחה, מילת עצירה או פועל — או
    מילה שהטקסט עצמו כותב עם ה' הידיעה ("הכהן"). toks: המילים של הטקסט. בדיקה אחת לצורה עם אות
@@ -2446,20 +2478,21 @@ const LEAK=/Target="(mailto:[^"]+|file:[^"]+|[A-Za-z]:\\[^"]+|\\\\[^"]+)"/g;
    מוחלף בכינוי שלו, ובלי כינוי ב"[הוסר]". מה שנשאר גם אחרי זה — שם שמפוצל בין תגיות, או
    בתוך קובץ מוטמע — האימות עדיין תופס, וזה נכון: שם הוא לא יכול לנקות. */
 const XESC=v=>String(v).split("&").join("&amp;").split("<").join("&lt;").split(">").join("&gt;").split('"').join("&quot;").split("'").join("&apos;");
-function residuePass(files,walked,subs,applied){
-  const repOf=new Map();
-  const put=(v,r)=>{for(const k of [String(v||"").trim(),norm(String(v||"")).trim()]) if(k.length>=2&&!repOf.has(k))repOf.set(k,r)};
-  for(const r of applied)put(r.base||r.value,r.baseRep||r.rep||"");
-  for(const s of subs)put(s.value,s.replacement||"[הוסר]");
+// dateOut: לכל תאריך שהוחלף כאן, התאריך הבדוי שנכתב במקומו (הבדיקה האחרונה סופרת אותם, verify)
+function residuePass(files,walked,subs,applied,dateOut){
+  const repOf=new Map(), dateKey=new Set();
+  const put=(v,r,d)=>{for(const k of [String(v||"").trim(),norm(String(v||"")).trim()]) if(k.length>=2&&!repOf.has(k)){repOf.set(k,r); if(d)dateKey.add(k)}};
+  for(const r of applied)put(r.base||r.value,r.baseRep||r.rep||"",(CANON[r.type]||[r.type])[0]==="DATE");
+  for(const s of subs)put(s.value,s.replacement||"[הוסר]",s.kind==="DATE");
   const vals=[...repOf.keys()].sort((a,b)=>b.length-a.length);
   const done=[];
   for(const f of files){
     if(walked.has(f.name)||!f.name.endsWith(".xml")||f.name==="[Content_Types].xml"||f.name==="docProps/core.xml"||f.name==="docProps/app.xml")continue;
     const o=TXT.decode(f.data); let s=o;
     for(const v of vals){
-      const r=XESC(repOf.get(v));
+      const r=XESC(repOf.get(v)), d=dateOut&&dateKey.has(v);
       for(const form of new Set([v,XESC(v)]))
-        s=s.replace(new RegExp("(?<![א-ת])"+esc(form)+"(?![א-ת])","gu"),()=>r);
+        s=s.replace(new RegExp("(?<![א-ת])"+esc(form)+"(?![א-ת])","gu"),()=>{if(d)dateOut.push(repOf.get(v)); return r});
     }
     if(s!==o){f.data=ENC.encode(s);done.push(f.name)}
   }
@@ -2511,7 +2544,8 @@ async function redactDocx(buf,subs,allow,opt){
     docs.push({f,doc:d,orig:o});
   }
   rep.bookmarks=renameBookmarks(docs.map(x=>x.doc));
-  const applied=[],flagged=[],secrets=[],dateSecrets=[];
+  // dateFakes: כל תאריך בדוי שנכתב, כמה פעמים שנכתב, לבדיקה האחרונה (verify)
+  const applied=[],flagged=[],secrets=[],dateSecrets=[],dateFakes=[];
   let blocks=[];
   for(const dd of docs) blocks=blocks.concat(flatten(dd.doc,dd.f.name));
   const eng=new Engine(subs,allow,opt,blocks.map(b=>b.text).join("\n"));
@@ -2539,7 +2573,8 @@ async function redactDocx(buf,subs,allow,opt){
         // תאריך נבדק בסוף רק במקום שבו הוא תאריך (notDateAt), ולכן הוא ברשימה משלו
         const sec=(CANON[h.type]||[h.type])[0]==="DATE"?dateSecrets:secrets;
         reps.push([s,e,nw]);applied.push(rec);sec.push(h.text);
-        if(h.base)sec.push(h.base)}
+        if(h.base)sec.push(h.base);
+        if(sec===dateSecrets&&nw)dateFakes.push(nw)}
       else flagged.push(rec)}
     // מיקום המחיקות בטקסט החדש, לסימון במסך הבדיקה: הערך איננו, אבל היא צריכה לראות
     // שהיה שם משהו ולוכל לבטל. כל החלפה שלפני נקודה מזיזה אותה בהפרש האורכים.
@@ -2653,7 +2688,7 @@ async function redactDocx(buf,subs,allow,opt){
         if(zones.some(([a,b])=>a<=s&&e<=b))continue;
         if(inf.date&&notDateAt(n,s,e))continue;
         const out=inf.of?addPre(m[1]||"",nw):nw;
-        reps.push([s,e,out]);
+        reps.push([s,e,out]); if(inf.date)dateFakes.push(out);
         applied.push({value:blk.text.slice(s,e),type:inf.place?"PLACE":"NAME",
           label:inf.of?(inf.place?"מקום (חלק)":"שם (חלק)"):"הופעה נוספת",part:partName(blk.part),
           why:inf.of?(inf.place
@@ -2683,7 +2718,7 @@ async function redactDocx(buf,subs,allow,opt){
       ctx:ctxHTML(hit.text,mm.index,mm.index+pa.p.length),review:true,src:"partAmbig"});
   }
   for(const dd of docs) dd.f.data=ENC.encode(serXML(dd.doc,dd.orig));
-  rep.residue=residuePass(keep,new Set(docs.map(d=>d.f.name)),subs,applied);
+  rep.residue=residuePass(keep,new Set(docs.map(d=>d.f.name)),subs,applied,dateFakes);
 
   // התצוגה המקדימה: סימון כל תחליף על הטקסט שאחרי ההחלפה. תחליף שעומד ליותר
   // מערך אחד, או שהופיע כבר במקור, מסומן כדו-משמעי.
@@ -2778,7 +2813,7 @@ async function redactDocx(buf,subs,allow,opt){
   const remaining=[...new Set(flagged.filter(r=>r.src!=="near"&&r.src!=="nohit").map(r=>r.value))];
   const ver=await verify(outBuf,secrets.concat(subs.flatMap(s=>
     s.kind==="NAME"?variants(s.value,opt.prefixes||"normal").map(v=>v[0]):s.kind==="DATE"?[]:[s.value])),
-    dateSecrets.concat(subs.filter(s=>s.kind==="DATE").map(s=>s.value)));
+    dateSecrets.concat(subs.filter(s=>s.kind==="DATE").map(s=>s.value)),dateFakes);
   ver.hadList=subs.length>0;
   ver.remaining=remaining;
   ver.near=near;
@@ -2884,33 +2919,53 @@ function examplesOf(blocks,value,max=3){
   return out;
 }
 
-/* dates: הערכים האמיתיים של תאריכים. תאריך נחשב שנשאר רק במקום שבו הוא תאריך: "12.3" של "ביום 12.3" אינו דולף
-   ב"סעיף 12.3" או ב"3.5 ימים" (notDateAt), שהם מספר סעיף וכמות ונשארים כמו שהם (הציד של 11.10) */
-async function verify(buf,secrets,dates){
+/* dates: הערכים האמיתיים של תאריכים, ו-fakes: כל תאריך בדוי שנכתב, כמה פעמים שנכתב. תאריך נחשב שנשאר רק במקום
+   שבו הוא תאריך: "12.3" של "ביום 12.3" אינו דולף ב"סעיף 12.3" או ב"3.5 ימים" (notDateAt), שהם מספר סעיף וכמות
+   ונשארים כמו שהם (הציד של 11.10). תאריך נקרא על הטקסט בלי התגיות ועל ערכי התכונות, לא על ה-XML כמו שהוא: שם
+   ריצה של Word בין "סעיף" למספר הסתירה את מילת הסעיף, והסעיף שנשאר נקרא תאריך שדלף (ביקורת 11.10). ותאריך דולף
+   רק כשהוא מופיע יותר פעמים משנכתב בתוך תאריכים בדויים: במסמך צפוף, ההיסט לא תמיד מוצא מקום פנוי (dateOffFor),
+   ותאריך בדוי שהוא גם תאריך אמיתי של המסמך אינו התאריך האמיתי שנשאר */
+async function verify(buf,secrets,dates,fakes){
   const files=await unzip(buf);
   const uniq2=a=>[...new Set((a||[]).filter(s=>s&&s.trim().length>=2))].map(s=>[s,norm(s)]);
-  const sec=uniq2(secrets).map(x=>[...x,false]).concat(uniq2(dates).map(x=>[...x,true]));
-  const leaks=[],emb=[];let n=0;
+  const sec=uniq2(secrets), dsec=uniq2(dates).map(([o,nv])=>[o,nv.replace(/\u0000/g,"")]);
+  const dateRX=nv=>new RegExp((/^\d/.test(nv)?"(?<!\\d)":"")+esc(nv)+(/\d$/.test(nv)?"(?!\\d)":""),"gu");
+  const dateHits=(t,nv)=>{let c=0; for(const m of t.matchAll(dateRX(nv)))if(!notDateAt(t,m.index,m.index+m[0].length))c++; return c};
+  const leaks=[],emb=[],dateIn=new Map();let n=0;
   for(const f of files){n++;
     if(/^word\/(embeddings|media)\//.test(f.name))emb.push(f.name);
     for(const enc of ["utf-8","utf-16le"]){
       let t;try{t=new TextDecoder(enc).decode(f.data)}catch(_){continue}
+      let dv=t;
       /* הבדיקה קראה רק את ה-XML כמו שהוא, ושם שמפוצל בין ריצות, מופרד בטאב או כתוב
          עם קו תחתון ("רחל_פרידמן") לא נראה לה כלל (שכבה 1ב). קוראים גם את הטקסט בלי
          תגיות, כשטאב ומעבר שורה הם רווח וקו תחתון הוא רווח. */
-      if(/\.(xml|rels)$/.test(f.name)&&enc==="utf-8")
-        t+="\n"+t.replace(/<\/(?:w|a):p>/g,"\n").replace(/<w:(?:tab|br|cr)\b[^>]*\/>/g," ").replace(/<w:noBreakHyphen\/>/g,"-").replace(/<[^>]+>/g,"")+"\n"+t.replace(/_/g," ");
-      const nt=norm(t);
-      // מספר או תאריך נבדקים בגבולות ספרות: "1.3.2026" אינו דולף בתוך התאריך המוזז "11.3.2026"
-      for(const [o,nv,isDate] of sec){
+      if(/\.(xml|rels)$/.test(f.name)&&enc==="utf-8"){
+        const tv=t.replace(/<\/(?:w|a):p>/g,"\n").replace(/<w:(?:tab|br|cr)\b[^>]*\/>/g," ").replace(/<w:noBreakHyphen\/>/g,"-").replace(/<[^>]+>/g,"");
+        // ומה שאינו טקסט ואינו תגית: ערכי תכונות והערות XML
+        dv=tv+"\n"+[...t.matchAll(/=(?:"([^"]*)"|'([^']*)')|<!--([\s\S]*?)-->/g)].map(m=>m[1]??m[2]??m[3]).join("\n");
+        t+="\n"+tv+"\n"+t.replace(/_/g," ");
+      }
+      const nt=norm(t), nd=norm(dv).replace(/\u0000/g,"");
+      // מספר נבדק בגבולות ספרות: "1.3.2026" אינו דולף בתוך התאריך המוזז "11.3.2026"
+      for(const [o,nv] of sec){
         if(!nv)continue;
         const digital=/^\d/.test(nv)||/\d$/.test(nv);
-        const src=(/^\d/.test(nv)?"(?<!\\d)":"")+esc(nv)+(/\d$/.test(nv)?"(?!\\d)":"");
-        const hit=isDate?[...nt.matchAll(new RegExp(src,"gu"))].some(m=>!notDateAt(nt,m.index,m.index+m[0].length))
-          :digital?new RegExp(src,"u").test(nt):nt.includes(nv);
+        const hit=digital?new RegExp((/^\d/.test(nv)?"(?<!\\d)":"")+esc(nv)+(/\d$/.test(nv)?"(?!\\d)":""),"u").test(nt):nt.includes(nv);
         if(hit)leaks.push({value:o,part:f.name});
       }
+      for(const [o,nv] of dsec){
+        if(!nv)continue;
+        const c=dateHits(nd,nv); if(!c)continue;
+        const d=dateIn.get(o)||{n:0,parts:[]}; d.n+=c; d.parts.push(f.name); dateIn.set(o,d);
+      }
     }}
+  // התאריכים הבדויים בשורות נפרדות: אין בהם מילת סעיף או יחידה, ולכן כל אחד נקרא בהקשר של עצמו
+  const wrote=(fakes||[]).map(x=>norm(String(x||"")).replace(/\u0000/g,"")).join("\n");
+  for(const [o,nv] of dsec){
+    const d=dateIn.get(o); if(!d)continue;
+    if(d.n>dateHits(wrote,nv))for(const p of d.parts)leaks.push({value:o,part:p});
+  }
   const uniq=[],seen=new Set();
   for(const l of leaks){const k=l.part+"|"+l.value;if(!seen.has(k)){seen.add(k);uniq.push(l)}}
   return {passed:!uniq.length,leaks:uniq,parts:n,embedded:emb}}
