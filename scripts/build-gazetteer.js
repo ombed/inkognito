@@ -4,7 +4,8 @@
    Source: data.gov.il, dataset "רשימת יישובים" (resource
    5c78e9fa-c2e2-4771-93ff-7f400a12f7ba), public data. The file holds
    every locality name as the engine's GAZ list. The engine uses only the
-   names of two words or more: findPlaces in engine/06-model.js skips every
+   names of two words or more (a hyphenated name counts as several), in every
+   usual spelling (placeIndex): findPlaces in engine/06-model.js skips every
    one-word entry, neither replacing nor flagging it, because on real
    documents they were almost all ordinary words (docs/measurements.md). This
    replaced the homograph-flagging rule of PLAN-v18 Q10. Names already in
@@ -38,11 +39,12 @@ const out = `/* ══════════ מאגר יישובים ═══
    ${list.length} שמות יישובים מרשימת הלמ"ס (data.gov.il), בלי אלה שכבר ב-PLACES עם
    קואורדינטות. נבנה ב-scripts/build-gazetteer.js; לא לערוך ביד. הרשימה מלאה, אבל
    findPlaces (06-model.js) משתמש רק בשמות בני שתי מילים ומעלה; שם בן מילה אחת
-   מכאן לא נתפס כלל. הנימוק והכלל המלא — שם. */
+   מכאן לא נתפס כלל, ושם במקף ("מודיעין-מכבים-רעות") הוא שם של כמה מילים. הנימוק
+   והכלל המלא — שם. */
 const GAZ=${JSON.stringify(list)};
-const GAZ_RX=new RegExp("(?<![\\\\u0590-\\\\u05ff])(?:[בהולמכש]|ו[בהלמכ]|כש|מה|לכ)?("+
-  GAZ.slice().sort((a,b)=>b.length-a.length).map(n=>n.replace(/[.*+?^\${}()|[\\]\\\\]/g,"\\\\$&")).join("|")+
-  ")(?![\\\\u0590-\\\\u05ff])","gu");
+// רק שמות של שתי מילים ומעלה (שם במקף הוא כזה), בכל כתיב, ובלי שם שכבר ב-PLACES בכתיב אחר (06-model.js)
+const GAZ_IX=placeIndex(GAZ.filter(n=>/[\\s-]/.test(n)),PLACE_IX.keys);
+const GAZ_RX=GAZ_IX.rx;
 `;
 fs.writeFileSync(path.join(ROOT, "engine", "07-gazetteer.js"), out);
 console.log(`engine/07-gazetteer.js: ${list.length} localities (${have.size} already in PLACES)`);
