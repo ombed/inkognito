@@ -27,7 +27,7 @@ async function typePlace(page, v) {
 const mapRow = (page, town) => page.locator('div:has(> button:text-is("לא להחליף"))').filter({ hasText: town }).first();
 const applied = (page) => page.evaluate(() => Object.fromEntries(window.__pib.state().res.applied.map((r) => [r.base || r.value, r.baseRep || r.rep])));
 async function toCheck(page) {
-  await page.getByRole("button", { name: /החלת הקבוצה|המשך לבדיקה/ }).first().click();
+  await H.throughPlaces(page, page.getByRole("button", { name: /החלת הקבוצה|המשך לבדיקה/ }).first());
   await expect(page.locator("[data-bar]")).toBeVisible({ timeout: 15000 });
 }
 

@@ -112,7 +112,7 @@ test("UX #10: a place already confirmed on the list shows as checked, and unchec
   await expect(extra).toContainText("אושר ברשימה");
   // what the screen shows is what happens: unchecked means kept
   await box.uncheck();
-  await page.getByRole("button", { name: "המשך לבדיקה" }).click();
+  await H.throughPlaces(page, page.getByRole("button", { name: "המשך לבדיקה" }));
   await expect(page.locator("[data-bar]")).toBeVisible({ timeout: 20000 });
   await expect(sheet(page)).toContainText("בנשר");
 });
@@ -125,7 +125,7 @@ test("UX #10: checked means replaced", async ({ page }) => {
   const extra = page.locator("[data-wrap]").filter({ hasText: "נשר" }).first();
   await expect(extra.getByRole("checkbox", { name: "להחליף" })).toBeChecked({ timeout: 15000 });
   const to = await extra.locator('input[type="text"], input:not([type])').first().inputValue();
-  await page.getByRole("button", { name: "המשך לבדיקה" }).click();
+  await H.throughPlaces(page, page.getByRole("button", { name: "המשך לבדיקה" }));
   await expect(page.locator("[data-bar]")).toBeVisible({ timeout: 20000 });
   const text = await sheet(page).innerText();
   expect(text).not.toContain("נשר");
