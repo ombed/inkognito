@@ -16,7 +16,7 @@ test("copying unlocks step three, and the restore screen puts the real name back
   await H.startScan(page);
   await expect(H.goButton(page)).toBeVisible({ timeout: 10000 });
   await H.goOn(page);
-  await page.getByRole("button", { name: /החלת הקבוצה והמשך|המשך לבדיקה|המשך לעיבוד/ }).first().click();
+  await H.throughPlaces(page, page.getByRole("button", { name: /החלת הקבוצה והמשך|המשך לבדיקה|המשך לעיבוד/ }).first());
   await expect(page.locator("[data-mark]").first()).toBeVisible({ timeout: 15000 });
   await page.evaluate(() => { navigator.clipboard.writeText = (t) => { window.__copied = t; return Promise.resolve(); }; });
 

@@ -11,6 +11,27 @@
    later run inside real sessions. A test that deliberately leaves the page in a
    broken state opts out with test.info().annotations.push({ type: "no-self-check" }). */
 const base = require("@playwright/test");
+const fs = require("fs");
+const path = require("path");
+const { installedFile } = require("./libs");
+
+/* The libraries the tool takes from other sites (React, Babel, d3, topojson, the world atlas, the
+   runtime's WebAssembly) come from the installed packages (e2e/libs.js), so a run needs no internet:
+   a dropped connection one night failed 290 tests (11.10). package.json pins each at the version the
+   page names, and the page still checks every byte itself (Subresource Integrity, the engine's
+   SHA-256), so a copy that is not the pinned file fails loudly. An address with no installed copy
+   goes to the network, or with E2E_OFFLINE=1 fails, which shows what a run still needs from outside.
+   Specs that let the service worker run (sw, moved) keep the network: the worker fetches the CDN
+   itself, where routes do not reach, and their offline checks must meet the real thing. */
+const TYPES = { ".js": "text/javascript; charset=utf-8", ".mjs": "text/javascript; charset=utf-8", ".json": "application/json; charset=utf-8", ".wasm": "application/wasm" };
+const copies = new Map();
+async function serveLocal(route) {
+  const url = route.request().url();
+  if (!copies.has(url)) { const f = installedFile(url); copies.set(url, f && { body: fs.readFileSync(f), type: TYPES[path.extname(f)] || "application/octet-stream" }); }
+  const hit = copies.get(url);
+  if (!hit) return process.env.E2E_OFFLINE ? route.abort("internetdisconnected") : route.fallback();
+  return route.fulfill({ status: 200, body: hit.body, headers: { "content-type": hit.type, "access-control-allow-origin": "*", "cross-origin-resource-policy": "cross-origin" } });
+}
 
 /* "Could not run" must never read as "found nothing" (outside review, H4). The check used
    to sit in a try with an empty catch and default to [] when the hook was missing, so a
@@ -38,6 +59,10 @@ async function selfCheckOf(page, hookTimeout = 10000) {
 }
 
 const test = base.test.extend({
+  localLibs: [async ({ context, serviceWorkers }, use) => {
+    if (serviceWorkers !== "allow") await context.route(/^https:\/\/(?:unpkg\.com|cdn\.jsdelivr\.net)\//, serveLocal);
+    await use();
+  }, { auto: true }],
   selfCheck: [async ({ page }, use, info) => {
     await page.addInitScript(() => {
       window.__PIB_TEST = true;
