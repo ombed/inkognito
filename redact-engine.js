@@ -2283,16 +2283,18 @@ function flatten(doc,part,ctx){
     const lead=ctx&&!dml&&!part.includes("glossary/")?numLead(p,ctx.num,counters):"";
     if(txt.trim()){const b={text:txt,spans,part,node:p};if(lead)b.lead=lead;if(ins.length)b.ins=ins;out.push(b)}
   }
+  // כל האלמנטים פעם אחת: שלוש הלולאות שלמטה עוברות על אותה רשימה
+  const all=Array.from(doc.getElementsByTagName("*"));
   // תוויות בגרף: שם קטגוריה או סדרה במטמון המחרוזות
   // (גרף מורחב, chartEx, כותב את אותן תוויות כ-pt בתוך lvl)
-  if(dml)for(const el of doc.getElementsByTagName("*")){
+  if(dml)for(const el of all){
     const p1=el.parentNode, ln=el.localName;
     const label=(ln==="v"&&p1&&p1.localName==="pt"&&p1.parentNode&&p1.parentNode.localName==="strCache")||
                 (ln==="pt"&&p1&&p1.localName==="lvl");
     if(!label)continue;
     const t=el.textContent||"";if(t.trim())out.push({text:t,spans:[{el,s:0,e:t.length,attr:null}],part});
   }
-  for(const el of doc.getElementsByTagName("*")){
+  for(const el of all){
     const ln=el.localName;
     if(ln==="docPr"||ln==="cNvPr"){
       for(const a of ["descr","name","title"]){const v=el.getAttribute(a);
@@ -2326,7 +2328,7 @@ function flatten(doc,part,ctx){
      והפס נצבע אדום בלי דבר לתקן במסך, ושם שלא ברשימה עבר בירוק. הם נקראים כמו טקסט חלופי וקוד שדה:
      מוחלפים, ואינם מועתקים ל-AI. בתמונה, שם פרטי ושם משפחה מוצעים לה (pair), כמו בטקסט חלופי. */
   const att=(el,a,v,sfx,pair)=>{if(v&&v.trim())out.push({text:v,spans:[{el,s:0,e:v.length,attr:a}],part:part+sfx,pair:!!pair})};
-  for(const el of doc.getElementsByTagName("*")){
+  for(const el of all){
     const ln=el.localName, ns=el.namespaceURI, up=el.parentNode;
     if(ns===VML||ns===O_NS){
       for(const a of Array.from(el.attributes))
@@ -2584,9 +2586,10 @@ function acceptTracked(doc){
   for(const el of Array.from(doc.getElementsByTagNameNS(W,"delInstrText")))el.remove();
   /* שינוי עיצוב במעקב (rPrChange, pPrChange וכו') שומר את העיצוב הקודם ואת שם מי שעשה
      אותו. קבלת השינוי היא מחיקת הרשומה; בלעדיה שם הכותב נשאר בקובץ (שכבה 1ב). */
-  for(const el of wAll())
-    if(/PrChange$|^numberingChange$/.test(el.localName)&&el.parentNode){el.parentNode.removeChild(el);del++}
-  for(const el of wAll())if(el.parentNode&&REV_MARK.test(el.localName))el.parentNode.removeChild(el);
+  for(const el of wAll()){
+    if(!el.parentNode)continue;
+    if(/PrChange$|^numberingChange$/.test(el.localName)){el.parentNode.removeChild(el);del++}
+    else if(REV_MARK.test(el.localName))el.parentNode.removeChild(el)}
   for(const tr of goneTr){const t=tr.parentNode;if(!t)continue;t.removeChild(tr);
     if(t.parentNode&&!Array.from(t.children).some(c=>c.localName==="tr"))t.parentNode.removeChild(t)}
   for(const p of goneP)if(p.parentNode)joinNext(p);
