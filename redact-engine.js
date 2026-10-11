@@ -364,6 +364,62 @@ function hash32(s){let h=0x811c9dc5;
    שאחד מחלקיו מילה («בן-דוד» הוא בן דוד) לא נבחר גם הוא */
 const WORDISH=new Set(["יהודית","מיכל","ממן","חנה","מזרחי","איתי","פרץ","דנה","מרים","ליאת","מלמד","מירב","עמי","רותי"]);
 const poolWordy=v=>WORDISH.has(v)||WORDLIKE.has(v)||STOP.has(v)||(typeof COMMON!=="undefined"&&COMMON.has(v))||(typeof VRB!=="undefined"&&VRB.has(v));
+/* השם הבדוי באותיות לטיניות (הציד של 11.10): אדם שנכתב גם בלועזית ("קלייר דובואה-לוי (Claire Dubois-Levi)") מקבל את
+   האיות הלועזי של אותו שם בדוי ("אנה גולדשטיין (Ana Goldstein)"), כדי שה-AI יקרא אדם אחד. לכל שם במאגר האיות המקובל;
+   לכל מילה אחרת (תחליף שהקלידה, תווית) תעתיק לפי האותיות */
+const LATIN=Object.fromEntries(("שירה Shira|נועה Noa|תמר Tamar|יעל Yael|מיכל Michal|רחל Rachel|אסתר Esther|מרים Miriam|דנה Dana|ליאת Liat|"+
+  "אורית Orit|סיגל Sigal|איריס Iris|ורד Vered|גלית Galit|מאיה Maya|ענת Anat|הילה Hila|אביגיל Avigail|לימור Limor|קרן Keren|אפרת Efrat|"+
+  "אורלי Orly|סמדר Smadar|מירב Merav|טליה Talya|נעמי Naomi|שלומית Shlomit|יהודית Yehudit|רבקה Rivka|חנה Hana|בתיה Batya|אילנה Ilana|"+
+  "זהבה Zehava|פנינה Pnina|אביבה Aviva|גילה Gila|חוה Hava|נורית Nurit|רותי Ruti|עינת Einat|שירן Shiran|מוריה Moriya|תהילה Tehila|"+
+  "יפעת Yifat|הדס Hadas|נגה Noga|אלינור Elinor|רוני Roni|שקד Shaked|עדן Eden|נטלי Natalie|אנה Anna|סבטלנה Svetlana|אירינה Irina|"+
+  "לודמילה Ludmila|אולגה Olga|"+
+  "אורי Uri|יואב Yoav|איתי Itai|נדב Nadav|רועי Roi|גיא Guy|אסף Asaf|ניר Nir|עידו Ido|אלון Alon|יונתן Yonatan|דור Dor|עמית Amit|"+
+  "ליאור Lior|אייל Eyal|ברק Barak|זיו Ziv|יובל Yuval|ארז Erez|גלעד Gilad|חיים Haim|משה Moshe|יעקב Yaakov|יוסף Yosef|דוד David|"+
+  "שמואל Shmuel|אברהם Avraham|יצחק Yitzhak|מרדכי Mordechai|נתן Natan|שלמה Shlomo|אליהו Eliyahu|בנימין Binyamin|ראובן Reuven|"+
+  "שמעון Shimon|אשר Asher|דניאל Daniel|מיכאל Michael|איתמר Itamar|עמרי Omri|יהונתן Yehonatan|רותם Rotem|עידן Idan|תומר Tomer|"+
+  "אמיר Amir|נועם Noam|אלירן Eliran|שלומי Shlomi|אבנר Avner|מאיר Meir|ציון Zion|יגאל Yigal|בועז Boaz|אלכס Alex|סרגיי Sergei|"+
+  "ולדימיר Vladimir|דמיטרי Dmitri|"+
+  "כהן Cohen|לוי Levi|מזרחי Mizrahi|פרץ Peretz|ביטון Biton|דהן Dahan|פרידמן Friedman|שפירא Shapira|אזולאי Azoulay|אוחיון Ohayon|"+
+  "גבאי Gabay|אמסלם Amsalem|חדד Hadad|עמר Amar|בן Ben|אשכנזי Ashkenazi|טולדנו Toledano|סבן Saban|אלמוג Almog|ברקוביץ Berkowitz|"+
+  "רוזנברג Rosenberg|גולדשטיין Goldstein|וייס Weiss|קליין Klein|שטרן Stern|הרשקוביץ Hershkowitz|זילברמן Silberman|אדלר Adler|"+
+  "פלדמן Feldman|ברנשטיין Bernstein|גרינברג Greenberg|לנדאו Landau|שגב Segev|ארבל Arbel|ברנע Barnea|גלעדי Giladi|אלבז Elbaz|"+
+  "סויסה Suissa|ממן Maman|אטיאס Attias|חמו Hamo|נחמיאס Nahmias|הראל Harel|רוזן Rosen|שמעוני Shimoni|בר Bar|און On|קרמר Kramer|"+
+  "וקנין Vaknin|אבוטבול Abutbul|מלמד Melamed|יעקובי Yaakobi|פישר Fischer|קפלן Kaplan|גורביץ Gurevich|סלומון Salomon|נחום Nahum|"+
+  "דורון Doron|אלקבץ Alkabetz|טל Tal|שחר Shahar|עמי Ami|רווה Raveh|"+
+  "פאטמה Fatma|עאישה Aisha|מריאם Mariam|נור Nour|לילא Laila|סמאח Samah|רנא Rana|הודא Huda|אמל Amal|סועאד Suad|ראניה Rania|דלאל Dalal|"+
+  "נאדיה Nadia|סאלי Sally|וורוד Wurud|הנאא Hanaa|מנאל Manal|ראידה Raida|עביר Abeer|ג'ומאנה Jumana|סחר Sahar|ריהאם Riham|"+
+  "מוחמד Muhammad|אחמד Ahmad|עלי Ali|חסן Hassan|חוסיין Hussein|מחמוד Mahmoud|ראמי Rami|סמיר Samir|ג'מאל Jamal|ח'אלד Khaled|"+
+  "יוסוף Yousef|איברהים Ibrahim|מוסטפא Mustafa|נביל Nabil|ואאל Wael|זיאד Ziad|בילאל Bilal|טארק Tarek|עאדל Adel|מאהר Maher|פאדי Fadi|"+
+  "רמזי Ramzi|ח'טיב Khatib|מנצור Mansour|זועבי Zoabi|סרסור Sarsour|חמדאן Hamdan|נאסר Nasser|סלימאן Suleiman|דרוויש Darwish|"+
+  "עוואד Awad|טאהא Taha|ג'בארין Jabarin|אגבאריה Agbaria|מסארווה Masarwa|ותד Watad|בדראן Badran|שאהין Shahin|קאסם Qasem|זידאן Zidan|"+
+  "עבד Abd|אל al|האדי Hadi|אבו Abu|ראס Ras|סאלח Saleh|חלאילה Halaila|גנאים Ghanaim|עאזם Azem|נסאר Nassar|דבור Dabour|סעדי Saadi|"+
+  "חוסארי Husari|פלוני Ploni|פלונית Plonit|אלמוני Almoni").split("|").map(p=>p.split(" ")));
+// תעתיק לפי האותיות, למילה שאינה במאגר: עיצור בראש המילה, אם קריאה באמצע (ו, י) כתנועה, ו-a בין שני עיצורים
+const TR={"א":"a","ב":"v","ג":"g","ד":"d","ה":"h","ו":"v","ז":"z","ח":"ch","ט":"t","י":"y","כ":"ch","ך":"ch","ל":"l","מ":"m","ם":"m",
+  "נ":"n","ן":"n","ס":"s","ע":"a","פ":"f","ף":"f","צ":"tz","ץ":"tz","ק":"k","ר":"r","ש":"sh","ת":"t"},
+  TR0={"ב":"b","כ":"k","פ":"p","ו":"v","י":"y"}, TRJ={"ג":"j","ז":"zh","צ":"ch","ח":"kh"};
+function translit(w){
+  const s=w.replace(/[׳’]/g,"'").replace(/["״]/g,""); let out="", prevC=false;
+  for(let i=0;i<s.length;i++){
+    const c=s[i], nx=s[i+1];
+    if(nx==="'"&&TRJ[c]){out+=TRJ[c];i++;prevC=true;continue}
+    if(c==="'")continue;
+    if(!TR[c]){out+=c;prevC=false;continue}
+    const end=i===s.length-1;
+    if(i>0&&(c==="ו"||c==="י")&&nx!==c&&s[i-1]!==c){out+=c==="ו"?"o":"i";prevC=false;continue}
+    if(end&&c==="ה"){out+="a";prevC=false;continue}
+    if(c==="א"||c==="ע"){out+=i===0?"a":(prevC?"a":"");prevC=false;continue}
+    const t=i===0?(TR0[c]||TR[c]):TR[c];
+    out+=(prevC?"a":"")+t; prevC=true;
+  }
+  return out.charAt(0).toUpperCase()+out.slice(1);
+}
+// אות סידורית של תווית ("פלוני א׳"): האות הלטינית במקומה בא"ב
+const HORD_LAT={"א":"A","ב":"B","ג":"C","ד":"D","ה":"E","ו":"F","ז":"G","ח":"H","ט":"I","י":"J","כ":"K","ל":"L","מ":"M","נ":"N","ס":"O","ע":"P","פ":"Q","צ":"R","ק":"S","ר":"T","ש":"U","ת":"V"};
+function latinOf(s){
+  return String(s||"").replace(/[א-ת][א-ת'׳"״-]*/g,w=>{
+    const one=/^([א-ת])['׳]$/.exec(w); if(one)return HORD_LAT[one[1]]||translit(w);
+    return w.split("-").map(p=>LATIN[p.replace(/׳/g,"'")]||translit(p)).join("-")})}
 function pickFrom(arr,seed,used,forbidden){
   const n=arr.length;
   for(let k=0;k<n;k++){
@@ -1481,6 +1537,18 @@ const STOP=new Set(("בית המשפט משפט הדין דין המחוזי ה�
 const NWD="[\u05d0-\u05ea][\u05d0-\u05ea'\"\u05f3\u05f4-]{1,14}";
 const PART="בן|בת|בר|אבו|אל|דה|ואן|לה";
 const NME=`${NWD}(?:\\s+(?:${PART})(?![\u05d0-\u05ea-]))?(?:\\s+${NWD})?`;
+/* \u05e9\u05dd \u05e9\u05dc \u05d0\u05d3\u05dd \u05d1\u05d0\u05d5\u05ea\u05d9\u05d5\u05ea \u05dc\u05d8\u05d9\u05e0\u05d9\u05d5\u05ea (\u05d4\u05e6\u05d9\u05d3 \u05e9\u05dc 11.10): \u05de\u05d9\u05dc\u05d4 \u05e9\u05e0\u05e4\u05ea\u05d7\u05ea \u05d1\u05d0\u05d5\u05ea \u05d2\u05d3\u05d5\u05dc\u05d4, \u05d2\u05dd \u05e2\u05dd \u05de\u05e7\u05e3 \u05d5\u05d0\u05d5\u05ea\u05d9\u05d5\u05ea \u05de\u05d5\u05d8\u05e2\u05de\u05d5\u05ea ("Dubois-Levi", "L\u00e9a"),
+   \u05d5\u05de\u05d9\u05dc\u05d5\u05ea \u05d7\u05d9\u05d1\u05d5\u05e8 \u05e7\u05d8\u05e0\u05d5\u05ea \u05d1\u05ea\u05d5\u05da \u05e9\u05dd ("de", "van", "bin"). LATN: \u05e9\u05ea\u05d9\u05d9\u05dd \u05e2\u05d3 \u05d0\u05e8\u05d1\u05e2 \u05de\u05d9\u05dc\u05d9\u05dd; LATN1: \u05d2\u05dd \u05de\u05d9\u05dc\u05d4 \u05d0\u05d7\u05ea (\u05e9\u05dd \u05de\u05e9\u05e4\u05d7\u05d4 \u05d0\u05d7\u05e8\u05d9 \u05ea\u05d5\u05d0\u05e8) */
+const LAT_W="[A-Z\u00c0-\u00d6\u00d8-\u00de][A-Za-z\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u00ff'\u2019]*(?:-[A-Z\u00c0-\u00d6\u00d8-\u00dea-z\u00df-\u00f6\u00f8-\u00ff][A-Za-z\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u00ff'\u2019]*)*",
+  LAT_P="(?:de|da|del|della|di|du|des|van|von|der|den|la|le|el|al|bin|ben|ibn|y|e|ter|op)",
+  LATN=`${LAT_W}(?:\\s+(?:${LAT_P}\\s+){0,2}${LAT_W}){1,3}`, LATN1=`${LAT_W}(?:\\s+(?:${LAT_P}\\s+){0,2}${LAT_W}){0,3}`;
+// \u05ea\u05d5\u05d0\u05e8 \u05dc\u05d5\u05e2\u05d6\u05d9 \u05dc\u05e4\u05e0\u05d9 \u05d4\u05e9\u05dd ("Mr. John Smith", "Me Pierre Martin"): \u05e0\u05e9\u05d0\u05e8 \u05d1\u05d8\u05e7\u05e1\u05d8, \u05d5\u05d0\u05d9\u05e0\u05d5 \u05d4\u05e9\u05dd
+const LAT_TITLE="(?:(?:Mr|Mrs|Ms|Miss|Mx|Dr|Prof|Adv|Atty|Esq|Mme|Mlle|Me|Herr|Frau|Sr|Sra|Sig|Sir|Lady|Rabbi|Rev)\\.?\\s+)?";
+// \u05de\u05d9\u05dc\u05d9\u05dd \u05e9\u05d0\u05d5\u05de\u05e8\u05d5\u05ea \u05e9\u05de\u05d4 \u05e9\u05d1\u05d0 \u05d0\u05d7\u05e8\u05d9 \u05d4\u05ea\u05d5\u05d5\u05d9\u05ea \u05d4\u05d5\u05d0 \u05d2\u05d5\u05e3 \u05d0\u05d5 \u05d3\u05d1\u05e8, \u05dc\u05d0 \u05d0\u05d3\u05dd ("\u05d4\u05ea\u05d5\u05d1\u05e2\u05ea: Microsoft Israel Ltd")
+const LAT_NOT=/^(?:mr|mrs|ms|miss|mx|dr|prof|adv|atty|esq|mme|mlle|herr|frau|sir|lady|rabbi|rev|ltd|inc|llc|llp|lp|corp|corporation|company|co|gmbh|sa|ag|bv|nv|plc|pty|bank|group|holdings?|university|college|school|hospital|court|supreme|district|ministry|department|office|state|states|republic|kingdom|united|street|road|avenue|center|centre|international|global|services|solutions|technologies|systems|partners|associates|foundation|association|society|insurance|microsoft|google|apple|amazon|meta|facebook|whatsapp|instagram|gmail|outlook|word|excel|pdf|zoom|teams|tel|aviv|jerusalem|haifa|israel|hague|convention|the|of|and|for)$/i;
+const latinOK=c=>{const ws=c.split(/[\s-]+/); return !ws.some(w=>LAT_NOT.test(w))&&!ws.every(w=>w.length>1&&w===w.toUpperCase()&&ws.length===1)};
+// התאום הלועזי בסוגריים, אחרי השם העברי או לפניו (Engine.twins)
+const LAT_AFTER=new RegExp(`^\\s*[(\\[]\\s*(${LATN1})\\s*[)\\]]`,"u"), LAT_BEFORE=new RegExp(`(${LATN1})\\s*[(\\[]\\s*$`,"u");
 const BD="(?<![\\u0590-\\u05ff])";
 // מילות פתיחה של משפט שהמודל מדביק לשם שאחריהן
 const LEAD=new Set(["כאמור","משכך","יוזכר","יצוין","יודגש","לדבריו","לדבריה","לדבריהם","בנוסף","ולכן","לכן","אולם","ואולם","אך","גם","כי","כאשר","שכן","לפיכך","בהתאם","עוד","כן","אכן","ואכן","אמנם","כלומר","דהיינו","למשל","ואילו","אבל","או"]);
@@ -1685,6 +1753,16 @@ const ANCH=[["title",`${BD}(?:${TITLES})[,\\s]+${NMI}`,"מופיע אחרי תו
  ["listitem",`^\\s*(?:\\(?\\d{1,2}[.)]|[א-ט][.)]|[-•·*])?\\s*(?:(?:${TITLES})[,\\s]+)?${NMI}`,"התגלה אוטומטית מההקשר"]]
  // gate: עוגן שרץ רק כשהטקסט כולו מתאים לו (עוד נמען, רק בשורה של "אל:"); o: plural — צד ברבים
  .map(([k,r,w,gate,o])=>({k,rx:new RegExp(r,"gu"),w,gate,...(o||{})}));
+/* אותם עוגנים לשם באותיות לטיניות (הציד של 11.10): "התובעת: Claire Dubois-Levi", "עו"ד Pierre Martin", "שם המבקש: Marc
+   Dubois", "מאת: …", "לכבוד …", "בכבוד רב, …". עד כאן עבר כל כלל, ותיק להחזרת ילד לפי אמנת האג יצא בלי שום שם ברשימה */
+const LAT_ANCH=[
+ ["role",`(?:${ROLES})\\s*[:\\-–]\\s*${LAT_TITLE}(${LATN1})`],
+ ["title",`${BD}(?:${TITLES})[,\\s]+${LAT_TITLE}(${LATN1})`],
+ ["field",`(?:${FIELD_NAME})\\s*:\\s*["']?${LAT_TITLE}(${LATN1})`],
+ ["mail",`^[\\s\\u0000]*${MAIL_LBL}\\s*:\\s*["']?${LAT_TITLE}(${LATN})`],
+ ["addressee",`^[\\s\\u0000]*לכבוד\\s*[:,]?\\s*(?:(?:${TITLES})[,\\s]+)?${LAT_TITLE}(${LATN1})`],
+ ["signed",`${SIGN_OLD}\\s*[,:\\-–]?\\s*${LAT_TITLE}(${LATN})`],
+].map(([k,r])=>({k,rx:new RegExp(r,"gu"),w:(ANCH.find(a=>a.k===k)||{}).w}));
 // עוגנים חלשים: מה שאחרי התווית אינו תמיד אדם ("לכבוד בית המשפט", "מאת: מזכירות בית המשפט"), ולכן slotOK
 const WEAK_ANCH=new Set(["mail","addressee","matter","listitem","fieldx"]);
 /* עוגן חלש מקבל שם רק כשהוא פותח את מה שאחרי התווית כמו שהוא: מה שהניקוי קיצץ ממנו ("ראש העירייה",
@@ -1739,9 +1817,9 @@ function labelOf(text,inCell){
 const PFX=new Set(["מ","ב","ל","ו","ה","ש","כ"]);
 // סימני מגדר חייבים גבול מילה: בלי זה "תמר" מכיל "מר" והשם נקרא כזכר.
 const GF=new RegExp(BD+"(?:גב'|גברת|השופטת|הרשמת|המצהירה|העדה|התובעת|הנתבעת|המבקשת|"+
-  "המשיבה|הנאשמת|המערערת|המנוחה|ילידת|אשתו|גרושתו|בתו|אמו|הגב')"+NWE,"u");
+  "המשיבה|הנאשמת|המערערת|המנוחה|הקטינה|ילידת|אשתו|גרושתו|בתו|אמו|הגב')"+NWE,"u");
 const GM=new RegExp(BD+"(?:מר|השופט|הרשם|המצהיר|העד|התובע|הנתבע|המבקש|המשיב|הנאשם|"+
-  "המערער|המנוח|יליד|בעלה|גרושה|בנו|אביו)"+NWE,"u");
+  "המערער|המנוח|הקטין|יליד|בעלה|גרושה|בנו|אביו)"+NWE,"u");
 function cleanName(raw){
   let w=raw.trim().split(/\s+/);
   // "כהן" ו"שגב" הם שמות משפחה, לא כ+הן ו-ש+גב: בלי החריג "דוד כהן:" נחתך ל"דוד"
@@ -1930,6 +2008,24 @@ function anchored(text,ctx){
           out.push(h);
         }
       }}}
+  // שם באותיות לטיניות אחרי אותן תוויות (LAT_ANCH); בשכן של תווית, רק כשהשורה נגמרת אחריו
+  for(const a of LAT_ANCH){
+    if(ctx&&!ctx.keys.includes(a.k))continue;
+    a.rx.lastIndex=0;let m;
+    while((m=a.rx.exec(n))){
+      const c=m[1].replace(/\s+/g," ").trim(); if(!latinOK(c))continue;
+      const s=m.index+m[0].lastIndexOf(m[1]), e=s+m[1].length; if(s<L)continue;
+      const k=s+":"+e; if(seen.has(k))continue; seen.add(k);
+      const rest=n.slice(e).replace(/\u0000/g,"");
+      if(ctx&&!NEAR_END.test(rest))continue;
+      const rm=a.k==="role"&&/(התובע(?:ת)?|הנתבע(?:ת)?|המבקש(?:ת)?|המשיב(?:ה)?|הנאשמת|הנאשם|המערער(?:ת)?|המנוח(?:ה)?)/.exec(m[0]);
+      // המגדר מהתווית ומהמסמך, כמו בשם עברי ("הקטינה: Léa Dubois" מקבלת שם בדוי של אישה)
+      const c0=n.slice(Math.max(0,m.index-26),e+26), gh=GF.test(c0)?"f":GM.test(c0)?"m":null;
+      const h={s:s-L,e:e-L,type:"NAME_ANCHORED",label:"שם (לפי הקשר)",text:text.slice(s-L,e-L),why:(ctx&&ctx.why)||a.w,
+        anchor:(ctx&&ctx.as)||a.k,src:"pattern",prio:2,conf:"medium",role:rm?rm[1]:null,g:gh,latin:true};
+      if(ctx){h.near=true; h.only=!rest.trim(); h.known=false;}
+      out.push(h);
+    }}
   return out}
 // העוגנים קוראים את מה שהקורא רואה: בלי סימני כיוון ותווים בלתי נראים (squeeze), והמיקומים חוזרים לטקסט עצמו
 function anchoredSeen(text,ctx){
@@ -2835,7 +2931,28 @@ class Engine{
       h.review=h.conf!=="high"; h.base=h.base||h.text; hits.push(h);
     }
     if(!addr&&/%[0-9A-Fa-f]{2}/.test(text))for(const h of this.encoded(text))hits.push(h);
-    return resolve(hits)}
+    const res=resolve(hits);
+    return addr?res:this.twins(text,res)}
+  /* שם של אדם באותיות לטיניות בסוגריים, צמוד לשם שלו בעברית ("קלייר דובואה-לוי (Claire Dubois-Levi)", או בסדר ההפוך):
+     אותו אדם. הוא מוחלף באיות הלועזי של אותו שם בדוי ("אנה גולדשטיין (Ana Goldstein)"), נבדק בבדיקה האחרונה ונכנס למפה
+     של ההחזרה כזוג משלו. עד כאן יצא כמו שהוא, תחת פס ירוק (הציד של 11.10) */
+  twins(text,hits){
+    const out=hits.slice(); let changed=false;
+    for(const h of hits){
+      if((CANON[h.type]||[h.type])[0]!=="NAME"||!(h.apply||h.review)||h.twinOf)continue;
+      for(const [m,at] of [[LAT_AFTER.exec(text.slice(h.e)),h.e],[LAT_BEFORE.exec(text.slice(0,h.s)),0]]){
+        if(!m||!latinOK(m[1]))continue;
+        const s=at+m.index+m[0].indexOf(m[1]), e=s+m[1].length;
+        // הצעה בלבד על אותו מקום ("הנתבע: Marc Dubois" מעוגן התפקיד) מפנה את מקומה לתאום של האדם שברשימה
+        const over=out.filter(x=>x.s<e&&s<x.e);
+        if(over.some(x=>x.apply||(CANON[x.type]||[x.type])[0]!=="NAME"))continue;
+        for(const x of over)out.splice(out.indexOf(x),1);
+        out.push({s,e,type:h.type,label:h.label,text:text.slice(s,e),apply:h.apply,review:h.review,why:h.why,src:h.src,
+          prio:h.prio,conf:h.conf,twinOf:h,latin:true});
+        changed=true;
+      }
+    }
+    return changed?out.sort((a,b)=>a.s-b.s):hits}
   /* כתובת מקודדת בטקסט (הציד של 11.10): כל מילה שיש בה %XX מפוענחת, כללי הכתובת רצים על הפענוח,
      והפגיעה חוזרת אל המקום שלה בטקסט, עם הערך המפוענח. אחוז בטקסט רגיל ("בשיעור של %50") אינו כתובת:
      רק מילה שנראית כמו כתובת או נתיב, או שהפענוח שלה נותן אות עברית או @ */
@@ -2866,6 +2983,8 @@ class Engine{
     return this.opt.mode==="block"?"black":this.opt.mode==="label"?"label":"name";
   }
   repFor(h){
+    // התאום הלועזי: האיות הלועזי של השם הבדוי של בן הזוג העברי שלו (twins)
+    if(h.twinOf) return addPre(h.pre||"",latinOf(this.repFor({...h.twinOf,pre:""})));
     const pre=h.pre||"";
     const style=this.styleFor(h);
     // מחיקה: גם אות השימוש הולכת, ומי שמדביק את הטקסט למקומו (applyReps) סוגר את הרווח
@@ -2918,6 +3037,8 @@ class Engine{
         }
       }
     }
+    // שם שנכתב באותיות לטיניות מקבל את השם הבדוי באותיות לטיניות ("התובעת: Claire Dubois" ← "התובעת: Ana Goldstein")
+    if(style==="name"&&/^[A-Za-zÀ-ÖØ-öø-ÿ]/.test(canonical)&&!/[א-ת]/.test(canonical))out=latinOf(out);
     return addPre(pre,out)}
 }
 

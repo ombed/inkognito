@@ -397,6 +397,18 @@ const STOP=new Set(("בית המשפט משפט הדין דין המחוזי ה�
 const NWD="[\u05d0-\u05ea][\u05d0-\u05ea'\"\u05f3\u05f4-]{1,14}";
 const PART="בן|בת|בר|אבו|אל|דה|ואן|לה";
 const NME=`${NWD}(?:\\s+(?:${PART})(?![\u05d0-\u05ea-]))?(?:\\s+${NWD})?`;
+/* \u05e9\u05dd \u05e9\u05dc \u05d0\u05d3\u05dd \u05d1\u05d0\u05d5\u05ea\u05d9\u05d5\u05ea \u05dc\u05d8\u05d9\u05e0\u05d9\u05d5\u05ea (\u05d4\u05e6\u05d9\u05d3 \u05e9\u05dc 11.10): \u05de\u05d9\u05dc\u05d4 \u05e9\u05e0\u05e4\u05ea\u05d7\u05ea \u05d1\u05d0\u05d5\u05ea \u05d2\u05d3\u05d5\u05dc\u05d4, \u05d2\u05dd \u05e2\u05dd \u05de\u05e7\u05e3 \u05d5\u05d0\u05d5\u05ea\u05d9\u05d5\u05ea \u05de\u05d5\u05d8\u05e2\u05de\u05d5\u05ea ("Dubois-Levi", "L\u00e9a"),
+   \u05d5\u05de\u05d9\u05dc\u05d5\u05ea \u05d7\u05d9\u05d1\u05d5\u05e8 \u05e7\u05d8\u05e0\u05d5\u05ea \u05d1\u05ea\u05d5\u05da \u05e9\u05dd ("de", "van", "bin"). LATN: \u05e9\u05ea\u05d9\u05d9\u05dd \u05e2\u05d3 \u05d0\u05e8\u05d1\u05e2 \u05de\u05d9\u05dc\u05d9\u05dd; LATN1: \u05d2\u05dd \u05de\u05d9\u05dc\u05d4 \u05d0\u05d7\u05ea (\u05e9\u05dd \u05de\u05e9\u05e4\u05d7\u05d4 \u05d0\u05d7\u05e8\u05d9 \u05ea\u05d5\u05d0\u05e8) */
+const LAT_W="[A-Z\u00c0-\u00d6\u00d8-\u00de][A-Za-z\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u00ff'\u2019]*(?:-[A-Z\u00c0-\u00d6\u00d8-\u00dea-z\u00df-\u00f6\u00f8-\u00ff][A-Za-z\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u00ff'\u2019]*)*",
+  LAT_P="(?:de|da|del|della|di|du|des|van|von|der|den|la|le|el|al|bin|ben|ibn|y|e|ter|op)",
+  LATN=`${LAT_W}(?:\\s+(?:${LAT_P}\\s+){0,2}${LAT_W}){1,3}`, LATN1=`${LAT_W}(?:\\s+(?:${LAT_P}\\s+){0,2}${LAT_W}){0,3}`;
+// \u05ea\u05d5\u05d0\u05e8 \u05dc\u05d5\u05e2\u05d6\u05d9 \u05dc\u05e4\u05e0\u05d9 \u05d4\u05e9\u05dd ("Mr. John Smith", "Me Pierre Martin"): \u05e0\u05e9\u05d0\u05e8 \u05d1\u05d8\u05e7\u05e1\u05d8, \u05d5\u05d0\u05d9\u05e0\u05d5 \u05d4\u05e9\u05dd
+const LAT_TITLE="(?:(?:Mr|Mrs|Ms|Miss|Mx|Dr|Prof|Adv|Atty|Esq|Mme|Mlle|Me|Herr|Frau|Sr|Sra|Sig|Sir|Lady|Rabbi|Rev)\\.?\\s+)?";
+// \u05de\u05d9\u05dc\u05d9\u05dd \u05e9\u05d0\u05d5\u05de\u05e8\u05d5\u05ea \u05e9\u05de\u05d4 \u05e9\u05d1\u05d0 \u05d0\u05d7\u05e8\u05d9 \u05d4\u05ea\u05d5\u05d5\u05d9\u05ea \u05d4\u05d5\u05d0 \u05d2\u05d5\u05e3 \u05d0\u05d5 \u05d3\u05d1\u05e8, \u05dc\u05d0 \u05d0\u05d3\u05dd ("\u05d4\u05ea\u05d5\u05d1\u05e2\u05ea: Microsoft Israel Ltd")
+const LAT_NOT=/^(?:mr|mrs|ms|miss|mx|dr|prof|adv|atty|esq|mme|mlle|herr|frau|sir|lady|rabbi|rev|ltd|inc|llc|llp|lp|corp|corporation|company|co|gmbh|sa|ag|bv|nv|plc|pty|bank|group|holdings?|university|college|school|hospital|court|supreme|district|ministry|department|office|state|states|republic|kingdom|united|street|road|avenue|center|centre|international|global|services|solutions|technologies|systems|partners|associates|foundation|association|society|insurance|microsoft|google|apple|amazon|meta|facebook|whatsapp|instagram|gmail|outlook|word|excel|pdf|zoom|teams|tel|aviv|jerusalem|haifa|israel|hague|convention|the|of|and|for)$/i;
+const latinOK=c=>{const ws=c.split(/[\s-]+/); return !ws.some(w=>LAT_NOT.test(w))&&!ws.every(w=>w.length>1&&w===w.toUpperCase()&&ws.length===1)};
+// התאום הלועזי בסוגריים, אחרי השם העברי או לפניו (Engine.twins)
+const LAT_AFTER=new RegExp(`^\\s*[(\\[]\\s*(${LATN1})\\s*[)\\]]`,"u"), LAT_BEFORE=new RegExp(`(${LATN1})\\s*[(\\[]\\s*$`,"u");
 const BD="(?<![\\u0590-\\u05ff])";
 // מילות פתיחה של משפט שהמודל מדביק לשם שאחריהן
 const LEAD=new Set(["כאמור","משכך","יוזכר","יצוין","יודגש","לדבריו","לדבריה","לדבריהם","בנוסף","ולכן","לכן","אולם","ואולם","אך","גם","כי","כאשר","שכן","לפיכך","בהתאם","עוד","כן","אכן","ואכן","אמנם","כלומר","דהיינו","למשל","ואילו","אבל","או"]);
@@ -601,6 +613,16 @@ const ANCH=[["title",`${BD}(?:${TITLES})[,\\s]+${NMI}`,"מופיע אחרי תו
  ["listitem",`^\\s*(?:\\(?\\d{1,2}[.)]|[א-ט][.)]|[-•·*])?\\s*(?:(?:${TITLES})[,\\s]+)?${NMI}`,"התגלה אוטומטית מההקשר"]]
  // gate: עוגן שרץ רק כשהטקסט כולו מתאים לו (עוד נמען, רק בשורה של "אל:"); o: plural — צד ברבים
  .map(([k,r,w,gate,o])=>({k,rx:new RegExp(r,"gu"),w,gate,...(o||{})}));
+/* אותם עוגנים לשם באותיות לטיניות (הציד של 11.10): "התובעת: Claire Dubois-Levi", "עו"ד Pierre Martin", "שם המבקש: Marc
+   Dubois", "מאת: …", "לכבוד …", "בכבוד רב, …". עד כאן עבר כל כלל, ותיק להחזרת ילד לפי אמנת האג יצא בלי שום שם ברשימה */
+const LAT_ANCH=[
+ ["role",`(?:${ROLES})\\s*[:\\-–]\\s*${LAT_TITLE}(${LATN1})`],
+ ["title",`${BD}(?:${TITLES})[,\\s]+${LAT_TITLE}(${LATN1})`],
+ ["field",`(?:${FIELD_NAME})\\s*:\\s*["']?${LAT_TITLE}(${LATN1})`],
+ ["mail",`^[\\s\\u0000]*${MAIL_LBL}\\s*:\\s*["']?${LAT_TITLE}(${LATN})`],
+ ["addressee",`^[\\s\\u0000]*לכבוד\\s*[:,]?\\s*(?:(?:${TITLES})[,\\s]+)?${LAT_TITLE}(${LATN1})`],
+ ["signed",`${SIGN_OLD}\\s*[,:\\-–]?\\s*${LAT_TITLE}(${LATN})`],
+].map(([k,r])=>({k,rx:new RegExp(r,"gu"),w:(ANCH.find(a=>a.k===k)||{}).w}));
 // עוגנים חלשים: מה שאחרי התווית אינו תמיד אדם ("לכבוד בית המשפט", "מאת: מזכירות בית המשפט"), ולכן slotOK
 const WEAK_ANCH=new Set(["mail","addressee","matter","listitem","fieldx"]);
 /* עוגן חלש מקבל שם רק כשהוא פותח את מה שאחרי התווית כמו שהוא: מה שהניקוי קיצץ ממנו ("ראש העירייה",
@@ -655,9 +677,9 @@ function labelOf(text,inCell){
 const PFX=new Set(["מ","ב","ל","ו","ה","ש","כ"]);
 // סימני מגדר חייבים גבול מילה: בלי זה "תמר" מכיל "מר" והשם נקרא כזכר.
 const GF=new RegExp(BD+"(?:גב'|גברת|השופטת|הרשמת|המצהירה|העדה|התובעת|הנתבעת|המבקשת|"+
-  "המשיבה|הנאשמת|המערערת|המנוחה|ילידת|אשתו|גרושתו|בתו|אמו|הגב')"+NWE,"u");
+  "המשיבה|הנאשמת|המערערת|המנוחה|הקטינה|ילידת|אשתו|גרושתו|בתו|אמו|הגב')"+NWE,"u");
 const GM=new RegExp(BD+"(?:מר|השופט|הרשם|המצהיר|העד|התובע|הנתבע|המבקש|המשיב|הנאשם|"+
-  "המערער|המנוח|יליד|בעלה|גרושה|בנו|אביו)"+NWE,"u");
+  "המערער|המנוח|הקטין|יליד|בעלה|גרושה|בנו|אביו)"+NWE,"u");
 function cleanName(raw){
   let w=raw.trim().split(/\s+/);
   // "כהן" ו"שגב" הם שמות משפחה, לא כ+הן ו-ש+גב: בלי החריג "דוד כהן:" נחתך ל"דוד"
@@ -846,6 +868,24 @@ function anchored(text,ctx){
           out.push(h);
         }
       }}}
+  // שם באותיות לטיניות אחרי אותן תוויות (LAT_ANCH); בשכן של תווית, רק כשהשורה נגמרת אחריו
+  for(const a of LAT_ANCH){
+    if(ctx&&!ctx.keys.includes(a.k))continue;
+    a.rx.lastIndex=0;let m;
+    while((m=a.rx.exec(n))){
+      const c=m[1].replace(/\s+/g," ").trim(); if(!latinOK(c))continue;
+      const s=m.index+m[0].lastIndexOf(m[1]), e=s+m[1].length; if(s<L)continue;
+      const k=s+":"+e; if(seen.has(k))continue; seen.add(k);
+      const rest=n.slice(e).replace(/\u0000/g,"");
+      if(ctx&&!NEAR_END.test(rest))continue;
+      const rm=a.k==="role"&&/(התובע(?:ת)?|הנתבע(?:ת)?|המבקש(?:ת)?|המשיב(?:ה)?|הנאשמת|הנאשם|המערער(?:ת)?|המנוח(?:ה)?)/.exec(m[0]);
+      // המגדר מהתווית ומהמסמך, כמו בשם עברי ("הקטינה: Léa Dubois" מקבלת שם בדוי של אישה)
+      const c0=n.slice(Math.max(0,m.index-26),e+26), gh=GF.test(c0)?"f":GM.test(c0)?"m":null;
+      const h={s:s-L,e:e-L,type:"NAME_ANCHORED",label:"שם (לפי הקשר)",text:text.slice(s-L,e-L),why:(ctx&&ctx.why)||a.w,
+        anchor:(ctx&&ctx.as)||a.k,src:"pattern",prio:2,conf:"medium",role:rm?rm[1]:null,g:gh,latin:true};
+      if(ctx){h.near=true; h.only=!rest.trim(); h.known=false;}
+      out.push(h);
+    }}
   return out}
 // העוגנים קוראים את מה שהקורא רואה: בלי סימני כיוון ותווים בלתי נראים (squeeze), והמיקומים חוזרים לטקסט עצמו
 function anchoredSeen(text,ctx){

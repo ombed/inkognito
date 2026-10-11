@@ -363,7 +363,28 @@ class Engine{
       h.review=h.conf!=="high"; h.base=h.base||h.text; hits.push(h);
     }
     if(!addr&&/%[0-9A-Fa-f]{2}/.test(text))for(const h of this.encoded(text))hits.push(h);
-    return resolve(hits)}
+    const res=resolve(hits);
+    return addr?res:this.twins(text,res)}
+  /* שם של אדם באותיות לטיניות בסוגריים, צמוד לשם שלו בעברית ("קלייר דובואה-לוי (Claire Dubois-Levi)", או בסדר ההפוך):
+     אותו אדם. הוא מוחלף באיות הלועזי של אותו שם בדוי ("אנה גולדשטיין (Ana Goldstein)"), נבדק בבדיקה האחרונה ונכנס למפה
+     של ההחזרה כזוג משלו. עד כאן יצא כמו שהוא, תחת פס ירוק (הציד של 11.10) */
+  twins(text,hits){
+    const out=hits.slice(); let changed=false;
+    for(const h of hits){
+      if((CANON[h.type]||[h.type])[0]!=="NAME"||!(h.apply||h.review)||h.twinOf)continue;
+      for(const [m,at] of [[LAT_AFTER.exec(text.slice(h.e)),h.e],[LAT_BEFORE.exec(text.slice(0,h.s)),0]]){
+        if(!m||!latinOK(m[1]))continue;
+        const s=at+m.index+m[0].indexOf(m[1]), e=s+m[1].length;
+        // הצעה בלבד על אותו מקום ("הנתבע: Marc Dubois" מעוגן התפקיד) מפנה את מקומה לתאום של האדם שברשימה
+        const over=out.filter(x=>x.s<e&&s<x.e);
+        if(over.some(x=>x.apply||(CANON[x.type]||[x.type])[0]!=="NAME"))continue;
+        for(const x of over)out.splice(out.indexOf(x),1);
+        out.push({s,e,type:h.type,label:h.label,text:text.slice(s,e),apply:h.apply,review:h.review,why:h.why,src:h.src,
+          prio:h.prio,conf:h.conf,twinOf:h,latin:true});
+        changed=true;
+      }
+    }
+    return changed?out.sort((a,b)=>a.s-b.s):hits}
   /* כתובת מקודדת בטקסט (הציד של 11.10): כל מילה שיש בה %XX מפוענחת, כללי הכתובת רצים על הפענוח,
      והפגיעה חוזרת אל המקום שלה בטקסט, עם הערך המפוענח. אחוז בטקסט רגיל ("בשיעור של %50") אינו כתובת:
      רק מילה שנראית כמו כתובת או נתיב, או שהפענוח שלה נותן אות עברית או @ */
@@ -394,6 +415,8 @@ class Engine{
     return this.opt.mode==="block"?"black":this.opt.mode==="label"?"label":"name";
   }
   repFor(h){
+    // התאום הלועזי: האיות הלועזי של השם הבדוי של בן הזוג העברי שלו (twins)
+    if(h.twinOf) return addPre(h.pre||"",latinOf(this.repFor({...h.twinOf,pre:""})));
     const pre=h.pre||"";
     const style=this.styleFor(h);
     // מחיקה: גם אות השימוש הולכת, ומי שמדביק את הטקסט למקומו (applyReps) סוגר את הרווח
@@ -446,6 +469,8 @@ class Engine{
         }
       }
     }
+    // שם שנכתב באותיות לטיניות מקבל את השם הבדוי באותיות לטיניות ("התובעת: Claire Dubois" ← "התובעת: Ana Goldstein")
+    if(style==="name"&&/^[A-Za-zÀ-ÖØ-öø-ÿ]/.test(canonical)&&!/[א-ת]/.test(canonical))out=latinOf(out);
     return addPre(pre,out)}
 }
 
