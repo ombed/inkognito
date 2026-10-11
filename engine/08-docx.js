@@ -251,6 +251,8 @@ async function redactDocx(buf,subs,allow,opt){
   }
   rep.bookmarks=renameBookmarks(docs.map(x=>x.doc));
   const applied=[],flagged=[],secrets=[],placeSecrets=[];
+  // יישוב שחזר מהתיק ומוחלף רק במופע שהוא מקום (cond, 07-engine.js): נבדק כמו יישוב ששכבת היישובים החליפה
+  const condV=new Set(subs.filter(s=>s.cond&&s.kind==="PLACE"&&placeCond(norm(s.value).trim())).map(s=>norm(s.value).trim()));
   let blocks=[];
   for(const dd of docs) blocks=blocks.concat(flatten(dd.doc,dd.f.name));
   const eng=new Engine(subs,allow,opt,blocks.map(b=>b.text).join("\n"));
@@ -280,6 +282,7 @@ async function redactDocx(buf,subs,allow,opt){
         // האימות מחפש אותו רק במופע כזה: בחיפוש רגיל «נקודת מבט רעננה» נספרה דליפה של «גרה ברעננה», והפס האדום
         // חסם מסמך תקין
         if(h.src==="pattern"&&h.type==="PLACE_CITY"&&placeCond(h.place))placeSecrets.push(h.place);
+        else if(h.src==="list"&&condV.has(norm(h.base||"").trim()))placeSecrets.push(norm(h.base).trim());
         else{secrets.push(h.text); if(h.base)secrets.push(h.base)}}
       else flagged.push(rec)}
     // מיקום המחיקות בטקסט החדש, לסימון במסך הבדיקה: הערך איננו, אבל היא צריכה לראות
@@ -296,6 +299,7 @@ async function redactDocx(buf,subs,allow,opt){
     // יישוב שהוא גם מילה או צירוף הוחלף רק במופע שהטקסט מראה שהוא מקום; במופע אחר זו המילה ("גרה ברעננה"
     // ו"נקודת מבט רעננה", הציד של 11.10). findPlaces כבר שקל כל מופע, והמעבר לא דורס את השאלה שהוא שאל
     if(r.label==="יישוב"&&r.src==="pattern"&&placeCond(norm(r.base||r.value).trim()))continue;
+    if(r.src==="list"&&condV.has(norm(r.base||r.value).trim()))continue;
     // אם התחליף מכיל את הערך ("דוד" → "דוד א׳"), סריקה חוזרת
     // תתפוס את התחליף עצמו ותכפיל אותו.
     if(v.length>=4&&!(v in sweep)&&rp&&!norm(rp).includes(v))sweep[v]={rep:rp,of:null};
@@ -516,6 +520,8 @@ async function redactDocx(buf,subs,allow,opt){
   // על אותו שם.
   const hitBases=new Set(applied.map(r=>norm(r.base||r.value).trim()));
   for(const r of flagged) if(r.src==="list"&&r.base) hitBases.add(norm(r.base).trim());
+  // יישוב מהתיק שכל מופעיו כאן נשאלו (cond): הוא במסמך, ולא "לא נמצא"
+  for(const r of flagged) if(r.src==="pattern"&&r.base&&condV.has(norm(r.base).trim())) hitBases.add(norm(r.base).trim());
   const nearTargets=new Set(near.map(x=>norm(x.near.target).trim()));
   for(const s of subs){
     if(s.kind!=="NAME"&&s.kind!=="ORG"&&s.kind!=="PLACE")continue;
@@ -530,8 +536,8 @@ async function redactDocx(buf,subs,allow,opt){
   const outBuf=await blob.arrayBuffer();
   // שם שלא נמצא אינו דליפה — הוא מוצג ב«לבדיקה» אבל לא צובע את הבר
   const remaining=[...new Set(flagged.filter(r=>r.src!=="near"&&r.src!=="nohit").map(r=>r.value))];
-  const ver=await verify(outBuf,secrets.concat(subs.flatMap(s=>
-    s.kind==="NAME"?variants(s.value,opt.prefixes||"normal").map(v=>v[0]):[s.value])),placeSecrets);
+  const ver=await verify(outBuf,secrets.concat(subs.flatMap(s=>condV.has(norm(s.value).trim())?[]:
+    s.kind==="NAME"?variants(s.value,opt.prefixes||"normal").map(v=>v[0]):[s.value])),placeSecrets.concat([...condV]));
   ver.hadList=subs.length>0;
   ver.remaining=remaining;
   ver.near=near;

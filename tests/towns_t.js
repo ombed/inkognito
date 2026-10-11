@@ -548,6 +548,83 @@ const leaksOf = (res) => JSON.stringify((res.verification.leaks || []).map((l) =
     ok(!left.length, "a listed name part that is a town, standing alone, is replaced: left " + JSON.stringify(left));
   }
 
+  console.log("\n— the next document of a case: a word-town the case brings back is replaced only where it is a place —");
+  {
+    // The case map saved «שלומי» → its substitute from «תושבת שלומי», and the next document turned the pair into a
+    // rule for every mention: «אני חוששת לשלומי» went out with the town (the review of the first round). The page's
+    // own methods, cut out of index.html as tests/profile_t.js does: the map and kinds it saves, the rules it builds.
+    const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+    const code = html.replace(/<!--[\s\S]*?-->/g, " ").replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:\\])\/\/[^\n]*/g, "$1");
+    const member = (head) => { const m = code.match(new RegExp("\\n {2}" + head.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "[\\s\\S]*?\\n {2}\\}")); return m ? m[0].trim() : null; };
+    const method = (head, name) => new Function("return ({" + member(head) + "})." + name + ";")();
+    const arrow = (name, args) => { const src = member(name + " = (" + args + ") => {"); return new Function("return function(" + args + ")" + src.slice(src.indexOf("=> {") + 3))(); };
+    const P = {
+      currentMap: method("currentMap(){", "currentMap"), currentKinds: method("currentKinds(){", "currentKinds"),
+      caseKind: method("caseKind(value, replacement, kinds){", "caseKind"), mkRule: method("mkRule({value, kind, replacement, auto, g, ...rest}){", "mkRule"),
+      applyProfile: method("applyProfile(prof, name){", "applyProfile"), addRule: arrow("addRule", "value, kind, rep, origin"),
+    };
+    ok(Object.values(P).every((f) => typeof f === "function"), "the page's case methods are found in index.html");
+    const Ep = { norm: C.norm, KINDLBL: C.KINDLBL, CANON: C.CANON, parseDate: C.parseDate, PLACE_BY: C.PLACE_BY, trimEdges: C.trimEdges };
+    const page = (st) => {
+      const c = { state: { E: Ep, mode: "real", o: { numStyle: "blank" }, res: null, screen: "entry", peo: [], err: "", rules: [], allow: [], removed: [], ...st },
+        constructor: { BAD_PROFILE: "bad" }, ran: 0, hist: 0, log: { add() {} }, pushHistory() { this.hist++; }, rerun() { this.ran++; }, openWith: () => [], logMiss() {}, recordLeak() {} };
+      c.setState = (o, cb) => { c.state = { ...c.state, ...(typeof o === "function" ? o(c.state) : o) }; if (cb) cb(); };
+      for (const [k, f] of Object.entries(P)) c[k] = f;
+      return c;
+    };
+    // the next document of the case: what the page gives redactDocx after applyProfile
+    const nextDoc = async (first, second) => {
+      const r1 = await E.redactDocx(docOf(first), [], [], OPT);
+      const one = page({ res: r1 });
+      const prof = { v: 1, rules: [], map: one.currentMap(), kinds: one.currentKinds() };
+      const two = page({});
+      two.applyProfile(prof);
+      const res = await E.redactDocx(docOf(second), two.state.rules, [], OPT);
+      return { prof, rules: two.state.rules, res, lines: shown(res).slice(1) };
+    };
+    for (const [first, second, w, word] of [
+      [["המבקשת, תושבת שלומי, מבקשת צו הגנה."], ["אני חוששת לשלומי ולשלום ילדיי.", "המבקשת, תושבת שלומי, חוזרת על בקשתה."], "שלומי", 0],
+      [["המבקשת גרה ברעננה עם ילדיה."], ["העובדת הסוציאלית הביאה לתיק נקודת מבט רעננה.", "המשפחה עברה לרעננה בקיץ."], "רעננה", 0],
+      [["המשפחה מתגוררת בחדרה מאז 2015."], ["הקטינה ישנה בחדרה.", "בית משפט השלום חדרה"], "חדרה", 0],
+      [["המבקשת גרה בפתח תקווה עם ילדיה."], ["ההסדר החדש פותח פתח תקווה לשיקום הקשר.", "הם עברו לפתח תקווה."], "פתח תקווה", 0],
+    ]) {
+      const { prof, rules, res, lines } = await nextDoc(first, second);
+      const sub = prof.map[w], rule = rules.find((r) => r.value === w);
+      ok(sub && rule && rule.kind === "PLACE" && rule.cond === true, "«" + w + "» comes back from the case as a place that holds where it is a place: " + JSON.stringify(rule));
+      ok(lines[word] === second[word], "«" + second[word] + "» — the word stays in the next document: «" + lines[word] + "»");
+      ok(!lines[1].includes(w) && lines[1].includes(sub), "«" + second[1] + "» — the place gets the case's substitute «" + sub + "»: «" + lines[1] + "»");
+      ok(res.verification.passed, "«" + w + "» — the final check passes " + leaksOf(res));
+      ok(res.flagged.some((f) => f.value === w && f.label === "יישוב") && !res.flagged.some((f) => f.label === "לא נמצא" && f.value === w), "«" + w + "» — the word is asked, and the town is not reported missing: " + JSON.stringify(res.flagged.map((f) => f.value + " (" + f.label + ")")));
+    }
+    {
+      // only the word in the next document: nothing replaced, asked, and not reported missing from it
+      const { res, lines } = await nextDoc(["המבקשת, תושבת שלומי, מבקשת צו הגנה."], ["אני חוששת לשלומי ולשלום ילדיי."]);
+      ok(lines[0] === "אני חוששת לשלומי ולשלום ילדיי." && res.verification.passed, "a document with the word only: «" + lines[0] + "» " + leaksOf(res));
+      ok(!res.flagged.some((f) => f.label === "לא נמצא"), "and «שלומי» is not reported missing: " + JSON.stringify(res.flagged.map((f) => f.value + " (" + f.label + ")")));
+    }
+    {
+      // controls: a town that is only a town, and a rule she made herself, replace every mention as before
+      const { rules, lines } = await nextDoc(["המבקשת גרה בחיפה עם ילדיה."], ["הקטינים לומדים בחיפה.", "חיפה היא עיר נמל."]);
+      ok(!lines.some((l) => l.includes("חיפה")), "a town that is only a town comes back for every mention: " + JSON.stringify(lines) + " " + JSON.stringify(rules));
+      const res = await E.redactDocx(docOf(["אני חוששת לשלומי ולשלום ילדיי."]), [{ value: "שלומי", kind: "PLACE", replacement: "יהוד" }], [], OPT);
+      ok(shown(res)[1] === "אני חוששת ליהוד ולשלום ילדיי.", "a place rule she made herself still holds for every mention: «" + shown(res)[1] + "»");
+      const one = page({ res: null });
+      one.applyProfile({ v: 1, rules: [], map: { "מיכאל פלדמן": "יואב כרמי", "שלומי": "יהוד" }, kinds: { "מיכאל פלדמן": "NAME", "שלומי": "PLACE" } });
+      const pr = one.state.rules.find((r) => r.value === "מיכאל פלדמן");
+      ok(pr && pr.kind === "NAME" && !pr.cond, "a person from the case is a rule as before: " + JSON.stringify(pr));
+    }
+    {
+      // her own decision on that town makes it a rule for every mention; before, «replace» found the rule already listed
+      const c = page({ res: {}, rules: [{ value: "שלומי", kind: "PLACE", replacement: "יהוד", auto: true, cond: true }] });
+      c.addRule("שלומי", "PLACE", "", "review");
+      ok(c.state.rules.length === 1 && c.state.rules[0].cond === false && c.state.rules[0].replacement === "יהוד" && c.ran === 1 && c.hist === 1,
+        "«replace» on the asked town turns the case's rule into her rule, keeps its substitute, can be undone and runs again: " + JSON.stringify(c.state.rules) + " ran " + c.ran);
+      const d = page({ res: {}, rules: [{ value: "שלומי", kind: "PLACE", replacement: "יהוד", auto: true, cond: true }] });
+      d.addRule("שלומי", "NAME", "", "review");
+      ok(d.state.rules[0].cond === true && d.ran === 0 && /כבר ברשימה/.test(d.state.err), "a person of that name is another decision: the place rule stays, and the screen says it is listed");
+    }
+  }
+
   console.log("\n— the final check still sees a word-town left where the text says it is a place —");
   {
     const one = (lines, parts) => docOf(lines, parts);

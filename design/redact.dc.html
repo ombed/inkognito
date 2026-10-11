@@ -2537,6 +2537,12 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     // צעד ביטול רק כשמשהו משתנה (L11): הוספה שנדחתה השאירה צעד ריק, ושני "ביטול" לא עשו דבר
     if(!this.state.rules.some(r=>E.norm(r.value).trim()===E.norm(value).trim())) this.pushHistory();
     const E2=this.state.E, ex=this.state.rules.find(r=>E2.norm(r.value).trim()===E2.norm(value).trim());
+    // מקום מהתיק שמוחלף רק במופע שהוא מקום (cond): ההחלטה שלה להחליף אותו הופכת אותו לכלל רגיל, בכל מופע.
+    // בלי זה «החלפה» על המופע שנשאל לא עשתה כלום, כי הכלל כבר ברשימה
+    if(ex&&ex.cond&&(kind||"NAME")===ex.kind){
+      this.pushHistory();
+      this.setState({rules:this.state.rules.map(r=>r===ex?{...r, cond:false}:r), popup:null, err:""}, ()=>this.rerun());
+      return; }
     if(ex){
       // כבר ברשימה: במקום שגיאה בראש העמוד, מסמנים את הכרטיס שלו ומספרים שם
       if(this.state.res) this.setState({sel:"a|"+E2.norm(ex.value).trim(), open:this.openWith("findings"), popup:null, err:"«"+ex.value+"» כבר ברשימה — הכרטיס שלו מסומן."});
@@ -3579,7 +3585,9 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
         // תאריך זז לפי המסמך שהוא בו (הבחירה של 15.9): התאריך שהוזז במסמך קודם של התיק אינו כלל כאן, וגם לא אדם.
         // תאריך שקיבל תווית («[תאריך א׳]») נשאר כלל: אותו תאריך מקבל את אותה תווית בכל מסמך בתיק, והתווית לא תינתן לתאריך אחר
         if(kind==="DATE"&&!/^\[/.test(replacement)) continue;
-        rules.push(this.mkRule({value, kind:kind==="DATE"?"OTHER":kind, replacement, auto:true}));
+        // מקום שהמנוע החליף במסמך קודם (cond): יישוב שהוא גם מילה מוחלף כאן רק במופע שהוא מקום, באותו תחליף.
+        // כלל גורף החליף את «אני חוששת לשלומי» כי «תושבת שלומי» הוחלף במסמך הקודם (הביקורת של 11.10)
+        rules.push(this.mkRule({value, kind:kind==="DATE"?"OTHER":kind, replacement, auto:true, ...(kind==="PLACE"?{cond:true}:{})}));
       }
       const own=open?this.state.rules||[]:[], ownAllow=open?this.state.allow||[]:[];
       const ownR=new Set(own.map(r=>nn(r&&r.value))), ownA=new Set(ownAllow.map(nn));
