@@ -2373,6 +2373,8 @@ function flatten(doc,part,ctx){
       else if((ln==="default"&&up&&up.localName==="textInput")||((ln==="helpText"||ln==="statusText")&&up&&up.localName==="ffData")||ln==="listEntry")
         att(el,"w:val",valW(el)," (קוד שדה)");
       else if(ln==="listItem"){att(el,"w:displayText",el.getAttribute("w:displayText")," (קוד שדה)");att(el,"w:value",el.getAttribute("w:value")," (קוד שדה)")}
+      // רשימה נפתחת: הערך שנבחר בה אחרון (w:lastValue) — אחרת שם מהרשימה השאיר פס אדום בלי מה לתקן (הסקירה של 11.10)
+      else if(ln==="dropDownList"||ln==="comboBox")att(el,"w:lastValue",el.getAttribute("w:lastValue")," (קוד שדה)");
       else if((ln==="name"||ln==="description")&&up&&up.localName==="docPartPr"&&HEB_LETTER.test(valW(el)||""))att(el,"w:val",valW(el)," (הגדרות עיצוב)")}}
   /* תיבת טקסט נכתבת פעמיים: הצורה (mc:Choice) וחלופה לתוכנות ישנות (mc:Fallback), ו-Word מציג רק את
      הראשונה. בלוק בחלופה שזהה לבלוק בצורה הוא אותו טקסט: הוא מקבל את אותן החלפות, ואינו מוצג, מועתק או
@@ -2495,7 +2497,16 @@ async function chunkLines(u8,depth){
   if(/^\s*\{\\rtf/.test(head))return rtfLines(u8);
   if(/^\s*MIME-Version:|^Content-Type:\s*multipart\//im.test(head))return mhtLines(u8);
   const t=textOf(u8);
-  if(/<(?:html|body|p|div|br|table|!doctype)\b/i.test(t))return htmlLines(t);
+  /* WordprocessingML כ-XML (Flat OPC, או מסמך גולמי): רק הטקסט שבתוך w:t ו-a:t, פסקה לשורה — לא התגיות, ולא נתונים
+     בינאריים שבחבילה. וכל סימון אחר הוא HTML, לא רק html/body/p: קטע כמו <strong>, <span> או <ul><li> נכנס למסמך
+     כטקסט, עם התגיות, ושם שבתוך תגית לא הוצע (הסקירה של 11.10) */
+  if(/^\s*(?:<\?xml|<pkg:package|<w:document|<w:wordDocument)/i.test(t)&&/<(?:w|a):t[\s>]/.test(t)){
+    const out=[];
+    for(const para of t.split(/<\/(?:w|a):p>/)){
+      const line=htmlLines([...para.matchAll(/<(?:w|a):t(?:\s[^>]*)?>([^<]*)<\/(?:w|a):t>/g)].map(m=>m[1]).join("")).join(" ");
+      if(line)out.push(line)}
+    return out}
+  if(/<\/?[a-z][\w:.-]*[\s/>]/i.test(t))return htmlLines(t);
   if(/[\u0000-\u0008\u000E-\u001A]/.test(t.slice(0,4000)))return null;
   return t.split(/\r\n?|\n/).map(x=>x.replace(/\s+/g," ").trim()).filter(Boolean)}
 function textOf(u8){

@@ -35,6 +35,14 @@ const chunkDoc = (target, body, ct) => ({ body: P(R("פתיח.")) + '<w:altChunk
     ok(!/afchunk/.test(r.o.text("word/_rels/document.xml.rels")) && !/altChunk/.test(r.o.text("word/document.xml")), "and nothing points at the removed part");
     const listed = await run(chunkDoc("afchunk.htm", html, "application/xhtml+xml"));
     ok(!left(listed.o, "פרידמן").length && listed.res.verification.passed, "a listed name in it is replaced like any other: " + left(listed.o, "פרידמן"));
+    // the review of 11.10: markup without html/body/p, and WordprocessingML as XML, were pasted in as text, tags and all
+    for (const [what, file, body] of [
+      ["an HTML fragment", "afchunk.htm", `<strong>${NAME}</strong> <span>הגישה</span> <ul><li>תצהיר</li></ul>`],
+      ["a Flat OPC XML chunk", "afchunk.xml", `<?xml version="1.0"?><pkg:package xmlns:pkg="http://schemas.microsoft.com/office/2006/xmlPackage"><pkg:part pkg:name="/word/document.xml"><pkg:xmlData><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>${NAME}</w:t></w:r><w:r><w:t xml:space="preserve"> הגישה.</w:t></w:r></w:p></w:body></w:document></pkg:xmlData></pkg:part><pkg:part pkg:name="/word/media/image1.png"><pkg:binaryData>iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk</pkg:binaryData></pkg:part></pkg:package>`],
+    ]) {
+      const c = await run(chunkDoc(file, body, "application/xhtml+xml"));
+      ok(!c.copy.includes("<") && !/pkg:|w:t|iVBOR/.test(c.copy) && !left(c.o, "פרידמן").length, `${what}: read as text, without its tags, and the name in it replaced: ${JSON.stringify(c.copy)}`);
+    }
   }
   {
     const qp = (s) => Array.from(Buffer.from(s, "utf8")).map((b) => (b >= 33 && b <= 126 && b !== 61) ? String.fromCharCode(b) : "=" + b.toString(16).toUpperCase().padStart(2, "0")).join("").replace(/(.{70})/g, "$1=\r\n");
@@ -104,6 +112,9 @@ const chunkDoc = (target, body, ct) => ({ body: P(R("פתיח.")) + '<w:altChunk
       ["a form field's default, help and status text", P(`<w:r><w:fldChar w:fldCharType="begin"><w:ffData><w:name w:val="Text1"/><w:enabled/><w:calcOnExit w:val="0"/><w:helpText w:type="text" w:val="שם המבקשת: ${NAME}"/><w:statusText w:type="text" w:val="${NAME}"/><w:textInput><w:default w:val="${NAME}"/></w:textInput></w:ffData></w:fldChar></w:r><w:r><w:instrText xml:space="preserve"> FORMTEXT </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r>` + R("נועה גל") + '<w:r><w:fldChar w:fldCharType="end"/></w:r>'), {}],
       ["an old drop-down form field's choices", P(`<w:r><w:fldChar w:fldCharType="begin"><w:ffData><w:name w:val="Dropdown1"/><w:enabled/><w:ddList><w:listEntry w:val="נועה גל"/><w:listEntry w:val="${NAME}"/></w:ddList></w:ffData></w:fldChar></w:r><w:r><w:instrText xml:space="preserve"> FORMDROPDOWN </w:instrText></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r>`), {}],
       ["a drop-down control's other choices", `<w:sdt><w:sdtPr><w:dropDownList><w:listItem w:displayText="${NAME}" w:value="${NAME}"/><w:listItem w:displayText="נועה גל" w:value="נועה גל"/></w:dropDownList></w:sdtPr><w:sdtContent>${P(R("נועה גל"))}</w:sdtContent></w:sdt>`, {}],
+      // the review of 11.10: the value last picked in a drop-down or combo box
+      ["a drop-down control's last picked value", `<w:sdt><w:sdtPr><w:dropDownList w:lastValue="${NAME}"><w:listItem w:displayText="נועה גל" w:value="נועה גל"/></w:dropDownList></w:sdtPr><w:sdtContent>${P(R("נועה גל"))}</w:sdtContent></w:sdt>`, {}],
+      ["a combo box's last picked value", `<w:sdt><w:sdtPr><w:comboBox w:lastValue="${NAME}"><w:listItem w:displayText="נועה גל" w:value="נועה גל"/></w:comboBox></w:sdtPr><w:sdtContent>${P(R("נועה גל"))}</w:sdtContent></w:sdt>`, {}],
       ["a signature line's suggested signer", P(`<w:r><w:pict><v:shape id="sig" type="#_x0000_t75" style="width:192pt;height:96pt"><v:imagedata r:id="rId30" o:title=""/><o:signatureline v:ext="edit" id="{00000000-0000-0000-0000-000000000001}" provid="{00000000-0000-0000-0000-000000000000}" o:suggestedsigner="${NAME}" o:suggestedsigner2="המבקשת" o:suggestedsigneremail="rachel.f@example.com" issignatureline="t"/></v:shape></w:pict></w:r>`), pic],
     ];
     for (const [what, body, more] of cases) {
@@ -114,11 +125,12 @@ const chunkDoc = (target, body, ct) => ({ body: P(R("פתיח.")) + '<w:altChunk
       ok(!r.copy.includes("הפרופיל של") && !r.copy.includes("תעודת זהות") && !r.copy.includes("שם המבקשת:"),`${what}: and it is not copied as if it were body text: ` + JSON.stringify(r.copy));
     }
     // with nothing on her list, a name in a picture's text is put in front of her, as in its alt text
-    for (const [what, body, more] of [cases[0], cases[6]]) {
+    const sigCase = cases.find((c) => /signature line/.test(c[0]));
+    for (const [what, body, more] of [cases[0], sigCase]) {
       const r = await run({ body: P(R("הבקשה הוגשה היום.")) + body, ...more }, []);
       ok(r.res.verification.suggest.some((x) => x.value === NAME), `${what}: an unlisted name is put in front of her: ` + JSON.stringify(r.res.verification.suggest.map((x) => x.value)));
     }
-    const sig = await run({ body: cases[6][1], ...cases[6][2] });
+    const sig = await run({ body: sigCase[1], ...sigCase[2] });
     ok(!left(sig.o, "rachel.f@example.com").length, "the suggested signer's e-mail is replaced: " + left(sig.o, "rachel.f"));
   }
   {
