@@ -12,16 +12,13 @@
    Each case is one check, and every one fails on the engine before this change, except the counterexamples
    (public links and ordinary text that must stay as they are) and four marked guards for shapes the old code
    already cleaned, whose code this change rewrote. Every name, handle, number and address here is invented. */
+// the page's XML parser and serializer are the browser's: jsdom's here, as in tests/wordfile-lib.js. xmldom writes
+// the XML declaration back into its output, and a part the tool rewrites came out with two (11.10); it is kept
+// only to check that what the tool wrote parses (badXml)
 const xd = require("@xmldom/xmldom");
-global.DOMParser = xd.DOMParser; global.XMLSerializer = xd.XMLSerializer;
-{
-  const p = new xd.DOMParser().parseFromString("<a><b/></a>", "application/xml");
-  for (const proto of [Object.getPrototypeOf(p.documentElement), Object.getPrototypeOf(p)]) {
-    if (!("children" in proto)) Object.defineProperty(proto, "children", { get() { return Array.from(this.childNodes || []).filter((n) => n.nodeType === 1); } });
-    if (!proto.remove) proto.remove = function () { if (this.parentNode) this.parentNode.removeChild(this); };
-    if (!proto.querySelector) proto.querySelector = function (t) { const l = this.getElementsByTagName(t); return l && l.length ? l[0] : null; };
-  }
-}
+const { JSDOM } = require("jsdom");
+const win = new JSDOM("<!doctype html><html><body></body></html>").window;
+global.DOMParser = win.DOMParser; global.XMLSerializer = win.XMLSerializer;
 const zlib = require("zlib"), fs = require("fs"), path = require("path");
 global.__deflate = (b) => new Uint8Array(zlib.deflateRawSync(Buffer.from(b)));
 global.__inflate = (b) => new Uint8Array(zlib.inflateRawSync(Buffer.from(b)));
@@ -414,7 +411,7 @@ const why = (res, out) => JSON.stringify({ leaks: res.verification.leaks, bad: b
       '<w:connectString w:val="Provider=Microsoft.ACE.OLEDB.12.0;User ID=Admin;Data Source=C:\\Users\\dana.sagi30\\Documents\\clients.xlsx;Mode=Read"/>' +
       '<w:query w:val="SELECT * FROM `C:\\Users\\dana.sagi31\\Documents\\clients.xlsx`.`Sheet1$`"/></w:mailMerge>';
     const r4 = await run(pkg({ body: text, parts: [{ name: "word/settings.xml", body: part("settings", merge) }] }));
-    ok(!leftIn(r4.out, "dana.sagi30").length && !leftIn(r4.out, "dana.sagi31").length && !badXml(r4.out).length, "a mail merge's data source and query keep only the file's name");
+    ok(!leftIn(r4.out, "dana.sagi30").length && !leftIn(r4.out, "dana.sagi31").length && !badXml(r4.out).length, "a mail merge's data source and query leave with the file, or keep only the file's name");
     // a HYPERLINK field keeps a binary copy of its address (w:fldData)
     const url = "https://www.facebook.com/dana.sagi.89";
     const b64 = Buffer.concat([Buffer.from([0xd0, 0xc9, 0xea, 0x79, 0xf9, 0xba, 0xce, 0x11]), Buffer.from(url + "\0", "utf16le")]).toString("base64");
