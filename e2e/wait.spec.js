@@ -27,8 +27,8 @@ test("continuing without the model keeps the header names, and a late model resu
   // v36 (UX #7): the button only stops the wait; the list stays for review, and "המשך" goes on
   await expect(H.goButton(page)).toBeEnabled();
   await H.goOn(page);
-  // on to the places screen; the late model result still lands (below)
-  await expect(page.getByRole("heading", { name: /יישובים/ })).toBeVisible({ timeout: 10000 });
+  // on: the places screen when the document has places, else straight to the check screen; the late model result still lands (below)
+  await expect(page.getByRole("heading", { name: /יישובים/ }).or(page.locator("[data-bar]")).first()).toBeVisible({ timeout: 10000 });
   await page.waitForTimeout(9000);
   await H.throughPlaces(page, page.getByRole("button", { name: /החלת הקבוצה והמשך|המשך לבדיקה|המשך לעיבוד/ }).first());
   await expect(page.locator("[data-mark]").first()).toBeVisible({ timeout: 15000 });

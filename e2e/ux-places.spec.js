@@ -135,7 +135,7 @@ test("UX #10: checked means replaced", async ({ page }) => {
 test("UX #17: the profile buttons say export and import, and export says where the file went", async ({ page }) => {
   await toPeople(page, ["סיכום", "מר דני כהן הגיע. דני כהן חייך."].join("\n"), ["דני כהן"]);
   await H.goOn(page);
-  await page.getByRole("button", { name: /המשך לבדיקה|החלת הקבוצה/ }).first().click();
+  await H.throughPlaces(page, page.getByRole("button", { name: /המשך לבדיקה|החלת הקבוצה/ }).first());
   await expect(page.locator("[data-bar]")).toBeVisible({ timeout: 20000 });
   await page.getByRole("button", { name: /התיק ורשימת השמות/ }).click();
   await expect(page.getByRole("button", { name: "ייבוא מקובץ" })).toBeVisible();
@@ -149,7 +149,7 @@ test("UX #17: the profile buttons say export and import, and export says where t
 test("UX #19 / #20: restore is disabled while empty; the result has a heading with a count, and copy becomes primary", async ({ page }) => {
   await toPeople(page, ["סיכום", "מר יואב ברקוביץ׳ הגיע. יואב ברקוביץ׳ חייך."].join("\n"), ["יואב ברקוביץ'"]);
   await H.goOn(page);
-  await page.getByRole("button", { name: /המשך לבדיקה|החלת הקבוצה/ }).first().click();
+  await H.throughPlaces(page, page.getByRole("button", { name: /המשך לבדיקה|החלת הקבוצה/ }).first());
   await expect(page.locator("[data-bar]")).toBeVisible({ timeout: 20000 });
   const fake = (await page.locator("[data-mark]").first().textContent()).trim();
   await page.getByRole("button", { name: "החזרת שמות מתשובת AI" }).click();
