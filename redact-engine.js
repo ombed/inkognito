@@ -109,7 +109,10 @@ function squeeze(t){
 // אות עברית צמודה לספרה היא גבול בשני הכיוונים: "פרידמן2" (מספר הערת שוליים שהודבק) הוא השם,
 // ו"ת"ז034567891" או "ביום14.3.2026" (בלי רווח) הם המספר. אות ליד אות, וספרה ליד ספרה, אינן
 // גבול — אחרת מספר של עשר ספרות היה נתפס כת"ז בתשע הראשונות. אות לטינית צמודה חוסמת תמיד.
-const HB="\\u0590-\\u05ff",NW=`(?<![A-Za-z])(?!(?<=[${HB}])[${HB}])(?!(?<=[0-9])[0-9])(?<![${HB}A-Za-z0-9][${HB}A-Za-z0-9]")(?<![${HB}A-Za-z0-9]')`,NWE=`(?![A-Za-z])(?!(?<=[${HB}])[${HB}])(?!(?<=[0-9])[0-9])(?!['"][${HB}A-Za-z0-9])`;
+// אבל אות סופית (ך ם ן ף ץ) חותמת מילה: "פרידמןהגישה" ו"עםרחל" הן שתי מילים שהרווח ביניהן נשמט. בלי זה
+// השם המלא לא נמצא, רק השם הפרטי הוחלף, ושם המשפחה האמיתי יצא ליד שם פרטי בדוי, בפס ירוק (הציד של 11.10).
+const FIN="\\u05da\\u05dd\\u05df\\u05e3\\u05e5";
+const HB="\\u0590-\\u05ff",NW=`(?<![A-Za-z])(?!(?<=[${HB}])(?<![${FIN}])[${HB}])(?!(?<=[0-9])[0-9])(?<![${HB}A-Za-z0-9][${HB}A-Za-z0-9]")(?<![${HB}A-Za-z0-9]')`,NWE=`(?![A-Za-z])(?!(?<=[${HB}])(?<![${FIN}])[${HB}])(?!(?<=[0-9])[0-9])(?!['"][${HB}A-Za-z0-9])`;
 const esc=s=>s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
 // norm שומר אורך וממיר ניקוד ל-\0, ולכן תבנית שמרשה \0 בין אותיות תופסת
 // "רוֹנִית" בלי לשבור את מיפוי המיקומים. רווח ומקף שקולים: "לוי-אבקסיס"
@@ -1274,7 +1277,11 @@ const PAT=[
  ["FARM","כתובת",`(?<![א-ת]{2})(?:משק|נחלה)\\s+(?:מס'?\\s*)?(\\d{1,4})(?![\\d])`,1,null,2,1],
  ["PARCEL","כתובת",`(?:גוש|חלק(?:ה|ות)|תת[-\\s]?חלק(?:ה|ות))\\s*(?:מס'?\\s*)?(\\d{1,6}(?:[-–]\\d{1,6})?)(?![\\d.,]\\d|\\s*(?:${D_UNIT}|%))`,1,null,2,1],
  ["DOB","תאריך לידה","(?:יליד(?:ת|י)?|ת\\.?\\s?לידה|תאריך\\s+לידה)[:\\s-]*(\\d{1,2}[./-]\\d{1,2}[./-]\\d{2,4})",1,null,2,1],
- ["URL_PERSONAL","קישור אישי","(?<![\\w.@/])(?:https?://)?(?:[a-z]{1,3}\\.)?(?:www\\.)?(?:(?:facebook|fb|linkedin|instagram|twitter|x|tiktok|threads|youtube)\\.(?:com|net)|t\\.me)/[^\\s\"'<>)\\]]+",0,null,2,1],
+ // גם וואטסאפ (wa.me, api., chat.), youtu.be, fb.me, m.me, טלגרם וכל תת-דומיין (הציד של 11.10): עד כאן יצאו כמו שהם
+ ["URL_PERSONAL","קישור אישי","(?<![\\w.@/])(?:https?://)?(?:[a-z0-9-]{1,20}\\.)?(?:www\\.)?(?:(?:facebook|fb|linkedin|instagram|twitter|x|tiktok|threads|youtube|snapchat|messenger|whatsapp)\\.(?:com|net)|youtu\\.be|instagr\\.am|lnkd\\.in|fb\\.me|m\\.me|wa\\.me|t\\.me|telegram\\.(?:me|dog))/[^\\s\"'<>)\\]]+",0,null,2,1],
+ // תיקייה בענן של המשרד (SharePoint, OneDrive, Drive, Dropbox, WeTransfer) ומיקום במפה: שם הלקוח, המייל של עורכת הדין
+ // או הכתובת של הבית יושבים בתוך הכתובת, מקודדים (הציד של 11.10)
+ ["URL_PRIVATE","קישור אישי","(?<![\\w.@/])(?:https?://)?(?:[a-z0-9-]{1,40}\\.)*(?:(?:sharepoint\\.com|onedrive\\.live\\.com|1drv\\.ms|drive\\.google\\.com|docs\\.google\\.com|dropbox\\.com|box\\.com|wetransfer\\.com|we\\.tl|maps\\.app\\.goo\\.gl|maps\\.apple\\.com|waze\\.com|maps\\.google\\.(?:com|co\\.il))/[^\\s\"'<>)\\]]+|(?:google\\.(?:com|co\\.il)|goo\\.gl)/maps[/?@][^\\s\"'<>)\\]]*)",0,null,2,1],
  ["HANDLE","קישור אישי","(?<![\\w.@/])@[A-Za-z0-9_](?:[A-Za-z0-9_.]{1,28}[A-Za-z0-9_])(?![\\w@])",0,null,2,1],
  ["ZIPCODE","מיקוד","(?:מיקוד|ת\\.?ד\\.?)[:\\s.]*(\\d{5,7})",1,null,3,1],
  ["POBOX","מיקוד","(?<![א-ת])ת\\.?\\s?ד\\.?[:\\s.]*(\\d{1,6})(?![\\d])",1,null,3,1],
@@ -1903,6 +1910,45 @@ function ageZones(n){
   const b=/(?<![\d])(\d{1,3})\s+(?:שנה|שנים|שנתיים|וחצי)(?![א-ת])/gu;
   while((m=b.exec(n)))z.push([m.index,m.index+m[1].length]);
   return z}
+/* כתובת מקודדת (הציד של 11.10): "%D7%93%D7%A0%D7%94" הוא "דנה" לכל דפדפן, ולכלים כאן הוא היה תווים
+   לטיניים. שם מהרשימה בתוך כתובת כזאת לא נמצא, דווח "לא מופיע במסמך", ויצא עם הקובץ. פענוח עד שלוש
+   פעמים (כתובת שקודדה פעמיים), עם מפה מכל תו בפענוח אל הטווח שלו במקור, כדי שההחלפה תיכתב במקומו. */
+function pctDecode(s){
+  let d="";const map=[];
+  for(let i=0;i<s.length;){
+    if(s[i]!=="%"||!/^%[0-9A-Fa-f]{2}/.test(s.slice(i,i+3))){d+=s[i];map.push([i,i+1]);i++;continue}
+    const bytes=[];let j=i;
+    while(/^%[0-9A-Fa-f]{2}/.test(s.slice(j,j+3))){bytes.push(parseInt(s.slice(j+1,j+3),16));j+=3}
+    for(let k=0;k<bytes.length;){
+      const b0=bytes[k], n=b0<0x80?1:(b0>>5)===6?2:(b0>>4)===14?3:(b0>>3)===30?4:0;
+      let cp=n===1?b0:-1;
+      if(n>1&&k+n<=bytes.length){cp=b0&(0xff>>(n+1));
+        for(let q=1;q<n;q++){const c=bytes[k+q];if((c&0xC0)!==0x80){cp=-1;break}cp=(cp<<6)|(c&0x3F)}
+        if(cp<[0,0,0x80,0x800,0x10000][n]||cp>0x10FFFF||(cp>=0xD800&&cp<=0xDFFF))cp=-1}
+      const a=i+k*3;
+      // רצף שאינו UTF-8 תקין נשאר כמו שהוא
+      if(cp<0){for(let q=0;q<3;q++){d+=s[a+q];map.push([a+q,a+q+1])}k++;continue}
+      const ch=String.fromCodePoint(cp);
+      for(let q=0;q<ch.length;q++){d+=ch[q];map.push([a,a+n*3])}
+      k+=n}
+    i=j}
+  return {d,map}}
+function pctDecodeAll(s){
+  let cur={d:s,map:Array.from({length:s.length},(_,i)=>[i,i+1])};
+  for(let r=0;r<3&&/%[0-9A-Fa-f]{2}/.test(cur.d);r++){
+    const nx=pctDecode(cur.d); if(nx.d===cur.d)break;
+    nx.map=nx.map.map(([a,b])=>[cur.map[a][0],cur.map[b-1][1]]); cur=nx}
+  return cur}
+// אותו פענוח בלי מפה, לטקסט ארוך (הבדיקה האחרונה קוראת כך חלק שלם)
+function pctPlain(s){
+  for(let r=0;r<3&&/%[0-9A-Fa-f]{2}/.test(s);r++){
+    const n=s.replace(/(?:%[0-9A-Fa-f]{2})+/g,m=>{try{return decodeURIComponent(m)}catch(_){return pctDecode(m).d}});
+    if(n===s)break; s=n}
+  return s}
+// הכללים שרצים על כתובת: מספרים מזהים, דוא"ל, כתובת רחוב וקישור אישי. לא תאריך, לא מספר רכב ולא מספר תיק,
+// שכתובת ציבורית מלאה בהם ("/2024-03-12/", "18-2023"), ולא יישוב ("he.wikipedia.org/wiki/חיפה")
+const ADDR_PAT=new Set(["EMAIL","PHONE_MOBILE","PHONE_LAND","ISRAELI_ID","ISRAELI_ID_SEP","ISRAELI_ID_LABELED","IBAN",
+  "URL_PERSONAL","URL_PRIVATE","ADDRESS_STREET","ADDRESS_LABELED","PASSPORT","SSN","BANK_ACCOUNT","BANK_ACCOUNT_SHORT","LAWYER_LIC"]);
 /* מילה שהיא גם מילה רגילה, לא רק שם: שם פרטי שהוא מילה, מילה שכיחה, מילת עצירה או פועל — או
    מילה שהטקסט עצמו כותב עם ה' הידיעה ("הכהן"). toks: המילים של הטקסט. בדיקה אחת לצורה עם אות
    שימוש של שם קצר כאן, ולחלק של שם שעומד לבד בתשובת AI (restoreNames). */
@@ -2034,14 +2080,15 @@ class Engine{
   blocked(s,e,zones){return zones.some(([a,b])=>a<=s&&e<=b)}
   // תווים בלתי נראים (squeeze): הזיהוי רץ על מה שהקורא רואה, והמיקומים חוזרים לטקסט המקורי. ההחלפה מכסה את
   // התווים שבתוך הערך; סימני כיוון שלפניו ואחריו נשארים מחוצה לה, כדי שזוגות הבידוד יישארו שלמים
-  detect(text){
+  // addr: הטקסט הוא כתובת מפוענחת. שם בה מחובר ב-_ או ב-+ ("דנה_שגיא.pdf", "?q=דנה+שגיא"), ורק כללי הכתובת רצים
+  detect(text,addr){
     const q=squeeze(text);
-    if(!q) return this.detectSeen(text);
-    const hits=this.detectSeen(q.t);
+    if(!q) return this.detectSeen(text,addr);
+    const hits=this.detectSeen(q.t,addr);
     for(const h of hits){ h.s=q.pos[h.s]; h.e=q.pos[h.e-1]+1; h.text=text.slice(h.s,h.e); }
     return hits;
   }
-  detectSeen(text){
+  detectSeen(text,addr){
     const n=norm(text),zones=[];
     const AGE=ageZones(n);
     // רשימת ההיתר תופסת גם צורות עם אות שימוש, ו-ש היא אות שימוש: "אל תחליפו" על
@@ -2056,9 +2103,9 @@ class Engine{
         // גם כשלפני הערך האחר עומדת אות שימוש: "ושרון" הוא ו+שרון, לא וש+רון
         if(tok!==own&&(listed.has(tok)||SING.some(p=>tok.startsWith(p)&&tok.slice(1)!==own&&listed.has(tok.slice(1)))))continue;
         zones.push([m.index,m.index+m[0].length])}});
-    const hits=[];
+    const hits=[], nl=addr?n.replace(/[_+]/g," "):n;
     for(const r of this.rules){r.rx.lastIndex=0;let m;
-      while((m=r.rx.exec(n))){
+      while((m=r.rx.exec(nl))){
         const s=m.index,e=s+m[0].length;
         /* ערך שברשימה מוחלף גם בתוך קטע ארוך יותר שהותר (v35): "לא שם"
            על קטע ארוך שהמודל הדביק ("אסתר גבאי ברזילי", דוגמה בדויה) כתב את כל הקטע
@@ -2081,14 +2128,38 @@ class Engine{
           why:r.auto?"התגלה אוטומטית מההקשר":(r.pre?`מהרשימה שהגדרתם, עם אות השימוש "${r.pre}" שנשמרה`:"מהרשימה שהגדרתם"),
           review:!!r.pre,conf:"high"});
       }}
-    for(const h of findPatterns(text,this.opt.on,this.opt.flag)){
+    const on=addr?(this._addrOn||(this._addrOn=new Set([...this.opt.on].filter(k=>ADDR_PAT.has(k))))):this.opt.on;
+    for(const h of findPatterns(text,on,addr?new Set():this.opt.flag)){
       if(this.blocked(h.s,h.e,zones))continue;
+      // בכתובת, הקישור האישי שהוא הכתובת עצמה כבר נשפט לפי השרת שלה, והוא היה מסתיר את מה שבתוכה
+      if(addr&&/^URL_/.test(h.type)&&/^[\s("'<[]*$/.test(text.slice(0,h.s)))continue;
+      // בכתובת, טלפון קווי נלקח רק מהפרמטרים (אחרי "?"), לא מהנתיב: שם "04-54321-12" הוא חלק משם הקובץ של פסק דין בנבו
+      // («FA-21-04-54321-12.htm»), והקישור הציבורי נשבר (הסקירה של 11.10). מספר שכבר הוחלף במסמך יוצא מהכתובת בכל מקום בה
+      if(addr&&h.type==="PHONE_LAND"){ const qi=text.indexOf("?"); if(qi<0||h.s<qi) continue; }
+      // וכך גם כתובת שהוקלדה בטקסט: מתחילת המילה (http, www) ועד "?" שלה, "04-54321-12" הוא שם קובץ ולא טלפון
+      if(!addr&&h.type==="PHONE_LAND"){ let a=h.s; while(a>0&&!/\s/.test(text[a-1]))a--;
+        if(/^(?:https?:\/\/|www\.)/i.test(text.slice(a))&&!text.slice(a,h.s).includes("?")) continue; }
       // גיל אינו מזהה, וההבטחה הייתה "הכול חוץ מגילאים": "בת 9", "בן 12", "גיל 7",
       // "3 שנים" — מספר בהקשר של גיל נשאר גם כשמספרים מושמטים. צר ומבוסס הקשר בלבד.
       if(this.blocked(h.s,h.e,AGE))continue;
       h.review=h.conf!=="high"; h.base=h.base||h.text; hits.push(h);
     }
+    if(!addr&&/%[0-9A-Fa-f]{2}/.test(text))for(const h of this.encoded(text))hits.push(h);
     return resolve(hits)}
+  /* כתובת מקודדת בטקסט (הציד של 11.10): כל מילה שיש בה %XX מפוענחת, כללי הכתובת רצים על הפענוח,
+     והפגיעה חוזרת אל המקום שלה בטקסט, עם הערך המפוענח. אחוז בטקסט רגיל ("בשיעור של %50") אינו כתובת:
+     רק מילה שנראית כמו כתובת או נתיב, או שהפענוח שלה נותן אות עברית או @ */
+  encoded(text){
+    const out=[],rx=/\S+/g;let m;
+    while((m=rx.exec(text))){
+      const tok=m[0]; if(!/%[0-9A-Fa-f]{2}/.test(tok))continue;
+      const dd=pctDecodeAll(tok);
+      if(dd.d===tok||(!/[א-ת@]/.test(dd.d)&&!/[/\\:]/.test(tok)))continue;
+      for(const h of this.detect(dd.d,true)){
+        const a=dd.map[h.s][0],b=dd.map[h.e-1][1],raw=tok.slice(a,b);
+        if(raw===h.text)continue;
+        out.push({...h,s:m.index+a,e:m.index+b,text:raw,dtext:h.text,enc:true})}}
+    return out}
   /* מה נכנס במקום ערך: name (שם או יישוב בדוי), label (פלוני א׳ / [ת"ז א׳]),
      black (███), או blank — הערך נמחק נקי מהטקסט.
 
@@ -2172,41 +2243,159 @@ const GAZ_RX=new RegExp("(?<![\\u0590-\\u05ff])(?:[בהולמכש]|ו[בהלמכ
 /* ══════════════════════════ DOCX ══════════════════════════ */
 /* טאב, מעבר שורה ומקף שאינו נשבר הם אלמנטים ולא תווים. בלי מפריד, "רחל<טאב/>פרידמן"
    נקרא "רחלפרידמן": השם לא נמצא, והבדיקה שאחרי ההחלפה לא ראתה אותו (שכבה 1ב בתוכנית
-   האיכות). הם נספרים כתו אחד, רק בתוך ריצה — w:tab בתוך w:tabs הוא הגדרת עצירה. */
-const SEP={tab:" ",br:" ",cr:" ",noBreakHyphen:"-"};
+   האיכות). הם נספרים כתו אחד, רק בתוך ריצה — w:tab בתוך w:tabs הוא הגדרת עצירה.
+   טאב מיקום (ptab) הוא מה ש-Word כותב בכותרת בשלושה חלקים: בלעדיו "רחל פרידמן⇥בקשה" נקרא כמילה
+   אחת, רק השם הפרטי הוחלף, ושם המשפחה האמיתי יצא ל-AI בפס ירוק (הציד של 11.10). מקף רך הוא מקום
+   שבו מותר לשבור מילה ולא תו: אורכו אפס, והוא יוצא עם ערך שהוחלף. */
+const SEP={tab:" ",ptab:" ",br:" ",cr:" ",noBreakHyphen:"-",softHyphen:""};
+// סימן של הערת שוליים או הערת סיום: בגוף הטקסט, ובראש ההערה עצמה
+const NOTEREF={footnoteReference:"footnoteReference",endnoteReference:"endnoteReference",footnoteRef:"footnoteReference",endnoteRef:"endnoteReference"};
 function ownText(p,out){
   for(const c of p.children){
     if(c.localName==="p")continue;
     if(c.localName==="t"||c.localName==="delText")out.push(c);
-    else if(SEP[c.localName]&&p.localName==="r")out.push({sep:SEP[c.localName],el:c});
+    else if(p.localName==="r"&&SEP.hasOwnProperty(c.localName))out.push({sep:SEP[c.localName],el:c});
+    else if(p.localName==="r"&&c.namespaceURI===W&&NOTEREF.hasOwnProperty(c.localName))out.push({note:c});
     ownText(c,out)}}
+const MC="http://schemas.openxmlformats.org/markup-compatibility/2006";
+// הענף של mc:AlternateContent שהאלמנט יושב בו — mc:Choice או mc:Fallback הקרוב — או null
+function altBranch(el){
+  for(let n=el&&el.parentNode;n&&n.nodeType===1;n=n.parentNode)
+    if(n.namespaceURI===MC&&(n.localName==="Choice"||n.localName==="Fallback"))return n;
+  return null}
+const kidW=(el,n)=>{if(el)for(const c of el.children)if(c.localName===n&&c.namespaceURI===W)return c;return null};
+const valW=el=>el?el.getAttribute("w:val"):null;
+/* מה ש-Word כותב בעצמו ואינו שומר כטקסט: המספר של סעיף ממוספר (numbering.xml) וסימן של הערת שוליים.
+   בלעדיהם הטקסט שהועתק ל-AI היה בלי מספרי הסעיפים — "כאמור בסעיף 2" הצביע על כלום — וההערות הגיעו
+   בסוף בלי עוגן (הציד של 11.10). הם נוספים לתצוגה ולטקסט שמועתק, כמו ש-Word מציג אותם, ואינם נכנסים
+   לטקסט שהזיהוי קורא ולא לקובץ: את הקובץ Word ממספר בעצמו. */
+function lvlOf(l){
+  const n=x=>kidW(l,x)?+valW(kidW(l,x)):null, lg=kidW(l,"isLgl");
+  return {start:n("start")||0,fmt:valW(kidW(l,"numFmt"))||"decimal",text:valW(kidW(l,"lvlText")),restart:n("lvlRestart"),
+    lgl:!!lg&&!/^(?:0|false|off)$/.test(valW(lg)||""),suff:valW(kidW(l,"suff"))||"tab",style:valW(kidW(l,"pStyle"))}}
+function numModel(numDoc,styDoc){
+  const M={abs:{},num:{},sty:{}};
+  if(styDoc)for(const s of Array.from(styDoc.getElementsByTagNameNS(W,"style"))){
+    const id=s.getAttribute("w:styleId"), np=kidW(kidW(s,"pPr"),"numPr");
+    if(id)M.sty[id]={basedOn:valW(kidW(s,"basedOn")),numId:np&&kidW(np,"numId")?valW(kidW(np,"numId")):null,ilvl:np&&kidW(np,"ilvl")?+valW(kidW(np,"ilvl")):null}}
+  if(numDoc){
+    for(const a of Array.from(numDoc.getElementsByTagNameNS(W,"abstractNum"))){
+      const lv={};for(const l of a.children)if(l.localName==="lvl")lv[+l.getAttribute("w:ilvl")]=lvlOf(l);
+      M.abs[a.getAttribute("w:abstractNumId")]={lv,link:valW(kidW(a,"numStyleLink"))}}
+    for(const n of Array.from(numDoc.getElementsByTagNameNS(W,"num"))){
+      const over={};
+      for(const o of n.children)if(o.localName==="lvlOverride"){const so=kidW(o,"startOverride"),l=kidW(o,"lvl");
+        over[+o.getAttribute("w:ilvl")]={start:so?+valW(so):null,lvl:l?lvlOf(l):null}}
+      M.num[n.getAttribute("w:numId")]={abs:valW(kidW(n,"abstractNumId")),over}}}
+  return M}
+const ROMAN=[[1000,"M"],[900,"CM"],[500,"D"],[400,"CD"],[100,"C"],[90,"XC"],[50,"L"],[40,"XL"],[10,"X"],[9,"IX"],[5,"V"],[4,"IV"],[1,"I"]];
+function fmtNum(v,f){
+  if(f==="none")return "";
+  if(v<1||f==="decimal")return String(v);
+  if(f==="decimalZero")return (v<10?"0":"")+v;
+  if(f==="upperRoman"||f==="lowerRoman"){let r="",x=v;for(const [n,s] of ROMAN)while(x>=n){r+=s;x-=n}return f==="lowerRoman"?r.toLowerCase():r}
+  if(f==="upperLetter"||f==="lowerLetter"){const s="ABCDEFGHIJKLMNOPQRSTUVWXYZ"[(v-1)%26].repeat(Math.floor((v-1)/26)+1);return f==="lowerLetter"?s.toLowerCase():s}
+  // אותיות כמספרים (א, ב … י, יא, טו, טז), ואותיות לפי הסדר (א … ת)
+  if(f==="hebrew1"){let r="",x=v;while(x>=400){r+="ת";x-=400}r+=G_HUN[Math.floor(x/100)];x%=100;
+    return r+(x===15?"טו":x===16?"טז":G_TEN[Math.floor(x/10)]+G_ONE[x%10])}
+  if(f==="hebrew2"){const a="אבגדהוזחטיכלמנסעפצקרשת";return a[(v-1)%22].repeat(Math.floor((v-1)/22)+1)}
+  return String(v)}
+// המספר של פסקה ממוספרת, לפי numPr שלה או של הסגנון שלה; counters: מצב המונים לאורך החלק
+function numLead(p,M,counters){
+  const br=altBranch(p); if(br&&br.localName==="Fallback")return "";
+  const pPr=kidW(p,"pPr"), np=kidW(pPr,"numPr"), sid=valW(kidW(pPr,"pStyle"));
+  let numId=np&&kidW(np,"numId")?valW(kidW(np,"numId")):null, ilvl=np&&kidW(np,"ilvl")?+valW(kidW(np,"ilvl")):null;
+  if(numId==null)for(let s=sid,k=0;s&&k<12;k++){const y=M.sty[s];if(!y)break;if(y.numId!=null){numId=y.numId;if(ilvl==null)ilvl=y.ilvl;break}s=y.basedOn}
+  const n=numId!=null&&numId!=="0"&&M.num[numId]; if(!n)return "";
+  let a=M.abs[n.abs];
+  // רשימה שמוגדרת בסגנון רשימה (numStyleLink) לוקחת את ההגדרה ממנו
+  for(let k=0;a&&a.link&&k<3;k++){const y=M.sty[a.link],n2=y&&y.numId!=null&&M.num[y.numId],a2=n2&&M.abs[n2.abs];if(!a2||a2===a)break;a=a2}
+  if(!a)return "";
+  if(ilvl==null){ilvl=0;if(sid)for(const [i,l] of Object.entries(a.lv))if(l.style===sid){ilvl=+i;break}}
+  const lvl=i=>(n.over[i]&&n.over[i].lvl)||a.lv[i], start=i=>n.over[i]&&n.over[i].start!=null?n.over[i].start:lvl(i)?lvl(i).start:0;
+  const L=lvl(ilvl); if(!L)return "";
+  let c=counters.get(a); if(!c)counters.set(a,c=[]);
+  // רשימה שמתחילה מחדש (startOverride) מאפסת את הרמות שלה בפעם הראשונה שהיא מופיעה
+  if(!counters.has(numId)){counters.set(numId,1);for(const i of Object.keys(n.over))c[+i]=undefined}
+  c[ilvl]=c[ilvl]===undefined?start(ilvl):c[ilvl]+1;
+  for(let i=ilvl+1;i<9;i++){const l=lvl(i);if(!l||l.restart==null||(l.restart!==0&&ilvl+1<=l.restart))c[i]=undefined}
+  const gap=L.suff==="nothing"?"":" ";
+  if(L.fmt==="bullet"){const b=String(L.text||"").trim();return (!b||/[\uE000-\uF8FF]/.test(b)?"•":b)+gap}
+  const lab=String(L.text||"").replace(/%([1-9])/g,(m,k)=>{const i=+k-1;return fmtNum(c[i]===undefined?start(i):c[i],L.lgl?"decimal":(lvl(i)||L).fmt)});
+  return lab.trim()?lab+gap:""}
+// מספרי ההערות לפי סדר ההפניות בגוף המסמך, לא לפי המזהה; הערה בסימן משלה אינה לוקחת מספר
+function noteMap(docDoc,setDoc){
+  const out={footnoteReference:{},endnoteReference:{}};
+  if(!docDoc)return out;
+  const body=docDoc.getElementsByTagNameNS(W,"body")[0], sect=body&&Array.from(body.children).filter(c=>c.localName==="sectPr").pop();
+  const pr=n=>kidW(sect,n)||(setDoc&&setDoc.getElementsByTagNameNS(W,n)[0])||null;
+  const cfg={footnoteReference:pr("footnotePr"),endnoteReference:pr("endnotePr")}, k={footnoteReference:0,endnoteReference:0};
+  // ברירת המחדל של Word: הערות שוליים 1, 2, 3; הערות סיום i, ii, iii
+  const fmt={footnoteReference:valW(kidW(cfg.footnoteReference,"numFmt"))||"decimal",endnoteReference:valW(kidW(cfg.endnoteReference,"numFmt"))||"lowerRoman"};
+  const st=x=>+(valW(kidW(cfg[x],"numStart"))||1);
+  for(const el of Array.from(docDoc.getElementsByTagName("*"))){
+    const ln=el.localName; if(el.namespaceURI!==W||(ln!=="footnoteReference"&&ln!=="endnoteReference"))continue;
+    const br=altBranch(el); if(br&&br.localName==="Fallback")continue;
+    if(/^(?:1|true|on)$/.test(el.getAttribute("w:customMarkFollows")||""))continue;
+    const id=el.getAttribute("w:id"); if(out[ln].hasOwnProperty(id))continue;
+    out[ln][id]=fmtNum(st(ln)+k[ln]++,fmt[ln])}
+  return out}
+function noteMark(el,notes){
+  const ln=el.localName, kind=NOTEREF[ln];
+  let id=el.getAttribute("w:id");
+  if(ln==="footnoteRef"||ln==="endnoteRef"){const tag=ln==="footnoteRef"?"footnote":"endnote";
+    let n=el.parentNode;while(n&&n.nodeType===1&&n.localName!==tag)n=n.parentNode;
+    id=n&&n.nodeType===1?n.getAttribute("w:id"):null}
+  return id!=null&&notes[kind].hasOwnProperty(id)?"["+notes[kind][id]+"]":""}
+// הקשר של החבילה כולה למספרים: ההגדרות מ-numbering.xml ו-styles.xml, ומספרי ההערות מ-document.xml
+function wordCtx(docOf){
+  return {num:numModel(docOf("word/numbering.xml"),docOf("word/styles.xml")),notes:noteMap(docOf("word/document.xml"),docOf("word/settings.xml"))}}
+// הטקסט כפי שהוא מוצג ומועתק: המספר בראש הפסקה וסימני ההערות במקומם, ומיקום בטקסט שהזיהוי קרא ← מיקום בו
+function shown(blk){
+  const lead=blk.lead||"", ins=(blk.ins||[]).slice().sort((a,b)=>a.at-b.at);
+  if(!lead&&!ins.length)return {text:blk.text,at:p=>p};
+  let text=lead,last=0;
+  for(const x of ins){text+=blk.text.slice(last,x.at)+x.t;last=x.at}
+  text+=blk.text.slice(last);
+  // end: סוף של סימון (לא כולל) אינו זז בגלל סימן שנוסף בדיוק אחריו
+  return {text,at:(p,end)=>p+lead.length+ins.reduce((n,x)=>(end?x.at<p:x.at<=p)?n+x.t.length:n,0)}}
 const DML="http://schemas.openxmlformats.org/drawingml/2006/main";
 // טקסט חלופי של תמונה אינו חלק מגוף הטקסט: לא נסרק לשמות חדשים ולא מוצג כפסקה
-const hiddenPart=p=>p.includes("טקסט חלופי")||p.includes("קוד שדה")||p.includes("הגדרות עיצוב");
-const VML="urn:schemas-microsoft-com:vml";
-function flatten(doc,part){
+const notProse=p=>p.includes("טקסט חלופי")||p.includes("קוד שדה")||p.includes("הגדרות עיצוב");
+/* ומה שאינו מועתק ל-AI: גם רכיבים מהירים (glossary), ש-Word אינו מציג בעמוד — שם יושב טקסט מציין המקום
+   של פקדי התוכן ("לחץ או הקש כאן להזנת טקסט."), והוא הגיע לטקסט שהועתק (הציד של 11.10). הם עדיין
+   נקראים, מוחלפים ונסרקים לשמות כמו קודם. */
+const hiddenPart=p=>notProse(p)||p.includes("glossary/")||p.includes("רכיבים מהירים");
+const VML="urn:schemas-microsoft-com:vml", O_NS="urn:schemas-microsoft-com:office:office";
+function flatten(doc,part,ctx){
   const out=[];
   // SmartArt וגרפים כותבים פסקאות DrawingML (a:p), לא פסקאות Word
   const dml=/\/(diagrams|charts)\//.test(part);
+  const counters=new Map();
   for(const p of doc.getElementsByTagNameNS(dml?DML:W,"p")){
     const els=[];ownText(p,els);
-    let pos=0;const spans=[];let txt="";
+    let pos=0;const spans=[],ins=[];let txt="";
     for(const el of els){
-      if(el.sep){spans.push({el:el.el,s:pos,e:pos+1,sep:true});txt+=el.sep;pos++;continue}
+      if(el.note){const t=ctx&&noteMark(el.note,ctx.notes);if(t)ins.push({at:pos,t});continue}
+      if(el.sep!==undefined){spans.push({el:el.el,s:pos,e:pos+el.sep.length,sep:true});txt+=el.sep;pos+=el.sep.length;continue}
       const t=el.textContent||"";if(!t)continue;
       spans.push({el,s:pos,e:pos+t.length,attr:null});txt+=t;pos+=t.length}
-    if(txt.trim())out.push({text:txt,spans,part});
+    // גם פסקה ממוספרת ריקה לוקחת מספר, ולכן המונה מתקדם לפני הבדיקה אם יש בה טקסט
+    const lead=ctx&&!dml&&!part.includes("glossary/")?numLead(p,ctx.num,counters):"";
+    if(txt.trim()){const b={text:txt,spans,part,node:p};if(lead)b.lead=lead;if(ins.length)b.ins=ins;out.push(b)}
   }
+  // כל האלמנטים פעם אחת: שלוש הלולאות שלמטה עוברות על אותה רשימה
+  const all=Array.from(doc.getElementsByTagName("*"));
   // תוויות בגרף: שם קטגוריה או סדרה במטמון המחרוזות
   // (גרף מורחב, chartEx, כותב את אותן תוויות כ-pt בתוך lvl)
-  if(dml)for(const el of doc.getElementsByTagName("*")){
+  if(dml)for(const el of all){
     const p1=el.parentNode, ln=el.localName;
     const label=(ln==="v"&&p1&&p1.localName==="pt"&&p1.parentNode&&p1.parentNode.localName==="strCache")||
                 (ln==="pt"&&p1&&p1.localName==="lvl");
     if(!label)continue;
     const t=el.textContent||"";if(t.trim())out.push({text:t,spans:[{el,s:0,e:t.length,attr:null}],part});
   }
-  for(const el of doc.getElementsByTagName("*")){
+  for(const el of all){
     const ln=el.localName;
     if(ln==="docPr"||ln==="cNvPr"){
       for(const a of ["descr","name","title"]){const v=el.getAttribute(a);
@@ -2234,48 +2423,406 @@ function flatten(doc,part){
     else if((ln==="lvlText"||(ln==="name"||ln==="aliases")&&el.parentNode&&el.parentNode.localName==="style")&&el.namespaceURI===W){
       const v=el.getAttribute("w:val");
       if(v&&HEB_LETTER.test(v))out.push({text:v,spans:[{el,s:0,e:v.length,attr:"w:val"}],part:part+" (הגדרות עיצוב)"})}}
+  /* עוד טקסט שאדם כותב ושנשמר כמאפיין ולא כריצה (הציד של 11.10): תמונה, צורה וקו חתימה בפורמט הישן
+     (VML) — טקסט חלופי, כותרת והחותם המוצע; ScreenTip של קישור; שדה טופס — ברירת מחדל, עזרה ושורת
+     מצב; הבחירות ברשימה נפתחת; ושם ותיאור של רכיב מהיר. אף שכבה לא קראה אותם: שם מהרשימה נשאר בקובץ
+     והפס נצבע אדום בלי דבר לתקן במסך, ושם שלא ברשימה עבר בירוק. הם נקראים כמו טקסט חלופי וקוד שדה:
+     מוחלפים, ואינם מועתקים ל-AI. בתמונה, שם פרטי ושם משפחה מוצעים לה (pair), כמו בטקסט חלופי. */
+  const att=(el,a,v,sfx,pair)=>{if(v&&v.trim())out.push({text:v,spans:[{el,s:0,e:v.length,attr:a}],part:part+sfx,pair:!!pair})};
+  for(const el of all){
+    const ln=el.localName, ns=el.namespaceURI, up=el.parentNode;
+    if(ns===VML||ns===O_NS){
+      for(const a of Array.from(el.attributes))
+        if(/^(?:alt|title|suggestedsigner2?|suggestedsigneremail|signinginstructions)$/.test(a.localName)&&(!a.namespaceURI||a.namespaceURI===O_NS))att(el,a.name,a.value," (טקסט חלופי)",true)}
+    // ScreenTip של קישור על תמונה או צורה
+    else if(ns===DML&&(ln==="hlinkClick"||ln==="hlinkHover"))att(el,"tooltip",el.getAttribute("tooltip")," (קוד שדה)");
+    else if(ns===W){
+      if(ln==="hyperlink")att(el,"w:tooltip",el.getAttribute("w:tooltip")," (קוד שדה)");
+      else if((ln==="default"&&up&&up.localName==="textInput")||((ln==="helpText"||ln==="statusText")&&up&&up.localName==="ffData")||ln==="listEntry")
+        att(el,"w:val",valW(el)," (קוד שדה)");
+      else if(ln==="listItem"){att(el,"w:displayText",el.getAttribute("w:displayText")," (קוד שדה)");att(el,"w:value",el.getAttribute("w:value")," (קוד שדה)")}
+      // רשימה נפתחת: הערך שנבחר בה אחרון (w:lastValue) — אחרת שם מהרשימה השאיר פס אדום בלי מה לתקן (הסקירה של 11.10)
+      else if(ln==="dropDownList"||ln==="comboBox")att(el,"w:lastValue",el.getAttribute("w:lastValue")," (קוד שדה)");
+      else if((ln==="name"||ln==="description")&&up&&up.localName==="docPartPr"&&HEB_LETTER.test(valW(el)||""))att(el,"w:val",valW(el)," (הגדרות עיצוב)")}}
+  /* תיבת טקסט נכתבת פעמיים: הצורה (mc:Choice) וחלופה לתוכנות ישנות (mc:Fallback), ו-Word מציג רק את
+     הראשונה. בלוק בחלופה שזהה לבלוק בצורה הוא אותו טקסט: הוא מקבל את אותן החלפות, ואינו מוצג, מועתק או
+     נקרא שוב — הוא הגיע ל-AI פעמיים (הציד של 11.10). חלופה שכתוב בה דבר אחר נקראת כרגיל. */
+  const twins=new Map(), nodeOf=b=>b.node||(b.spans[0]&&b.spans[0].el), kind=b=>(b.spans[0]&&b.spans[0].attr)||"";
+  for(const b of out){const br=altBranch(nodeOf(b));if(br&&br.localName==="Choice"){const k=br.parentNode;if(!twins.has(k))twins.set(k,[]);twins.get(k).push(b)}}
+  for(const b of out){
+    const br=altBranch(nodeOf(b)); if(!br||br.localName!=="Fallback")continue;
+    const l=twins.get(br.parentNode)||[];
+    let i=l.findIndex(x=>x.text===b.text&&kind(x)===kind(b)); if(i<0)i=l.findIndex(x=>x.text===b.text);
+    // WordArt: בצורה פסקה, בחלופה כיתוב של VML. הפסקה נבדקת מעכשיו כמו כיתוב
+    if(i>=0){b.dupOf=l[i];if(b.label)l[i].label=true;l.splice(i,1)}}
   return out}
-/* יעד של קישור בתוך קוד שדה: כתובת מייל, או נתיב לקובץ במחשב שלה, יוצאים עם הקובץ בדיוק כמו
-   יעד ב-.rels, ושם הם כבר מנוטרלים (LEAK). כאן לא נגעו בהם (ביקורת H10). */
+/* וכך גם SmartArt: הטקסט כתוב במודל הנתונים (dataN.xml) ושוב בציור המוכן שלו (drawingN.xml). בלוק של
+   אחד מהם שזהה לבלוק של השני באותו תרשים הוא אותו טקסט — הראשון מבין השניים נקרא, השני מקבל את
+   ההחלפות שלו. blocks: כל הבלוקים של החבילה, לפי הסדר. */
+function twinParts(blocks){
+  const open=new Map();
+  for(const b of blocks){
+    const m=/^word\/diagrams\/(data|drawing)(\d*)\.xml$/.exec(b.part); if(!m||b.dupOf)continue;
+    const l=open.get(m[2]+"|"+(m[1]==="data"?"drawing":"data")+"|"+b.text);
+    if(l&&l.length){b.dupOf=l.shift();continue}
+    const k=m[2]+"|"+m[1]+"|"+b.text; if(!open.has(k))open.set(k,[]); open.get(k).push(b)}
+  return blocks}
 const HEB_LETTER=/[א-ת]/;
-const FIELD_LEAK=/(mailto:[^"\s]+|file:[^"\s]+|[A-Za-z]:\\[^"\s]+|\\\\[^"\s]+)/g;
-function scrubFieldLinks(doc,found){
+/* ── כתובות (הציד של 11.10) ──
+   זהות יושבת גם בכתובת ולא רק במילים: יעד של קישור בכל חלק .rels (גוף, כותרות, הערות שוליים, הערות),
+   כתובת בקוד שדה, והנתיב שממנו הגיעה תמונה. נוקו רק ארבע צורות (mailto:, file:, כונן, שיתוף רשת), ופרופיל
+   בפייסבוק, מספר וואטסאפ, התיקייה של הלקוח ב-SharePoint ונתיב עם שם המשתמש יצאו עם הקובץ, רובם תחת פס
+   ירוק, והשאלות הנפוצות מבטיחות שהקישורים מנוקים. הכלל: כתובת שאינה של האינטרנט (קובץ במחשב שלה, mailto:,
+   tel:), אחסון פרטי, מפה, רשת חברתית או שירות הודעות עם נתיב — "#". כל כתובת אחרת מפוענחת ונקראת כמו
+   טקסט, ומה שזוהה בה מוחלף במקומו; קישור ציבורי (נבו, gov.il, בית משפט) שלא זוהה בו דבר נשאר כמו שהוא. */
+const SOCIAL_HOST=/(?:^|\.)(?:facebook\.com|fb\.com|fb\.me|m\.me|messenger\.com|fbcdn\.net|instagram\.com|instagr\.am|cdninstagram\.com|threads\.net|threads\.com|linkedin\.com|lnkd\.in|twitter\.com|x\.com|tiktok\.com|snapchat\.com|t\.me|telegram\.me|telegram\.dog|wa\.me|whatsapp\.com)$/;
+const PRIVATE_HOST=/(?:^|\.)(?:sharepoint\.com|onedrive\.live\.com|onedrive\.com|1drv\.ms|drive\.google\.com|docs\.google\.com|dropbox\.com|dropboxusercontent\.com|box\.com|wetransfer\.com|we\.tl|icloud\.com|maps\.app\.goo\.gl|maps\.apple\.com|waze\.com)$/;
+const YT_HOST=/(?:^|\.)(?:youtube\.com|youtu\.be|youtube-nocookie\.com)$/;
+// מה שנראה כמו כתובת גם בלי הקשר: סכמה מוכרת, כונן, שיתוף רשת, www.
+const ADDR_START=/^(?:(?:https?|ftp|file|mailto|tel|sms|callto|skype|whatsapp|tg|viber|onenote|ms-[a-z]+):|[A-Za-z][A-Za-z0-9+.-]*:\/\/|[A-Za-z]:[\\/]|\\\\|www\.)/i;
+function dropParams(raw,names){
+  const q=raw.indexOf("?"); if(q<0)return raw;
+  const h=raw.indexOf("#",q), end=h<0?raw.length:h;
+  const kept=raw.slice(q+1,end).split("&").filter(p=>p&&!names.includes(p.split("=")[0].toLowerCase()));
+  return raw.slice(0,q)+(kept.length?"?"+kept.join("&"):"")+raw.slice(end)}
+// מה הכתובת, בלי לקרוא אותה: null הוא "#"; אחרת הכתובת, אולי בלי פרמטר מזהה
+function hostRule(raw){
+  const t=String(raw||"").trim();
+  if(!t||t[0]==="#")return raw;
+  // כונן, שיתוף רשת, נתיב יחסי (קובץ במחשב שלה) וכל סכמה שאינה אינטרנט (mailto:, file:, tel:, sms:)
+  if(/^[A-Za-z]:[\\/]/.test(t)||/^\\\\/.test(t))return null;
+  const sm=/^([A-Za-z][A-Za-z0-9+.-]*):/.exec(t);
+  if(sm?!/^(?:https?|ftp)$/i.test(sm[1]):!/^(?:\/\/|www\.)/i.test(t))return null;
+  const u=/^(?:[A-Za-z][A-Za-z0-9+.-]*:)?\/\/([^/?#]*)|^(www\.[^/?#]*)/i.exec(t)||[""];
+  const hp=(u[1]||u[2]||"").toLowerCase();
+  // שם משתמש לפני השרת ("dana@host") הוא כניסה של אדם
+  if(hp.includes("@"))return null;
+  const host=hp.replace(/:\d+$/,"").replace(/\.$/,""), rest=t.slice(u[0].length), path=rest.split(/[?#]/)[0];
+  // שרת ברשת המשרד: בלי נקודה, כתובת IP או סיומת פנימית
+  if(!host.includes(".")||/^[\d.]+$/.test(host)||/\.(?:local|lan|internal|corp|intranet|home)$/.test(host))return null;
+  if(PRIVATE_HOST.test(host)||/^maps\.google\./.test(host)||(/(?:^|\.)(?:google\.[a-z.]+|goo\.gl)$/.test(host)&&/^\/maps(?:[/?@]|$)/.test(path)))return null;
+  if(SOCIAL_HOST.test(host))return /[^/]/.test(path)||/[?#]./.test(rest)?null:raw;
+  if(YT_HOST.test(host)){
+    if(/^\/(?:@|channel\/|c\/|user\/)/.test(path))return null;
+    // הסרטון נשאר; מזהה השיתוף (si) ושם הערוץ (ab_channel) הולכים
+    return dropParams(raw,["si","ab_channel"])}
+  return raw}
+/* כתובת של האינטרנט נקראת כמו טקסט: מפוענחת, כללי הכתובת וכל ערך שהוחלף במסמך רצים עליה, וכל פגיעה מוחלפת
+   במקומה, מקודדת. פגיעה בשם השרת, או ערך שהבדיקה האחרונה הייתה מוצאת גם אחרי ההחלפה — "#". */
+/* בכתובת שם מחובר גם בנקודה בין אותיות ("דנה.שגיא.pdf"), ותו בלתי נראה יכול להיות המפריד היחיד ("%E2%80%8F"
+   במקום רווח): כל אלה נקראים כרווח (הסקירה של 11.10) */
+const ADDR_JOIN=/[_+]|(?<=[א-ת])\.(?=[א-ת])/g;
+function addrCtx(eng,applied,secrets,sweep){
+  const lit=new Map();
+  for(const r of applied)for(const v of [r.base||r.value,r.value]){
+    const k=norm(String(v||"")).trim(); if(k.length>=2&&!lit.has(k))lit.set(k,String(r.baseRep||r.rep||""))}
+  /* חלקי השם לבד, כמו שהמעבר על הטקסט מחליף אותם: משרדים קוראים לתיקייה ולקובץ בשם המשפחה קודם ("שגיא_דנה.pdf"),
+     ושם הפוך לא נמצא בכתובת. חלק שהוא גם מילה נשאר לטקסט, שם הוא מוחלף רק לבד ולבדיקה */
+  for(const [p,inf] of Object.entries(sweep||{})){const k=norm(p).trim(); if(inf&&!inf.wordy&&k.length>=2&&inf.rep&&!lit.has(k))lit.set(k,String(inf.rep))}
+  // והשם המלא בסדר הפוך, עם הכינוי בסדר הפוך: גם כשחלק מהשם הוא גם מילה ("שגיא"), צמד החלקים הוא האדם
+  for(const r of applied){
+    if(!/^NAME/.test(r.type||""))continue;
+    const w=norm(String(r.base||r.value||"")).trim().split(/\s+/), rw=String(r.baseRep||r.rep||"").trim().split(/\s+/);
+    if(w.length<2||rw.length<2)continue;
+    const rev=[w[w.length-1],...w.slice(0,-1)].join(" "), rrev=[rw[rw.length-1],...rw.slice(0,-1)].join(" ");
+    if(!lit.has(rev))lit.set(rev,rrev)}
+  const lits=[...lit].sort((a,b)=>b[0].length-a[0].length).map(([k,rp])=>[new RegExp(NW+flex(k)+NWE,"gu"),rp]);
+  const sec=[...new Set(secrets.concat([...lit.keys()]).map(s=>norm(String(s||"")).trim()).filter(s=>s.length>=2))].map(secretTest);
+  const names=new Set();
+  // ב-query, + הוא רווח
+  const view=d=>{const q=d.indexOf("?");return q<0?d:d.slice(0,q)+d.slice(q).replace(/\+/g," ")};
+  // ds: אותה כתובת בכמה קריאות באותו אורך — עם "+" כרווח ב-query, וכמו שהיא, כי "+" במייל הוא חלק ממנו
+  const hitsIn=(...ds)=>{
+    const hs=[];
+    for(const d of ds)for(const h of eng.detect(d,true))if(h.apply){
+      // כתובת שעטופה בתוך query ("google.com/url?q=…&sa=D") נגמרת ב-& הבא
+      const amp=/^URL_/.test(h.type)?d.indexOf("&",h.s):-1;
+      hs.push([h.s,amp>h.s&&amp<h.e?amp:h.e,eng.repFor(h)]);if(h.src==="list")names.add(norm(h.base).trim())}
+    const n=norm(ds[0]);
+    for(const x of [n,n.replace(ADDR_JOIN," "),n.replace(ADDR_JOIN," ").replace(/\u0000/g," ")])for(const [rx,rp] of lits){rx.lastIndex=0;let m;while((m=rx.exec(x)))hs.push([m.index,m.index+m[0].length,rp])}
+    hs.sort((a,b)=>a[0]-b[0]||b[1]-a[1]);
+    const out=[];let last=-1;for(const h of hs)if(h[0]>=last){out.push(h);last=h[1]}
+    return out};
+  const leaks=d=>{const n=norm(d),nl=n.replace(ADDR_JOIN," "),n0=nl.replace(/\u0000/g," ");return sec.some(has=>has(n)||has(nl)||has(n0))};
+  // שם מהרשימה בכתובת — גם בכתובת שכולה הפכה ל-"#" — נמצא במסמך, ואינו "לא מופיע במסמך"
+  const seen=raw=>{for(const h of eng.detect(view(pctDecodeAll(String(raw)).d),true))if(h.src==="list")names.add(norm(h.base).trim())};
+  const clean=raw=>{
+    const c=hostRule(raw);
+    if(c==null){seen(raw);return null}
+    if(!c.trim()||c.trim()[0]==="#")return c;
+    const dd=pctDecodeAll(c), d=view(dd.d), hs=hitsIn(d,dd.d);
+    if(!hs.length)return leaks(d)?null:c;
+    const lead=d.length-d.trimStart().length;
+    const host=lead+(/^(?:[A-Za-z][A-Za-z0-9+.-]*:)?\/\/[^/?#]*|^www\.[^/?#]*/i.exec(d.trimStart())||[""])[0].length;
+    if(hs.some(h=>h[0]<host))return null;
+    let out=c;
+    for(let i=hs.length-1;i>=0;i--){const [s,e,rp]=hs[i];out=out.slice(0,dd.map[s][0])+encodeURIComponent(rp)+out.slice(dd.map[e-1][1])}
+    const r2=pctDecodeAll(out).d, d2=view(r2);
+    return leaks(d2)||leaks(r2)||hitsIn(d2,r2).length?null:out};
+  return {clean,seen,names}}
+const xunesc=s=>s.replace(/&(?:#x([0-9a-f]+)|#(\d+)|(amp|lt|gt|quot|apos));/gi,(m,h,d,nm)=>h?String.fromCodePoint(parseInt(h,16)):d?String.fromCodePoint(+d):{amp:"&",lt:"<",gt:">",quot:'"',apos:"'"}[nm.toLowerCase()]);
+/* יעד של כל קשר חיצוני בחלק .rels, מכל סוג (קישור, תמונה מקושרת, תבנית מצורפת), וכל יעד שנראה כמו מייל או
+   נתיב גם כשאינו מסומן חיצוני. קשר פנימי (חלק בתוך החבילה) לא נוגעים בו */
+function scrubRels(s,clean,found){
+  return s.replace(/<(?:[\w.-]+:)?Relationship\b(?:[^>"']|"[^"]*"|'[^']*')*>/g,tag=>{
+    const tm=/\bTarget=(?:"([^"]*)"|'([^']*)')/.exec(tag); if(!tm)return tag;
+    const raw=xunesc(tm[1]!=null?tm[1]:tm[2]);
+    // כתובת אינטרנט מלאה היא חיצונית גם כשהקשר לא מסומן כך (קובץ שכלי אחר כתב, הסקירה של 11.10); יעד פנימי הוא יחסי
+    if(!/\bTargetMode=["']External["']/.test(tag)&&!/^(?:mailto:|file:|https?:|[A-Za-z]:\\|\\\\)/i.test(raw))return tag;
+    const c=clean(raw);
+    if(c===raw)return tag;
+    found.push(raw);
+    return tag.slice(0,tm.index)+'Target="'+XESC(c==null?"#":c)+'"'+tag.slice(tm.index+tm[0].length)})}
+/* קוד שדה ש-Word פיצל לכמה ריצות ("mailto:dana" ואחריו ".sagi@…"): כל חתיכה נבדקה לבד, ומה שאחרי הפיצול
+   יצא עם הקובץ (הציד של 11.10). החתיכות מתאחדות לראשונה. שדה שבתוך ההוראה שלו יש שדה אחר נשאר כמו שהוא */
+function joinFields(doc){
+  const stack=[];let n=0;
+  for(const el of Array.from(doc.getElementsByTagNameNS(W,"*"))){
+    const ln=el.localName;
+    if(ln==="fldChar"){
+      const t=el.getAttributeNS(W,"fldCharType")||el.getAttribute("w:fldCharType");
+      if(t==="begin"){const top=stack[stack.length-1];if(top&&!top.sep)top.nested=true;stack.push({inst:[],sep:false})}
+      else if(t==="separate"){if(stack.length)stack[stack.length-1].sep=true}
+      else if(t==="end"){
+        const f=stack.pop();
+        if(!f||f.nested||f.inst.length<2)continue;
+        const [h,...rest]=f.inst;
+        h.textContent=f.inst.map(x=>x.textContent||"").join("");h.setAttributeNS(XMLNS,"xml:space","preserve");
+        for(const x of rest){const r=x.parentNode;x.parentNode.removeChild(x);
+          if(r&&r.localName==="r"&&r.parentNode&&Array.from(r.children).every(c=>c.localName==="rPr"))r.parentNode.removeChild(r)}
+        n++}}
+    else if(ln==="instrText"&&stack.length&&!stack[stack.length-1].sep)stack[stack.length-1].inst.push(el)}
+  return n}
+/* הכתובת בקוד שדה: הארגומנט הראשון של HYPERLINK, INCLUDEPICTURE ו-INCLUDETEXT, וכל ארגומנט שנראה כמו כתובת.
+   נקראת עד המרכאה שסוגרת אותה: נתיב עם רווח ("My Pictures") נחתך ברווח, והשאר יצא */
+const FIELD_ARG=/"((?:[^"\\]|\\.)*)"?|(\\[^\s"\\]*)|([^\s"]+)/g;
+const SW_ARG=/^\\[olct*#@fs]$/i;
+function fieldAddrs(instr,clean,found){
+  let type="",first=true,swArg=false,changed=false;
+  const out=String(instr).replace(FIELD_ARG,(m,q,sw,word)=>{
+    if(sw!=null){swArg=SW_ARG.test(sw);return m}
+    const v=q!=null?q.replace(/\\(.)/g,"$1"):word;
+    if(!type){type=v.toUpperCase();return m}
+    const pos=!swArg;swArg=false;
+    // נתיב שהוקלד ביד בלוכסן אחד ("C:\Users") נבדק גם כמו שהוא
+    const isAddr=(pos&&first&&/^(?:HYPERLINK|INCLUDEPICTURE|INCLUDETEXT)$/.test(type))||ADDR_START.test(v.trim())||ADDR_START.test((q??word).trim());
+    if(pos)first=false;
+    if(!isAddr)return m;
+    const c=clean(v);
+    if(c===v)return m;
+    found.push(v);changed=true;
+    return '"'+(c==null?"#":c).replace(/[\\"]/g,"\\$&")+'"'});
+  return changed?out:instr}
+function scrubFields(doc,clean,found){
   let n=0;
+  const all=Array.from(doc.getElementsByTagNameNS(W,"*"));
+  for(let i=0;i<all.length;i++){
+    const el=all[i]; if(el.localName!=="instrText")continue;
+    const t=el.textContent||"",o=fieldAddrs(t,clean,found);
+    if(o!==t){el.textContent=o;el.setAttributeNS(XMLNS,"xml:space","preserve");n++;
+      // עותק בינארי של הכתובת שבשדה (w:fldData, ב-base64, בתחילת השדה) הולך איתה: אחרת קוד השדה נוקה, והפרופיל
+      // נשאר בקובץ בתוך הנתונים, והפס היה ירוק (הסקירה של 11.10)
+      for(let k=i-1;k>=0;k--){const b=all[k];
+        if(b.localName==="fldChar"&&(b.getAttributeNS(W,"fldCharType")||b.getAttribute("w:fldCharType"))==="begin"){
+          for(const fd of Array.from(b.getElementsByTagNameNS(W,"fldData")))fd.parentNode.removeChild(fd);break}}}}
+  for(const el of Array.from(doc.getElementsByTagNameNS(W,"fldSimple"))){
+    const v=el.getAttribute("w:instr")||"",o=fieldAddrs(v,clean,found);
+    if(o!==v){el.setAttribute("w:instr",o);n++}}
+  /* קישור על תמונה או צורה ישנה (VML) יושב על האלמנט עצמו (href): בקובץ במצב תאימות, ובגיבוי (mc:Fallback) של
+     תיבת טקסט מקושרת. הקשר המקביל נוקה, וזה נשאר בקובץ, והפס היה ירוק (הסקירה של 11.10) */
+  for(const el of Array.from(doc.getElementsByTagNameNS(VML,"*"))){
+    const v=el.getAttribute("href"); if(!v)continue;
+    const c=clean(v); if(c===v)continue;
+    found.push(v); el.setAttribute("href",c==null?"#":c); n++}
+  return n}
+/* הנתיב שממנו הגיעה תמונה, בטקסט החלופי או בכותרת שלה ("C:\Users\dana.sagi\Desktop\scan.jpg"), נושא את שם
+   המשתמש במחשב ואת התיקיות (הציד של 11.10). נשאר שם הקובץ בלבד, ושאר הטקסט החלופי נסרק כרגיל */
+const LOCAL_PATH=/(?:file:\/{2,3})?(?:(?<![A-Za-z0-9])[A-Za-z]:[\\/]|\\\\(?=[^\\\s])|(?<![\w.:/])\/(?:Users|home)\/)[^"<>|\r\n]*/g;
+function scrubPaths(doc){
+  let n=0;
+  const fix=(v,set)=>{if(!v)return;LOCAL_PATH.lastIndex=0;if(!LOCAL_PATH.test(v))return;
+    LOCAL_PATH.lastIndex=0;set(v.replace(LOCAL_PATH,p=>p.split(/[\\/]/).pop()));n++};
   for(const el of Array.from(doc.getElementsByTagName("*"))){
-    if(el.namespaceURI!==W)continue;
-    if(el.localName==="instrText"){const t=el.textContent||"";
-      if(FIELD_LEAK.test(t)){FIELD_LEAK.lastIndex=0;for(const m of t.match(FIELD_LEAK)||[])found.push(m);el.textContent=t.replace(FIELD_LEAK,"#");n++}
-      FIELD_LEAK.lastIndex=0}
-    else if(el.localName==="fldSimple"){const v=el.getAttribute("w:instr")||"";
-      if(FIELD_LEAK.test(v)){FIELD_LEAK.lastIndex=0;for(const m of v.match(FIELD_LEAK)||[])found.push(m);el.setAttribute("w:instr",v.replace(FIELD_LEAK,"#"));n++}
-      FIELD_LEAK.lastIndex=0}}
+    const ln=el.localName;
+    if(ln==="docPr"||ln==="cNvPr"){for(const a of ["descr","title","name"])fix(el.getAttribute(a),v=>el.setAttribute(a,v))}
+    // תמונה ישנה (VML): טקסט חלופי, והכותרת של התמונה עצמה; ותמונה שהודבקה שומרת את הקובץ הזמני שממנו באה
+    // (o:href, src: "file:///C:\Users\…\AppData\Local\Temp\…"), עם שם המשתמש (הסקירה של 11.10)
+    else if(el.namespaceURI===VML){
+      fix(el.getAttribute("alt"),v=>el.setAttribute("alt",v));
+      fix(el.getAttribute("src"),v=>el.setAttribute("src",v));
+      if(el.hasAttributeNS&&el.hasAttributeNS(O_NS,"title"))fix(el.getAttributeNS(O_NS,"title"),v=>el.setAttributeNS(O_NS,"o:title",v));
+      if(el.hasAttributeNS&&el.hasAttributeNS(O_NS,"href"))fix(el.getAttributeNS(O_NS,"href"),v=>el.setAttributeNS(O_NS,"o:href",v))}
+    // מיזוג דואר (settings.xml): מקור הנתונים והשאילתה שומרים את הנתיב המלא של קובץ הלקוחות, עם שם המשתמש
+    else if(el.namespaceURI===W&&(ln==="connectString"||ln==="query"))fix(el.getAttributeNS(W,"val"),v=>el.setAttributeNS(W,"w:val",v))}
   return n}
 /* נתון שהיא אינה רואה ואינה יכולה לסמן — משתני מסמך (docVars), וכותרת ותגית של פקד תוכן —
    אינו נסרק אלא מוסר. מערכות לניהול מסמכים שומרות שם את שם הלקוח ומספר התיק; כל עוד הערך
    הוחלף רק כשהיה ברשימה, שם שישב רק שם לא הוצע על ידי אף שכבה, נשאר בקובץ, והפס היה ירוק
-   (ביקורת C2). הסרה אינה פוגעת במסמך: שלושתם רשות ב-OOXML. */
+   (ביקורת C2). הסרה אינה פוגעת במסמך: שלושתם רשות ב-OOXML.
+   ועוד שלושה מאותו סוג (הציד של 11.10): קישור של פקד תוכן לנתונים (dataBinding) — הנתונים עצמם,
+   customXml ומאפייני הקובץ, יוצאים או מתרוקנים, ופקד שנשאר קשור היה מחליף את הכינוי בריק כשהקובץ
+   נפתח; הרשאת עריכה לאדם בשמו או בכתובת שלו (permStart w:ed); ומיזוג דואר, ששומר את הנתיב לקובץ
+   הנתונים שלה ואת השאילתה שבחרה את הלקוח. */
+const W15="http://schemas.microsoft.com/office/word/2012/wordml";
 function stripHidden(doc){
-  let n=0;
+  let n=0;const perm=new Set(), cut=el=>{el.parentNode.removeChild(el);n++};
   for(const el of Array.from(doc.getElementsByTagName("*"))){
-    if(el.namespaceURI!==W||!el.parentNode)continue;
-    const ln=el.localName;
-    if(ln==="docVars"||((ln==="alias"||ln==="tag")&&el.parentNode.localName==="sdtPr")){el.parentNode.removeChild(el);n++}}
+    if(!el.parentNode)continue;
+    const ln=el.localName, w=el.namespaceURI===W;
+    if(w&&(ln==="docVars"||ln==="mailMerge"||((ln==="alias"||ln==="tag")&&el.parentNode.localName==="sdtPr")))cut(el);
+    else if(ln==="dataBinding"&&(w||el.namespaceURI===W15))cut(el);
+    else if(w&&ln==="permStart"&&el.getAttribute("w:ed")){perm.add(el.getAttribute("w:id"));cut(el)}}
+  if(perm.size)for(const el of Array.from(doc.getElementsByTagNameNS(W,"permEnd")))if(el.parentNode&&perm.has(el.getAttribute("w:id")))cut(el);
   return n}
 /* קורא אחד לטקסט של המסמך. שכבות ההצעה בממשק (המודל, הכותרת, הדוברים) והחלפת הערכים
    קראו את הקובץ כל אחת בדרכה, והראשונה לא ראתה הגדרות, SmartArt וגרפים שהשנייה ניקתה:
    שם שישב רק בתווית של גרף לא הוצע על ידי אף שכבה (ביקורת C2). מה שנחשב חלק עם טקסט
    מוכרע כאן פעם אחת. */
 const isTextPart=n=>TEXTPART.test(n)||EXTRAPART.test(n);
-async function readBlocks(buf){
+// depth: מסמך Word שיובא בתוך מסמך (altChunk) נקרא באותו קורא, עד שתי רמות
+async function readBlocks(buf,depth){
   const files=await unzip(buf); let blocks=[];
+  await inlineChunks(files,depth||0);
   for(const f of files){
     if(!isTextPart(f.name))continue;
     const d=parseXML(TXT.decode(f.data));
-    if(TEXTPART.test(f.name))acceptTracked(d);
-    stripHidden(d);
+    acceptTracked(d);
+    if(TEXTPART.test(f.name))joinFields(d);
+    stripHidden(d);scrubPaths(d);
     blocks=blocks.concat(flatten(d,f.name));}
-  return blocks}
+  return twinParts(blocks).filter(b=>!b.dupOf)}
+/* קטע מיובא (w:altChunk): מערכת שמפיקה מסמכים מכניסה פרק שלם כקובץ HTML, MHT, RTF, טקסט או Word,
+   ו-Word מציג אותו כגוף הטקסט עד שמישהו שומר את המסמך מחדש. אף שכבה לא קראה אותו: שם, ת"ז וטלפון
+   נשארו בקובץ, לא הוצגו ולא הועתקו, והפס היה ירוק (הציד של 11.10). הטקסט שלו נכתב כאן כפסקאות רגילות
+   במקום שבו Word מציג אותו, והחלק עצמו יוצא מהקובץ: כך כל שכבה קוראת אותו, והוא מוחלף כמו כל טקסט.
+   העיצוב שלו אינו נשמר. חלק שאי אפשר לקרוא יוצא בלי הטקסט שלו — עדיף על פרק שנשלח כמו שהוא.
+   מחזיר את שמות החלקים שהוצאו. */
+const R_NS="http://schemas.openxmlformats.org/officeDocument/2006/relationships";
+async function inlineChunks(files,depth){
+  const gone=[];
+  for(const f of files){
+    if(!TEXTPART.test(f.name))continue;
+    const s=TXT.decode(f.data); if(!s.includes("altChunk"))continue;
+    const d=parseXML(s), els=Array.from(d.getElementsByTagNameNS(W,"altChunk")); if(!els.length)continue;
+    const rf=files.find(x=>x.name===f.name.replace(/[^/]+$/,m=>"_rels/"+m+".rels")), rels=rf?[...TXT.decode(rf.data).matchAll(/<Relationship\b[^>]*>/g)].map(m=>m[0]):[];
+    for(const el of els){
+      const id=el.getAttributeNS(R_NS,"id")||el.getAttribute("r:id")||"";
+      const rel=rels.find(x=>(/\bId="([^"]*)"/.exec(x)||[])[1]===id);
+      let tg=rel&&!/TargetMode="External"/.test(rel)&&(/\bTarget="([^"]*)"/.exec(rel)||[])[1];
+      if(tg)try{tg=decodeURIComponent(tg)}catch(_){/* כמו שהוא */}
+      const name=tg?partPath(f.name,tg):null, cf=name&&files.find(x=>x.name===name);
+      let lines=null; try{if(cf)lines=await chunkLines(cf.data,depth)}catch(_){lines=null}
+      const up=el.parentNode;
+      for(const t of lines||[]){
+        const p=d.createElementNS(W,"w:p"),r=d.createElementNS(W,"w:r"),wt=d.createElementNS(W,"w:t");
+        wt.setAttributeNS(XMLNS,"xml:space","preserve");wt.textContent=t.replace(XML_BAD,"");
+        r.appendChild(wt);p.appendChild(r);up.insertBefore(p,el)}
+      up.removeChild(el);
+      // תא, תיבת טקסט או גוף שנשארו בלי פסקה מקבלים פסקה ריקה: Word אינו פותח אותם בלעדיה
+      if(!Array.from(up.children).some(c=>c.localName==="p")){const last=up.children[up.children.length-1];
+        up.insertBefore(d.createElementNS(W,"w:p"),last&&last.localName==="sectPr"?last:null)}
+      if(name&&!gone.includes(name))gone.push(name)}
+    f.data=ENC.encode(serXML(d,s))}
+  return gone}
+function partPath(from,tg){
+  if(tg.startsWith("/"))return tg.slice(1);
+  const out=from.split("/").slice(0,-1);
+  for(const x of tg.split("/")){if(x==="..")out.pop();else if(x&&x!==".")out.push(x)}
+  return out.join("/")}
+// הטקסט של קטע מיובא, שורה לכל פסקה; null כשאי אפשר לקרוא אותו
+async function chunkLines(u8,depth){
+  if(u8[0]===0x50&&u8[1]===0x4b){
+    if(depth>=2)return null;
+    const bl=await readBlocks(u8.buffer.slice(u8.byteOffset,u8.byteOffset+u8.byteLength),depth+1);
+    return bl.filter(b=>!hiddenPart(b.part)).map(b=>b.text)}
+  const head=TXT.decode(u8.subarray(0,600));
+  if(/^\s*\{\\rtf/.test(head))return rtfLines(u8);
+  if(/^\s*MIME-Version:|^Content-Type:\s*multipart\//im.test(head))return mhtLines(u8);
+  const t=textOf(u8);
+  /* WordprocessingML כ-XML (Flat OPC, או מסמך גולמי): רק הטקסט שבתוך w:t ו-a:t, פסקה לשורה — לא התגיות, ולא נתונים
+     בינאריים שבחבילה. וכל סימון אחר הוא HTML, לא רק html/body/p: קטע כמו <strong>, <span> או <ul><li> נכנס למסמך
+     כטקסט, עם התגיות, ושם שבתוך תגית לא הוצע (הסקירה של 11.10) */
+  if(/^\s*(?:<\?xml|<pkg:package|<w:document|<w:wordDocument)/i.test(t)&&/<(?:w|a):t[\s>]/.test(t)){
+    const out=[];
+    for(const para of t.split(/<\/(?:w|a):p>/)){
+      const line=htmlLines([...para.matchAll(/<(?:w|a):t(?:\s[^>]*)?>([^<]*)<\/(?:w|a):t>/g)].map(m=>m[1]).join("")).join(" ");
+      if(line)out.push(line)}
+    return out}
+  if(/<\/?[a-z][\w:.-]*[\s/>]/i.test(t))return htmlLines(t);
+  if(/[\u0000-\u0008\u000E-\u001A]/.test(t.slice(0,4000)))return null;
+  return t.split(/\r\n?|\n/).map(x=>x.replace(/\s+/g," ").trim()).filter(Boolean)}
+function textOf(u8){
+  if(u8[0]===0xFF&&u8[1]===0xFE)return new TextDecoder("utf-16le").decode(u8.subarray(2));
+  if(u8[0]===0xFE&&u8[1]===0xFF)return new TextDecoder("utf-16be").decode(u8.subarray(2));
+  try{return new TextDecoder("utf-8",{fatal:true}).decode(u8)}catch(_){/* קידוד אחר */}
+  try{return new TextDecoder("windows-1255").decode(u8)}catch(_){return TXT.decode(u8)}}
+const ENT={amp:"&",lt:"<",gt:">",quot:'"',apos:"'",nbsp:" ",ndash:"–",mdash:"—",lsquo:"‘",rsquo:"’",ldquo:"“",rdquo:"”",
+  hellip:"…",shy:"",lrm:"\u200E",rlm:"\u200F",zwj:"",zwnj:"",bull:"•",middot:"·",laquo:"«",raquo:"»",times:"×"};
+const fromCode=n=>{try{return String.fromCodePoint(n)}catch(_){return ""}};
+function htmlLines(t){
+  return t.replace(/<!--[\s\S]*?-->/g,"").replace(/<(script|style|head|title|xml)\b[\s\S]*?<\/\1\s*>/gi,"")
+    .replace(/<br\b[^>]*>/gi,"\n")
+    .replace(/<\/?(?:p|div|li|tr|td|th|h[1-6]|table|tbody|thead|tfoot|ul|ol|dl|dd|dt|blockquote|section|article|header|footer|pre|hr|caption|center|address|body|html)\b[^>]*>/gi,"\n")
+    .replace(/<[^>]*>/g,"")
+    .replace(/&(#[xX][0-9a-fA-F]+|#\d+|[a-zA-Z]+);/g,(m,e)=>e[0]==="#"?fromCode(/^#x/i.test(e)?parseInt(e.slice(2),16):+e.slice(1)):ENT.hasOwnProperty(e.toLowerCase())?ENT[e.toLowerCase()]:m)
+    .split("\n").map(x=>x.replace(/\s+/g," ").trim()).filter(Boolean)}
+// MHT: החלק הראשון שהוא HTML, בקידוד שלו (quoted-printable או base64)
+function mhtLines(u8){
+  const raw=TXT.decode(u8), b=(/boundary="?([^";\r\n]+)"?/i.exec(raw)||[])[1];
+  for(const part of b?raw.split("--"+b):[raw]){
+    const k=part.search(/\r?\n\r?\n/); if(k<0)continue;
+    const head=part.slice(0,k), body=part.slice(k).replace(/^\r?\n\r?\n/,"");
+    if(!/content-type:\s*text\/html/i.test(head))continue;
+    const cs=(/charset="?([^";\s]+)/i.exec(head)||[])[1]||"utf-8", enc=(/content-transfer-encoding:\s*([\w-]+)/i.exec(head)||[])[1]||"";
+    let bytes=null;
+    if(/quoted-printable/i.test(enc)){const q=body.replace(/=\r?\n/g,"");bytes=[];
+      for(let i=0;i<q.length;i++){if(q[i]==="="&&/^[0-9A-Fa-f]{2}$/.test(q.slice(i+1,i+3))){bytes.push(parseInt(q.slice(i+1,i+3),16));i+=2}else bytes.push(q.charCodeAt(i)&255)}}
+    else if(/base64/i.test(enc))bytes=Array.from(globalThis.atob(body.replace(/[^A-Za-z0-9+/=]/g,"")),c=>c.charCodeAt(0));
+    if(!bytes)return htmlLines(body);
+    let dec;try{dec=new TextDecoder(cs)}catch(_){dec=TXT}
+    return htmlLines(dec.decode(new Uint8Array(bytes)))}
+  return null}
+/* RTF: הטקסט בלבד. עברית כתובה בבייטים של דף הקוד (\'e0, ansicpg1255) או כ-\uN עם תו חלופי שמדלגים
+   עליו; קבוצה שאינה טקסט (טבלת גופנים, צבעים, תמונה, \*) מדולגת; \par, \line, \cell — שורה חדשה. */
+const RTF_SKIP=new Set(["fonttbl","colortbl","stylesheet","info","pict","object","listtable","listoverridetable","rsidtbl","generator",
+  "xmlnstbl","themedata","colorschememapping","datastore","latentstyles","pgdsctbl","filetbl","revtbl","fldinst","header","headerl",
+  "headerr","headerf","footer","footerl","footerr","footerf","footnote","annotation","atnauthor","nonshppict","shppict"]);
+function rtfLines(u8){
+  let s="";for(let i=0;i<u8.length;i++)s+=String.fromCharCode(u8[i]);
+  let dec;try{dec=new TextDecoder("windows-"+((/\\ansicpg(\d+)/.exec(s)||[])[1]||"1252"))}catch(_){dec=new TextDecoder("windows-1252")}
+  const lines=[],ucs=[];let line="",bytes=[],depth=0,skip=0,uc=1,drop=0;
+  const flush=()=>{if(bytes.length){line+=dec.decode(new Uint8Array(bytes));bytes=[]}};
+  const put=t=>{if(!skip){flush();line+=t}};
+  for(let i=0;i<s.length;){
+    const c=s[i];
+    if(c==="{"){depth++;ucs.push(uc);i++;const m=/^\\(\*|[a-z]+)/.exec(s.slice(i,i+32));if(!skip&&m&&(m[1]==="*"||RTF_SKIP.has(m[1])))skip=depth;continue}
+    if(c==="}"){flush();if(skip===depth)skip=0;depth--;uc=ucs.length?ucs.pop():1;i++;continue}
+    if(c==="\\"){
+      const n=s[i+1];
+      if(n==="'"){const b=parseInt(s.slice(i+2,i+4),16);i+=4;if(drop){drop--;continue}if(!skip&&!isNaN(b))bytes.push(b);continue}
+      if(n==="\\"||n==="{"||n==="}"){i+=2;if(drop){drop--;continue}if(!skip)bytes.push(n.charCodeAt(0));continue}
+      if(n==="~"){i+=2;put(" ");continue}
+      if(n==="_"){i+=2;put("-");continue}
+      const m=/^([a-z]+)(-?\d+)? ?/.exec(s.slice(i+1,i+48));
+      if(!m){i+=2;continue}
+      i+=1+m[0].length;
+      const w=m[1],arg=m[2]==null?null:+m[2];
+      if(/^(?:par|line|row|cell|sect|page)$/.test(w)){if(!skip){flush();lines.push(line);line=""}}
+      else if(w==="tab")put(" ");
+      else if(w==="u"&&arg!=null){put(String.fromCharCode(arg<0?arg+65536:arg));drop=uc}
+      else if(w==="uc"&&arg!=null)uc=arg;
+      else{const q={emdash:"—",endash:"–",lquote:"‘",rquote:"’",ldblquote:"“",rdblquote:"”",bullet:"•"}[w];if(q)put(q)}
+      continue}
+    i++;
+    if(c==="\r"||c==="\n")continue;
+    if(drop){drop--;continue}
+    if(!skip)bytes.push(c.charCodeAt(0)&255)}
+  flush();if(line)lines.push(line);
+  return lines.map(x=>x.replace(/\s+/g," ").trim()).filter(Boolean)}
+// תו ש-XML אינו יכול לשמור (U+000B, תווי בקרה) אינו נכתב לקובץ: קובץ כזה אינו נפתח, גם לא בכלי עצמו
+const XML_BAD=/[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]/g;
 function setSpan(sp,v){
+  v=String(v).replace(XML_BAD,"");
   if(sp.attr)sp.el.setAttribute(sp.attr,v);
   else{sp.el.textContent=v; if(v!==v.trim())sp.el.setAttributeNS(XMLNS,"xml:space","preserve")}}
 function applyReps(blk,reps){
@@ -2296,8 +2843,26 @@ function applyReps(blk,reps){
       setSpan(sp, ix===w0 ? t.slice(0,ls)+nw+t.slice(le) : t.slice(0,ls)+t.slice(le));
     });}
   return cl.length}
+/* קבלת השינויים היא "קבל הכול" של Word, ובלי מי שערך (הציד של 11.10). עד כאן נקלטו שישה אלמנטים
+   בלבד: הסימנים שבתחילת קטע שהועבר ובסופו, תא שנוסף והפרדת תאים שמרו את שם העורך (שם לועזי עבר בפס
+   ירוק, ושם עברי מהרשימה צבע אותו באדום בלי דבר לתקן); וסעיף שנמחק או הועבר במעקב השאיר אחריו פסקה
+   ריקה עם מספר, כך שכל מספר סעיף אחריו בקובץ שלה היה גדול באחד מאשר במסמך המאושר. סימן פסקה שנמחק מחבר
+   את הפסקה לזו שאחריה, כמו ב-Word; שורה שנמחקה יוצאת, וטבלה שלא נשארה בה שורה יוצאת איתה. */
+const REV_MARK=/^(?:move(?:From|To)Range(?:Start|End)|customXml(?:Ins|Del|MoveFrom|MoveTo)Range(?:Start|End)|cell(?:Ins|Del|Merge)|tblGridChange)$/;
+const BLOCK_MARK=new Set(["bookmarkStart","bookmarkEnd","commentRangeStart","commentRangeEnd","permStart","permEnd","proofErr"]);
 function acceptTracked(doc){
   let ins=0,del=0,go=true;
+  const wAll=()=>Array.from(doc.getElementsByTagName("*")).filter(e=>e.namespaceURI===W);
+  // סימן הפסקה (w:pPr/w:rPr) ושורת טבלה (w:trPr) שנוספו או נמחקו: נרשמים לפני שהסימון יורד
+  const goneP=[],goneTr=[];
+  for(const el of wAll()){
+    const ln=el.localName, up=el.parentNode;
+    if(!up||!/^(?:ins|del|moveFrom|moveTo)$/.test(ln))continue;
+    const gone=ln==="del"||ln==="moveFrom";
+    if(up.localName==="rPr"&&up.parentNode&&up.parentNode.localName==="pPr"){const p=up.parentNode.parentNode;if(gone&&p&&p.localName==="p")goneP.push(p)}
+    else if(up.localName==="trPr"){if(gone)goneTr.push(up.parentNode)}
+    else continue;
+    up.removeChild(el);gone?del++:ins++}
   while(go){go=false;
     for(const el of Array.from(doc.getElementsByTagName("*"))){
       const ln=el.localName;
@@ -2306,15 +2871,34 @@ function acceptTracked(doc){
         const p=el.parentNode;while(el.firstChild)p.insertBefore(el.firstChild,el);
         el.remove();ins++;go=true;break}}}
   for(const el of Array.from(doc.getElementsByTagNameNS(W,"delText")))el.remove();
+  for(const el of Array.from(doc.getElementsByTagNameNS(W,"delInstrText")))el.remove();
   /* שינוי עיצוב במעקב (rPrChange, pPrChange וכו') שומר את העיצוב הקודם ואת שם מי שעשה
      אותו. קבלת השינוי היא מחיקת הרשומה; בלעדיה שם הכותב נשאר בקובץ (שכבה 1ב). */
-  for(const el of Array.from(doc.getElementsByTagName("*")))
-    if(el.namespaceURI===W&&/PrChange$|^numberingChange$/.test(el.localName)&&el.parentNode){el.parentNode.removeChild(el);del++}
+  for(const el of wAll()){
+    if(!el.parentNode)continue;
+    if(/PrChange$|^numberingChange$/.test(el.localName)){el.parentNode.removeChild(el);del++}
+    else if(REV_MARK.test(el.localName))el.parentNode.removeChild(el)}
+  for(const tr of goneTr){const t=tr.parentNode;if(!t)continue;t.removeChild(tr);
+    if(t.parentNode&&!Array.from(t.children).some(c=>c.localName==="tr"))t.parentNode.removeChild(t)}
+  for(const p of goneP)if(p.parentNode)joinNext(p);
   return [ins,del]}
+// פסקה שסימן הסוף שלה נמחק: התוכן שנשאר בה עובר לפסקה שאחריה. סוף של פרק, ופסקה אחרונה בתא או במסמך, נשארים
+function joinNext(p){
+  const pPr=kidW(p,"pPr");
+  if(kidW(pPr,"sectPr"))return;
+  let nx=p.nextSibling;while(nx&&(nx.nodeType!==1||BLOCK_MARK.has(nx.localName)))nx=nx.nextSibling;
+  if(!nx||nx.localName==="sectPr")return;
+  if(nx.localName==="p"&&nx.namespaceURI===W){
+    const at=kidW(nx,"pPr")?kidW(nx,"pPr").nextSibling:nx.firstChild;
+    for(const c of Array.from(p.childNodes))if(c!==pPr)nx.insertBefore(c,at);
+    p.parentNode.removeChild(p);return}
+  // לפני טבלה: פסקה שלא נשאר בה דבר יוצאת, ופסקה עם תוכן נשארת
+  if(!Array.from(p.getElementsByTagName("*")).some(e=>e.localName==="r"&&Array.from(e.children).some(c=>c.localName!=="rPr")))p.parentNode.removeChild(p)}
 /* חלקים שאינם גוף המסמך ובכל זאת נושאים טקסט שיוצא עם הקובץ (שכבה 1ב): משתני מסמך
    בהגדרות, צורות SmartArt, ותוויות וכותרות של גרפים. הספרייה המוטמעת של גרף
-   (word/embeddings) אינה נקראת כאן; היא מדווחת כערוץ שלא נותח. */
-const EXTRAPART=/^word\/(settings\.xml|numbering\.xml|styles(?:WithEffects)?\.xml|diagrams\/(data|drawing)\d*\.xml|charts\/chart(?:Ex)?\d*\.xml)$/;
+   (word/embeddings) אינה נקראת כאן; היא מדווחת כערוץ שלא נותח. לרכיבים המהירים (glossary) יש הגדרות,
+   סגנונות ומספור משלהם, ובהם אותם משתני מסמך ושמות (הציד של 11.10). */
+const EXTRAPART=/^word\/((?:glossary\/)?(?:settings|numbering|styles(?:WithEffects)?)\.xml|diagrams\/(data|drawing)\d*\.xml|charts\/chart(?:Ex)?\d*\.xml)$/;
 /* שם סימנייה נשמר בקובץ ונראה בחלון "סימניות" של Word — וסימנייה נקראת לעתים על שם
    אדם ("רחל_פרידמן"). סימנייה עם אות עברית מקבלת שם ניטרלי, וכל הפניה אליה (קישור
    פנימי, שדה REF או PAGEREF) עוברת איתה, כך שההפניות ממשיכות לעבוד. */
@@ -2348,7 +2932,6 @@ function stripRsid(doc){let n=0;
   for(const el of Array.from(doc.getElementsByTagName("*")))
     if(/^rsids?$/.test(el.localName)){el.remove();n++}
   return n}
-const LEAK=/Target="(mailto:[^"]+|file:[^"]+|[A-Za-z]:\\[^"]+|\\\\[^"]+)"/g;
 
 /* המעבר האחרון. חלק XML שהצינור אינו קורא — טבלת גופנים, ערכת נושא, חלק של תוכנה אחרת,
    חלק שעוד לא ראינו — ובו ערך מהרשימה, נכשל באימות, והיא לא יכלה לעשות דבר: הערך אינו
@@ -2375,13 +2958,23 @@ function residuePass(files,walked,subs,applied){
   }
   return done}
 
+// התאריך המלא הראשון שכתוב בטקסט, כ-YYYY-MM-DD, או null
+function isoDateIn(s){
+  const t=String(s||"").trim();
+  for(const c of [t,...(t.match(/\d{1,2}[./-]\d{1,2}[./-]\d{2,4}|\d{4}-\d{1,2}-\d{1,2}|\d{1,2}\s+[בל]?-?[א-ת]+,?\s+\d{4}/g)||[])]){
+    const p=parseDate(c); if(p&&p.y!=null)return p.y+"-"+String(p.m).padStart(2,"0")+"-"+String(p.d).padStart(2,"0")}
+  return null}
 async function redactDocx(buf,subs,allow,opt){
   const files=await unzip(buf);
   const rep={ins:0,del:0,cm:0,rsid:0,hidden:0,dropped:[],meta:[],rels:[],sweep:0};
+  // קטע מיובא נכתב כפסקאות לפני הכול, והחלק שלו יוצא מהקובץ כמו כל חלק שהוסר
+  const chunks=await inlineChunks(files,0);
   let keep=files.filter(f=>{
     // התמונה הממוזערת היא צילום של העמוד הראשון, עם כל מה שכתוב בו (ביקורת H10)
-    if(DROP.includes(f.name)||f.name.startsWith("customXml/")||f.name.startsWith("docProps/thumbnail.")){rep.dropped.push(f.name);return false}
+    if(DROP.includes(f.name)||/(?:^|\/)customxml\//i.test(f.name)||f.name.startsWith("docProps/thumbnail.")||chunks.includes(f.name)){rep.dropped.push(f.name);return false}
     return true});
+  // הקישורים של חלק שהוסר (ההערות) הולכים איתו: בלעדיו נשארו בקובץ, יתומים (הציד של 11.10)
+  {const gone=new Set(rep.dropped.map(n=>n.replace(/([^/]*)$/,"_rels/$1.rels")));keep=keep.filter(f=>!gone.has(f.name))}
   for(const f of keep){
     if(f.name.endsWith(".rels")||f.name==="[Content_Types].xml"){
       let s=TXT.decode(f.data);
@@ -2389,16 +2982,14 @@ async function redactDocx(buf,subs,allow,opt){
         const b=d.split("/").pop().replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
         s=s.replace(new RegExp(`<Relationship[^>]*Target="[^"]*${b}"[^>]*/>`,"g"),"")
            .replace(new RegExp(`<Override[^>]*PartName="/${d.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")}"[^>]*/>`,"g"),"")}
-      if(f.name.endsWith(".rels")){
-        let m;LEAK.lastIndex=0;while((m=LEAK.exec(s)))rep.rels.push(m[1]);
-        s=s.replace(LEAK,'Target="#"')}
       f.data=ENC.encode(s)}
     if(f.name==="docProps/core.xml"||f.name==="docProps/app.xml"){
       const o=TXT.decode(f.data),d=parseXML(o);
       for(const el of d.getElementsByTagName("*")){
+        // HLinks: העתק של כתובות הקישורים, שהיא אינה רואה (הציד של 11.10)
         if(["creator","lastModifiedBy","title","subject","description","keywords",
             "category","Company","Manager","LastAuthor","Template","TitlesOfParts",
-            "HeadingPairs","Application"].includes(el.localName)){
+            "HeadingPairs","Application","HLinks"].includes(el.localName)){
           if(el.textContent.trim())rep.meta.push(el.localName+"="+el.textContent.trim());
           el.textContent="";while(el.firstChild)el.removeChild(el.firstChild)}
         if(el.localName==="revision")el.textContent="1";
@@ -2414,32 +3005,48 @@ async function redactDocx(buf,subs,allow,opt){
     if(!isTextPart(f.name))continue;
     const main=TEXTPART.test(f.name);
     const o=TXT.decode(f.data),d=parseXML(o);
-    if(main){const [i,dl]=acceptTracked(d);rep.ins+=i;rep.del+=dl;
-      rep.cm+=stripComments(d);rep.rsid+=stripRsid(d);}
+    // שינוי במעקב נשמר גם בסגנונות ובהגדרות המספור, עם שם מי שעשה אותו
+    {const [i,dl]=acceptTracked(d);rep.ins+=i;rep.del+=dl;}
+    if(main){rep.cm+=stripComments(d);rep.rsid+=stripRsid(d);}
     rep.hidden+=stripHidden(d);
-    if(main)scrubFieldLinks(d,rep.rels);
+    // כתובת בקוד שדה: כבר כאן מה שיוצא כולו (מייל, נתיב, רשת חברתית); כתובת אינטרנט נקראת אחרי ההחלפה
+    if(main){joinFields(d);scrubFields(d,hostRule,rep.rels)}
+    scrubPaths(d);
     docs.push({f,doc:d,orig:o});
   }
   rep.bookmarks=renameBookmarks(docs.map(x=>x.doc));
+  /* בורר תאריך (פקד תוכן) שומר את התאריך גם כנתון, w:fullDate, ו-Word פותח עליו את לוח השנה: התאריך
+     המוזז הוצג, והאמיתי נשאר מאחוריו (הציד של 11.10). אחרי ההחלפה הנתון הוא מה שמוצג — התאריך המוזז,
+     או כלום כשהתאריך נמחק. תאריך שלא השתנה נשאר כמו שהוא. */
+  const wText=el=>Array.from(el.getElementsByTagNameNS(W,"t")).map(t=>t.textContent).join("");
+  const picks=[];
+  for(const dd of docs)for(const el of Array.from(dd.doc.getElementsByTagNameNS(W,"date"))){
+    const sdt=el.parentNode&&el.parentNode.parentNode, c=kidW(sdt,"sdtContent");
+    if(c&&el.getAttribute("w:fullDate"))picks.push({el,c,was:wText(c)})}
   const applied=[],flagged=[],secrets=[];
   let blocks=[];
   for(const dd of docs) blocks=blocks.concat(flatten(dd.doc,dd.f.name));
+  twinParts(blocks);
   const eng=new Engine(subs,allow,opt,blocks.map(b=>b.text).join("\n"));
   // ה-XML משתנה במקום, ולכן flatten אחרי ההחלפה מחזיר את הטקסט המושחר.
   // בלי צילום מראש, סורק הגוף מציע לה בחזרה את השמות הבדויים שהמצאנו.
-  const ORIG=blocks.map(b=>({part:b.part,text:b.text,label:!!b.label}));
+  const ORIG=blocks.filter(b=>!b.dupOf).map(b=>({part:b.part,text:b.text,label:!!b.label,pair:!!b.pair}));
   for(const blk of blocks){
+    // החלופה של תיבת טקסט מקבלת בדיוק את ההחלפות של הצורה, ואינה נספרת שוב
+    if(blk.dupOf){if(blk.dupOf.reps)applyReps(blk,blk.dupOf.reps.map(r=>r.slice()));continue}
     const hits=eng.detect(blk.text);if(!hits.length)continue;
     const reps=[];
     for(const h of hits){
-      // type: הסוג נשמר עם התיק (currentKinds בדף), כדי שתאריך, יישוב או גוף מתיק שנפתח לא יחזרו כאדם (הציד של 11.10)
-      const rec={value:h.text,label:h.label,part:partName(blk.part),why:h.why,
+      // ערך שנמצא בתוך כתובת מקודדת נרשם מפוענח, כמו שהיא קוראת אותו. type: הסוג נשמר עם התיק (currentKinds
+      // בדף), כדי שתאריך, יישוב או גוף מתיק שנפתח לא יחזרו כאדם (הציד של 11.10)
+      const rec={value:h.dtext||h.text,label:h.label,part:partName(blk.part),why:h.why,
         ctx:ctxHTML(blk.text,h.s,h.e),review:!!h.review,src:h.src,base:h.base||undefined,type:h.type};
       // הכינוי הבסיסי נרשם לפי הערך שברשימה, לא לפי הטקסט שנתפס: "לנרות מאירות"
       // אינו מפתח, ובלעדיו ההחזרה קיבלה "לגפן" ככינוי ואיבדה את "בגפן".
-      if(h.apply){const nw=eng.repFor(h);rec.rep=nw;
+      // בתוך כתובת הכינוי נכתב מקודד, והכתובת נשארת כתובת
+      if(h.apply){const nw0=eng.repFor(h), nw=h.enc&&nw0?encodeURIComponent(nw0):nw0;rec.rep=nw;
         const fam=(CANON[h.type]||[h.type])[0];
-        rec.baseRep=eng.map[ckey(fam,h.base||h.text)]||eng.map[ckey(h.type,h.text)]||nw;
+        rec.baseRep=eng.map[ckey(fam,h.base||h.text)]||eng.map[ckey(h.type,h.text)]||nw0;
         let s=h.s,e=h.e;
         // השמטה: הערך נמחק נקי. רווח אחד סמוך נבלע איתו, כדי ש"נסע ל-X ביום" לא
         // יישאר עם שני רווחים, ומה שנשאר נקרא כאילו הערך לא היה שם מעולם.
@@ -2447,6 +3054,7 @@ async function redactDocx(buf,subs,allow,opt){
           if(blk.text[e]===" "&&(s===0||blk.text[s-1]===" "||/[\s(]/.test(blk.text[s-1]||" ")))e++;
           else if(blk.text[s-1]===" ")s--; }
         reps.push([s,e,nw]);applied.push(rec);secrets.push(h.text);
+        if(h.dtext)secrets.push(h.dtext);
         if(h.base)secrets.push(h.base)}
       else flagged.push(rec)}
     // מיקום המחיקות בטקסט החדש, לסימון במסך הבדיקה: הערך איננו, אבל היא צריכה לראות
@@ -2454,6 +3062,7 @@ async function redactDocx(buf,subs,allow,opt){
     {const srt=reps.slice().sort((a,b)=>a[0]-b[0]); let shift=0; const dels=[];
      for(const [s,e,nw] of srt){ if(nw==="")dels.push({s:s-shift, val:blk.text.slice(s,e).trim()}); shift+=(e-s)-nw.length; }
      if(dels.length)blk.dels=dels;}
+    blk.reps=reps.map(r=>r.slice());
     applyReps(blk,reps)}
   // מעבר אחידות: כל ערך שהוחלף (ארבע אותיות ומעלה) נסרק שוב בכל חלקי המסמך,
   // כדי שמופע שאף שכבה לא סימנה יקבל אותו תחליף ולא יישאר בטקסט.
@@ -2533,11 +3142,13 @@ async function redactDocx(buf,subs,allow,opt){
     sweep[p]={rep:[...g.to][0],of:[...g.of][0],wordy:g.wordy};
   }
   let blocks2=[];for(const dd of docs)blocks2=blocks2.concat(flatten(dd.doc,dd.f.name));
+  twinParts(blocks2);
   /* כינוי שכבר נכתב אינו טקסט של המסמך, והסריקה לא נוגעת בו (סבב QA 1, M1). כינוי שהיא הקלידה
      ושהוא שם של אדם אמיתי אחר במסמך הוחלף שוב, בכינוי של האדם האחר — שרשרת — וכך גם כינוי
      שמכיל שם משפחה אמיתי של מישהו אחר */
   const pseudoWritten=[...new Set(applied.map(r=>norm(String(r.rep||"")).trim()).filter(w=>w.length>=2))];
   for(const blk of blocks2){
+    if(blk.dupOf){if(blk.dupOf.reps)applyReps(blk,blk.dupOf.reps.map(r=>r.slice()));continue}
     // n0: בלי התווים שהקורא לא רואה (ניקוד, מקף רך, סימני כיוון). הסינון המהיר רץ עליו: על n, חלק של שם
     // שבתוכו תו כזה נפסל לפני שהביטוי (flex, שמדלג עליהם) הספיק לראות אותו, והחלק דלף (הציד של 11.10)
     const n=norm(blk.text),n0=n.replace(/\u0000/g,""),reps=[];
@@ -2573,6 +3184,7 @@ async function redactDocx(buf,subs,allow,opt){
           // לבקש אישור (Q5 בגרסה 5): השם המלא ברשימה הוא ההחלטה שלה על האדם הזה.
           // חלק קצר, או שהוא גם מילה, נשאר לבדיקה — שם גרות ההחלפות השגויות.
           ctx:ctxHTML(blk.text,s,e),review:!!inf.of&&!!inf.wordy,rep:out,baseRep:nw,base:o,of:inf.of||undefined,src:"sweep"})}}
+    blk.reps=reps.map(r=>r.slice());
     rep.sweep+=applyReps(blk,reps)}
   for(const c of eng.collided){
     flagged.push({value:c.rep,label:"שם בדוי שגם מופיע במסמך",part:"המסמך",review:true,src:"collide",collideOf:c.value,
@@ -2588,8 +3200,37 @@ async function redactDocx(buf,subs,allow,opt){
       why:`מופיע לבד, ומשותף ליותר מאדם אחד (${pa.of.join(", ")}) — לא הוחלף אוטומטית`,
       ctx:ctxHTML(hit.text,mm.index,mm.index+pa.p.length),review:true,src:"partAmbig"});
   }
+  /* כתובות (הציד של 11.10): יעד של כל קשר בכל חלק .rels, וכתובת אינטרנט בקוד שדה, נקראים אחרי ההחלפה,
+     עם הכינויים שכבר נבחרו ומול אותם ערכים שהבדיקה האחרונה מחפשת */
+  const vsec=secrets.concat(subs.flatMap(s=>s.kind==="NAME"?variants(s.value,opt.prefixes||"normal").map(v=>v[0]):[s.value]));
+  const ac=addrCtx(eng,applied,vsec,sweep);
+  /* כתובת מקודדת שהוקלדה בטקסט עצמו — לא בקישור — עוברת את אותו ניקוי: שם הפוך או מחובר בנקודה ("שגיא_דנה.pdf",
+     "דנה.שגיא") לא נמצא בה, והגיע ל-AI (הסקירה של 11.10). הטקסט כבר אחרי ההחלפות, אז מה שנשאר בה הוא מה שהן פספסו */
+  {let blocks3=[];for(const dd of docs)blocks3=blocks3.concat(flatten(dd.doc,dd.f.name));
+   for(const blk of blocks3){
+     if(!/%[0-9A-Fa-f]{2}/.test(blk.text))continue;
+     // הכתובת יכולה להיות דבוקה לאות שימוש ומקף ("נשמר ב-https://…"): מחפשים את תחילתה בתוך הטקסט
+     const reps=[],rx=/(?:https?:\/\/|www\.|file:)[^\s"<>]+|(?<![A-Za-z0-9])[A-Za-z]:\\[^\s"<>|]+|\\\\[^\s"<>|]+/gi;let m;
+     while((m=rx.exec(blk.text))){
+       const tok=m[0].replace(/[.,;:!?)\]»"']+$/,"");
+       if(!/%[0-9A-Fa-f]{2}/.test(tok))continue;
+       const c=ac.clean(tok); if(c===tok)continue;
+       reps.push([m.index,m.index+tok.length,c==null?"#":c]); rep.rels.push(tok)}
+     if(reps.length)applyReps(blk,reps)}}
+  for(const dd of docs)if(TEXTPART.test(dd.f.name))scrubFields(dd.doc,ac.clean,rep.rels);
+  for(const f of keep)if(f.name.endsWith(".rels")){const s=TXT.decode(f.data),o=scrubRels(s,ac.clean,rep.rels);if(o!==s)f.data=ENC.encode(o)}
+  for(const x of picks){
+    const now=wText(x.c); if(now===x.was)continue;
+    const iso=isoDateIn(now), full=x.el.getAttribute("w:fullDate");
+    if(iso)x.el.setAttribute("w:fullDate",iso+full.slice(10)); else x.el.removeAttribute("w:fullDate")}
   for(const dd of docs) dd.f.data=ENC.encode(serXML(dd.doc,dd.orig));
   rep.residue=residuePass(keep,new Set(docs.map(d=>d.f.name)),subs,applied);
+  /* מי שערך: w:author ו-w:initials שנשארו בחלק כלשהו — גם בחלק שהכלי אינו קורא, כמו הסגנונות של רכיבים
+     מהירים — מתרוקנים. קבלת השינויים מוחקת את הרשומות עצמן; זו הרשת שמתחתיה (הציד של 11.10). */
+  for(const f of keep){
+    if(!f.name.endsWith(".xml"))continue;
+    const o=TXT.decode(f.data), s=o.replace(/(\s[\w.-]+:(?:author|initials))="[^"]*"/g,'$1=""');
+    if(s!==o)f.data=ENC.encode(s)}
 
   // התצוגה המקדימה: סימון כל תחליף על הטקסט שאחרי ההחלפה. תחליף שעומד ליותר
   // מערך אחד, או שהופיע כבר במקור, מסומן כדו-משמעי.
@@ -2601,7 +3242,10 @@ async function redactDocx(buf,subs,allow,opt){
     repVals[rp].size>1 || origAll.includes(rp)));
   const ids={};applied.forEach((r,i)=>{if(r.rep&&!(r.rep in ids))ids[r.rep]=i});
   const preview=[];
-  let blocks3=[];for(const dd of docs)blocks3=blocks3.concat(flatten(dd.doc,dd.f.name));
+  // התצוגה והטקסט שמועתק כוללים את מה ש-Word מוסיף בעצמו: מספרי סעיפים וסימני הערות
+  const ctx=wordCtx(n=>{const x=docs.find(d=>d.f.name===n);return x?x.doc:null});
+  let blocks3=[];for(const dd of docs)blocks3=blocks3.concat(flatten(dd.doc,dd.f.name,ctx));
+  twinParts(blocks3);
   // פריט שנשאר לבדיקה אינו מסומן במסמך, ולכן הוא נראה בדיוק כמו טקסט שאיש לא נגע בו.
   // על מספר זה קטלני: מספר שנשאר בטקסט נקרא "הכלי פספס אותו", בעוד שבפועל הוא נמצא,
   // הוחלט שלא להחליף אותו אוטומטית, והוא מחכה להחלטה. סימון בצבע אזהרה אומר את זה.
@@ -2613,6 +3257,7 @@ async function redactDocx(buf,subs,allow,opt){
   let bi3=-1;
   for(const blk of blocks3){
     bi3++;
+    if(blk.dupOf)continue;
     const marks=[];
     for(const d of delsByIdx[bi3]||[]) marks.push({s:d.s,e:d.s,del:true,val:d.val});
     for(const [rp,id] of Object.entries(ids)){
@@ -2624,7 +3269,8 @@ async function redactDocx(buf,subs,allow,opt){
     // החלפה גוברת על סימון לבדיקה כשהשניים חופפים
     marks.sort((a,b)=>a.s-b.s||(a.flag?1:0)-(b.flag?1:0));
     const kp=[];let last=-1;for(const m of marks)if(m.s>=last){kp.push(m);last=m.e}
-    preview.push({part:partName(blk.part),text:blk.text,marks:kp});}
+    const sh=shown(blk);
+    preview.push({part:partName(blk.part),text:sh.text,marks:sh.text===blk.text?kp:kp.map(m=>({...m,s:sh.at(m.s,false),e:m.del?sh.at(m.s,false):sh.at(m.e,true)}))});}
 
   // סריקת שיבושים על הפלט, לא על המקור: כל מה שדומה לשם שהוחלף ובכל זאת
   // שרד את ההחלפה — הוא בדיוק מה שהיה יוצא החוצה בלי שאף אחד ישים לב.
@@ -2655,8 +3301,9 @@ async function redactDocx(buf,subs,allow,opt){
     for(const t of tset.values())banned.add(t.norm);
     for(const a of (allow||[]))banned.add(norm(a).trim());
     let blocksN=[];for(const dd of docs)blocksN=blocksN.concat(flatten(dd.doc,dd.f.name));
+    twinParts(blocksN);
     const targets=[...tset.values()];
-    near=findNear(blocksN.filter(b=>!hiddenPart(b.part)),targets,banned);
+    near=findNear(blocksN.filter(b=>!b.dupOf&&!notProse(b.part)),targets,banned);
     nearOf=near.of>near.read?{read:near.read,of:near.of}:null;
     for(const nm of near)flagged.push(nm);
   }
@@ -2668,6 +3315,9 @@ async function redactDocx(buf,subs,allow,opt){
   // על אותו שם.
   const hitBases=new Set(applied.map(r=>norm(r.base||r.value).trim()));
   for(const r of flagged) if(r.src==="list"&&r.base) hitBases.add(norm(r.base).trim());
+  // שם בתוך כתובת — יעד של קישור, או כתובת שהוסרה מהטקסט כולה (SharePoint) — הוא במסמך (הציד של 11.10)
+  for(const r of applied) if(/%[0-9A-Fa-f]{2}|:\/\/|^www\./i.test(r.value)) ac.seen(r.value);
+  for(const b of ac.names) hitBases.add(b);
   const nearTargets=new Set(near.map(x=>norm(x.near.target).trim()));
   for(const s of subs){
     if(s.kind!=="NAME"&&s.kind!=="ORG"&&s.kind!=="PLACE")continue;
@@ -2682,8 +3332,7 @@ async function redactDocx(buf,subs,allow,opt){
   const outBuf=await blob.arrayBuffer();
   // שם שלא נמצא אינו דליפה — הוא מוצג ב«לבדיקה» אבל לא צובע את הבר
   const remaining=[...new Set(flagged.filter(r=>r.src!=="near"&&r.src!=="nohit").map(r=>r.value))];
-  const ver=await verify(outBuf,secrets.concat(subs.flatMap(s=>
-    s.kind==="NAME"?variants(s.value,opt.prefixes||"normal").map(v=>v[0]):[s.value])));
+  const ver=await verify(outBuf,vsec);
   ver.hadList=subs.length>0;
   ver.remaining=remaining;
   ver.near=near;
@@ -2698,7 +3347,7 @@ async function redactDocx(buf,subs,allow,opt){
     if(opt.body===false)throw {skip:1};
     const known=[...subs.map(s=>s.value),...(allow||[]),
       ...applied.map(r=>r.base||r.value),...applied.map(r=>r.baseRep||r.rep)];
-    suggest=bodyNames(ORIG.filter(b=>!hiddenPart(b.part)),known)
+    suggest=bodyNames(ORIG.filter(b=>!notProse(b.part)),known)
       .filter(x=>!near.some(nm=>norm(nm.value).trim()===norm(x.value).trim()));
     // בלי תקרה: ההצעות נחתכו בשתים-עשרה, והשם השלושה-עשר שלא ברשימה לא הוצע ונשאר בקובץ (ביקורת L12).
   }catch(e){if(!e||!e.skip){console.warn("סריקת גוף הטקסט נכשלה",e);incomplete.push("body")}}
@@ -2724,7 +3373,7 @@ async function redactDocx(buf,subs,allow,opt){
        הגוף אינה קוראת אותו. בלי המודל שם שישב רק שם לא הוצע לאף שכבה, ועם המודל רק בחלק מהמקרים
        (נמצא במסמכי המבנה של הבנצ'מרק, ביקורת M20). שם פרטי מוכר ואחריו מילה שנראית כמו שם מוצעים. */
     for(const b of ORIG){
-      if(!b.part.includes("טקסט חלופי"))continue;
+      if(!b.part.includes("טקסט חלופי")&&!b.pair)continue;
       const raw=String(b.text).split(/\s+/).map(x=>trimEdges(x)).filter(Boolean);
       for(let i=0;i+1<raw.length;i++){
         const a=norm(raw[i]).trim(), c=norm(raw[i+1]).trim();
@@ -2747,6 +3396,8 @@ const PARTN={"document.xml":"גוף המסמך","footnotes.xml":"הערות שו
 function partName(p){
   const base=p.split(" (")[0].split("/").pop();
   const ex=p.includes("טקסט חלופי")?" · טקסט חלופי":p.includes("קוד שדה")?" · קוד שדה":p.includes("הגדרות עיצוב")?" · הגדרות עיצוב":"";
+  // לפני גוף המסמך: הרכיבים המהירים יושבים ב-word/glossary/document.xml, ונקראו "גוף המסמך"
+  if(p.includes("glossary"))return "רכיבים מהירים"+ex;
   if(PARTN[base])return PARTN[base]+ex;
   if(base.startsWith("header"))return "כותרת עליונה"+ex;
   if(base.startsWith("footer"))return "כותרת תחתונה"+ex;
@@ -2789,9 +3440,14 @@ function examplesOf(blocks,value,max=3){
   return out;
 }
 
+// מספר או תאריך נבדקים בגבולות ספרות: "1.3.2026" אינו דולף בתוך התאריך המוזז "11.3.2026"
+function secretTest(nv){
+  if(!(/^\d/.test(nv)||/\d$/.test(nv)))return nt=>nt.includes(nv);
+  const rx=new RegExp((/^\d/.test(nv)?"(?<!\\d)":"")+esc(nv)+(/\d$/.test(nv)?"(?!\\d)":""),"u");
+  return nt=>rx.test(nt)}
 async function verify(buf,secrets){
   const files=await unzip(buf);
-  const sec=[...new Set(secrets.filter(s=>s&&s.trim().length>=2))].map(s=>[s,norm(s)]);
+  const sec=[...new Set(secrets.filter(s=>s&&s.trim().length>=2))].map(s=>[s,norm(s)]).map(([o,nv])=>[o,nv,secretTest(nv)]);
   const leaks=[],emb=[];let n=0;
   for(const f of files){n++;
     if(/^word\/(embeddings|media)\//.test(f.name))emb.push(f.name);
@@ -2799,16 +3455,18 @@ async function verify(buf,secrets){
       let t;try{t=new TextDecoder(enc).decode(f.data)}catch(_){continue}
       /* הבדיקה קראה רק את ה-XML כמו שהוא, ושם שמפוצל בין ריצות, מופרד בטאב או כתוב
          עם קו תחתון ("רחל_פרידמן") לא נראה לה כלל (שכבה 1ב). קוראים גם את הטקסט בלי
-         תגיות, כשטאב ומעבר שורה הם רווח וקו תחתון הוא רווח. */
-      if(/\.(xml|rels)$/.test(f.name)&&enc==="utf-8")
-        t+="\n"+t.replace(/<\/(?:w|a):p>/g,"\n").replace(/<w:(?:tab|br|cr)\b[^>]*\/>/g," ").replace(/<w:noBreakHyphen\/>/g,"-").replace(/<[^>]+>/g,"")+"\n"+t.replace(/_/g," ");
+         תגיות, כשטאב, טאב מיקום ומעבר שורה הם רווח וקו תחתון הוא רווח. */
+      if(/\.(xml|rels)$/.test(f.name)&&enc==="utf-8"){
+        const raw=t;
+        // + הוא רווח בכתובת ("?q=דנה+שגיא"), כמו קו תחתון
+        t+="\n"+t.replace(/<\/(?:w|a):p>/g,"\n").replace(/<w:(?:tab|ptab|br|cr)\b[^>]*\/>/g," ").replace(/<w:noBreakHyphen\b[^>]*\/>/g,"-").replace(/<[^>]+>/g,"")+"\n"+t.replace(/[_+]/g," ");
+        // וגם כמו שדפדפן קורא כתובת: "%D7%93" הוא "ד". שם מקודד ביעד של קישור עבר את הבדיקה (הציד של 11.10)
+        if(/%[0-9A-Fa-f]{2}/.test(raw)){const d=pctPlain(raw);t+="\n"+d+"\n"+d.replace(/[+_]/g," ")}
+      }
       const nt=norm(t);
-      // מספר או תאריך נבדקים בגבולות ספרות: "1.3.2026" אינו דולף בתוך התאריך המוזז "11.3.2026"
-      for(const [o,nv] of sec){
+      for(const [o,nv,has] of sec){
         if(!nv)continue;
-        const digital=/^\d/.test(nv)||/\d$/.test(nv);
-        const hit=digital?new RegExp((/^\d/.test(nv)?"(?<!\\d)":"")+esc(nv)+(/\d$/.test(nv)?"(?!\\d)":""),"u").test(nt):nt.includes(nv);
-        if(hit)leaks.push({value:o,part:f.name});
+        if(has(nt))leaks.push({value:o,part:f.name});
       }
     }}
   const uniq=[],seen=new Set();
@@ -3585,6 +4243,14 @@ function restoreNames(txt,pairs){
   const back=real=>m=>(m[1]||(typeof m[2]==="string"?m[2]:"")||"")+real;
   const hits=new Map();
   for(const [pseudo,real] of longFirst(seen))hits.set(pseudo,run(pseudoRX(pseudo),back(real)));
+  /* כינוי מקודד בתוך כתובת — כמו שהכלי עצמו כותב שם בקישור ("…/%D7%99%D7%A2%D7%9C%20%D7%9B%D7%94%D7%9F.pdf") — חוזר
+     לשם האמיתי, מקודד באותה צורה ובאותו מפריד (%20, +, _, -). עד כאן נשאר הכינוי, ולא נרשם כמה שנשאר (הסקירה של 11.10) */
+  const hexI=e=>e.replace(/[.*+?^${}()|[\]\\]/g,"\\$&").replace(/%([0-9A-F]{2})/g,(m,h)=>"%(?:"+h+"|"+h.toLowerCase()+")");
+  for(const [pseudo,real] of longFirst(seen)){
+    if(!/[\u05d0-\u05ea]/.test(pseudo))continue;
+    for(const sp of ["%20","+","_","-"]){
+      const e=encodeURIComponent(pseudo).replace(/%20/g,sp), er=encodeURIComponent(real).replace(/%20/g,sp);
+      hits.set(pseudo,(hits.get(pseudo)||0)+run(new RegExp(hexI(e),"g"),()=>er))}}
   // תאריך מוזז בכתיב אחר של ה-AI. יום בדוי ששני ימים אמיתיים יצאו בו (שני מסמכים בתיק, שתי הזזות)
   // חוזר רק בכתיב שיצא, כי אין לדעת לאיזה מהם התכוון
   const days=[...seen].map(([p,r])=>({p,r,f:dateParts(p),t:dateParts(r)})).filter(x=>x.f&&x.t);

@@ -77,6 +77,45 @@ function ageZones(n){
   const b=/(?<![\d])(\d{1,3})\s+(?:שנה|שנים|שנתיים|וחצי)(?![א-ת])/gu;
   while((m=b.exec(n)))z.push([m.index,m.index+m[1].length]);
   return z}
+/* כתובת מקודדת (הציד של 11.10): "%D7%93%D7%A0%D7%94" הוא "דנה" לכל דפדפן, ולכלים כאן הוא היה תווים
+   לטיניים. שם מהרשימה בתוך כתובת כזאת לא נמצא, דווח "לא מופיע במסמך", ויצא עם הקובץ. פענוח עד שלוש
+   פעמים (כתובת שקודדה פעמיים), עם מפה מכל תו בפענוח אל הטווח שלו במקור, כדי שההחלפה תיכתב במקומו. */
+function pctDecode(s){
+  let d="";const map=[];
+  for(let i=0;i<s.length;){
+    if(s[i]!=="%"||!/^%[0-9A-Fa-f]{2}/.test(s.slice(i,i+3))){d+=s[i];map.push([i,i+1]);i++;continue}
+    const bytes=[];let j=i;
+    while(/^%[0-9A-Fa-f]{2}/.test(s.slice(j,j+3))){bytes.push(parseInt(s.slice(j+1,j+3),16));j+=3}
+    for(let k=0;k<bytes.length;){
+      const b0=bytes[k], n=b0<0x80?1:(b0>>5)===6?2:(b0>>4)===14?3:(b0>>3)===30?4:0;
+      let cp=n===1?b0:-1;
+      if(n>1&&k+n<=bytes.length){cp=b0&(0xff>>(n+1));
+        for(let q=1;q<n;q++){const c=bytes[k+q];if((c&0xC0)!==0x80){cp=-1;break}cp=(cp<<6)|(c&0x3F)}
+        if(cp<[0,0,0x80,0x800,0x10000][n]||cp>0x10FFFF||(cp>=0xD800&&cp<=0xDFFF))cp=-1}
+      const a=i+k*3;
+      // רצף שאינו UTF-8 תקין נשאר כמו שהוא
+      if(cp<0){for(let q=0;q<3;q++){d+=s[a+q];map.push([a+q,a+q+1])}k++;continue}
+      const ch=String.fromCodePoint(cp);
+      for(let q=0;q<ch.length;q++){d+=ch[q];map.push([a,a+n*3])}
+      k+=n}
+    i=j}
+  return {d,map}}
+function pctDecodeAll(s){
+  let cur={d:s,map:Array.from({length:s.length},(_,i)=>[i,i+1])};
+  for(let r=0;r<3&&/%[0-9A-Fa-f]{2}/.test(cur.d);r++){
+    const nx=pctDecode(cur.d); if(nx.d===cur.d)break;
+    nx.map=nx.map.map(([a,b])=>[cur.map[a][0],cur.map[b-1][1]]); cur=nx}
+  return cur}
+// אותו פענוח בלי מפה, לטקסט ארוך (הבדיקה האחרונה קוראת כך חלק שלם)
+function pctPlain(s){
+  for(let r=0;r<3&&/%[0-9A-Fa-f]{2}/.test(s);r++){
+    const n=s.replace(/(?:%[0-9A-Fa-f]{2})+/g,m=>{try{return decodeURIComponent(m)}catch(_){return pctDecode(m).d}});
+    if(n===s)break; s=n}
+  return s}
+// הכללים שרצים על כתובת: מספרים מזהים, דוא"ל, כתובת רחוב וקישור אישי. לא תאריך, לא מספר רכב ולא מספר תיק,
+// שכתובת ציבורית מלאה בהם ("/2024-03-12/", "18-2023"), ולא יישוב ("he.wikipedia.org/wiki/חיפה")
+const ADDR_PAT=new Set(["EMAIL","PHONE_MOBILE","PHONE_LAND","ISRAELI_ID","ISRAELI_ID_SEP","ISRAELI_ID_LABELED","IBAN",
+  "URL_PERSONAL","URL_PRIVATE","ADDRESS_STREET","ADDRESS_LABELED","PASSPORT","SSN","BANK_ACCOUNT","BANK_ACCOUNT_SHORT","LAWYER_LIC"]);
 /* מילה שהיא גם מילה רגילה, לא רק שם: שם פרטי שהוא מילה, מילה שכיחה, מילת עצירה או פועל — או
    מילה שהטקסט עצמו כותב עם ה' הידיעה ("הכהן"). toks: המילים של הטקסט. בדיקה אחת לצורה עם אות
    שימוש של שם קצר כאן, ולחלק של שם שעומד לבד בתשובת AI (restoreNames). */
@@ -208,14 +247,15 @@ class Engine{
   blocked(s,e,zones){return zones.some(([a,b])=>a<=s&&e<=b)}
   // תווים בלתי נראים (squeeze): הזיהוי רץ על מה שהקורא רואה, והמיקומים חוזרים לטקסט המקורי. ההחלפה מכסה את
   // התווים שבתוך הערך; סימני כיוון שלפניו ואחריו נשארים מחוצה לה, כדי שזוגות הבידוד יישארו שלמים
-  detect(text){
+  // addr: הטקסט הוא כתובת מפוענחת. שם בה מחובר ב-_ או ב-+ ("דנה_שגיא.pdf", "?q=דנה+שגיא"), ורק כללי הכתובת רצים
+  detect(text,addr){
     const q=squeeze(text);
-    if(!q) return this.detectSeen(text);
-    const hits=this.detectSeen(q.t);
+    if(!q) return this.detectSeen(text,addr);
+    const hits=this.detectSeen(q.t,addr);
     for(const h of hits){ h.s=q.pos[h.s]; h.e=q.pos[h.e-1]+1; h.text=text.slice(h.s,h.e); }
     return hits;
   }
-  detectSeen(text){
+  detectSeen(text,addr){
     const n=norm(text),zones=[];
     const AGE=ageZones(n);
     // רשימת ההיתר תופסת גם צורות עם אות שימוש, ו-ש היא אות שימוש: "אל תחליפו" על
@@ -230,9 +270,9 @@ class Engine{
         // גם כשלפני הערך האחר עומדת אות שימוש: "ושרון" הוא ו+שרון, לא וש+רון
         if(tok!==own&&(listed.has(tok)||SING.some(p=>tok.startsWith(p)&&tok.slice(1)!==own&&listed.has(tok.slice(1)))))continue;
         zones.push([m.index,m.index+m[0].length])}});
-    const hits=[];
+    const hits=[], nl=addr?n.replace(/[_+]/g," "):n;
     for(const r of this.rules){r.rx.lastIndex=0;let m;
-      while((m=r.rx.exec(n))){
+      while((m=r.rx.exec(nl))){
         const s=m.index,e=s+m[0].length;
         /* ערך שברשימה מוחלף גם בתוך קטע ארוך יותר שהותר (v35): "לא שם"
            על קטע ארוך שהמודל הדביק ("אסתר גבאי ברזילי", דוגמה בדויה) כתב את כל הקטע
@@ -255,14 +295,38 @@ class Engine{
           why:r.auto?"התגלה אוטומטית מההקשר":(r.pre?`מהרשימה שהגדרתם, עם אות השימוש "${r.pre}" שנשמרה`:"מהרשימה שהגדרתם"),
           review:!!r.pre,conf:"high"});
       }}
-    for(const h of findPatterns(text,this.opt.on,this.opt.flag)){
+    const on=addr?(this._addrOn||(this._addrOn=new Set([...this.opt.on].filter(k=>ADDR_PAT.has(k))))):this.opt.on;
+    for(const h of findPatterns(text,on,addr?new Set():this.opt.flag)){
       if(this.blocked(h.s,h.e,zones))continue;
+      // בכתובת, הקישור האישי שהוא הכתובת עצמה כבר נשפט לפי השרת שלה, והוא היה מסתיר את מה שבתוכה
+      if(addr&&/^URL_/.test(h.type)&&/^[\s("'<[]*$/.test(text.slice(0,h.s)))continue;
+      // בכתובת, טלפון קווי נלקח רק מהפרמטרים (אחרי "?"), לא מהנתיב: שם "04-54321-12" הוא חלק משם הקובץ של פסק דין בנבו
+      // («FA-21-04-54321-12.htm»), והקישור הציבורי נשבר (הסקירה של 11.10). מספר שכבר הוחלף במסמך יוצא מהכתובת בכל מקום בה
+      if(addr&&h.type==="PHONE_LAND"){ const qi=text.indexOf("?"); if(qi<0||h.s<qi) continue; }
+      // וכך גם כתובת שהוקלדה בטקסט: מתחילת המילה (http, www) ועד "?" שלה, "04-54321-12" הוא שם קובץ ולא טלפון
+      if(!addr&&h.type==="PHONE_LAND"){ let a=h.s; while(a>0&&!/\s/.test(text[a-1]))a--;
+        if(/^(?:https?:\/\/|www\.)/i.test(text.slice(a))&&!text.slice(a,h.s).includes("?")) continue; }
       // גיל אינו מזהה, וההבטחה הייתה "הכול חוץ מגילאים": "בת 9", "בן 12", "גיל 7",
       // "3 שנים" — מספר בהקשר של גיל נשאר גם כשמספרים מושמטים. צר ומבוסס הקשר בלבד.
       if(this.blocked(h.s,h.e,AGE))continue;
       h.review=h.conf!=="high"; h.base=h.base||h.text; hits.push(h);
     }
+    if(!addr&&/%[0-9A-Fa-f]{2}/.test(text))for(const h of this.encoded(text))hits.push(h);
     return resolve(hits)}
+  /* כתובת מקודדת בטקסט (הציד של 11.10): כל מילה שיש בה %XX מפוענחת, כללי הכתובת רצים על הפענוח,
+     והפגיעה חוזרת אל המקום שלה בטקסט, עם הערך המפוענח. אחוז בטקסט רגיל ("בשיעור של %50") אינו כתובת:
+     רק מילה שנראית כמו כתובת או נתיב, או שהפענוח שלה נותן אות עברית או @ */
+  encoded(text){
+    const out=[],rx=/\S+/g;let m;
+    while((m=rx.exec(text))){
+      const tok=m[0]; if(!/%[0-9A-Fa-f]{2}/.test(tok))continue;
+      const dd=pctDecodeAll(tok);
+      if(dd.d===tok||(!/[א-ת@]/.test(dd.d)&&!/[/\\:]/.test(tok)))continue;
+      for(const h of this.detect(dd.d,true)){
+        const a=dd.map[h.s][0],b=dd.map[h.e-1][1],raw=tok.slice(a,b);
+        if(raw===h.text)continue;
+        out.push({...h,s:m.index+a,e:m.index+b,text:raw,dtext:h.text,enc:true})}}
+    return out}
   /* מה נכנס במקום ערך: name (שם או יישוב בדוי), label (פלוני א׳ / [ת"ז א׳]),
      black (███), או blank — הערך נמחק נקי מהטקסט.
 

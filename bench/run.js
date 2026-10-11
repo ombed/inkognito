@@ -58,8 +58,12 @@ function report(title, docs, rows, unlisted, perDoc, meta) {
     const stem = NO_MODEL ? "results-no-model" : "results";
     fs.writeFileSync(path.join(priv.dir, stem + ".md"), pmd);
     fs.writeFileSync(path.join(priv.dir, stem + ".json"), JSON.stringify({ rows: P.rows, unlisted: P.unlisted, perDoc: P.perDoc, totals: P.totals }, null, 1));
-    console.log("\n" + "═".repeat(72) + "\nPRIVATE FIXTURES — " + priv.docs.length + " document(s) from " + priv.dir + "\n" + "═".repeat(72) + "\n");
-    console.log(pmd);
+    /* To the screen, only counts (11.10). The report lists the documents' real values (what was missed, what leaked,
+       what was suggested), and whoever ran the benchmark, a person, Claude or an agent, read them: the owner's rule is
+       that real client details reach no output. The full report stays beside the documents, where it always was. */
+    const t = P.totals;
+    console.log("\n" + "═".repeat(72) + "\nPRIVATE FIXTURES — " + priv.docs.length + " document(s); the full report is written beside them, not shown here\n" + "═".repeat(72));
+    console.log(`leaked ${t.leaked} · missed ${t.missed} · false positives ${t.fp} · unlisted suggestions ${t.junk} · ${Math.round(t.ms)} ms`);
   } else {
     console.log(`\n(no private fixtures at ${priv.dir})`);
   }
