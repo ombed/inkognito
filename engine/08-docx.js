@@ -250,7 +250,7 @@ async function redactDocx(buf,subs,allow,opt){
     docs.push({f,doc:d,orig:o});
   }
   rep.bookmarks=renameBookmarks(docs.map(x=>x.doc));
-  const applied=[],flagged=[],secrets=[];
+  const applied=[],flagged=[],secrets=[],placeSecrets=[];
   let blocks=[];
   for(const dd of docs) blocks=blocks.concat(flatten(dd.doc,dd.f.name));
   const eng=new Engine(subs,allow,opt,blocks.map(b=>b.text).join("\n"));
@@ -275,8 +275,11 @@ async function redactDocx(buf,subs,allow,opt){
         if(nw===""){ rec.deleted=true; rec.rep="";
           if(blk.text[e]===" "&&(s===0||blk.text[s-1]===" "||/[\s(]/.test(blk.text[s-1]||" ")))e++;
           else if(blk.text[s-1]===" ")s--; }
-        reps.push([s,e,nw]);applied.push(rec);secrets.push(h.text);
-        if(h.base)secrets.push(h.base)}
+        reps.push([s,e,nw]);applied.push(rec);
+        // יישוב שהוא גם מילה הוחלף רק במופע שיש בו הקשר של מקום, והמופע שנשאל נשאר בכוונה. האימות מחפש אותו רק
+        // בהקשר כזה: בחיפוש רגיל «נקודת מבט רעננה» נספרה דליפה של «גרה ברעננה», והפס האדום חסם מסמך תקין
+        if(h.src==="pattern"&&h.type==="PLACE_CITY"&&TOWNWORD.has(h.place))placeSecrets.push(h.place);
+        else{secrets.push(h.text); if(h.base)secrets.push(h.base)}}
       else flagged.push(rec)}
     // מיקום המחיקות בטקסט החדש, לסימון במסך הבדיקה: הערך איננו, אבל היא צריכה לראות
     // שהיה שם משהו ולוכל לבטל. כל החלפה שלפני נקודה מזיזה אותה בהפרש האורכים.
@@ -515,7 +518,7 @@ async function redactDocx(buf,subs,allow,opt){
   // שם שלא נמצא אינו דליפה — הוא מוצג ב«לבדיקה» אבל לא צובע את הבר
   const remaining=[...new Set(flagged.filter(r=>r.src!=="near"&&r.src!=="nohit").map(r=>r.value))];
   const ver=await verify(outBuf,secrets.concat(subs.flatMap(s=>
-    s.kind==="NAME"?variants(s.value,opt.prefixes||"normal").map(v=>v[0]):[s.value])));
+    s.kind==="NAME"?variants(s.value,opt.prefixes||"normal").map(v=>v[0]):[s.value])),placeSecrets);
   ver.hadList=subs.length>0;
   ver.remaining=remaining;
   ver.near=near;
@@ -621,9 +624,13 @@ function examplesOf(blocks,value,max=3){
   return out;
 }
 
-async function verify(buf,secrets){
+/* placeSecrets: יישובים שהם גם מילה (TOWNWORD) שהוחלפו בהקשר של מקום. מופע שלהם הוא דליפה רק כשיש לו הקשר
+   כזה בטקסט הקריא, אותו מבחן של findPlaces; המופע שנשאל ("נקודת מבט רעננה") אינו דליפה */
+const XUN=s=>s.replace(/&(quot|apos|lt|gt|amp);/g,(m,k)=>({quot:'"',apos:"'",lt:"<",gt:">",amp:"&"})[k]);
+async function verify(buf,secrets,placeSecrets){
   const files=await unzip(buf);
   const sec=[...new Set(secrets.filter(s=>s&&s.trim().length>=2))].map(s=>[s,norm(s)]);
+  const ps=new Set((placeSecrets||[]).map(s=>norm(s).trim()).filter(Boolean));
   const leaks=[],emb=[];let n=0;
   for(const f of files){n++;
     if(/^word\/(embeddings|media)\//.test(f.name))emb.push(f.name);
@@ -632,8 +639,11 @@ async function verify(buf,secrets){
       /* הבדיקה קראה רק את ה-XML כמו שהוא, ושם שמפוצל בין ריצות, מופרד בטאב או כתוב
          עם קו תחתון ("רחל_פרידמן") לא נראה לה כלל (שכבה 1ב). קוראים גם את הטקסט בלי
          תגיות, כשטאב ומעבר שורה הם רווח וקו תחתון הוא רווח. */
-      if(/\.(xml|rels)$/.test(f.name)&&enc==="utf-8")
-        t+="\n"+t.replace(/<\/(?:w|a):p>/g,"\n").replace(/<w:(?:tab|br|cr)\b[^>]*\/>/g," ").replace(/<w:noBreakHyphen\/>/g,"-").replace(/<[^>]+>/g,"")+"\n"+t.replace(/_/g," ");
+      let read=t;
+      if(/\.(xml|rels)$/.test(f.name)&&enc==="utf-8"){
+        read=XUN(t.replace(/<\/(?:w|a):p>/g,"\n").replace(/<w:(?:tab|br|cr)\b[^>]*\/>/g," ").replace(/<w:noBreakHyphen\/>/g,"-").replace(/<[^>]+>/g,""));
+        t+="\n"+read+"\n"+t.replace(/_/g," ");
+      }
       const nt=norm(t);
       // מספר או תאריך נבדקים בגבולות ספרות: "1.3.2026" אינו דולף בתוך התאריך המוזז "11.3.2026"
       for(const [o,nv] of sec){
@@ -641,6 +651,10 @@ async function verify(buf,secrets){
         const digital=/^\d/.test(nv)||/\d$/.test(nv);
         const hit=digital?new RegExp((/^\d/.test(nv)?"(?<!\\d)":"")+esc(nv)+(/\d$/.test(nv)?"(?!\\d)":""),"u").test(nt):nt.includes(nv);
         if(hit)leaks.push({value:o,part:f.name});
+      }
+      if(ps.size&&[...ps].some(p=>nt.includes(p.split(" ")[0]))){
+        const nr=norm(seenText(read.replace(/_/g," "))), all=placeScan(nr);
+        for(const x of all) if(ps.has(x.name)&&placeCtx(nr,x,all)) leaks.push({value:x.name,part:f.name});
       }
     }}
   const uniq=[],seen=new Set();

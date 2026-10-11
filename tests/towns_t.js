@@ -302,7 +302,9 @@ for (const [value, kind, t] of [
 
 /* The whole document, through redactDocx. After the first pass a uniformity pass replaces every other
    occurrence of a value that was replaced once: «גרה ברעננה» was replaced, so «נקודת מבט רעננה» was too,
-   although the places layer had asked about it. */
+   although the places layer had asked about it. And the final check read every occurrence of a replaced
+   value as a leak: the word that was asked about turned the bar red («האימות נכשל … אין לשלוח ואין
+   להעתיק»), in the very document the change is for. */
 const xd = require("@xmldom/xmldom");
 global.DOMParser = xd.DOMParser; global.XMLSerializer = xd.XMLSerializer;
 {
@@ -321,11 +323,13 @@ const js = fs.readFileSync(path.join(__dirname, "app.html"), "utf8").split("<scr
   .replace('const deflate=u8=>pipe(u8,CompressionStream,"deflate-raw");', "const deflate=async u8=>global.__deflate(u8);");
 const cut = js.indexOf("/* ══════════════════════════ ממשק ══════════════════════════ */");
 const a = js.indexOf("function pseudoRX(p){"), b = js.indexOf("function livePairs(){");
-fs.writeFileSync(path.join(__dirname, "towns-core.js"), js.slice(0, cut) + "\n" + js.slice(a, b) + "\nmodule.exports={redactDocx};\n");
+fs.writeFileSync(path.join(__dirname, "towns-core.js"), js.slice(0, cut) + "\n" + js.slice(a, b) + "\nmodule.exports={redactDocx,verify};\n");
 const E = require("./towns-core.js");
 const { mkzip } = require("./mkzip.js");
-const { P, R, doc, base } = require("./structure-lib.js");
-const docOf = (lines) => mkzip([...base, { name: "word/document.xml", body: doc(lines.map((l) => P(R(l))).join("")) }]);
+const { P, R, doc, part, base } = require("./structure-lib.js");
+const docOf = (lines, parts = []) => mkzip([...base, { name: "word/document.xml", body: doc(lines.map((l) => P(R(l))).join("")) }, ...parts]);
+const shown = (res) => res.preview.map((x) => x.text);
+const leaksOf = (res) => JSON.stringify((res.verification.leaks || []).map((l) => l.value));
 
 (async () => {
   console.log("\n— the whole document: a word that was asked about is not replaced by the uniformity pass —");
@@ -335,16 +339,64 @@ const docOf = (lines) => mkzip([...base, { name: "word/document.xml", body: doc(
     ok(!lines[1].includes("רעננה"), "the town where she lives is replaced: «" + lines[1] + "»");
     ok(lines[2] === "העובדת הסוציאלית הביאה לתיק נקודת מבט רעננה.", "the word stays as it is: «" + lines[2] + "»");
     ok(res.flagged.some((f) => f.value === "רעננה"), "and it is asked about: " + JSON.stringify(res.flagged.map((f) => f.value)));
+    ok(res.verification.passed, "and the final check passes: the word that was asked about is no leak " + leaksOf(res));
   }
   {
     const res = await E.redactDocx(docOf(["המבקשת גרה ברעננה עם ילדיה.", "הדיון נקבע בבית המשפט לענייני משפחה ברעננה."]), [], [], OPT);
     const all = res.preview.map((x) => x.text).join("\n");
     ok(!all.includes("רעננה"), "every mention with place context is replaced: «" + all + "»");
     ok(!res.flagged.some((f) => f.value === "רעננה"), "and nothing about it is asked");
+    ok(res.verification.passed, "and the final check passes " + leaksOf(res));
   }
   {
     const res = await E.redactDocx(docOf(["המבקשת מתגוררת במודיעין-מכבים-רעות.", "בית הספר נמצא בתל-אביב."]), [], [], OPT);
     const all = res.preview.map((x) => x.text).join("\n");
     ok(!/מודיעין|מכבים|רעות|אביב/.test(all), "a name of several parts and a hyphenated name go out whole: «" + all + "»");
+    ok(res.verification.passed, "and the final check passes " + leaksOf(res));
+  }
+
+  console.log("\n— a mixed document passes the final check: the town is replaced where it is a place, the word is asked —");
+  // the review's three documents, then every town on the list with its own two sentences, the real one first
+  for (const [real, plain, w] of [
+    ["המבקשת, תושבת שלומי, מבקשת צו הגנה.", "אני חוששת לשלומי ולשלום ילדיי.", "שלומי"],
+    ["המשפחה מתגוררת בחדרה מאז 2015.", "הקטינה ישנה בחדרה.", "חדרה"],
+    ["המשפחה עברה לראש-פינה.", "עקרון טובת הילד היה לראש פינה בפסיקה.", "ראש פינה"],
+    ...Object.entries(WORDS).map(([x, [p, r]]) => [r, p, x]),
+  ]) {
+    for (const order of [[real, plain], [plain, real]]) {
+      const res = await E.redactDocx(docOf(order), [], [], OPT);
+      // the first line of every document is its heading
+      const lines = shown(res), at = order.indexOf(real) + 1, wa = order.indexOf(plain) + 1;
+      const left = C.placesFound(lines[at]).some((p) => p.name === w);
+      ok(!left, "«" + real + "» — the place is replaced: «" + lines[at] + "»");
+      ok(lines[wa] === plain, "«" + plain + "» — the word stays: «" + lines[wa] + "»");
+      ok(res.verification.passed, "«" + real + "» with «" + plain + "» — the final check fails on the word " + leaksOf(res));
+      ok(res.flagged.some((f) => C.norm(f.value).replace(/-/g, " ") === w && f.label === "יישוב"), "«" + plain + "» — asked as a town: " + JSON.stringify(res.flagged.map((f) => f.value)));
+    }
+  }
+  {
+    // the place in the header, the word in the body
+    const res = await E.redactDocx(docOf(["העובדת הסוציאלית הביאה לתיק נקודת מבט רעננה."], [{ name: "word/header1.xml", body: part("hdr", P(R("המבקשת, תושבת רעננה"))) }]), [], [], OPT);
+    ok(res.verification.passed, "a place in the header and the word in the body — the final check passes " + leaksOf(res));
+    ok(res.applied.some((r) => r.value === "רעננה" && r.part === "כותרת עליונה"), "and the header's town is replaced: " + JSON.stringify(res.applied.map((r) => r.value + "@" + r.part)));
+  }
+
+  console.log("\n— the final check still sees a word-town left where the text says it is a place —");
+  {
+    const one = (lines, parts) => docOf(lines, parts);
+    for (const [what, buf, plain, places, want] of [
+      ["the place itself", one(["המבקשת גרה ברעננה עם ילדיה."]), [], ["רעננה"], false],
+      ["the word only", one(["העובדת הסוציאלית הביאה לתיק נקודת מבט רעננה."]), [], ["רעננה"], true],
+      ["the word only, as a plain secret (a rule she typed)", one(["העובדת הסוציאלית הביאה לתיק נקודת מבט רעננה."]), ["רעננה"], [], false],
+      ["the place split across two runs", mkzip([...base, { name: "word/document.xml", body: doc(P(R("המבקשת גרה ב") + R("רעננה עם ילדיה."))) }]), [], ["רעננה"], false],
+      ["the place in a header", one(["פרוטוקול."], [{ name: "word/header1.xml", body: part("hdr", P(R("המבקשת, תושבת רעננה"))) }]), [], ["רעננה"], false],
+      ["the place behind a direction mark", one(["המבקשת גרה ב‏רעננה עם ילדיה."]), [], ["רעננה"], false],
+      ["a two-word town in another spelling", one(["המשפחה עברה לראש-פינה."]), [], ["ראש פינה"], false],
+      ["a first-name town as a person", one(["אני חוששת לשלומי ולשלום ילדיי."]), [], ["שלומי"], true],
+      ["a first-name town as a place", one(["המבקשת, תושבת שלומי, מבקשת צו הגנה."]), [], ["שלומי"], false],
+    ]) {
+      const v = await E.verify(buf, plain, places);
+      ok(v.passed === want, what + " — the final check " + (v.passed ? "passes" : "fails, leaks " + JSON.stringify(v.leaks.map((l) => l.value))) + ", want " + (want ? "pass" : "fail"));
+    }
   }
 })().then(() => { console.log(`\n${pass} passed, ${fail} failed`); process.exitCode = fail ? 1 : 0; });
