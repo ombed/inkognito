@@ -288,7 +288,7 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
 </div></div>
 <script>
 (function(){
-  console.log("אינקוגניטו — גרסה v73.5");
+  console.log("אינקוגניטו — גרסה v73.6");
   var stuck=setTimeout(function(){
     var b=document.getElementById("boot"); if(!b) return;
     b.className="stuck";
@@ -335,8 +335,8 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
         console.log("עובד שירות: "+served);
         var el=document.getElementById("ver"); if(!el) return;
         if(chip===null) chip=el.innerHTML; else el.innerHTML=chip;
-        if(served==="v73.5") return;
-        el.innerHTML='גרסה v73.5 · <b style="color:var(--warn)">יש גרסה חדשה: רעננו עם Ctrl+Shift+R</b>';
+        if(served==="v73.6") return;
+        el.innerHTML='גרסה v73.6 · <b style="color:var(--warn)">יש גרסה חדשה: רעננו עם Ctrl+Shift+R</b>';
       });
       var ask=function(){ if(sw.controller) sw.controller.postMessage("version") };
       sw.ready.then(ask);
@@ -1368,7 +1368,7 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
 
 </div>
 </x-dc>
-<footer><nav data-foot aria-label="מידע ומסמכים משפטיים"><a href="https://inkognito.co.il/" target="_blank" rel="noopener">עמוד הבית</a><a href="https://inkognito.co.il/terms" target="_blank" rel="noopener">תנאי שימוש</a><a href="https://inkognito.co.il/privacy" target="_blank" rel="noopener">מדיניות פרטיות</a><a href="https://inkognito.co.il/accessibility" target="_blank" rel="noopener">הצהרת נגישות</a><a href="mailto:contact@inkognito.co.il">יצירת קשר</a></nav><div id="ver">גרסה v73.5</div></footer>
+<footer><nav data-foot aria-label="מידע ומסמכים משפטיים"><a href="https://inkognito.co.il/" target="_blank" rel="noopener">עמוד הבית</a><a href="https://inkognito.co.il/terms" target="_blank" rel="noopener">תנאי שימוש</a><a href="https://inkognito.co.il/privacy" target="_blank" rel="noopener">מדיניות פרטיות</a><a href="https://inkognito.co.il/accessibility" target="_blank" rel="noopener">הצהרת נגישות</a><a href="mailto:contact@inkognito.co.il">יצירת קשר</a></nav><div id="ver">גרסה v73.6</div></footer>
 <script type="text/x-dc" data-dc-script data-props="{&quot;docFont&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;serif&quot;,&quot;sans&quot;],&quot;default&quot;:&quot;serif&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;עיצוב&quot;},
 &quot;railWidth&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:340,&quot;max&quot;:500,&quot;step&quot;:4,&quot;default&quot;:404,&quot;unit&quot;:&quot;px&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;עיצוב&quot;}}">
 class Component extends DCLogic {
@@ -1528,6 +1528,17 @@ class Component extends DCLogic {
     this._selKeys = e => { if(!(e.shiftKey||e.key==="Shift")||!this.sheetEl) return;
       const s=getSelection(); if(s&&s.anchorNode&&this.sheetEl.contains(s.anchorNode)) this.onSheetSelect({target:this.sheetEl}); };
     document.addEventListener("keyup", this._selKeys);
+    /* בטלפון אין mouseup אחרי בחירה בלחיצה ארוכה, ולכן «הוספת … בתור:» לא נפתחה בכלל, אף שעמוד העזרה אומר «מסמנים אותו
+       במסמך ומוסיפים אותו» (הציד של 11.10). גם שינוי בבחירה פותח אותה, כשנרגע (300ms), כשהבחירה בתוך המסמך ואינה ריקה.
+       בזמן גרירה בעכבר מחכים ל-mouseup, ובחירה שהחלונית כבר מציגה לא נפתחת שוב */
+    this._ptr = e => { if(e.pointerType==="mouse") this._mouseDown = e.type==="pointerdown"; };
+    document.addEventListener("pointerdown", this._ptr, true); document.addEventListener("pointerup", this._ptr, true);
+    this._selChange = () => { clearTimeout(this._selT); this._selT=setTimeout(()=>{
+      if(!this.sheetEl||this._mouseDown) return;
+      const s=getSelection(); if(!s||s.isCollapsed||!s.anchorNode||!this.sheetEl.contains(s.anchorNode)) return;
+      const E=this.state.E, p=this.state.popup; if(E&&p&&p.text===E.trimEdges(s.toString())) return;
+      this.onSheetSelect({target:this.sheetEl}); }, 300); };
+    document.addEventListener("selectionchange", this._selChange);
     /* H5 בביקורת השנייה: רענון, "אחורה" בדפדפן וסגירת הלשונית מחקו את המסמך, את
        ההחלטות ואת היומן בלי מילה, בזמן ש"מסמך חדש" לבדו שאל. כשיש מסמך (ולא
        הסיור): הדפדפן שואל לפני רענון או סגירה, ו"אחורה" נתפס — בטעינת המסמך
@@ -1625,6 +1636,7 @@ class Component extends DCLogic {
     }
   }
   componentWillUnmount(){ document.removeEventListener("mousedown", this._docClick); document.removeEventListener("keydown", this._keys); document.removeEventListener("keyup", this._selKeys); removeEventListener("resize", this._resize);
+    document.removeEventListener("selectionchange", this._selChange); clearTimeout(this._selT); document.removeEventListener("pointerdown", this._ptr, true); document.removeEventListener("pointerup", this._ptr, true);
     removeEventListener("beforeunload", this._unload); removeEventListener("pagehide", this._caseOnHide); clearTimeout(this._caseT); removeEventListener("popstate", this._pop); document.removeEventListener("click", this._histNow, true); document.removeEventListener("keydown", this._histNow, true);
     removeEventListener("scroll", this._follow, true); removeEventListener("resize", this._follow); removeEventListener("animationend", this._follow, true); removeEventListener("transitionend", this._follow, true);
     removeEventListener("scroll", this._scNudge, {capture:true}); removeEventListener("resize", this._scNudge); if(this._scT) clearTimeout(this._scT); removeEventListener("storage", this._storage); document.removeEventListener("focusin", this._helpFocus); removeEventListener("error", this._pageErr); removeEventListener("unhandledrejection", this._pageErr);
@@ -1634,6 +1646,11 @@ class Component extends DCLogic {
      prev.screen היה undefined תמיד, ההשוואה תמיד "השתנה", ושדה from נעלם מהיומן.
      המסך האחרון נשמר על המופע ולא נלקח מההוק. */
   componentDidUpdate(){ this.applyProps(); if(this._barSize) this._barSize();
+    /* «מי בתיק»: הכללים הולכים עם הרשימה שעל המסך, בכל שינוי בה. עד כאן הם נבנו ממנה רק ב«המשך», וכל דרך אחרת
+       קדימה — «יישובים» בכותרת, «קובץ» ואז «יישובים», «בלי שמירת מרחקים» — המשיכה עם הכללים של הריצה הקודמת (ובפעם
+       הראשונה בלי כללים בכלל): שם שהוקלד כאן נשאר גלוי, מתחת לפס ירוק. ו«קובץ» ואז «מי בתיק» הוציאו שם כזה מהרשימה,
+       כי showList חשבה שהוא הוסר במסך הבדיקה (הציד של 11.10) */
+    if(this.state.screen==="people"&&this.state.peo!==this._peoSynced){ this._peoSynced=this.state.peo; this.setState({rules:this.rulesFromPeo(this.state.peo||[])}); }
     // שכבה 5: מסך, צעד בסיור, שכבה שנפתחה, תוצאה או רשימה חדשות — בדיקה עצמית כשהמסך נרגע
     { const S=this.state, sig=[S.screen, S.tour?S.tour.i:-1, S.inline, S.tip, S.res, S.rules, S.allow, S.E];
       if(!this._scSig||sig.some((x,i)=>x!==this._scSig[i])){ this._scSig=sig; this.scheduleSelfCheck(); } }
@@ -2084,6 +2101,13 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     this.setState({sugAsk:false});
     this.toPlaces(this.rulesFromPeo(this.state.peo));
   }
+  // «המשך» של «מי בתיק», וגם «יישובים» בכותרת כשעומדים בו: השם שהוקלד ולא נוסף, השאלה על ההצעות הפתוחות, ואז הרשימה
+  peoForward(){
+    const S=this.state; if(S.scanning) return;
+    this.peoAdd(S.peoIn); this.setState({peoIn:""});
+    if(this.openSugs().length&&!S.sugAsk){ this.log.add("sug-prompt",{open:this.openSugs().length}); this.setState({sugAsk:true}); return; }
+    this.peoGo();
+  }
   profileRules(){ const p=this.state.profile; return (p&&Array.isArray(p.rules)?p.rules:[]).filter(r=>r&&r.value&&!this.wasRemoved(r.value)); }
   /* הרשימה הופכת לכללים. עד כאן כל כלל נולד ריק (replacement:""), גם כשהתיק
      כבר ידע מה הכינוי של האדם הזה: "יוני כהן" שהוקלד במסמך הקודם נזרק, והוא קיבל
@@ -2119,7 +2143,10 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     const kept=[...(S.peoKept||[])], list=[];
     const decided=S.res&&rules.length; // הכללים קיימים רק אחרי שהרשימה כבר עברה למסך הבדיקה
     for(const p of S.peo||[]){
-      if(!decided||has(p.value)) list.push(p);
+      /* «זה אותו אחד כמו…» במסך הבדיקה נרשם על הכלל בלבד, והרשימה חזרה בלעדיו: «מי בתיק» ואז «המשך» נתנו לאותו אדם
+         כינוי שני (הציד של 11.10). השורה מקבלת את המיזוג שהוחלט שם, ורואים אותו («= …») */
+      if(decided&&has(p.value)){ const r=rules.find(x=>x&&n(x.value)===n(p.value)); list.push(r&&(r.sameAs||undefined)!==(p.sameAs||undefined)?{...p, sameAs:r.sameAs||undefined}:p); }
+      else if(!decided) list.push(p);
       else if(!kept.some(k=>n(k.value)===n(p.value))) kept.push({...p});
     }
     if(decided) for(const r of rules) if((r.kind==="NAME"||r.kind==="ORG")&&r.value&&!list.some(p=>n(p.value)===n(r.value)))
@@ -2315,6 +2342,9 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
         if(to)used.add(to);
         extra.push({name:r.value, ambiguous:false, to, on:true, listed:true, typed:true});
       }
+      // אין יישוב להחליט עליו ואין יישוב שהוצא: המסך היה רק «לא נמצאו יישובים במסמך.» וכפתור אחד — עוד לחיצה בכל
+      // מכתב קצר. ממשיכים ישר לבדיקה, כמו כשהחלפת המקומות כבויה (הציד של 11.10)
+      if(!geo&&!extra.length&&!excluded.length){ this.run(rules); return; }
       this.setState({screen:"places", geo, geoNames:found, geoExcluded:excluded,
         geoExtra:extra, geoEdits:this.caseEdits(geo, have), geoV:0});
     }catch(e){ this.run(rules); }
@@ -3094,9 +3124,26 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
   mkRule({value, kind, replacement, auto, g, ...rest}){
     return {value:String(value), kind:kind||"NAME", replacement:String(replacement||"").trim(), auto:!!auto, g:g||null, ...rest};
   }
+  /* הסוג של כל ערך במפת התיק (שם, יישוב, גוף, תאריך…), לפי הסוג שהמנוע מצא או לפי הכלל. בלעדיו תיק שנפתח הפך כל זוג
+     במפה לאדם: «12.3.2026» → «16.1.2027» חזר ככלל של שם, והיישוב והגוף שהמנוע מצא — גם (הציד של 11.10) */
+  currentKinds(){
+    const k=Object.create(null), RES=this.state.res, C=(this.state.E&&this.state.E.CANON)||{};
+    if(RES) for(const r of RES.applied){ const v=r.base||r.value; if(v&&r.type&&!(v in k)) k[v]=(Object.prototype.hasOwnProperty.call(C,r.type)?C[r.type]:[r.type])[0]; }
+    for(const r of this.state.rules) if(r&&r.value&&r.kind) k[r.value]=r.kind;
+    return k;
+  }
+  // הסוג של ערך שהתיק מחזיר: מה שנשמר איתו; בתיק שנשמר לפני 11.10 — תאריך לפי צורתו, יישוב לפי הרשימה, ומה שאחרי כמו קודם
+  caseKind(value, replacement, kinds){
+    const E=this.state.E, K=(E&&E.KINDLBL)||{}, own=(o,k)=>!!o&&Object.prototype.hasOwnProperty.call(o,k);
+    const t=own(kinds,value)&&typeof kinds[value]==="string"?kinds[value]:"";
+    if(t) return t==="DATE"?"DATE":(own(K,t)?t:"OTHER");
+    if(E&&E.parseDate&&E.parseDate(value)) return "DATE";
+    if(E&&E.PLACE_BY&&own(E.PLACE_BY,E.norm(String(value)).trim())) return "PLACE";
+    return /^\[|^[\d\s+()-]+$/.test(replacement)?"OTHER":"NAME";
+  }
   profileObj(){
     return {v:1, created:(this.state.profile&&this.state.profile.created)||new Date().toISOString(), updated:new Date().toISOString(),
-      name:this.state.caseName||"", mode:this.state.mode, rules:this.state.rules, allow:this.state.allow, map:this.currentMap(),
+      name:this.state.caseName||"", mode:this.state.mode, rules:this.state.rules, allow:this.state.allow, map:this.currentMap(), kinds:this.currentKinds(),
       removed:this.removedNow(), sent:this.sentAll(),
       // הבחירה על מספרים ועל תאריכים היא של התיק, לא של הלשונית (Q1 בגרסה 5)
       styles:{num:this.state.o.numStyle||"blank", date:this.state.o.dateStyle||"name"}};
@@ -3133,7 +3180,7 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     const opt=(x,f)=>x===undefined||x===null||f(x), strs=x=>Array.isArray(x)&&x.every(str);
     return obj(p)&&p.v===1&&(named?str(p.name)&&p.name!=="":opt(p.name,str))
       &&Array.isArray(p.rules)&&p.rules.every(r=>obj(r)&&str(r.value)&&["replacement","kind","style","sameAs"].every(k=>opt(r[k],str)))
-      &&opt(p.map,m=>obj(m)&&Object.values(m).every(str))&&opt(p.allow,strs)&&opt(p.removed,strs)
+      &&opt(p.map,m=>obj(m)&&Object.values(m).every(str))&&opt(p.kinds,m=>obj(m)&&Object.values(m).every(str))&&opt(p.allow,strs)&&opt(p.removed,strs)
       &&opt(p.sent,s=>obj(s)&&Object.values(s).every(strs))&&opt(p.styles,s=>obj(s)&&opt(s.num,str)&&opt(s.date,str))
       &&["mode","created","updated"].every(k=>opt(p[k],str));
   }
@@ -3172,10 +3219,11 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     for(const r of prev.rules||[]) if(r&&r.value&&!curRules.has(n(r.value))&&!curAllow.has(n(r.value))&&!gone.has(n(r.value))) rules.push(r);
     const allow=(cur.allow||[]).slice();
     for(const a of prev.allow||[]) if(a&&!curRules.has(n(a))&&!curAllow.has(n(a))) allow.push(a);
-    const map={...(prev.map||{})};
+    const map={...(prev.map||{})}, kinds={...(prev.kinds||{})};
     for(const k of Object.keys(map)) if(curAllow.has(n(k))||gone.has(n(k))) delete map[k];
-    Object.assign(map, cur.map||{});
-    return {...cur, created:prev.created||cur.created, rules, allow, map, removed};
+    for(const k of Object.keys(kinds)) if(!(k in map)&&!(k in (cur.map||{}))) delete kinds[k];
+    Object.assign(map, cur.map||{}); Object.assign(kinds, cur.kinds||{});
+    return {...cur, created:prev.created||cur.created, rules, allow, map, kinds, removed};
   }
   /* מחיקת תיק מוחקת את השמות (ביקורת M1): כל פרופיל נכתב גם ל"פרופיל אחרון", ומחיקת התיק ניקתה רק
      את רשימת התיקים — מפת השמות האמיתיים נשארה בדפדפן בטקסט גלוי. ואם התיק שנמחק הוא זה שפתוח,
@@ -3695,8 +3743,12 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
       for(const [value, replacement] of Object.entries(prof.map||{})){
         if(!value||!replacement||goneP.has(nn(value))) continue;
         const ex=rules.find(r=>r.value===value);
-        if(ex){ if(!ex.replacement) ex.replacement=replacement; }
-        else rules.push(this.mkRule({value, kind:/^\[|^[\d\s+()-]+$/.test(replacement)?"OTHER":"NAME", replacement, auto:true}));
+        if(ex){ if(!ex.replacement) ex.replacement=replacement; continue; }
+        const kind=this.caseKind(value, replacement, prof.kinds);
+        // תאריך זז לפי המסמך שהוא בו (הבחירה של 15.9): התאריך שהוזז במסמך קודם של התיק אינו כלל כאן, וגם לא אדם.
+        // תאריך שקיבל תווית («[תאריך א׳]») נשאר כלל: אותו תאריך מקבל את אותה תווית בכל מסמך בתיק, והתווית לא תינתן לתאריך אחר
+        if(kind==="DATE"&&!/^\[/.test(replacement)) continue;
+        rules.push(this.mkRule({value, kind:kind==="DATE"?"OTHER":kind, replacement, auto:true}));
       }
       const own=open?this.state.rules||[]:[], ownAllow=open?this.state.allow||[]:[];
       const ownR=new Set(own.map(r=>nn(r&&r.value))), ownA=new Set(ownAllow.map(nn));
@@ -3984,7 +4036,8 @@ const KIND_NAME={NAME:"אדם", ORG:"גוף", PLACE:"מקום"};
       step2Off:!S.buf, step3Off:!S.buf,
       goStep1:()=>this.setState({screen:"entry", pending:!!S.buf, err:""}),
       goStep2:()=>{ if(this.unscanned()) this.start(); else this.showList(); },
-      goStep3:()=>{ if(!S.buf) return; if(this.unscanned()) this.start(); else this.toPlaces(S.rules); },
+      // מ«מי בתיק» הצעד «יישובים» הוא «המשך» (peoForward); ממסך אחר הכללים כבר הולכים עם הרשימה (componentDidUpdate)
+      goStep3:()=>{ if(!S.buf) return; if(this.unscanned()) this.start(); else if(S.screen==="people") this.peoForward(); else this.toPlaces(S.rules); },
       showBack:S.screen!=="entry",
       backLabel:back.label, onBack:this.goBack,
       pasteText:S.pasteText||"", hasPaste:(S.pasteText||"").trim().length>0,
@@ -4091,9 +4144,7 @@ const KIND_NAME={NAME:"אדם", ORG:"גוף", PLACE:"מקום"};
          כולם" — ולחיצה שנייה על "להמשיך בלעדיהם" היא החלטה. */
       sugPrompt:!!S.sugAsk&&this.openSugs().length>0,
       sugPromptText:(n=>n===1?"שם אחד שנמצא עדיין בלי החלטה — הוא יגיע ל-AI כמו שהוא.":n+" שמות שנמצאו עדיין בלי החלטה — הם יגיעו ל-AI כמו שהם.")(this.openSugs().length),
-      onPeoGo:()=>{ if(S.scanning) return; this.peoAdd(S.peoIn); this.setState({peoIn:""});
-        if(this.openSugs().length&&!S.sugAsk){ this.log.add("sug-prompt",{open:this.openSugs().length}); this.setState({sugAsk:true}); return; }
-        this.peoGo(); },
+      onPeoGo:()=>this.peoForward(),
       onPeoGoAnyway:()=>{ this.log.add("sug-prompt",{act:"skip", open:this.openSugs().length}); this.peoGo(); },
       onPeoAddAll:()=>this.peoAddAll(),
       onPeoAddAllGo:()=>{ this.log.add("sug-prompt",{act:"add-all", open:this.openSugs().length}); this.peoAddAll(); setTimeout(()=>this.peoGo(), 0); },
@@ -4193,7 +4244,9 @@ const KIND_NAME={NAME:"אדם", ORG:"גוף", PLACE:"מקום"};
       // השגיאה של המסך הזה מוצגת ליד השדה, לא בראש העמוד מעל לכותרת
       rvErr:S.screen==="reverse"?S.err:"", errTop:(S.screen==="reverse"||(S.screen==="work"&&S.res))?"":S.err,
       rvIn:S.rvIn, rvOut:S.rvOut, rvCopyLabel:S.rvCopyLabel,
-      onRvIn:e=>this.setState({rvIn:e.target.value, err:""}),
+      // תשובה חדשה בתיבה: התוצאה של הקודמת יורדת, ו«החזרת שמות» חוזר להיות הפעולה. עד כאן היא נשארה מתחת לתשובה החדשה,
+      // עם הכותרת שלה, וכפתור ההעתקה המלא העתיק אותה (הציד של 11.10)
+      onRvIn:e=>this.setState({rvIn:e.target.value, err:"", ...(S.rvOut?{rvOut:"", rvLeft:[], rvCount:0}:{})}),
       onRvGo:this.rvGo,
       // אחרי החזרה, ההעתקה היא הפעולה הראשית; לפני — ההחזרה (UX #19). ריק — אין מה להחזיר (UX #20).
       rvEmpty:!(S.rvIn||"").trim(),

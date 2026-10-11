@@ -36,7 +36,7 @@ async function modelOff(page) {
 
 async function toPlacesOrWork(page) {
   const run = page.getByRole("button", { name: /החלת הקבוצה|המשך לבדיקה|המשך לעיבוד/ }).first();
-  await expect(run).toBeVisible({ timeout: 15000 });
+  await expect(run.or(page.locator("[data-bar]")).first()).toBeVisible({ timeout: 15000 });
   return run;
 }
 
@@ -146,7 +146,7 @@ for (const size of SIZES) {
       await expect(H.goButton(page)).toBeVisible({ timeout: 10000 });
       await page.locator("[data-case-field] input").fill("פרידמן נ׳ כהן");
       await H.goOn(page);
-      await (await toPlacesOrWork(page)).click();
+      await H.throughPlaces(page, await toPlacesOrWork(page));
       await expect(page.locator("[data-bar]")).toBeVisible({ timeout: 20000 });
       await expect.poll(() => page.evaluate(() => Object.keys(JSON.parse(localStorage.getItem("redact-cases") || "{}")))).toContain("פרידמן נ׳ כהן");
       const firstFake = await page.locator('[data-mark][data-val="רחל פרידמן"]').first().textContent();
@@ -164,7 +164,7 @@ for (const size of SIZES) {
       await expect(H.goButton(page)).toBeVisible({ timeout: 10000 });
       await disturb(page, "second, people");
       await H.goOn(page);
-      await (await toPlacesOrWork(page)).click();
+      await H.throughPlaces(page, await toPlacesOrWork(page));
       await expect(page.locator("[data-bar]")).toBeVisible({ timeout: 20000 });
       await disturb(page, "second, work");
       // the case keeps each person's pseudonym across documents
