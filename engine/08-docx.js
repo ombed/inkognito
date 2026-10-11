@@ -403,9 +403,10 @@ async function redactDocx(buf,subs,allow,opt){
     const hits=eng.detect(blk.text);if(!hits.length)continue;
     const reps=[];
     for(const h of hits){
-      // ערך שנמצא בתוך כתובת מקודדת נרשם מפוענח, כמו שהיא קוראת אותו
+      // ערך שנמצא בתוך כתובת מקודדת נרשם מפוענח, כמו שהיא קוראת אותו. type: הסוג נשמר עם התיק (currentKinds
+      // בדף), כדי שתאריך, יישוב או גוף מתיק שנפתח לא יחזרו כאדם (הציד של 11.10)
       const rec={value:h.dtext||h.text,label:h.label,part:partName(blk.part),why:h.why,
-        ctx:ctxHTML(blk.text,h.s,h.e),review:!!h.review,src:h.src,base:h.base||undefined};
+        ctx:ctxHTML(blk.text,h.s,h.e),review:!!h.review,src:h.src,base:h.base||undefined,type:h.type};
       // הכינוי הבסיסי נרשם לפי הערך שברשימה, לא לפי הטקסט שנתפס: "לנרות מאירות"
       // אינו מפתח, ובלעדיו ההחזרה קיבלה "לגפן" ככינוי ואיבדה את "בגפן".
       // בתוך כתובת הכינוי נכתב מקודד, והכתובת נשארת כתובת
@@ -469,7 +470,6 @@ async function redactDocx(buf,subs,allow,opt){
     if(!rp||rp==="███")return;
     if(label&&!label.startsWith("שם"))return;
     const vw=norm(value).trim().split(/\s+/), rw=norm(rp).trim().split(/\s+/);
-    if(vw.length<2)return;
     const real=opt.mode==="real";
     const add=(p,to)=>{
       // שתי אותיות ("כץ", "נץ") הן שם משפחה של ממש; הן נכנסות למעבר, ובגלל wordy
@@ -478,6 +478,14 @@ async function redactDocx(buf,subs,allow,opt){
       if(p in sweep||!to||norm(to).includes(p))return;
       const g=partOf.get(p)||{to:new Set(),of:new Set(),wordy:wordy(p)};
       g.to.add(to); g.of.add(value); partOf.set(p,g)};
+    /* שם משפחה כפול במקף ("לוי-אבקסיס", גם במקף עברי): כל חצי לבד הוא אותו אדם — «לדברי אבקסיס», «גם לוי
+       אמרה» — ושניהם דלפו (הציד של 11.10). כל חצי מקבל את החצי שלו מהבדוי כשגם הוא כפול, ואחרת את כולו */
+    const dbl=(w,rs)=>{
+      const hv=w.split("-").filter(Boolean); if(hv.length<2)return;
+      const rh=real?String(rs).split("-").filter(Boolean):[];
+      hv.forEach((h,i)=>add(h,real?(rh.length===hv.length?rh[i]:rs):rp));
+    };
+    if(vw.length<2){ dbl(vw[0],real?rw[rw.length-1]:rp); return; }
     // השם הפרטי לבד: במצב real (שם בדוי) הוא מקבל את השם הפרטי של הבדוי, ובמצבים
     // האחרים (תווית, השחרה) את התחליף כולו, כי אין בו שם פרטי נפרד
     add(vw[0],real?rw[0]:rp);
@@ -485,6 +493,7 @@ async function redactDocx(buf,subs,allow,opt){
     const sur=vw.slice(1).join(" "), rsur=real?rw.slice(1).join(" "):rp;
     add(sur,rsur);
     if(vw.length>2)add(vw[vw.length-1],real?rw[rw.length-1]:rp);
+    dbl(vw[vw.length-1],real?rw[rw.length-1]:rp);
   };
   // החלקים נגזרים מהערך שברשימה, לא מהצורה שנתפסה: "למרים לוין" תרם "למרים" כחלק
   for(const r of applied) regPart(r.base||r.value,r.baseRep||r.rep,r.label);
@@ -503,14 +512,16 @@ async function redactDocx(buf,subs,allow,opt){
      שמכיל שם משפחה אמיתי של מישהו אחר */
   const pseudoWritten=[...new Set(applied.map(r=>norm(String(r.rep||"")).trim()).filter(w=>w.length>=2))];
   for(const blk of blocks2){
-    const n=norm(blk.text),reps=[];
+    // n0: בלי התווים שהקורא לא רואה (ניקוד, מקף רך, סימני כיוון). הסינון המהיר רץ עליו: על n, חלק של שם
+    // שבתוכו תו כזה נפסל לפני שהביטוי (flex, שמדלג עליהם) הספיק לראות אותו, והחלק דלף (הציד של 11.10)
+    const n=norm(blk.text),n0=n.replace(/\u0000/g,""),reps=[];
     const zones=[];
     for(const rx0 of eng.allow){rx0.lastIndex=0;let z;
       while((z=rx0.exec(n)))zones.push([z.index,z.index+z[0].length])}
     for(const w of pseudoWritten){let i=n.indexOf(w);
       while(i>=0){zones.push([i,i+w.length]);i=n.indexOf(w,i+1)}}
     for(const [o,inf] of Object.entries(sweep)){
-      if(!n.includes(o))continue;
+      if(!n0.includes(o))continue;
       const nw=inf.rep;
       // חלק של שם מופיע בעברית עם אות שימוש ("לגולדשמיט"), ולכן
       // הסריקה חייבת לקלוט אותה ולהחזיר אותה לתחליף.
@@ -523,7 +534,7 @@ async function redactDocx(buf,subs,allow,opt){
         if(zones.some(([a,b])=>a<=s&&e<=b))continue;
         const out=inf.of?addPre(m[1]||"",nw):nw;
         reps.push([s,e,out]);
-        applied.push({value:blk.text.slice(s,e),
+        applied.push({value:blk.text.slice(s,e),type:inf.place?"PLACE":"NAME",
           label:inf.of?(inf.place?"מקום (חלק)":"שם (חלק)"):"הופעה נוספת",part:partName(blk.part),
           why:inf.of?(inf.place
                 ?(inf.wordy?`שם הרחוב מתוך «${inf.of}» — אבל גם מילה. הוחלף רק כשעומד לבד; ודאו שזה המקום`

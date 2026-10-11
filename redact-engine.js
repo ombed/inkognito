@@ -87,8 +87,21 @@ const DROP=["word/comments.xml","word/commentsExtended.xml","word/commentsIds.xm
 const NM={"\u05f3":"'","\u05f4":'"',"\u2018":"'","\u2019":"'","\u201c":'"',"\u201d":'"',
   "\u05be":"-","\u2010":"-","\u2011":"-","\u2012":"-","\u2013":"-","\u2014":"-",
   "\u00a0":" ","\u2007":" ","\u202f":" "};
-const ZAP=/[\u200e\u200f\u200b\u200c\u200d\u0591-\u05c7]/;
+/* \u05ea\u05d5\u05d5\u05d9\u05dd \u05e9\u05d4\u05e7\u05d5\u05e8\u05d0 \u05dc\u05d0 \u05e8\u05d5\u05d0\u05d4 (\u05d4\u05e6\u05d9\u05d3 \u05e9\u05dc 11.10): \u05de\u05e7\u05e3 \u05e8\u05da, \u05de\u05e6\u05d8\u05e8\u05e3 \u05de\u05d9\u05dc\u05d9\u05dd, BOM, \u05d5\u05e1\u05d9\u05de\u05e0\u05d9 \u05db\u05d9\u05d5\u05d5\u05df \u2014 \u05d1\u05d9\u05d3\u05d5\u05d3 (LRI/RLI/FSI/PDI),
+   \u05d4\u05d8\u05d1\u05e2\u05d4 \u05d5\u05d4\u05d9\u05e4\u05d5\u05da (LRE\u2026RLO), ALM. \u05d9\u05d9\u05e6\u05d5\u05d0 \u05e9\u05dc \u05d5\u05d5\u05d8\u05e1\u05d0\u05e4 \u05d5\u05d8\u05e7\u05e1\u05d8 \u05e9\u05d4\u05d5\u05e2\u05ea\u05e7 \u05de\u05d0\u05e4\u05dc\u05d9\u05e7\u05e6\u05d9\u05d5\u05ea \u05e2\u05d5\u05d8\u05e4\u05d9\u05dd \u05d1\u05d4\u05dd \u05e9\u05de\u05d5\u05ea \u05d5\u05de\u05e1\u05e4\u05e8\u05d9\u05dd, \u05d5-Word \u05de\u05db\u05e0\u05d9\u05e1
+   \u05de\u05e7\u05e3 \u05e8\u05da \u05d1\u05d0\u05de\u05e6\u05e2 \u05de\u05d9\u05dc\u05d4. \u05e2\u05d3 \u05db\u05d0\u05df \u05e8\u05e7 LRM, RLM \u05d5-ZWSP/ZWNJ/ZWJ \u05d4\u05d9\u05d5 \u05db\u05d0\u05df: \u05e9\u05dd \u05d1\u05e8\u05e9\u05d9\u05de\u05d4 \u05e9\u05d1\u05ea\u05d5\u05db\u05d5 \u05d0\u05d5 \u05e1\u05d1\u05d9\u05d1 \u05de\u05d9\u05dc\u05d5\u05ea\u05d9\u05d5 \u05d0\u05d7\u05d3 \u05de\u05d4\u05d0\u05d7\u05e8\u05d9\u05dd \u05dc\u05d0
+   \u05e0\u05de\u05e6\u05d0, \u05d5\u05de\u05e1\u05e4\u05e8 \u05d8\u05dc\u05e4\u05d5\u05df \u05d0\u05d5 \u05ea"\u05d6 \u05e9\u05d1\u05ea\u05d5\u05db\u05dd \u05ea\u05d5 \u05db\u05d6\u05d4 \u05dc\u05d0 \u05e0\u05de\u05e6\u05d0\u05d5 \u05d1\u05db\u05dc\u05dc \u2014 \u05d3\u05dc\u05d9\u05e4\u05d4 \u05de\u05ea\u05d7\u05ea \u05dc\u05e4\u05e1 \u05d9\u05e8\u05d5\u05e7. detect \u05e8\u05e5 \u05e2\u05dc \u05d4\u05d8\u05e7\u05e1\u05d8 \u05d1\u05dc\u05e2\u05d3\u05d9\u05d4\u05dd (squeeze).
+   \u05d4\u05de\u05e7\u05e3 \u05d4\u05e2\u05d1\u05e8\u05d9 (U+05BE) \u05d9\u05e6\u05d0 \u05de\u05d8\u05d5\u05d5\u05d7 \u05d4\u05e0\u05d9\u05e7\u05d5\u05d3: \u05d4\u05d5\u05d0 \u05de\u05e7\u05e3, NM \u05de\u05de\u05d9\u05e8 \u05d0\u05d5\u05ea\u05d5 \u05dc-"-", \u05d5"\u05dc\u05d5\u05d9\u05be\u05d0\u05d1\u05e7\u05e1\u05d9\u05e1" \u05d4\u05d5\u05d0 "\u05dc\u05d5\u05d9-\u05d0\u05d1\u05e7\u05e1\u05d9\u05e1". */
+const INVIS=/[\u00ad\u034f\u061c\u180e\u200b-\u200f\u202a-\u202e\u2060-\u2064\u2066-\u206f\ufeff]/;
+const ZAP=/[\u00ad\u034f\u061c\u180e\u200b-\u200f\u202a-\u202e\u2060-\u2064\u2066-\u206f\ufeff\u0591-\u05bd\u05bf-\u05c7]/;
 function norm(t){let o="";for(const c of t) o+= ZAP.test(c)?"\u0000":(NM[c]||c);return o}
+// \u05d4\u05d8\u05e7\u05e1\u05d8 \u05d1\u05dc\u05d9 \u05d4\u05ea\u05d5\u05d5\u05d9\u05dd \u05d4\u05d1\u05dc\u05ea\u05d9 \u05e0\u05e8\u05d0\u05d9\u05dd, \u05d5\u05dc\u05db\u05dc \u05ea\u05d5 \u05d1\u05d5 \u05d4\u05de\u05d9\u05e7\u05d5\u05dd \u05e9\u05dc\u05d5 \u05d1\u05d8\u05e7\u05e1\u05d8 \u05d4\u05de\u05e7\u05d5\u05e8\u05d9 (pos[i]); null \u05db\u05e9\u05d0\u05d9\u05df \u05de\u05d4 \u05dc\u05d4\u05e1\u05d9\u05e8
+function squeeze(t){
+  if(!INVIS.test(t)) return null;
+  let o=""; const pos=[];
+  for(let i=0;i<t.length;i++){ if(INVIS.test(t[i]))continue; o+=t[i]; pos.push(i); }
+  return {t:o,pos};
+}
 /* גבול מילה. גרש וגרשיים הם חלק ממילה רק כשהם צמודים לאות משני צדדיהם (עו"ד, ג'ורג') או
    אחרי אות בסוף מילה (ברקוביץ'). מירכאה שפותחת מילה אחרי רווח היא פיסוק: עד כאן ה-" שלפני
    "אלונים" נחשבה חלק מהמילה, ושם במירכאות לא נמצא ולא הוחלף בכלל — דליפה שקטה. אות שימוש אחת
@@ -284,11 +297,19 @@ function gender(v,hint){
 function hash32(s){let h=0x811c9dc5;
   for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,0x01000193)>>>0}
   return h>>>0}
+/* שם בדוי שהוא גם מילה בטקסט רגיל — לבד, או אחרי אות שימוש — לא נבחר (הציד של 11.10). ה-AI כותב את המילה במובן
+   הרגיל שלה, וההחזרה שמה שם את השם האמיתי של הלקוח: «השופטת דנה בבקשה» (דנה, פועל), «מליאת הכנסת», «שרותי בריאות»,
+   «לעשות את מירב המאמצים». הרשימה נמדדה בקורפוס חדשות עברי ציבורי (49,700 משפטים, רק ספירות): שם שמופיע כמילה מחוץ
+   לכל ישות לפחות 5 פעמים, או אחרי אות שימוש לפחות 10, ואינו שם פי כמה יותר משהוא מילה; ונבדקה בעין. שם משפחה כפול
+   שאחד מחלקיו מילה («בן-דוד» הוא בן דוד) לא נבחר גם הוא */
+const WORDISH=new Set(["יהודית","מיכל","ממן","חנה","מזרחי","איתי","פרץ","דנה","מרים","ליאת","מלמד","מירב","עמי","רותי"]);
+const poolWordy=v=>WORDISH.has(v)||WORDLIKE.has(v)||STOP.has(v)||(typeof COMMON!=="undefined"&&COMMON.has(v))||(typeof VRB!=="undefined"&&VRB.has(v));
 function pickFrom(arr,seed,used,forbidden){
   const n=arr.length;
   for(let k=0;k<n;k++){
     const v=arr[(seed+k*7+((seed>>>8)%3))%n];
     if(used.has(v)||forbidden.has(v)||WORDLIKE.has(v))continue;
+    if(WORDISH.has(v)||(/-/.test(v)&&v.split("-").some(poolWordy)))continue;
     if(typeof PLACE_BY!=="undefined"&&PLACE_BY[v])continue;
     if(STOP.has(v))continue;
     return v}
@@ -2054,8 +2075,17 @@ class Engine{
     for(const s of subs) if(s.replacement) this.map[ckey(s.kind,s.value)]??=s.replacement;
   }
   blocked(s,e,zones){return zones.some(([a,b])=>a<=s&&e<=b)}
+  // תווים בלתי נראים (squeeze): הזיהוי רץ על מה שהקורא רואה, והמיקומים חוזרים לטקסט המקורי. ההחלפה מכסה את
+  // התווים שבתוך הערך; סימני כיוון שלפניו ואחריו נשארים מחוצה לה, כדי שזוגות הבידוד יישארו שלמים
   // addr: הטקסט הוא כתובת מפוענחת. שם בה מחובר ב-_ או ב-+ ("דנה_שגיא.pdf", "?q=דנה+שגיא"), ורק כללי הכתובת רצים
   detect(text,addr){
+    const q=squeeze(text);
+    if(!q) return this.detectSeen(text,addr);
+    const hits=this.detectSeen(q.t,addr);
+    for(const h of hits){ h.s=q.pos[h.s]; h.e=q.pos[h.e-1]+1; h.text=text.slice(h.s,h.e); }
+    return hits;
+  }
+  detectSeen(text,addr){
     const n=norm(text),zones=[];
     const AGE=ageZones(n);
     // רשימת ההיתר תופסת גם צורות עם אות שימוש, ו-ש היא אות שימוש: "אל תחליפו" על
@@ -2149,7 +2179,10 @@ class Engine{
     let base=h.rep||this.map[k];
     if(!base){
       const [fam,lab]=CANON[h.type]||[h.type,h.label];
-      const n=(this.cnt[fam]||0)+1;this.cnt[fam]=n;
+      // תווית שכבר שייכת למישהו — כלל עם תחליף, למשל מהמסמך הקודם בתיק — אינה ניתנת שוב: «פלוני א׳ הגיש תגובה
+      // לבקשה של פלוני א׳», ו«[ת"ז א׳]» לשני מספרים, וההחזרה ויתרה על שניהם (הציד של 11.10). הספירה מדלגת עליה
+      const lbl=m=>fam==="NAME"?"פלוני "+hord(m):`[${lab} ${hord(m)}]`;
+      let n=this.cnt[fam]||0; do n++; while(this.used.has(norm(lbl(n)).trim())); this.cnt[fam]=n;
       const real=style==="name";
       if(fam==="NAME"&&real)
         base=fakeName(canonical,this.gmap[canonical]||h.g,this.used,this.forbidden,this.firstish);
@@ -2603,9 +2636,10 @@ async function redactDocx(buf,subs,allow,opt){
     const hits=eng.detect(blk.text);if(!hits.length)continue;
     const reps=[];
     for(const h of hits){
-      // ערך שנמצא בתוך כתובת מקודדת נרשם מפוענח, כמו שהיא קוראת אותו
+      // ערך שנמצא בתוך כתובת מקודדת נרשם מפוענח, כמו שהיא קוראת אותו. type: הסוג נשמר עם התיק (currentKinds
+      // בדף), כדי שתאריך, יישוב או גוף מתיק שנפתח לא יחזרו כאדם (הציד של 11.10)
       const rec={value:h.dtext||h.text,label:h.label,part:partName(blk.part),why:h.why,
-        ctx:ctxHTML(blk.text,h.s,h.e),review:!!h.review,src:h.src,base:h.base||undefined};
+        ctx:ctxHTML(blk.text,h.s,h.e),review:!!h.review,src:h.src,base:h.base||undefined,type:h.type};
       // הכינוי הבסיסי נרשם לפי הערך שברשימה, לא לפי הטקסט שנתפס: "לנרות מאירות"
       // אינו מפתח, ובלעדיו ההחזרה קיבלה "לגפן" ככינוי ואיבדה את "בגפן".
       // בתוך כתובת הכינוי נכתב מקודד, והכתובת נשארת כתובת
@@ -2669,7 +2703,6 @@ async function redactDocx(buf,subs,allow,opt){
     if(!rp||rp==="███")return;
     if(label&&!label.startsWith("שם"))return;
     const vw=norm(value).trim().split(/\s+/), rw=norm(rp).trim().split(/\s+/);
-    if(vw.length<2)return;
     const real=opt.mode==="real";
     const add=(p,to)=>{
       // שתי אותיות ("כץ", "נץ") הן שם משפחה של ממש; הן נכנסות למעבר, ובגלל wordy
@@ -2678,6 +2711,14 @@ async function redactDocx(buf,subs,allow,opt){
       if(p in sweep||!to||norm(to).includes(p))return;
       const g=partOf.get(p)||{to:new Set(),of:new Set(),wordy:wordy(p)};
       g.to.add(to); g.of.add(value); partOf.set(p,g)};
+    /* שם משפחה כפול במקף ("לוי-אבקסיס", גם במקף עברי): כל חצי לבד הוא אותו אדם — «לדברי אבקסיס», «גם לוי
+       אמרה» — ושניהם דלפו (הציד של 11.10). כל חצי מקבל את החצי שלו מהבדוי כשגם הוא כפול, ואחרת את כולו */
+    const dbl=(w,rs)=>{
+      const hv=w.split("-").filter(Boolean); if(hv.length<2)return;
+      const rh=real?String(rs).split("-").filter(Boolean):[];
+      hv.forEach((h,i)=>add(h,real?(rh.length===hv.length?rh[i]:rs):rp));
+    };
+    if(vw.length<2){ dbl(vw[0],real?rw[rw.length-1]:rp); return; }
     // השם הפרטי לבד: במצב real (שם בדוי) הוא מקבל את השם הפרטי של הבדוי, ובמצבים
     // האחרים (תווית, השחרה) את התחליף כולו, כי אין בו שם פרטי נפרד
     add(vw[0],real?rw[0]:rp);
@@ -2685,6 +2726,7 @@ async function redactDocx(buf,subs,allow,opt){
     const sur=vw.slice(1).join(" "), rsur=real?rw.slice(1).join(" "):rp;
     add(sur,rsur);
     if(vw.length>2)add(vw[vw.length-1],real?rw[rw.length-1]:rp);
+    dbl(vw[vw.length-1],real?rw[rw.length-1]:rp);
   };
   // החלקים נגזרים מהערך שברשימה, לא מהצורה שנתפסה: "למרים לוין" תרם "למרים" כחלק
   for(const r of applied) regPart(r.base||r.value,r.baseRep||r.rep,r.label);
@@ -2703,14 +2745,16 @@ async function redactDocx(buf,subs,allow,opt){
      שמכיל שם משפחה אמיתי של מישהו אחר */
   const pseudoWritten=[...new Set(applied.map(r=>norm(String(r.rep||"")).trim()).filter(w=>w.length>=2))];
   for(const blk of blocks2){
-    const n=norm(blk.text),reps=[];
+    // n0: בלי התווים שהקורא לא רואה (ניקוד, מקף רך, סימני כיוון). הסינון המהיר רץ עליו: על n, חלק של שם
+    // שבתוכו תו כזה נפסל לפני שהביטוי (flex, שמדלג עליהם) הספיק לראות אותו, והחלק דלף (הציד של 11.10)
+    const n=norm(blk.text),n0=n.replace(/\u0000/g,""),reps=[];
     const zones=[];
     for(const rx0 of eng.allow){rx0.lastIndex=0;let z;
       while((z=rx0.exec(n)))zones.push([z.index,z.index+z[0].length])}
     for(const w of pseudoWritten){let i=n.indexOf(w);
       while(i>=0){zones.push([i,i+w.length]);i=n.indexOf(w,i+1)}}
     for(const [o,inf] of Object.entries(sweep)){
-      if(!n.includes(o))continue;
+      if(!n0.includes(o))continue;
       const nw=inf.rep;
       // חלק של שם מופיע בעברית עם אות שימוש ("לגולדשמיט"), ולכן
       // הסריקה חייבת לקלוט אותה ולהחזיר אותה לתחליף.
@@ -2723,7 +2767,7 @@ async function redactDocx(buf,subs,allow,opt){
         if(zones.some(([a,b])=>a<=s&&e<=b))continue;
         const out=inf.of?addPre(m[1]||"",nw):nw;
         reps.push([s,e,out]);
-        applied.push({value:blk.text.slice(s,e),
+        applied.push({value:blk.text.slice(s,e),type:inf.place?"PLACE":"NAME",
           label:inf.of?(inf.place?"מקום (חלק)":"שם (חלק)"):"הופעה נוספת",part:partName(blk.part),
           why:inf.of?(inf.place
                 ?(inf.wordy?`שם הרחוב מתוך «${inf.of}» — אבל גם מילה. הוחלף רק כשעומד לבד; ודאו שזה המקום`

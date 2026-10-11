@@ -245,8 +245,17 @@ class Engine{
     for(const s of subs) if(s.replacement) this.map[ckey(s.kind,s.value)]??=s.replacement;
   }
   blocked(s,e,zones){return zones.some(([a,b])=>a<=s&&e<=b)}
+  // תווים בלתי נראים (squeeze): הזיהוי רץ על מה שהקורא רואה, והמיקומים חוזרים לטקסט המקורי. ההחלפה מכסה את
+  // התווים שבתוך הערך; סימני כיוון שלפניו ואחריו נשארים מחוצה לה, כדי שזוגות הבידוד יישארו שלמים
   // addr: הטקסט הוא כתובת מפוענחת. שם בה מחובר ב-_ או ב-+ ("דנה_שגיא.pdf", "?q=דנה+שגיא"), ורק כללי הכתובת רצים
   detect(text,addr){
+    const q=squeeze(text);
+    if(!q) return this.detectSeen(text,addr);
+    const hits=this.detectSeen(q.t,addr);
+    for(const h of hits){ h.s=q.pos[h.s]; h.e=q.pos[h.e-1]+1; h.text=text.slice(h.s,h.e); }
+    return hits;
+  }
+  detectSeen(text,addr){
     const n=norm(text),zones=[];
     const AGE=ageZones(n);
     // רשימת ההיתר תופסת גם צורות עם אות שימוש, ו-ש היא אות שימוש: "אל תחליפו" על
@@ -340,7 +349,10 @@ class Engine{
     let base=h.rep||this.map[k];
     if(!base){
       const [fam,lab]=CANON[h.type]||[h.type,h.label];
-      const n=(this.cnt[fam]||0)+1;this.cnt[fam]=n;
+      // תווית שכבר שייכת למישהו — כלל עם תחליף, למשל מהמסמך הקודם בתיק — אינה ניתנת שוב: «פלוני א׳ הגיש תגובה
+      // לבקשה של פלוני א׳», ו«[ת"ז א׳]» לשני מספרים, וההחזרה ויתרה על שניהם (הציד של 11.10). הספירה מדלגת עליה
+      const lbl=m=>fam==="NAME"?"פלוני "+hord(m):`[${lab} ${hord(m)}]`;
+      let n=this.cnt[fam]||0; do n++; while(this.used.has(norm(lbl(n)).trim())); this.cnt[fam]=n;
       const real=style==="name";
       if(fam==="NAME"&&real)
         base=fakeName(canonical,this.gmap[canonical]||h.g,this.used,this.forbidden,this.firstish);
