@@ -135,7 +135,9 @@ function build(out) {
     names.push(name);
   }
   const list = "parts:[" + names.map((n) => JSON.stringify(n)).join(",") + "]";
-  fs.writeFileSync(path.join(out, "app", "redact-engine.js"), eng.replace(/parts:\[[^\]]*\]/, list));
+  // only the weights' own list: the engine has other "parts:[" before it (the final check's {n:0,parts:[]}, v73.8),
+  // and the first one in the file was rewritten — the model then asked for parts the site does not serve
+  fs.writeFileSync(path.join(out, "app", "redact-engine.js"), eng.replace(spec[0], () => spec[0].replace(/parts:\[[^\]]*\]$/, list)));
 
   // the tool's libraries, served by the site itself (scripts/hosted.js): each the same file the
   // tool pins, or the build stops

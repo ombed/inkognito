@@ -125,7 +125,10 @@ try {
   ok(spec && joined.length === Number(spec[2]), "joined, the parts are the stated size");
   ok(spec && crypto.createHash("sha256").update(joined).digest("hex") === spec[3], "joined, they have the stated SHA-256 (the page checks it too)");
   const origEng = fs.readFileSync(path.join(ROOT, "redact-engine.js"), "utf8");
-  ok(eng.replace(/parts:\[[^\]]*\]/, "") === origEng.replace(/parts:\[[^\]]*\]/, ""), "nothing else in the engine changed");
+  // only the weights' list may differ. The engine has another "parts:[" before it (the final check's {n:0,parts:[]},
+  // v73.8): stripping the first one on both sides hid that the build had rewritten that one, not the weights'
+  const W_RX = /weights:\{file:"[^"]+",bytes:\d+,\s*sha256:"[0-9a-f]{64}",\s*parts:\[[^\]]*\]/;
+  ok(eng.replace(W_RX, "") === origEng.replace(W_RX, ""), "nothing else in the engine changed");
 
   console.log("\n— the hosted tool asks no other site for anything —");
   const H = require("../scripts/hosted.js");
