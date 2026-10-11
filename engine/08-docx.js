@@ -605,8 +605,7 @@ function ctxHTML(t,s,e,w=55){
 function examplesOf(blocks,value,max=3){
   const v=norm(String(value||"")).trim();
   if(v.length<2)return [];
-  // flex מקבל את הערך כפי שהוקלד: אחרי norm המקף העברי שבו כבר אינו מקף
-  const rx=new RegExp(NW+"(?:[בהולמכש]|ו[בהלמכ]|כש|מה|לכ)?"+flex(String(value).trim())+NWE,"gu");
+  const rx=new RegExp(NW+"(?:[בהולמכש]|ו[בהלמכ]|כש|מה|לכ)?"+flex(v)+NWE,"gu");
   const out=[];
   for(const b of blocks||[]){
     const t=b&&typeof b.text==="string"?b.text:typeof b==="string"?b:"";

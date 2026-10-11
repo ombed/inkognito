@@ -591,8 +591,9 @@ function fakePlace(value,used,forbidden,kind){
 const PLACE_ALT={"נהריה":["נהרייה"],"הרצליה":["הרצלייה"],"יקנעם":["יוקנעם"],"יקנעם עילית":["יוקנעם עילית"],
   "סח'נין":["סחנין","סכנין"],"עוספיא":["עספיא"],"מג'אר":["מגאר"],"כסייפה":["כסיפה"],
   "דאלית אל-כרמל":["דלית אל-כרמל","דליית אל-כרמל"],"טירת כרמל":["טירת הכרמל"],"נוף הגליל":["נצרת עילית"]};
-const PLACE_SEP="[ \\t\\u0000-]+";
-const placeWords=s=>norm(String(s||"")).trim().split(/[ \t]*[-\u0000][ \t]*|[ \t]+/).filter(Boolean);
+// מפריד: רווח או מקף (המקף העברי הוא מקף כבר ב-norm), ו-\0 של ניקוד סביבו, כמו FLEX_SEP
+const PLACE_SEP="\\u0000*[ \\t-][ \\t\\u0000-]*";
+const placeWords=s=>norm(String(s||"")).replace(/\u0000/g,"").trim().split(/[ \t]*-[ \t]*|[ \t]+/).filter(Boolean);
 const placeFold=w=>{for(const sp of SPELL){const m=sp.rx.exec(w); if(m&&!m[1])return sp} return null};
 function placeKey(s){return placeWords(s).map(w=>{const sp=placeFold(w); return sp?sp.key:w}).join(" ")}
 // השם כרצף של [מפריד, מילה] בביטוי; לפני המילה הראשונה אין מפריד
@@ -600,7 +601,7 @@ function placeParts(name){
   const v=norm(name).trim(), w=placeWords(v);
   const strict=!/\s/.test(v)&&w.length===2&&w.some(x=>x.replace(/['"]/g,"").length<4);
   return w.map((x,i)=>{const sp=placeFold(x);
-    return [i?(strict?"[-\\u0000]":PLACE_SEP):"",sp?sp.L.map(l=>esc(l.c)+(l.opt?"?":"")).join(""):esc(x)]});
+    return [i?(strict?"\\u0000*-\\u0000*":PLACE_SEP):"",sp?sp.L.map(l=>esc(l.c)+(l.opt?"?":"")).join(""):esc(x)]});
 }
 /* הביטוי נבנה כעץ של מילים: ראש משותף ("בית", "כפר", "גבעת") והמפריד שאחריו נבדקים פעם אחת ולא פעם לכל
    שם. כרשימה שטוחה של מאות שמות עם מפריד גמיש, סריקת המאגר הייתה איטית פי חמישה-עשר. המשך ארוך נבדק לפני
@@ -781,8 +782,11 @@ function townWords(n,all){
   for(const x of all) if(TOWNWORD.has(x.name)&&!placeCtx(n,x,all)) out.add(x.name);
   return out;
 }
+// מסך היישובים קורא את מה ש-detect קורא: בלי תווים בלתי נראים (squeeze). אחרת סימן כיוון בין «גרה ב» ל«רעננה»
+// הפריד כאן בין ה-ב לשם: הזיהוי החליף את היישוב, והמסך הציע אותו כמילה
+const seenText=t=>{const s=String(t||""), q=squeeze(s); return q?q.t:s};
 function geoNames(text){
-  const n=norm(String(text||"")), out=[], seen=new Set(), all=placeScan(n), word=townWords(n,all);
+  const n=norm(seenText(text)), out=[], seen=new Set(), all=placeScan(n), word=townWords(n,all);
   for(const x of all){
     const nm=x.name;
     if(!x.mappable||seen.has(nm)||AMBIG.has(nm)||word.has(nm))continue;
@@ -803,7 +807,7 @@ function geoNames(text){
    מ-TOWNWORD שמופיע בלי הקשר של מקום. הסריקה היא של findPlaces (placeScan), ולכן
    השם הוא השם שברשימה בכל כתיב, ושם ארוך אינו מוצע גם כחלק שלו. */
 function placesFound(text){
-  const n=norm(String(text||"")), out=[], seen=new Set(), all=placeScan(n), word=townWords(n,all);
+  const n=norm(seenText(text)), out=[], seen=new Set(), all=placeScan(n), word=townWords(n,all);
   for(const x of all){
     const nm=x.name; if(seen.has(nm))continue;
     seen.add(nm); out.push({name:nm, mappable:x.mappable, ambiguous:AMBIG.has(nm)||word.has(nm)});

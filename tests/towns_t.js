@@ -242,6 +242,20 @@ console.log("\n— one town, one substitute, in every spelling —");
   ok(o2 === "המבקשת גרה בעפולה ובטבריה. המשיב גר בעפולה ובטבריה.", "both spellings of each town, one substitute each: «" + o2 + "»");
 }
 
+console.log("\n— the places screen reads the text as detect does, without invisible marks —");
+// detect drops invisible marks before it reads (v73.6); the screen read them as gaps, so a town that detect
+// replaced was offered as a word, or not offered at all
+for (const t of [
+  "המבקשת גרה ב‏רעננה עם ילדיה.", "המבקשת גרה ב​רעננה עם ילדיה.", "המבקשת גרה ב⁦רעננה⁩ עם ילדיה.",
+  "המבקשת גרה בר​עננה עם ילדיה.", "המשפחה עברה ל‏חדרה בקיץ.",
+]) {
+  const town = new C.Engine([], [], OPT, t).detect(t).find((h) => h.place === "רעננה" || h.place === "חדרה");
+  ok(town && town.apply, JSON.stringify(t) + " — detect " + (town ? "only asks" : "finds nothing"));
+  const row = C.placesFound(t).find((p) => p.name === (town ? town.place : ""));
+  ok(row && !row.ambiguous, JSON.stringify(t) + " — the places screen " + (row ? "offers it as a word, switched off" : "does not offer it"));
+  ok(town && C.geoNames(t).includes(town.place), JSON.stringify(t) + " — not in the distance map");
+}
+
 console.log("\n— a town that is also a word is never a substitute: «ערערה» in the AI's answer came back as the real town —");
 {
   const W = new Set(Object.keys(WORDS));

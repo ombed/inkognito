@@ -17,8 +17,8 @@ const SHAPES = {
   "speaker colon": (x) => `${x}: אני מסכימה.`,
   "en dashes": (x) => `המורה – ${x} – אמרה.`,
   "maqaf join": (x) => `המורה־${x} אמרה.`,
-  // a Hebrew maqaf between the words of the value («תל־אביב», «אורן־כץ»): norm turns it into a blank mark,
-  // and a rule for «תל אביב» did not see it (the hunt of 11.10)
+  // a Hebrew maqaf between the words of the value («תל־אביב», «אורן־כץ»): norm used to read it as a vowel
+  // mark, and a rule for «תל אביב» did not see it (the hunt of 11.10); norm now maps it to a hyphen
   "maqaf inside": (x) => `המורה ${x.replace(" ", "־")} אמרה.`,
   slash: (x) => `המורה/${x} אמרה.`,
   "no-break space inside": (x) => `המורה ${x.replace(" ", " ")} אמרה.`,
