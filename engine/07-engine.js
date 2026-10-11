@@ -19,7 +19,7 @@ function findPatterns(text,on,flag){
       // לא נכון, או שהוא לא ישראלי. עד כאן מספר כזה נעלם לגמרי: לא הוחלף, לא סומן,
       // לא הופיע ברשימה, ולכן הגיע ל-AI כמו שהוא בלי שום סימן. תשע ספרות שנראות
       // כמו ת"ז הן החשד הכי מובהק שיש, ולכן הן עולות לבדיקה במקום להימחק.
-      const bad=!!(p.v&&!p.v(m[0]));
+      const bad=!!(p.v&&!p.v(m[0],n,m.index));
       if(bad&&p.strict)continue;
       const g=p.g, s=g? m.index+m[0].indexOf(m[g]) : m.index, e=s+(g?m[g].length:m[0].length);
       if(g&&!m[g])continue; if(e<=s)continue;

@@ -287,6 +287,24 @@ for (const [text, want] of [
   // allowance of its own (these two failed before the merge of v73.6)
   ["במרץ" + RLM + " 2026 עזב את הבית.", "מרץ" + RLM + " 2026"],
   ["בחודש מרץ " + RLM + "2026 עזב את הבית.", "מרץ " + RLM + "2026"],
+  // second review: after a year only a currency makes the number an amount. A unit word that is also a verb or a
+  // count kept the year out, and the real year stayed beside a day that moved
+  ["ביום 20 בדצמבר 2025 חדר הנאשם לדירה.", "20 בדצמבר 2025"],
+  ["ביום 12 במרץ 2026 חדר הנאשם לדירה.", "12 במרץ 2026"],
+  ["ביום 3 בינואר 2026 שקל בית המשפט את הבקשה.", "3 בינואר 2026"],
+  ["במרץ 2026 חדר הנאשם לדירה ונטל ממנה תכשיטים.", "מרץ 2026"],
+  ["בחודש ינואר 2026 גרם הנאשם נזק לרכבו של המתלונן.", "ינואר 2026"],
+  ["ביולי 2025 פעמים רבות לא הגיע האב לביקורים.", "יולי 2025"],
+  ["במרץ 2026 אלפי שקלים הועברו לאם.", "מרץ 2026"],
+  ["במרץ 2026 אלף ש\"ח הועברו לאם.", "מרץ 2026"],
+  ["במאי 2025 חדרים נוספים נשכרו.", "מאי 2025"],
+  // a room is counted in the plural after a decimal: «חדר» alone is the verb
+  ["עד ה-12.3 חדר הנאשם לדירה פעמיים.", "12.3"],
+  // after a singular clause word «עד» ends the list, unless the number after it opens the same clause
+  ["כאמור בסעיף 4.1.2 עד 31.12.26 ישלם האב.", "31.12.26"],
+  ["כאמור בסעיף 4.1.2 ועד 31.12.26 ישלם האב.", "31.12.26"],
+  // a plural list goes on at any depth, but a four-digit year is a date
+  ["כאמור בסעיפים 4 ו-12.3.2026 נחתם.", "12.3.2026"],
 ]) eq(found(text), want, "«" + text + "»");
 
 console.log("\n— left alone: an amount after a month's name, the clause abbreviations, units in their other forms (review 11.10) —");
@@ -311,6 +329,15 @@ for (const text of [
   // units in forms a prefix of the singular did not reach
   "ה-2.5 מיליוני שקלים יחולקו בין הצדדים.",
   "ה-2.5 דונמים שבמחלוקת.",
+  // second review: after a plural clause word a list joined by ו or a comma goes on whatever the depth
+  "כאמור בסעיפים 4 ו-5.2.10 להסכם הגירושין.",
+  "בהתאם לתקנות 3 ו-12.4.21 לתקנות סדר הדין.",
+  "כאמור בסעיפים 4.1 ו-5.2.10 להסכם.",
+  "בסעיפים 4, 5.2.10 ו-6 להסכם.",
+  "בנספחים 2 או 3.1.15 שצורפו.",
+  // a range of clauses after a singular word: the number after «עד» opens the same clause
+  "בסעיף 4.1.2 עד 4.1.15 להסכם.",
+  "בהתאם לסעיף 4.1 עד 4.10.12 להסכם.",
 ]) {
   eq(found(text), "", "«" + text + "»");
   ok(dates(text, ALL).length === 0, "with the tool's defaults too: «" + text + "»");
@@ -492,6 +519,53 @@ const run = async (lines) => {
     ok(!fn.passed, "a real date before a footnote mark is a date left behind");
     const at = await E.verify(zipOf(bodyOf([["לפי סעיף ", "12.3", " להסכם."]]) + '<w:p><w:pPr><w:pStyle w:val="12.3.2026"/></w:pPr></w:p>'), [], ["12.3", "12.3.2026"], []);
     eq(JSON.stringify(at.leaks.map((l) => l.value)), '["12.3.2026"]', "attribute values are read; a clause number split from its word is not a date");
+  }
+  console.log("\n— second review: one day is one date, a clause list of mixed depth, a unit that is also a verb —");
+  {
+    // the year beside a verb: both mentions of the same day get the same pseudonym, and none keeps the real day
+    const line = "ביום 20 בדצמבר 2025 חדר הנאשם לדירה, וביום 20 בדצמבר 2025, בשעה 22:00, נעצר.";
+    const { res, out } = await run(["הכרעת דין", line]);
+    const got = out[1].match(/\d{1,2} ב[א-ת]+ \d{4}/g) || [];
+    ok(got.length === 2 && got[0] === got[1] && !out[1].includes("20 בדצמבר 2025") && res.verification.passed,
+      "the same day twice becomes the same date twice: «" + out[1] + "» " + JSON.stringify(res.verification.leaks));
+  }
+  {
+    const { res, out } = await run(["הכרעת דין", "ביום 12 בנובמבר 2025 חדר הנאשם לדירה.", "ביום 12 בנובמבר 2025, בשעה 22:00, נעצר הנאשם."]);
+    const d = out.slice(1).map((t) => (t.match(/\d{1,2} ב[א-ת]+ \d{4}/) || [""])[0]);
+    ok(d[0] && d[0] === d[1] && d[0] !== "12 בנובמבר 2025" && res.verification.passed,
+      "the year moves with its day, before a verb too: «" + out.slice(1).join(" ⏎ ") + "»");
+  }
+  // the sweep: the same number in a plural clause list stays, as in a list of one shape
+  for (const line of ["כאמור בסעיפים 4 ו-12.3 להסכם.", "כאמור בסעיפים 4.1.2 ו-12.3 להסכם."]) {
+    const { res, out } = await run(["החלטה", "ביום 12.3 נפגשו הצדדים.", line]);
+    ok(!out[1].includes("12.3") && out[2] === line && res.verification.passed, "the clause in a list of mixed depth stays: «" + out[2] + "» " + JSON.stringify(res.verification.leaks));
+  }
+  {
+    const { res, out } = await run(["הסכם", "ביום 4.5 נחתם ההסכם.", "בסעיף 4.1 עד 4.5 להסכם נקבעו המועדים."]);
+    ok(!out[1].includes("4.5") && out[2] === "בסעיף 4.1 עד 4.5 להסכם נקבעו המועדים." && res.verification.passed,
+      "a range of clauses after «עד» stays: «" + out[2] + "» " + JSON.stringify(res.verification.leaks));
+  }
+  {
+    const { res, out } = await run(["הסכם", "ביום 12.3 נחתם ההסכם.", "כאמור בסעיף 4 עד 12.3 ישלם האב."]);
+    ok(!out[2].includes("12.3") && res.verification.passed, "a day after «עד» and another clause moves: «" + out[2] + "» " + JSON.stringify(res.verification.leaks));
+  }
+  // «חדר», «גרם» and «שקל» are verbs too: with ב-, מ- or ל- on the number the day moves; a weight keeps its number
+  for (const line of ["ב-12.3 חדר הנאשם לדירת המתלוננת.", "ב-12.3 גרם הנאשם נזק לרכב.", "ב-12.3 שקל בית המשפט את הבקשה ודחה אותה.", "וב-12.3 גרם הנאשם נזק נוסף.", "מ-12.3 שקל האב לעזוב את הבית."]) {
+    const { res, out } = await run(["הכרעת דין", "ביום 12.3 התקיים מפגש בין הנאשם למתלוננת.", line]);
+    ok(!out[2].includes("12.3") && res.verification.passed, "the same day before a verb moves: «" + line + "» → «" + out[2] + "» " + JSON.stringify(res.verification.leaks));
+  }
+  // a month and a year before a currency is a month and an amount, also when the same month and year is a date elsewhere
+  for (const line of ["דמי המזונות לחודש יוני 2000 ש\"ח שולמו באיחור.", "האב שילם ביוני 2000 ₪ בלבד."]) {
+    const { res, out } = await run(["החלטה", "ביוני 2000 נולד האב.", line]);
+    ok(!out[1].includes("יוני 2000") && out[2] === line && res.verification.passed, "the amount keeps its number: «" + out[2] + "» " + JSON.stringify(res.verification.leaks));
+  }
+  {
+    const { res, out } = await run(["החלטה", "ביום 12 ביוני 2000 נולד האב.", "ביום 12 ביוני 2000 ש\"ח הועברו."]);
+    ok(!out[2].includes("12 ביוני") && res.verification.passed, "a day before the month still moves: «" + out[2] + "» " + JSON.stringify(res.verification.leaks));
+  }
+  for (const line of ["הנאשם החזיק 12.3 גרם קנבוס.", "נתפסו 12.3 גרם של חומר.", "בתיק נמצאו 2.5 חדרים ריקים, ו-12.3 גרם סם."]) {
+    const { res, out } = await run(["הכרעת דין", "ביום 12.3 נתפס הנאשם.", line]);
+    ok(!out[1].includes("12.3") && out[2] === line && res.verification.passed, "a weight keeps its number: «" + out[2] + "» " + JSON.stringify(res.verification.leaks));
   }
   console.log(`\n${pass} passed, ${fail} failed\n`);
   process.exitCode = fail ? 1 : 0;
