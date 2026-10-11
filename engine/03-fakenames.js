@@ -80,6 +80,62 @@ function hash32(s){let h=0x811c9dc5;
    שאחד מחלקיו מילה («בן-דוד» הוא בן דוד) לא נבחר גם הוא */
 const WORDISH=new Set(["יהודית","מיכל","ממן","חנה","מזרחי","איתי","פרץ","דנה","מרים","ליאת","מלמד","מירב","עמי","רותי"]);
 const poolWordy=v=>WORDISH.has(v)||WORDLIKE.has(v)||STOP.has(v)||(typeof COMMON!=="undefined"&&COMMON.has(v))||(typeof VRB!=="undefined"&&VRB.has(v));
+/* השם הבדוי באותיות לטיניות (הציד של 11.10): אדם שנכתב גם בלועזית ("קלייר דובואה-לוי (Claire Dubois-Levi)") מקבל את
+   האיות הלועזי של אותו שם בדוי ("אנה גולדשטיין (Ana Goldstein)"), כדי שה-AI יקרא אדם אחד. לכל שם במאגר האיות המקובל;
+   לכל מילה אחרת (תחליף שהקלידה, תווית) תעתיק לפי האותיות */
+const LATIN=Object.fromEntries(("שירה Shira|נועה Noa|תמר Tamar|יעל Yael|מיכל Michal|רחל Rachel|אסתר Esther|מרים Miriam|דנה Dana|ליאת Liat|"+
+  "אורית Orit|סיגל Sigal|איריס Iris|ורד Vered|גלית Galit|מאיה Maya|ענת Anat|הילה Hila|אביגיל Avigail|לימור Limor|קרן Keren|אפרת Efrat|"+
+  "אורלי Orly|סמדר Smadar|מירב Merav|טליה Talya|נעמי Naomi|שלומית Shlomit|יהודית Yehudit|רבקה Rivka|חנה Hana|בתיה Batya|אילנה Ilana|"+
+  "זהבה Zehava|פנינה Pnina|אביבה Aviva|גילה Gila|חוה Hava|נורית Nurit|רותי Ruti|עינת Einat|שירן Shiran|מוריה Moriya|תהילה Tehila|"+
+  "יפעת Yifat|הדס Hadas|נגה Noga|אלינור Elinor|רוני Roni|שקד Shaked|עדן Eden|נטלי Natalie|אנה Anna|סבטלנה Svetlana|אירינה Irina|"+
+  "לודמילה Ludmila|אולגה Olga|"+
+  "אורי Uri|יואב Yoav|איתי Itai|נדב Nadav|רועי Roi|גיא Guy|אסף Asaf|ניר Nir|עידו Ido|אלון Alon|יונתן Yonatan|דור Dor|עמית Amit|"+
+  "ליאור Lior|אייל Eyal|ברק Barak|זיו Ziv|יובל Yuval|ארז Erez|גלעד Gilad|חיים Haim|משה Moshe|יעקב Yaakov|יוסף Yosef|דוד David|"+
+  "שמואל Shmuel|אברהם Avraham|יצחק Yitzhak|מרדכי Mordechai|נתן Natan|שלמה Shlomo|אליהו Eliyahu|בנימין Binyamin|ראובן Reuven|"+
+  "שמעון Shimon|אשר Asher|דניאל Daniel|מיכאל Michael|איתמר Itamar|עמרי Omri|יהונתן Yehonatan|רותם Rotem|עידן Idan|תומר Tomer|"+
+  "אמיר Amir|נועם Noam|אלירן Eliran|שלומי Shlomi|אבנר Avner|מאיר Meir|ציון Zion|יגאל Yigal|בועז Boaz|אלכס Alex|סרגיי Sergei|"+
+  "ולדימיר Vladimir|דמיטרי Dmitri|"+
+  "כהן Cohen|לוי Levi|מזרחי Mizrahi|פרץ Peretz|ביטון Biton|דהן Dahan|פרידמן Friedman|שפירא Shapira|אזולאי Azoulay|אוחיון Ohayon|"+
+  "גבאי Gabay|אמסלם Amsalem|חדד Hadad|עמר Amar|בן Ben|אשכנזי Ashkenazi|טולדנו Toledano|סבן Saban|אלמוג Almog|ברקוביץ Berkowitz|"+
+  "רוזנברג Rosenberg|גולדשטיין Goldstein|וייס Weiss|קליין Klein|שטרן Stern|הרשקוביץ Hershkowitz|זילברמן Silberman|אדלר Adler|"+
+  "פלדמן Feldman|ברנשטיין Bernstein|גרינברג Greenberg|לנדאו Landau|שגב Segev|ארבל Arbel|ברנע Barnea|גלעדי Giladi|אלבז Elbaz|"+
+  "סויסה Suissa|ממן Maman|אטיאס Attias|חמו Hamo|נחמיאס Nahmias|הראל Harel|רוזן Rosen|שמעוני Shimoni|בר Bar|און On|קרמר Kramer|"+
+  "וקנין Vaknin|אבוטבול Abutbul|מלמד Melamed|יעקובי Yaakobi|פישר Fischer|קפלן Kaplan|גורביץ Gurevich|סלומון Salomon|נחום Nahum|"+
+  "דורון Doron|אלקבץ Alkabetz|טל Tal|שחר Shahar|עמי Ami|רווה Raveh|"+
+  "פאטמה Fatma|עאישה Aisha|מריאם Mariam|נור Nour|לילא Laila|סמאח Samah|רנא Rana|הודא Huda|אמל Amal|סועאד Suad|ראניה Rania|דלאל Dalal|"+
+  "נאדיה Nadia|סאלי Sally|וורוד Wurud|הנאא Hanaa|מנאל Manal|ראידה Raida|עביר Abeer|ג'ומאנה Jumana|סחר Sahar|ריהאם Riham|"+
+  "מוחמד Muhammad|אחמד Ahmad|עלי Ali|חסן Hassan|חוסיין Hussein|מחמוד Mahmoud|ראמי Rami|סמיר Samir|ג'מאל Jamal|ח'אלד Khaled|"+
+  "יוסוף Yousef|איברהים Ibrahim|מוסטפא Mustafa|נביל Nabil|ואאל Wael|זיאד Ziad|בילאל Bilal|טארק Tarek|עאדל Adel|מאהר Maher|פאדי Fadi|"+
+  "רמזי Ramzi|ח'טיב Khatib|מנצור Mansour|זועבי Zoabi|סרסור Sarsour|חמדאן Hamdan|נאסר Nasser|סלימאן Suleiman|דרוויש Darwish|"+
+  "עוואד Awad|טאהא Taha|ג'בארין Jabarin|אגבאריה Agbaria|מסארווה Masarwa|ותד Watad|בדראן Badran|שאהין Shahin|קאסם Qasem|זידאן Zidan|"+
+  "עבד Abd|אל al|האדי Hadi|אבו Abu|ראס Ras|סאלח Saleh|חלאילה Halaila|גנאים Ghanaim|עאזם Azem|נסאר Nassar|דבור Dabour|סעדי Saadi|"+
+  "חוסארי Husari|פלוני Ploni|פלונית Plonit|אלמוני Almoni").split("|").map(p=>p.split(" ")));
+// תעתיק לפי האותיות, למילה שאינה במאגר: עיצור בראש המילה, אם קריאה באמצע (ו, י) כתנועה, ו-a בין שני עיצורים
+const TR={"א":"a","ב":"v","ג":"g","ד":"d","ה":"h","ו":"v","ז":"z","ח":"ch","ט":"t","י":"y","כ":"ch","ך":"ch","ל":"l","מ":"m","ם":"m",
+  "נ":"n","ן":"n","ס":"s","ע":"a","פ":"f","ף":"f","צ":"tz","ץ":"tz","ק":"k","ר":"r","ש":"sh","ת":"t"},
+  TR0={"ב":"b","כ":"k","פ":"p","ו":"v","י":"y"}, TRJ={"ג":"j","ז":"zh","צ":"ch","ח":"kh"};
+function translit(w){
+  const s=w.replace(/[׳’]/g,"'").replace(/["״]/g,""); let out="", prevC=false;
+  for(let i=0;i<s.length;i++){
+    const c=s[i], nx=s[i+1];
+    if(nx==="'"&&TRJ[c]){out+=TRJ[c];i++;prevC=true;continue}
+    if(c==="'")continue;
+    if(!TR[c]){out+=c;prevC=false;continue}
+    const end=i===s.length-1;
+    if(i>0&&(c==="ו"||c==="י")&&nx!==c&&s[i-1]!==c){out+=c==="ו"?"o":"i";prevC=false;continue}
+    if(end&&c==="ה"){out+="a";prevC=false;continue}
+    if(c==="א"||c==="ע"){out+=i===0?"a":(prevC?"a":"");prevC=false;continue}
+    const t=i===0?(TR0[c]||TR[c]):TR[c];
+    out+=(prevC?"a":"")+t; prevC=true;
+  }
+  return out.charAt(0).toUpperCase()+out.slice(1);
+}
+// אות סידורית של תווית ("פלוני א׳"): האות הלטינית במקומה בא"ב
+const HORD_LAT={"א":"A","ב":"B","ג":"C","ד":"D","ה":"E","ו":"F","ז":"G","ח":"H","ט":"I","י":"J","כ":"K","ל":"L","מ":"M","נ":"N","ס":"O","ע":"P","פ":"Q","צ":"R","ק":"S","ר":"T","ש":"U","ת":"V"};
+function latinOf(s){
+  return String(s||"").replace(/[א-ת][א-ת'׳"״-]*/g,w=>{
+    const one=/^([א-ת])['׳]$/.exec(w); if(one)return HORD_LAT[one[1]]||translit(w);
+    return w.split("-").map(p=>LATIN[p.replace(/׳/g,"'")]||translit(p)).join("-")})}
 function pickFrom(arr,seed,used,forbidden){
   const n=arr.length;
   for(let k=0;k<n;k++){

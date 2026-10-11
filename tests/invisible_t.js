@@ -139,6 +139,27 @@ for (const t of [
     const o = r.preview.map((x) => x.text).join(" | ");
     ok(!gone.test(o) && want.test(o), `«${value}» as «${rep}»: ${o}`);
   }
+
+  /* The particle of a double surname («בן», «בר», «בת») is not the person alone (bench doc m4, 12.10): since the halves
+     came in (v73.6), «הילד בן שבע» became «הילד קרמר שבע» and «חגג בר מצווה» became «חגג דהן מצווה», and with the
+     surname written twice, every «בן» in the document was asked about as «שם משותף». The other half still is the person. */
+  console.log("\n— a double surname's particle alone is a word, not the person —");
+  for (const [value, rep, text, keep, gone, also] of [
+    ["אלה בן-רביב", "מרים הרשקוביץ", ["אלה בן-רביב הגיעה לפגישה.", "הילד בן שבע ולומד בכיתה ב.", "לדברי רביב, הכול בסדר."], "הילד בן שבע", /אלה|רביב/, "לדברי הרשקוביץ"],
+    ["משה בר-לב", "יוסי כהן", ["משה בר-לב הגיע לדיון.", "הוא חגג בר מצווה בשנה שעברה."], "חגג בר מצווה", /משה|בר-לב/, ""],
+    ["רחל בת-עזרא", "נועה שגב", ["רחל בת-עזרא הגישה תצהיר.", "הילדה בת שש ולומדת בגן.", "לדברי עזרא, הכול בסדר."], "הילדה בת שש", /רחל|עזרא/, "לדברי שגב"],
+  ]) {
+    const r = await E.redactDocx(mkzip([...base, { name: "word/document.xml", body: doc(text.map((l) => P(R(l))).join("")) }]), [{ value, kind: "NAME", replacement: rep }], [], OPT);
+    const o = r.preview.map((x) => x.text).join(" | ");
+    ok(o.includes(keep) && !gone.test(o) && (!also || o.includes(also)), `«${value}»: «${keep}» stays, the other half is still replaced: ${o}`);
+  }
+  {
+    // the bench's m4: the surname with a maqaf and without one, two people to the engine
+    const text = ["אלה בן-רביב הגיעה לפגישה.", "הילד בן שבע ולומד בכיתה ב.", "בן רביב תבדוק עם המשטרה."];
+    const r = await E.redactDocx(mkzip([...base, { name: "word/document.xml", body: doc(text.map((l) => P(R(l))).join("")) }]), [{ value: "אלה בן-רביב", kind: "NAME" }, { value: "בן רביב", kind: "NAME" }], [], OPT);
+    const o = r.preview.map((x) => x.text).join(" | ");
+    ok(o.includes("הילד בן שבע") && !(r.flagged || []).some((f) => f.value === "בן"), "«בן» is neither replaced nor asked about: " + o + " · flagged " + (r.flagged || []).map((f) => f.value).join(","));
+  }
   console.log(`\n${pass} passed, ${fail} failed`);
   process.exitCode = fail ? 1 : 0;
 })();

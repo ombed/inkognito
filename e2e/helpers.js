@@ -24,7 +24,9 @@ const DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.doc
    itself. In Firefox and WebKit that fetch is out of the route's reach, so
    after a reload the page could get the real engine from the worker. The
    config blocks the worker in every test but the ones about it (10.10). */
-async function serveEngineWithStub(page) {
+/* until(text) -> a promise the stub waits for after the delay, so a test can release the model at an exact moment;
+   extra -> more engine code appended after the stub (a test that also holds redactDocx) */
+async function serveEngineWithStub(page, extra) {
   await page.route("**/redact-engine.js", async (route) => {
     const res = await route.fetch();
     const body = (await res.text()) + [
@@ -42,12 +44,14 @@ async function serveEngineWithStub(page) {
       "  window.__nerCalls = (window.__nerCalls || 0) + 1;",
       "  if (onProgress) onProgress(5);",
       "  await new Promise((r) => setTimeout(r, cfg.delay ? cfg.delay(text) : 0));",
+      "  if (cfg.until) await cfg.until(text);",
       "  if (cfg.error) throw new Error(cfg.error);",
       "  const out = (cfg.names ? cfg.names(text) : []).map((v) => ({ value: v, kind: 'NAME', n: cfg.n ? cfg.n(v) : 1, score: 0.95 }));",
       "  if (cfg.failedChunks) { out.failedChunks = cfg.failedChunks; out.chunks = cfg.chunks; }",
       "  return out;",
       "};",
       "",
+      extra || "",
     ].join("\n");
     await route.fulfill({
       response: res, body,

@@ -57,3 +57,50 @@ test("a name the model finds after she continued still gets replaced", async ({ 
   expect(await marks.count()).toBeGreaterThan(0);
   for (const t of await marks.allTextContents()) expect(t).not.toContain("אנטונינה");
 });
+
+/* The same answer, landing while the first run is still processing (the hunt of 11.10, logic.md). The run had copied the
+   rules when it started and wrote that copy back when it ended: the names the model had just added were dropped, nothing
+   was pending, and the bar was green with «אסנת» in clear. Here the first run is held until the model has answered, so the
+   answer lands inside it every time, not by luck of timing. */
+const MEETING = [
+  "סיכום פגישה עם הלקוחה",
+  "יעל סיפרה שהילדים אצלה בכל סוף שבוע שני.",
+  "אסנת, העובדת הסוציאלית, תבקר בבית בשבוע הבא.",
+].join("\n");
+
+test("a name the model finds while the first run is still processing is kept and replaced", async ({ page }) => {
+  await H.serveEngineWithStub(page, [
+    "const __rdHold = redactDocx;",
+    "redactDocx = async (...a) => {",
+    "  if (window.__holdRun) {",
+    "    window.__holdRun = false;",
+    "    if (window.__releaseModel) window.__releaseModel();",
+    "    await new Promise((z) => { const t = setInterval(() => { if (window.__modelDone && Date.now() - window.__modelDone > 600) { clearInterval(t); z(); } }, 50); });",
+    "  }",
+    "  return __rdHold(...a);",
+    "};",
+  ].join("\n"));
+  await H.boot(page);
+  // the model answers only when the test releases it: when the first run has started
+  await page.addInitScript(() => {
+    window.__ner = {
+      names: (t) => { window.__modelDone = Date.now(); return ["יעל", "אסנת"].filter((n) => t.includes(n)); },
+      until: () => new Promise((z) => { window.__releaseModel = z; }),
+    };
+  });
+  await page.reload();
+  await H.upload(page, "meeting.docx", MEETING);
+  await H.startScan(page);
+  const goNow = page.getByRole("button", { name: /לא לחכות למודל/ });
+  await expect(goNow).toBeVisible({ timeout: 10000 });
+  await goNow.click();
+  await expect(H.goButton(page)).toBeEnabled();
+  await page.evaluate(() => { window.__holdRun = true; });
+  await H.goOn(page);
+  const run = page.getByRole("button", { name: /החלת הקבוצה|המשך לבדיקה|המשך לעיבוד|המשך|עיבוד/ }).first();
+  await H.throughPlaces(page, run);
+  await expect(page.locator("[data-bar]")).toBeVisible({ timeout: 30000 });
+  // the run landed after the model: both names it found are in the rules, and replaced in the document
+  expect(await page.evaluate(() => window.__modelDone > 0)).toBe(true);
+  await expect.poll(async () => page.locator("[data-work] section").first().innerText(), { timeout: 30000 }).not.toMatch(/יעל|אסנת/);
+});
