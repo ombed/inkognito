@@ -276,9 +276,10 @@ async function redactDocx(buf,subs,allow,opt){
           if(blk.text[e]===" "&&(s===0||blk.text[s-1]===" "||/[\s(]/.test(blk.text[s-1]||" ")))e++;
           else if(blk.text[s-1]===" ")s--; }
         reps.push([s,e,nw]);applied.push(rec);
-        // יישוב שהוא גם מילה הוחלף רק במופע שיש בו הקשר של מקום, והמופע שנשאל נשאר בכוונה. האימות מחפש אותו רק
-        // בהקשר כזה: בחיפוש רגיל «נקודת מבט רעננה» נספרה דליפה של «גרה ברעננה», והפס האדום חסם מסמך תקין
-        if(h.src==="pattern"&&h.type==="PLACE_CITY"&&TOWNWORD.has(h.place))placeSecrets.push(h.place);
+        // יישוב שהוא גם מילה או צירוף (placeCond) הוחלף רק במופע שהטקסט מראה שהוא מקום, והמופע שנשאל נשאר בכוונה.
+        // האימות מחפש אותו רק במופע כזה: בחיפוש רגיל «נקודת מבט רעננה» נספרה דליפה של «גרה ברעננה», והפס האדום
+        // חסם מסמך תקין
+        if(h.src==="pattern"&&h.type==="PLACE_CITY"&&placeCond(h.place))placeSecrets.push(h.place);
         else{secrets.push(h.text); if(h.base)secrets.push(h.base)}}
       else flagged.push(rec)}
     // מיקום המחיקות בטקסט החדש, לסימון במסך הבדיקה: הערך איננו, אבל היא צריכה לראות
@@ -292,9 +293,9 @@ async function redactDocx(buf,subs,allow,opt){
   const sweep={};
   for(const r of applied){
     const v=norm(r.value).trim(), rp=r.baseRep||r.rep;
-    // יישוב שהוא גם מילה הוחלף רק במופע שיש בו הקשר של מקום; במופע אחר זו המילה ("גרה ברעננה" ו"נקודת
-    // מבט רעננה", הציד של 11.10). findPlaces כבר שקל כל מופע, והמעבר לא דורס את השאלה שהוא שאל
-    if(r.label==="יישוב"&&r.src==="pattern"&&TOWNWORD.has(norm(r.base||r.value).trim()))continue;
+    // יישוב שהוא גם מילה או צירוף הוחלף רק במופע שהטקסט מראה שהוא מקום; במופע אחר זו המילה ("גרה ברעננה"
+    // ו"נקודת מבט רעננה", הציד של 11.10). findPlaces כבר שקל כל מופע, והמעבר לא דורס את השאלה שהוא שאל
+    if(r.label==="יישוב"&&r.src==="pattern"&&placeCond(norm(r.base||r.value).trim()))continue;
     // אם התחליף מכיל את הערך ("דוד" → "דוד א׳"), סריקה חוזרת
     // תתפוס את התחליף עצמו ותכפיל אותו.
     if(v.length>=4&&!(v in sweep)&&rp&&!norm(rp).includes(v))sweep[v]={rep:rp,of:null};
@@ -636,8 +637,9 @@ function examplesOf(blocks,value,max=3){
   return out;
 }
 
-/* placeSecrets: יישובים שהם גם מילה (TOWNWORD) שהוחלפו בהקשר של מקום. מופע שלהם הוא דליפה רק כשיש לו הקשר
-   כזה בטקסט הקריא, אותו מבחן של findPlaces; המופע שנשאל ("נקודת מבט רעננה") אינו דליפה */
+/* placeSecrets: יישובים שהם גם מילה או צירוף (placeCond) שהוחלפו במופע שהוא מקום. מופע שלהם הוא דליפה רק
+   כשהשכבה הייתה מחליפה אותו בעצמה בטקסט הקריא (placeSure, אותו מבחן של findPlaces); המופע שנשאל ("נקודת מבט
+   רעננה", "פותח פתח תקווה") אינו דליפה */
 const XUN=s=>s.replace(/&(quot|apos|lt|gt|amp);/g,(m,k)=>({quot:'"',apos:"'",lt:"<",gt:">",amp:"&"})[k]);
 async function verify(buf,secrets,placeSecrets){
   const files=await unzip(buf);
@@ -666,7 +668,7 @@ async function verify(buf,secrets,placeSecrets){
       }
       if(ps.size&&[...ps].some(p=>nt.includes(p.split(" ")[0]))){
         const nr=norm(seenText(read.replace(/_/g," "))), all=placeScan(nr);
-        for(const x of all) if(ps.has(x.name)&&placeCtx(nr,x,all)) leaks.push({value:x.name,part:f.name});
+        for(const x of all) if(ps.has(x.name)&&placeSure(nr,x,all)) leaks.push({value:x.name,part:f.name});
       }
     }}
   const uniq=[],seen=new Set();

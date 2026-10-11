@@ -208,6 +208,107 @@ for (const [t, w] of [
   ok(h.length === 1 && h[0].apply, "«" + t + "» — «" + w + "» " + (h.length ? (h[0].apply ? "replaced" : "only asked") : "not found") + ", want replaced");
 }
 
+/* The review of the first round: 22 of 33 usual real mentions were only asked about, under an orange bar that
+   does not block — a party heading, «ילידת חדרה», a court name without ב-, the case line, the home, the work,
+   the school. Each kind of evidence below has its own sentence, and its counterexamples follow. */
+const decided = (t, w) => cities(t).filter((x) => x.place === w);
+console.log("\n— real mentions in the usual legal phrasing: replaced —");
+for (const [t, w] of [
+  ["פלונית אלמונית, ת\"ז 012345678, מרעננה", "רעננה"], ["פלונית אלמונית, ת\"ז 012345678, מרח' הנרקיס 9 רעננה", "רעננה"],
+  ["פלונית אלמונית, ת\"ז 012345678, הנרקיס 9 רעננה", "רעננה"], ["פלונית אלמונית, ת\"ז 012345678, רחוב הנרקיס 9, רעננה", "רעננה"],
+  ["המבקשת, ילידת חדרה, נשואה למשיב משנת 2010.", "חדרה"], ["המשיב, יליד אילת, עובד כמהנדס.", "אילת"],
+  ["המבקשת, מאילת, הגישה את התביעה.", "אילת"], ["הדירה ברעננה רשומה על שם שני הצדדים.", "רעננה"],
+  ["בני הזוג רכשו דירה במודיעין בשנת 2015.", "מודיעין"], ["הבית בשוהם נמכר בשנת 2020.", "שוהם"],
+  ["המשיב עובד ברעננה כמנהל חשבונות.", "רעננה"], ["הקטינים לומדים בבית ספר יסודי באלעד.", "אלעד"],
+  ["הקטינים לומדים באלעד.", "אלעד"], ["המבקשת עזבה את רעננה בשנת 2021.", "רעננה"],
+  ["המשפחה עברה מנתיבות לבאר שבע.", "נתיבות"], ["הסדרי השהות יתקיימו במודיעין.", "מודיעין"],
+  ["חילופי הקטינים ייעשו בתחנת הדלק בכניסה לרעננה.", "רעננה"], ["בית משפט השלום חדרה", "חדרה"],
+  ["בית המשפט לענייני משפחה רעננה", "רעננה"], ["בבית המשפט לענייני משפחה בחדרה", "חדרה"],
+  ["תמ\"ש 12345-06-24 (משפחה חדרה)", "חדרה"], ["לשכת הרווחה של עיריית אופקים", "אופקים"],
+  ["המחלקה לשירותים חברתיים באופקים", "אופקים"], ["הצדדים גרו בחדרה ובחיפה.", "חדרה"],
+  ["הצדדים גרו בחיפה, בחדרה ובנתניה.", "חדרה"], ["המשיב נוסע בין רעננה לתל אביב מדי יום.", "רעננה"],
+  ["המשפחה מתגוררת בשוהם מאז 2012.", "שוהם"], ["הבית באלקנה נמכר.", "אלקנה"], ["המבקשת גרה בצופית.", "צופית"],
+  // one more sentence for each new kind of evidence
+  ["ילידי רעננה מקבלים הנחה בארנונה.", "רעננה"], ["המשיב, מנתיבות, לא התייצב לדיון.", "נתיבות"],
+  ["לשכת הרווחה אופקים", "אופקים"], ["ת\"א 1234-05-24 (שלום אילת)", "אילת"], ["הגפן 12 נתיבות.", "נתיבות"],
+  ["דירתם בחדרה נמכרה בשנה שעברה.", "חדרה"], ["היא מועסקת באופקים כגננת.", "אופקים"],
+  ["הצדדים נפגשו בנתיבות לפני הדיון.", "נתיבות"], ["הם עזבו את נתיבות בשנה שעברה.", "נתיבות"],
+  ["המבקש חזר לנתיבות לאחר הגירושין.", "נתיבות"], ["המשפחה עברה למודיעין לפני שנתיים.", "מודיעין"],
+  ["ביציאה מנתיבות יש מחסום.", "נתיבות"],
+]) {
+  const h = decided(t, w);
+  ok(h.length === 1 && h[0].apply, "«" + t + "» — «" + w + "» " + (h.length ? (h[0].apply ? "replaced" : "only asked") : "not found") + ", want replaced");
+}
+
+console.log("\n— counterexamples: where the same frames hold the word, it stays asked —");
+for (const [t, w] of [
+  // a clause reference, a page or a floor with a prefix letter, before a comma, is no address
+  ["כאמור בסעיף 4, ערערה המבקשת על ההחלטה.", "ערערה"], ["כאמור בסע' 4, ערערה המבקשת על ההחלטה.", "ערערה"],
+  ["לפי ס' 7, ערערה המבקשת על ההחלטה.", "ערערה"], ["כמפורט בפסקה 12, ערערה המבקשת על ההחלטה.", "ערערה"],
+  ["כמפורט בנספח 3, ערערה המבקשת על ההחלטה.", "ערערה"], ["בקומה 2, חדרה של הקטינה צמוד לחדר ההורים.", "חדרה"],
+  ["בעמוד 5, נתיבות הפעולה מפורטות בהרחבה.", "נתיבות"], ["כאמור בסעיף 4, אלעד לא שילם מזונות.", "אלעד"],
+  ["בגיל 3, אלעד החל ללמוד בגן.", "אלעד"],
+  // her room and an intelligence unit, after moving, sitting, studying, working and nearness
+  ["לאחר הוויכוח הקטינה עברה לחדרה ונעלה את הדלת.", "חדרה"], ["החומר הועבר למודיעין המשטרתי לבדיקה.", "מודיעין"],
+  ["המידע הועבר למודיעין של המשטרה.", "מודיעין"], ["הקטינה נסעה עם אביה ויצאה מחדרה רק בערב.", "חדרה"],
+  ["הקטינה התיישבה בחדרה ובכתה.", "חדרה"], ["הקטין שוכן בחדרה של אחותו מאז הגירושין.", "חדרה"],
+  ["המידע נאסף במרכז מודיעין משטרתי.", "מודיעין"], ["חדר השינה של האב נמצא בסמוך לחדרה של הקטינה.", "חדרה"],
+  ["המיטה של האח ממוקמת סמוך לחדרה.", "חדרה"], ["הקטינה נמצאת בבית בחדרה.", "חדרה"],
+  ["הקטינה לומדת בחדרה כל ערב.", "חדרה"], ["הפגישה עם העובדת הסוציאלית התקיימה בחדרה.", "חדרה"],
+  ["הוא עובד במודיעין כבר שנתיים.", "מודיעין"], ["הקטינה חזרה לחדרה ונרדמה.", "חדרה"],
+  ["היא עזבה את חדרה בבהלה.", "חדרה"], ["בכניסה לחדרה שלה תלויה תמונה.", "חדרה"],
+  // the settling of a dispute, a verb or an adjective after a court, a first name after a court or a leave
+  ["הליך היישוב תקוע מזה חודשים.", "תקוע"], ["ניסיון היישוב תקוע, והצדדים לא נפגשו.", "תקוע"],
+  ["בבית המשפט המחוזי ערערה המבקשת על ההחלטה.", "ערערה"], ["התיק בבית משפט השלום תקוע מזה חודשים.", "תקוע"],
+  ["בבית המשפט לענייני משפחה אלעד טען שלא ידע.", "אלעד"], ["המבקשת עזבה את אלעד לפני שנה.", "אלעד"],
+  // a noun and its adjective, «restrained» between commas, an amount, a first name next to a town
+  ["האם עובדת בחיפה ואופקים חדשים נפתחו בפניה.", "אופקים"], ["נסעה לתל אביב ולהבים חדים לא הייתה גישה.", "להבים"],
+  ["היא מחפשת אופקים חדשים.", "אופקים"], ["הצדדים, מאופקים, ישבו בשקט.", "אופקים"],
+  ["שילמה אילת 12345 ש\"ח בחודש מרץ.", "אילת"], ["בחיפה ואלעד נשאר בבית עם הילדים.", "אלעד"],
+  ["הקטינה ביקשה לשבת בקרבת אלעד.", "אלעד"],
+]) {
+  const h = decided(t, w);
+  ok(h.length === 1 && !h[0].apply && h[0].review, "«" + t + "» — «" + w + "» " + (h.length ? (h[0].apply ? "replaced as a town" : "asked") : "not raised at all") + ", want asked");
+}
+
+console.log("\n— still asked: a reader cannot tell from the sentence either —");
+// «restrained» or «from Ofakim»; back to Hadera or to her room; recognised Ayelet or met in Eilat; to Ayelet
+for (const [t, w] of [["שני הצדדים מאופקים.", "אופקים"], ["המבקשת חזרה לחדרה לאחר הפרידה.", "חדרה"],
+  ["הצדדים הכירו באילת בשנת 2008.", "אילת"], ["המבקשת הגיעה לאילת עם הילדים.", "אילת"]]) {
+  const h = decided(t, w);
+  ok(h.length === 1 && !h[0].apply && h[0].review, "«" + t + "» — «" + w + "» " + (h.length ? (h[0].apply ? "replaced" : "asked") : "not raised") + ", want asked");
+}
+
+console.log("\n— a phrase spelled like a town: asked in its idiom, the town everywhere else —");
+// the new spellings brought the idiom in its other spelling («פתח תקוה», «זיכרון», «נוה»); the full spelling was
+// caught before too
+for (const [t, w, want] of [
+  ["ההסדר החדש פותח פתח תקוה לשיקום הקשר.", "פתח תקווה", false], ["יש בהחלטה פתח־תקווה לשיקום הקשר בין האב לבנו.", "פתח תקווה", false],
+  ["ההחלטה נותנת פתח תקווה לאב.", "פתח תקווה", false], ["זיכרון יעקב מהאירוע מעורפל.", "זכרון יעקב", false],
+  ["זיכרון־יעקב מן האירוע אינו מדויק.", "זכרון יעקב", false], ["זכרון יעקב על הוויכוח שונה מזה של אחיו.", "זכרון יעקב", false],
+  ["הבית היה נוה שלום לילדים.", "נווה שלום", false], ["הבית שימש כנווה שלום לילדים.", "נווה שלום", false],
+  ["המבקשת גרה בפתח תקוה.", "פתח תקווה", true], ["פתח תקווה היא עיר מגוריה של המבקשת.", "פתח תקווה", true],
+  ["בית משפט השלום פתח תקווה", "פתח תקווה", true], ["הם עברו לפתח תקווה.", "פתח תקווה", true],
+  ["בית המשפט פתח את הדיון בפתח תקווה.", "פתח תקווה", true], ["המשפחה גרה בזיכרון יעקב מאז 2010.", "זכרון יעקב", true],
+  ["תושבי זכרון יעקב הגישו עתירה.", "זכרון יעקב", true], ["תושבת נווה שלום הגישה בקשה.", "נווה שלום", true],
+]) {
+  const h = decided(t, w);
+  ok(h.length === 1 && h[0].apply === want, "«" + t + "» — «" + w + "» " + (h.length ? (h[0].apply ? "replaced" : "asked") : "not found") + ", want " + (want ? "replaced" : "asked"));
+  if (!want) ok(C.placesFound(t).some((p) => p.name === w && p.ambiguous), "«" + t + "» — the places screen offers «" + w + "» switched off");
+}
+
+console.log("\n— the context check looks back a fixed distance: one long line costs what the same text costs in lines —");
+{
+  // it searched back to the start of the line for every listed town, so a text with no line breaks grew with the
+  // square of its length (a pasted text, a PDF line run together): 1.5 seconds on 300,000 characters
+  const w = ["רעננה", "חדרה", "שלומי", "תקוע", "אופקים", "מודיעין"];
+  let one = "", lines = "";
+  for (let i = 0; one.length < 200000; i++) { const s = "ואז נקודת מבט " + w[i % w.length] + " עלתה שוב,"; one += s + " "; lines += s + "\n"; }
+  const best = (t) => { let m = Infinity; for (let k = 0; k < 3; k++) { const t0 = process.hrtime.bigint(); C.placesFound(t); m = Math.min(m, Number(process.hrtime.bigint() - t0) / 1e6); } return m; };
+  const b = best(lines), a = best(one);
+  ok(a < 3 * b + 30, "one line of " + one.length + " characters took " + a.toFixed(0) + " ms, the same text in lines " + b.toFixed(0) + " ms");
+}
+
 console.log("\n— the list and its evidence agree —");
 {
   const listed = C.TOWNWORD ? [...C.TOWNWORD.keys()] : [];
@@ -247,9 +348,9 @@ console.log("\n— the places screen reads the text as detect does, without invi
 // replaced was offered as a word, or not offered at all
 for (const t of [
   "המבקשת גרה ב‏רעננה עם ילדיה.", "המבקשת גרה ב​רעננה עם ילדיה.", "המבקשת גרה ב⁦רעננה⁩ עם ילדיה.",
-  "המבקשת גרה בר​עננה עם ילדיה.", "המשפחה עברה ל‏חדרה בקיץ.",
+  "המבקשת גרה בר​עננה עם ילדיה.", "המשפחה עברה ל‏נתיבות בקיץ.",
 ]) {
-  const town = new C.Engine([], [], OPT, t).detect(t).find((h) => h.place === "רעננה" || h.place === "חדרה");
+  const town = new C.Engine([], [], OPT, t).detect(t).find((h) => h.place === "רעננה" || h.place === "נתיבות");
   ok(town && town.apply, JSON.stringify(t) + " — detect " + (town ? "only asks" : "finds nothing"));
   const row = C.placesFound(t).find((p) => p.name === (town ? town.place : ""));
   ok(row && !row.ambiguous, JSON.stringify(t) + " — the places screen " + (row ? "offers it as a word, switched off" : "does not offer it"));
@@ -380,6 +481,14 @@ const leaksOf = (res) => JSON.stringify((res.verification.leaks || []).map((l) =
     ok(res.verification.passed, "a place in the header and the word in the body — the final check passes " + leaksOf(res));
     ok(res.applied.some((r) => r.value === "רעננה" && r.part === "כותרת עליונה"), "and the header's town is replaced: " + JSON.stringify(res.applied.map((r) => r.value + "@" + r.part)));
   }
+  {
+    // a phrase and the town in one document: the uniformity pass and the final check take the phrase as a phrase
+    const res = await E.redactDocx(docOf(["המבקשת גרה בפתח תקווה עם ילדיה.", "ההסדר החדש פותח פתח תקווה לשיקום הקשר."]), [], [], OPT);
+    const lines = shown(res);
+    ok(!lines[1].includes("פתח תקווה"), "«בפתח תקווה» where she lives is replaced: «" + lines[1] + "»");
+    ok(lines[2] === "ההסדר החדש פותח פתח תקווה לשיקום הקשר.", "the phrase stays: «" + lines[2] + "»");
+    ok(res.verification.passed, "and the final check passes " + leaksOf(res));
+  }
 
   console.log("\n— a listed person's name that is also a town: the part alone is the person —");
   // The sweep of name parts skipped every part that was a town and left it to the places layer. That layer only
@@ -452,6 +561,8 @@ const leaksOf = (res) => JSON.stringify((res.verification.leaks || []).map((l) =
       ["a two-word town in another spelling", one(["המשפחה עברה לראש-פינה."]), [], ["ראש פינה"], false],
       ["a first-name town as a person", one(["אני חוששת לשלומי ולשלום ילדיי."]), [], ["שלומי"], true],
       ["a first-name town as a place", one(["המבקשת, תושבת שלומי, מבקשת צו הגנה."]), [], ["שלומי"], false],
+      ["a phrase-town left as the town", one(["המבקשת גרה בפתח תקווה עם ילדיה."]), [], ["פתח תקווה"], false],
+      ["the phrase only", one(["ההסדר החדש פותח פתח תקווה לשיקום הקשר."]), [], ["פתח תקווה"], true],
     ]) {
       const v = await E.verify(buf, plain, places);
       ok(v.passed === want, what + " — the final check " + (v.passed ? "passes" : "fails, leaks " + JSON.stringify(v.leaks.map((l) => l.value))) + ", want " + (want ? "pass" : "fail"));
