@@ -32,7 +32,8 @@ function cellOf(p,part,T){
         tbl:t?t.id:null,r:t?t.trs.indexOf(tr):0};
       T.rows.set(tr,r);
     }
-    return {row:r.id,col:r.cells.indexOf(n),tbl:r.tbl,r:r.r};
+    // n: מספר התאים בשורה, גם הריקים — טבלה של טור אחד אינה שורת כותרות (הביקורת של 11.10)
+    return {row:r.id,col:r.cells.indexOf(n),tbl:r.tbl,r:r.r,n:r.cells.length};
   }
   return null}
 function flatten(doc,part){
@@ -701,36 +702,65 @@ function labelNext(blocks){
   const at=(c,r,col)=>grid.get(c.tbl+"|"+r+"|"+col);
   // שורת חתימה ("__________") או קו בין התווית לשם אינה השכן: מדלגים על עד שתי שורות בלי אות
   const after=i=>{let j=i+1; while(j<blocks.length&&j<=i+3&&blocks[j].part===blocks[i].part&&!/[א-ת]/.test(txt(blocks[j])))j++; return j};
+  const asRole=l=>l&&(l.keys.includes("role")||l.as==="role");
+  // הממצאים בשכן j של התווית i, על הטקסט שהקורא רואה (anchoredSeen): סימן כיוון בראש השורה חסם כל קריאה של שכן.
+  // מה שהעוגנים כבר מצאו בשכן לבדם אינו נספר פעמיים
+  const memo=new Map();
+  const read=(j,i)=>{
+    const k=i+":"+j; if(memo.has(k))return memo.get(k);
+    let r=[];
+    if(j<blocks.length&&!labs[j]&&!hiddenPart(blocks[j].part||"")){
+      const own=new Set(anchoredSeen(txt(blocks[j])).map(h=>h.s+":"+h.e));
+      r=anchoredSeen(txt(blocks[j]),labs[i]).filter(h=>!own.has(h.s+":"+h.e));
+    }
+    memo.set(k,r); return r};
+  /* פרוטוקול (הביקורת של 11.10): אותה תווית של צד לבדה כמה פעמים, ומתחתיה כל פעם משהו אחר, ורוב מה שמתחת לתוויות
+     האלה אינו נקרא כשם — אלה דברים שנאמרו בדיון. בחלק כזה תווית של צד אינה קוראת את השכן שלה, גם כשתשובה קצרה
+     נראית כשם. רשימה של תיקים, שבה כל "התובעת:" עומדת מעל שם, נקראת כרגיל */
+  const turns=new Map(), named=new Map();
+  labs.forEach((l,i)=>{
+    if(!asRole(l))return;
+    const p=blocks[i].part, j=after(i), nb=blocks[j], same=!!nb&&nb.part===p;
+    const k=p+"\u0001"+norm(txt(blocks[i])).replace(/[^א-ת]/g,"");
+    const t=turns.get(k)||new Set(); t.add(same?norm(txt(nb)).replace(/\u0000/g,"").trim():""); turns.set(k,t);
+    const c=named.get(p)||{n:0,yes:0}; c.n++; if(same&&read(j,i).length)c.yes++; named.set(p,c)});
+  const talk=new Set([...turns].filter(([,t])=>t.size>=2).map(([k])=>k.split("\u0001")[0])
+    .filter(p=>{const c=named.get(p); return c.yes*2<c.n}));
+  const field=l=>l.keys.some(x=>x==="field"||x==="fieldx");
   for(let i=0;i<blocks.length;i++){
     const lab=labs[i], b=blocks[i], ni=after(i), nb=blocks[ni]; if(!lab)continue;
+    if(asRole(lab)&&talk.has(b.part))continue;
     const next=[];
     if(lab.list){
       for(let j=i+1;j<blocks.length&&next.length<40;j++){
-        const t=norm(txt(blocks[j])).trim();
+        const t=norm(txt(blocks[j])).replace(/\u0000/g,"").trim();
         // "נ ג ד" סוגר את רשימת הצד הראשון
         if(blocks[j].part!==b.part||labs[j]||/^-?\s*(?:נ\s+ג\s+ד|נגד)\s*-?$/u.test(t)||!(LIST_LINE.test(t)||(t.split(/\s+/).length<=4&&!/[.:;]$/.test(t))))break;
         next.push(j);
       }
     }else if(b.cell&&!(nb&&nb.cell&&nb.cell.row===b.cell.row&&nb.cell.col===b.cell.col)){
       const row=rows.get(b.cell.row), others=row.filter(k=>blocks[k].cell.col!==b.cell.col), below=at(b.cell,b.cell.r+1,b.cell.col);
-      if(b.cell.tbl&&below!==undefined&&!labelLike(txt(blocks[below]))&&others.every(k=>labelLike(txt(blocks[k])))){
-        // שורת כותרות ("שם העד | תפקיד", "שם הקטין | ת.ז."): התווית היא כותרת של טור, והשמות מתחתיה, לא בתא שלידה
+      if(b.cell.n===1){
+        // טבלה של טור אחד ("שם:" ומתחתיו השם, ת"ז, עיר): רק התא שמתחת לתווית, לא הטור כולו (הביקורת של 11.10)
+        if(below!==undefined&&!labelLike(txt(blocks[below])))next.push(below);
+      }else if(b.cell.tbl&&below!==undefined&&!labelLike(txt(blocks[below]))&&others.every(k=>labelLike(txt(blocks[k])))){
+        // שורת כותרות ("שם העד | תפקיד", "שם הקטין | ת.ז."): התווית היא כותרת של טור, והשמות מתחתיה, לא בתא שלידה.
+        // הטור נעצר בתא הראשון שאינו שם: מתחת ל"נספח | שם | עמוד" באים מסמכים (הביקורת של 11.10)
         for(let r=b.cell.r+1;r<=Math.min(last.get(b.cell.tbl),b.cell.r+40);r++){
           const k=at(b.cell,r,b.cell.col); if(k===undefined)continue;
           if(labelLike(txt(blocks[k])))break;
-          next.push(k); if(!lab.keys.includes("field"))break;
+          const hs=read(k,i); if(!hs.length)break;
+          for(const h of hs)out.push({i:k,h});
+          if(!field(lab))break;
         }
+        continue;
       }else{
         const at1=c=>row.find(k=>blocks[k].cell.col===c), cols=row.map(k=>blocks[k].cell.col);
         const dir=labs[at1(Math.min(...cols))]?1:labs[at1(Math.max(...cols))]?-1:1;
         const k=at1(b.cell.col+dir); if(k!==undefined)next.push(k);
       }
     }else if(nb&&nb.part===b.part)next.push(ni);
-    for(const j of next){
-      if(labs[j]||hiddenPart(blocks[j].part||""))continue;
-      const own=new Set(anchored(txt(blocks[j])).map(h=>h.s+":"+h.e));
-      for(const h of anchored(txt(blocks[j]),lab)) if(!own.has(h.s+":"+h.e)) out.push({i:j,h});
-    }
+    for(const j of next) for(const h of read(j,i)) out.push({i:j,h});
   }
   return out}
 function discover(blocks){
@@ -762,6 +792,8 @@ function discover(blocks){
     // "בית המשפט הנכבד" מתחת ל"לכבוד" הוצע כאדם בשם «הנכבד»: שורה שהניקוי קיצץ ממנה מילה שאינה תואר
     // אינה שורה שכולה שם (הציד של 11.10)
     {const kept=c.split(/\s+/); if(w.some(x=>!kept.includes(x)&&!TITLE_RX.test(x+" ")))continue;}
+    // "נגה ואליאב טרכטנגוט" הם זוג, לא דובר אחד: העוגנים מציעים אותם כשני אנשים (הביקורת של 11.10)
+    {const cw=c.split(/\s+/); if(cw.length===3&&/^ו-?[א-ת]{2}/.test(cw[1]))continue;}
     if(c.split(/\s+/).some(x=>/(?:ים|ות|יים|יות)$/.test(norm(x))&&!KNOWN_FIRST.has(norm(x))))continue;
     if(c.split(/\s+/).some(x=>/^של[ךכםןנהוי]?$/.test(norm(x))))continue;
     const s0=blocks[bi].text.indexOf(c); if(s0<0)continue;
@@ -779,14 +811,17 @@ function discover(blocks){
     r.count++;r.why.add(h.why);
     if(h.role&&!r.role)r.role=h.role;
     if(h.g==="f")r.gf++; if(h.g==="m")r.gm++;
-    if(h.anchor==="bid"||h.anchor==="role")r.conf="high";
+    // שם בשכן של תווית ממלא את הרשימה רק כשהשורה היא השם בלבד ("נגה טרכטנגוט, ת.ז. …" מוצע), ומה שבא אחרי תפקיד
+    // באותה שורה ואינו נראה כשם ("הנתבע - מתנגד נחרצות", unsure) מוצע ואינו ממלא אותה (הביקורת של 11.10)
+    if(h.anchor==="bid"||(h.anchor==="role"&&(!h.near||h.only)&&!h.unsure))r.conf="high";
     // דובר שחוזר, או דובר בשם מלא, הוא אדם בוודאות. דובר יחיד במילה אחת נשאר
     // הצעה: "שאלה:" או "הערה:" נראים אותו דבר עד שחוזרים.
     // דובר הוא מי שחוזר: "מועד אחרון לתגובה:" הוא תווית של טופס, גם כשיש בה שתי מילים.
     // שתי מילים בפעם אחת היו "גבוה" ומולאו אוטומטית; עכשיו רק חזרה מעלה את הביטחון.
-    if(h.anchor==="speaker"){r.spk=(r.spk||0)+1; if(r.spk>=2)r.conf="high";}
+    // אחרי חותמת של שיחה, מילה אחת שאינה שם מוכר נשארת הצעה גם כשחוזרת (weakSpk): כך נראית גם תווית ביומן
+    if(h.anchor==="speaker"){r.spk=(r.spk||0)+1; if(r.spk>=2&&!h.weakSpk)r.conf="high";}
     if(!r.ctx)r.ctx=ctxHTML(b.text,h.s,h.e)};
-  for(const b of blocks) for(const h of anchored(b.text))take(b,h);
+  for(const b of blocks) for(const h of anchoredSeen(b.text))take(b,h);
   // שם שתווית בתא או בפסקה שלידו מעידה עליו: "התובעת:" בתא אחד והשם בתא שלידו מילא את הרשימה כמו בשורה אחת
   for(const {i,h} of labelNext(blocks))take(blocks[i],h);
   // "מאורי בן-שחר" הוא "אורי בן-שחר" עם אות שימוש — לא מועמד נפרד
