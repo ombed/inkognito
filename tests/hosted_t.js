@@ -275,6 +275,20 @@ try {
   ok(refused && fs.existsSync(path.join(other, "keep.txt")), "a folder with other files is refused and left alone");
   build(dist);
   ok(walk(dist).length === files.length, "rebuilding its own folder works");
+
+  console.log("\n— a place the build writes into is there exactly once —");
+  // a rewrite that takes the first of two writes into the wrong one (the model's list of parts, 11.10)
+  {
+    const Hs = require("../scripts/hosted.js"), page = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+    const A = '<script src="./page-logic.js"></script>';
+    const csp = page.match(/<meta http-equiv="Content-Security-Policy" content="[^"]*">/)[0];
+    for (const [what, html] of [["the script anchor", page.replace(A, A + "\n" + A)], ["the security policy", page.replace(csp, csp + "\n" + csp)]]) {
+      for (const [name, fn] of [["the tool", Hs.hostedApp], ["the demo", Hs.demoApp]]) {
+        let stopped = false; try { fn(html); } catch (_) { stopped = true; }
+        ok(stopped, name + ": a page with " + what + " twice stops the build");
+      }
+    }
+  }
 } finally {
   fs.rmSync(out, { recursive: true, force: true });
 }

@@ -117,7 +117,9 @@ function hostedApp(html) {
   if (!PROJECT) throw new Error("hosted: no project URL in site/config.js");
   const anchor = '<script src="./page-logic.js"></script>';
   const cspRe = /(<meta http-equiv="Content-Security-Policy" content=")([^"]*)(")/;
-  if (!html.includes(anchor) || !cspRe.test(html)) throw new Error("hosted: app/index.html no longer has the places this inserts into");
+  // each place exactly once: a rewrite that takes the first of two writes into the wrong one (the model's parts, 11.10)
+  if (html.split(anchor).length !== 2 || (html.match(new RegExp(cspRe.source, "g")) || []).length !== 1)
+    throw new Error("hosted: app/index.html no longer has the places this inserts into, each once");
   let out = html;
   // the policy: no other site, and the project for connections
   out = out.replace(cspRe, (_, a, csp, z) => a + csp.split(";").map((d) => d.trim().split(/\s+/).filter((t) => !THIRD.test(t)).join(" "))
@@ -162,7 +164,8 @@ function demoApp(html) {
   if (html.split(DEMO_MANIFEST).length !== 2) throw new Error("hosted: index.html no longer links its manifest where the demo replaces it");
   html = html.replace(DEMO_MANIFEST, DEMO_NOINDEX);
   const cspRe = /(<meta http-equiv="Content-Security-Policy" content=")([^"]*)(")/;
-  if (!html.includes(anchor) || !cspRe.test(html)) throw new Error("hosted: index.html no longer has the places the demo inserts into");
+  if (html.split(anchor).length !== 2 || (html.match(new RegExp(cspRe.source, "g")) || []).length !== 1)
+    throw new Error("hosted: index.html no longer has the places the demo inserts into, each once");
   let out = html.replace(cspRe, (_, a, csp, z) => a + csp.split(";").map((d) => d.trim().split(/\s+/).filter((t) => !THIRD.test(t)).join(" ")).join("; ") + z);
   for (const l of LIBS.filter((x) => x.via === "page" || x.via === "atlas")) {
     if (!out.includes(l.url)) throw new Error("hosted: the page no longer loads " + l.url);
