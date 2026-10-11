@@ -416,7 +416,9 @@ console.log("\n— no pool and no map gives a word, a first name, a phrase or an
 {
   // «מושב» gave נחלים, צופית and אבשלום, «קיבוץ» עין השופט, עמיעד and מגן, «שכונה» נווה שלום, the general pool
   // פתח תקווה, and the distance map יבנה, שדרות and קדימה: each comes back from the AI's own words as the real town
-  const BAD = (n) => C.AMBIG.has(n) || C.TOWNWORD.has(n) || !!C.IDIOM[n];
+  // an engine without the phrase list (before 11.10) still runs this check, on the names it has
+  const IDIOMS = C.IDIOM || { "פתח תקווה": 1, "נווה שלום": 1, "זכרון יעקב": 1 };
+  const BAD = (n) => (C.AMBIG && C.AMBIG.has(n)) || C.TOWNWORD.has(n) || !!IDIOMS[n];
   const values = [...C.PLACES.map((p) => p.n), ...C.GAZ.slice(0, 300)];
   for (const kind of ["מושב", "קיבוץ", "כפר", "שכונה", "רחוב", null]) {
     const got = new Set();
