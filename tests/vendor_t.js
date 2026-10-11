@@ -62,5 +62,21 @@ ok(!/huggingface\.co/.test(eng), "nothing is loaded from Hugging Face any more")
 ok(!/cdn\.jsdelivr\.net\/npm\/@huggingface\/transformers/.test(eng), "transformers.js is not loaded from the CDN");
 ok(!/cdn\.jsdelivr\.net\/npm\/pdfjs-dist/.test(read("pdf-text.js").toString()), "pdf.js is not loaded from the CDN");
 
+// a browser run needs no internet (e2e/base.js serves these copies): every address the tool takes from a
+// CDN has a copy in the installed packages, at the version the address names, and it is the file the tool
+// pins. An address that moves without package.json would quietly need the network again (11.10)
+const LIBS = require("../e2e/libs.js");
+const libs = LIBS.named();
+ok(libs.length === 8 && libs.every((l) => l.url && (l.alg === null || l.pin)), "the tool names eight CDN files, each with its pin: " + libs.length);
+for (const l of libs) {
+  const f = LIBS.installedFile(l.url);
+  ok(!!f, "installed at the version the tool names: " + l.url);
+  if (f && l.alg) ok(crypto.createHash(l.alg).update(fs.readFileSync(f)).digest("base64") === l.pin, "and it is the pinned file: " + l.url);
+}
+const literal = /https:\/\/(?:unpkg\.com|cdn\.jsdelivr\.net\/npm)\/[^"'`\s)]+/g;
+const stray = ["index.html", "support.js", "sw.js", "pdf-text.js", ...fs.readdirSync(path.join(ROOT, "engine")).map((f) => "engine/" + f)]
+  .flatMap((f) => (read(f).toString().match(literal) || []).filter((u) => !libs.some((l) => l.url.startsWith(u))).map((u) => f + ": " + u));
+ok(stray.length === 0, "every CDN address in the tool is one of them: " + stray.join(", "));
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exitCode = fail ? 1 : 0;
