@@ -1360,6 +1360,17 @@ class Component extends DCLogic {
     this._selKeys = e => { if(!(e.shiftKey||e.key==="Shift")||!this.sheetEl) return;
       const s=getSelection(); if(s&&s.anchorNode&&this.sheetEl.contains(s.anchorNode)) this.onSheetSelect({target:this.sheetEl}); };
     document.addEventListener("keyup", this._selKeys);
+    /* בטלפון אין mouseup אחרי בחירה בלחיצה ארוכה, ולכן «הוספת … בתור:» לא נפתחה בכלל, אף שעמוד העזרה אומר «מסמנים אותו
+       במסמך ומוסיפים אותו» (הציד של 11.10). גם שינוי בבחירה פותח אותה, כשנרגע (300ms), כשהבחירה בתוך המסמך ואינה ריקה.
+       בזמן גרירה בעכבר מחכים ל-mouseup, ובחירה שהחלונית כבר מציגה לא נפתחת שוב */
+    this._ptr = e => { if(e.pointerType==="mouse") this._mouseDown = e.type==="pointerdown"; };
+    document.addEventListener("pointerdown", this._ptr, true); document.addEventListener("pointerup", this._ptr, true);
+    this._selChange = () => { clearTimeout(this._selT); this._selT=setTimeout(()=>{
+      if(!this.sheetEl||this._mouseDown) return;
+      const s=getSelection(); if(!s||s.isCollapsed||!s.anchorNode||!this.sheetEl.contains(s.anchorNode)) return;
+      const E=this.state.E, p=this.state.popup; if(E&&p&&p.text===E.trimEdges(s.toString())) return;
+      this.onSheetSelect({target:this.sheetEl}); }, 300); };
+    document.addEventListener("selectionchange", this._selChange);
     /* H5 בביקורת השנייה: רענון, "אחורה" בדפדפן וסגירת הלשונית מחקו את המסמך, את
        ההחלטות ואת היומן בלי מילה, בזמן ש"מסמך חדש" לבדו שאל. כשיש מסמך (ולא
        הסיור): הדפדפן שואל לפני רענון או סגירה, ו"אחורה" נתפס — בטעינת המסמך
@@ -1456,6 +1467,7 @@ class Component extends DCLogic {
     }
   }
   componentWillUnmount(){ document.removeEventListener("mousedown", this._docClick); document.removeEventListener("keydown", this._keys); document.removeEventListener("keyup", this._selKeys); removeEventListener("resize", this._resize);
+    document.removeEventListener("selectionchange", this._selChange); clearTimeout(this._selT); document.removeEventListener("pointerdown", this._ptr, true); document.removeEventListener("pointerup", this._ptr, true);
     removeEventListener("beforeunload", this._unload); removeEventListener("pagehide", this._caseOnHide); clearTimeout(this._caseT); removeEventListener("popstate", this._pop); document.removeEventListener("click", this._histNow, true); document.removeEventListener("keydown", this._histNow, true);
     removeEventListener("scroll", this._follow, true); removeEventListener("resize", this._follow); removeEventListener("animationend", this._follow, true); removeEventListener("transitionend", this._follow, true);
     removeEventListener("scroll", this._scNudge, {capture:true}); removeEventListener("resize", this._scNudge); if(this._scT) clearTimeout(this._scT); removeEventListener("storage", this._storage); document.removeEventListener("focusin", this._helpFocus); removeEventListener("error", this._pageErr); removeEventListener("unhandledrejection", this._pageErr);
@@ -2161,6 +2173,9 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
         if(to)used.add(to);
         extra.push({name:r.value, ambiguous:false, to, on:true, listed:true, typed:true});
       }
+      // אין יישוב להחליט עליו ואין יישוב שהוצא: המסך היה רק «לא נמצאו יישובים במסמך.» וכפתור אחד — עוד לחיצה בכל
+      // מכתב קצר. ממשיכים ישר לבדיקה, כמו כשהחלפת המקומות כבויה (הציד של 11.10)
+      if(!geo&&!extra.length&&!excluded.length){ this.run(rules); return; }
       this.setState({screen:"places", geo, geoNames:found, geoExcluded:excluded,
         geoExtra:extra, geoEdits:this.caseEdits(geo, have), geoV:0});
     }catch(e){ this.run(rules); }
@@ -4060,7 +4075,9 @@ const KIND_NAME={NAME:"אדם", ORG:"גוף", PLACE:"מקום"};
       // השגיאה של המסך הזה מוצגת ליד השדה, לא בראש העמוד מעל לכותרת
       rvErr:S.screen==="reverse"?S.err:"", errTop:(S.screen==="reverse"||(S.screen==="work"&&S.res))?"":S.err,
       rvIn:S.rvIn, rvOut:S.rvOut, rvCopyLabel:S.rvCopyLabel,
-      onRvIn:e=>this.setState({rvIn:e.target.value, err:""}),
+      // תשובה חדשה בתיבה: התוצאה של הקודמת יורדת, ו«החזרת שמות» חוזר להיות הפעולה. עד כאן היא נשארה מתחת לתשובה החדשה,
+      // עם הכותרת שלה, וכפתור ההעתקה המלא העתיק אותה (הציד של 11.10)
+      onRvIn:e=>this.setState({rvIn:e.target.value, err:"", ...(S.rvOut?{rvOut:"", rvLeft:[], rvCount:0}:{})}),
       onRvGo:this.rvGo,
       // אחרי החזרה, ההעתקה היא הפעולה הראשית; לפני — ההחזרה (UX #19). ריק — אין מה להחזיר (UX #20).
       rvEmpty:!(S.rvIn||"").trim(),
