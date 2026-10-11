@@ -381,6 +381,64 @@ const leaksOf = (res) => JSON.stringify((res.verification.leaks || []).map((l) =
     ok(res.applied.some((r) => r.value === "רעננה" && r.part === "כותרת עליונה"), "and the header's town is replaced: " + JSON.stringify(res.applied.map((r) => r.value + "@" + r.part)));
   }
 
+  console.log("\n— a listed person's name that is also a town: the part alone is the person —");
+  // The sweep of name parts skipped every part that was a town and left it to the places layer. That layer only
+  // asks about a town it is not sure of, so «אלעד» of «אלעד כהן» reached the AI alone, under a bar that said
+  // the names were replaced. A first-name town is the person in every form; any other town that is only asked
+  // about is taken when it stands alone, and marked for review.
+  const swept = async (lines, value) => {
+    const res = await E.redactDocx(docOf(lines), [{ value, kind: "NAME" }], [], OPT);
+    return { res, lines: shown(res).slice(1), asked: res.flagged.filter((f) => f.label === "יישוב").map((f) => f.value) };
+  };
+  const has = (line, w) => new RegExp("(^|[^א-ת])[בהולמכש]{0,2}" + w + "(?![א-ת])").test(line);
+  for (const [value, line, w] of [
+    ["אלעד כהן", "אלעד אמר שלא ידע על הדיון.", "אלעד"],
+    ["שלומי לוי", "לדברי האם, שלומי לא שילם מזונות מאז מרץ.", "שלומי"],
+    ["אילת ברק", "אילת סיפרה כי הקטינים מפחדים.", "אילת"],
+    ["אסף כהן", "אסף אמר שלא ידע על הדיון.", "אסף"],
+  ]) {
+    const r = await swept(["התובע, " + value + ", הגיש תביעה למזונות.", line], value);
+    ok(!has(r.lines[1], w), "«" + value + "» listed, «" + line + "» — went out as «" + r.lines[1] + "»");
+    ok(!r.asked.includes(w), "«" + value + "» listed — «" + w + "» is not left as a town question: " + JSON.stringify(r.asked));
+  }
+  for (const [w, kind] of C.TOWNWORD) {
+    if (kind === "word") continue;
+    for (const [value, lines] of [
+      [w + " כהן", ["התובע, " + w + " כהן, הגיש תביעה.", w + " טען שלא ידע על הדיון.", "המשיב העביר ל" + w + " את המסמכים."]],
+      ["רונית " + w, ["המבקשת, רונית " + w + ", הגישה בקשה.", "לדברי " + w + ", הקטינים מפחדים.", "המשיב העביר ל" + w + " את המסמכים."]],
+    ]) {
+      const r = await swept(lines, value);
+      ok(!has(r.lines[1], w), "«" + value + "» listed, «" + lines[1] + "» — went out as «" + r.lines[1] + "»");
+      // a first name with a prefix letter is the person; «לשלומי» is also «for my wellbeing», so it stays asked
+      if (kind === "name") ok(!has(r.lines[2], w), "«" + value + "» listed, «" + lines[2] + "» — went out as «" + r.lines[2] + "»");
+      else ok(r.lines[2] === lines[2] && r.asked.includes(w), "«" + value + "» listed, «" + lines[2] + "» — the prefixed form is left and asked: «" + r.lines[2] + "» " + JSON.stringify(r.asked));
+    }
+  }
+  {
+    // the word, and the town where the text says it is a place, next to a listed person of that name
+    const r = await swept(["המשיב, שלומי לוי, לא התייצב.", "אני חוששת לשלומי ולשלום ילדיי.", "המבקשת, תושבת שלומי, מבקשת צו הגנה."], "שלומי לוי");
+    ok(r.lines[1] === "אני חוששת לשלומי ולשלום ילדיי.", "«לשלומי» for «my wellbeing» stays: «" + r.lines[1] + "»");
+    ok(!has(r.lines[2], "שלומי") && r.res.applied.some((a) => a.value === "שלומי" && a.label === "יישוב"), "«תושבת שלומי» is replaced as a town: «" + r.lines[2] + "»");
+    const g = await swept(["המבקשת, רונית גשר, הגישה בקשה.", "הצדדים ניסו לגשר על הפערים."], "רונית גשר");
+    ok(g.lines[1] === "הצדדים ניסו לגשר על הפערים.", "«לגשר» (to mediate) stays when «רונית גשר» is listed: «" + g.lines[1] + "»");
+    const e = await swept(["המבקשת, אילת ברק, גרה באילת עם בתה.", "אילת סיפרה כי הקטינים מפחדים."], "אילת ברק");
+    const pseudo = e.res.applied.find((a) => a.label === "שם (חלק)");
+    ok(!has(e.lines[0], "אילת") && (!pseudo || !e.lines[0].includes("ב" + pseudo.rep + " עם")), "«גרה באילת» next to «אילת ברק» is replaced as a town, not as her: «" + e.lines[0] + "»");
+  }
+  {
+    // the whole class: every town the places layer only asks about, as a listed first name and surname
+    const towns = C.PLACES.map((p) => p.n).filter((n) => !/\s/.test(n) && C.findPlaces("ואז " + n + " אמר.").some((h) => h.type === "PLACE_CITY" && !h.apply));
+    ok(towns.length >= 50, "towns asked about without context: " + towns.length);
+    let left = [];
+    for (const n of towns) {
+      const a = await swept(["התובע, " + n + " כהן, הגיש תביעה.", n + " אמר שלא ידע על הדיון."], n + " כהן");
+      const b = await swept(["המבקשת, רונית " + n + ", הגישה בקשה.", "לדברי " + n + ", הקטינים מפחדים."], "רונית " + n);
+      if (has(a.lines[1], n)) left.push(n + " (first name)");
+      if (has(b.lines[1], n)) left.push(n + " (surname)");
+    }
+    ok(!left.length, "a listed name part that is a town, standing alone, is replaced: left " + JSON.stringify(left));
+  }
+
   console.log("\n— the final check still sees a word-town left where the text says it is a place —");
   {
     const one = (lines, parts) => docOf(lines, parts);

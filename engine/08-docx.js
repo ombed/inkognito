@@ -313,6 +313,10 @@ async function redactDocx(buf,subs,allow,opt){
   // ובלי אות שימוש הם דולפים ("וסבג" נשאר בטקסט). מילה של ממש נתפסת ברשימות
   // ובצורת ה' הידיעה שבמסמך; שתי אותיות נשארות זהירות.
   const wordy=p=>WORDLIKE.has(p)||COMMON.has(p)||docTokAll.has("ה"+p)||p.length<=2;
+  /* חלק של שם שהוא גם יישוב, ששכבת היישובים רק שואלת עליו (placeOwn): «אלעד» מתוך «אלעד כהן» יצא לבד, ואפילו
+     הפס אמר שהשמות הוחלפו (הציד של 11.10). שם פרטי שהוא יישוב (TOWNWORD מסוג name) הוא האדם בכל צורה; כל יישוב
+     אחר — מילה, שם דו-משמעי, שם קצר, ושלומי — רק כשעומד לבד, ולבדיקה */
+  const partWordy=p=>TOWNWORD.get(p)==="name"?false:(wordy(p)||!!PLACE_BY[p]||AMBIG.has(p));
   // "רחוב הארזים 12" הוחלף, ו"ההסעות מהארזים" נשאר בטקסט: שם הרחוב לבדו הוא
   // אותו מקום. כל כתובת, רחוב או שכונה שהוחלפו תורמים את המילים שאחרי סוג
   // הרחוב, ובלי המספר; כשהשם הוא גם מילה, רק כשעומד לבד ולבדיקה. חמש
@@ -335,9 +339,9 @@ async function redactDocx(buf,subs,allow,opt){
     const add=(p,to)=>{
       // שתי אותיות ("כץ", "נץ") הן שם משפחה של ממש; הן נכנסות למעבר, ובגלל wordy
       // מוחלפות רק כשעומדות לבד ולבדיקה. הסריקה: 2 כמו 3, 4 מוסיף שש דליפות.
-      if(!p||p.length<2||STOP.has(p)||PLACE_BY[p]||AMBIG.has(p))return;
+      if(!p||p.length<2||STOP.has(p)||placeOwn(p))return;
       if(p in sweep||!to||norm(to).includes(p))return;
-      const g=partOf.get(p)||{to:new Set(),of:new Set(),wordy:wordy(p)};
+      const g=partOf.get(p)||{to:new Set(),of:new Set(),wordy:partWordy(p)};
       g.to.add(to); g.of.add(value); partOf.set(p,g)};
     /* שם משפחה כפול במקף ("לוי-אבקסיס", גם במקף עברי): כל חצי לבד הוא אותו אדם — «לדברי אבקסיס», «גם לוי
        אמרה» — ושניהם דלפו (הציד של 11.10). כל חצי מקבל את החצי שלו מהבדוי כשגם הוא כפול, ואחרת את כולו */
@@ -437,6 +441,14 @@ async function redactDocx(buf,subs,allow,opt){
   const ids={};applied.forEach((r,i)=>{if(r.rep&&!(r.rep in ids))ids[r.rep]=i});
   const preview=[];
   let blocks3=[];for(const dd of docs)blocks3=blocks3.concat(flatten(dd.doc,dd.f.name));
+  // שאלה של שכבת היישובים על מילה שהמעבר החליף כחלק של שם מהרשימה ("אלעד" מתוך «אלעד כהן»): כשלא נשאר ממנה
+  // מופע, אין על מה להחליט, ואישור שלה היה הופך את האדם ליישוב בריצה הבאה
+  {const fin=norm(blocks3.map(b=>b.text).join("\n"));
+   for(let i=flagged.length-1;i>=0;i--){
+     const f=flagged[i], v=norm(String(f.value||"")).trim(), sw=sweep[v];
+     if(f.src!=="pattern"||f.type!=="PLACE_CITY"||!sw||!sw.of||sw.place)continue;
+     if(!new RegExp(NW+"(?:[בהולמכש]|ו[בהלמכ]|כש|מה|לכ)?"+flex(v)+NWE,"u").test(fin))flagged.splice(i,1);
+   }}
   // פריט שנשאר לבדיקה אינו מסומן במסמך, ולכן הוא נראה בדיוק כמו טקסט שאיש לא נגע בו.
   // על מספר זה קטלני: מספר שנשאר בטקסט נקרא "הכלי פספס אותו", בעוד שבפועל הוא נמצא,
   // הוחלט שלא להחליף אותו אוטומטית, והוא מחכה להחלטה. סימון בצבע אזהרה אומר את זה.

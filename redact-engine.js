@@ -1542,11 +1542,12 @@ const AMBIG=new Set(["דן","מגן","כרמל","עלי","שילה","דליה","
    בלי הקשר הוא שאלה, כמו AMBIG, ואינו נבחר כתחליף. מילה בעברית רגילה: תקוע (נתקע), אופקים, רעננה (טרייה),
    מודיעין, חדרה (החדר שלה), ערערה (הגישה ערעור), נתיבות, נחלים, רכסים, להבים; צירוף שגור בפסיקה: "היה
    לראש פינה", "לא נעלם מעין השופט". שם פרטי: לידו "עברה ל" ו"העיר" אינם הקשר של מקום ("המשמורת עברה
-   לאלעד", "העיר שלומי כי"). מילים נדירות (רביבים, נירים, חצבה) נשארו בחוץ: במסמך משפטי הן כמעט תמיד
+   לאלעד", "העיר שלומי כי"). שלומי הוא גם שם וגם מילה ("חוששת לשלומי"), ולכן both: כחלק של שם מהרשימה הוא
+   מוחלף רק כשעומד לבד (08-docx.js). מילים נדירות (רביבים, נירים, חצבה) נשארו בחוץ: במסמך משפטי הן כמעט תמיד
    היישוב. כל שם כאן מופיע ב-tests/towns_t.js עם משפט שמראה שהוא מילה */
 const TOWNWORD=new Map([["תקוע","word"],["אופקים","word"],["רעננה","word"],["מודיעין","word"],["חדרה","word"],
   ["ערערה","word"],["נתיבות","word"],["נחלים","word"],["רכסים","word"],["להבים","word"],["ראש פינה","word"],["עין השופט","word"],
-  ["שלומי","name"],["שוהם","name"],["אילת","name"],["אלעד","name"],["עמנואל","name"],["אלקנה","name"],
+  ["שלומי","both"],["שוהם","name"],["אילת","name"],["אלעד","name"],["עמנואל","name"],["אלקנה","name"],
   ["אבשלום","name"],["עמיעד","name"],["צופית","name"]]);
 /* תחליף ליישוב.
 
@@ -1754,7 +1755,7 @@ const CTX_COURT=/(?:בית\s+ה?משפט|ביהמ"ש|בימ"ש|בית\s+ה?די�
 const CTX_AREA=/(?:^|[^א-ת])ו?(?:באזור|בסביבת|בסביבות|בקרבת|במרכז|בצפון|בדרום|במזרח|במערב|בפאתי|במבואות)\s*$/u;
 const CTX_NEAR=/(?:^|[^א-ת])ו?(?:בסמוך|סמוך|מצפון|מדרום|ממזרח|ממערב|צפונית|דרומית|מזרחית|מערבית)\s*$/u;
 function placeCtx(n,x,all){
-  const person=TOWNWORD.get(x.name)==="name";
+  const kind=TOWNWORD.get(x.name), person=kind==="name"||kind==="both";
   const ln=n.lastIndexOf("\n",x.i-1)+1, before=n.slice(Math.max(ln,x.i-90),x.i);
   const loc=/[בלמ]$/.test(x.pre)?x.pre.slice(-1):"";
   if(loc==="ב"&&(CTX_RES.test(before)||CTX_COURT.test(before)))return true;
@@ -1772,6 +1773,9 @@ function placeCtx(n,x,all){
   if(solid(q)&&joined(n.slice(x.e,q.i),q.pre))return true;
   return false;
 }
+// השכבה מחליפה את היישוב מעצמה, בלי לשאול: לא שם קצר, לא דו-משמעי ולא מ-TOWNWORD (ראו risky למטה). חלק של
+// שם מהרשימה שהוא יישוב כזה נשאר לה; יישוב שהיא רק שואלת עליו עובר למעבר של חלקי השם (08-docx.js, regPart)
+const placeOwn=nm=>!!PLACE_BY[nm]&&!(nm.length<=3||AMBIG.has(nm)||TOWNWORD.has(nm));
 function findPlaces(text){
   const n=norm(text),out=[],seen=new Set();
   const docTokP=new Set(n.match(WRX)||[]);
@@ -2612,6 +2616,10 @@ async function redactDocx(buf,subs,allow,opt){
   // ובלי אות שימוש הם דולפים ("וסבג" נשאר בטקסט). מילה של ממש נתפסת ברשימות
   // ובצורת ה' הידיעה שבמסמך; שתי אותיות נשארות זהירות.
   const wordy=p=>WORDLIKE.has(p)||COMMON.has(p)||docTokAll.has("ה"+p)||p.length<=2;
+  /* חלק של שם שהוא גם יישוב, ששכבת היישובים רק שואלת עליו (placeOwn): «אלעד» מתוך «אלעד כהן» יצא לבד, ואפילו
+     הפס אמר שהשמות הוחלפו (הציד של 11.10). שם פרטי שהוא יישוב (TOWNWORD מסוג name) הוא האדם בכל צורה; כל יישוב
+     אחר — מילה, שם דו-משמעי, שם קצר, ושלומי — רק כשעומד לבד, ולבדיקה */
+  const partWordy=p=>TOWNWORD.get(p)==="name"?false:(wordy(p)||!!PLACE_BY[p]||AMBIG.has(p));
   // "רחוב הארזים 12" הוחלף, ו"ההסעות מהארזים" נשאר בטקסט: שם הרחוב לבדו הוא
   // אותו מקום. כל כתובת, רחוב או שכונה שהוחלפו תורמים את המילים שאחרי סוג
   // הרחוב, ובלי המספר; כשהשם הוא גם מילה, רק כשעומד לבד ולבדיקה. חמש
@@ -2634,9 +2642,9 @@ async function redactDocx(buf,subs,allow,opt){
     const add=(p,to)=>{
       // שתי אותיות ("כץ", "נץ") הן שם משפחה של ממש; הן נכנסות למעבר, ובגלל wordy
       // מוחלפות רק כשעומדות לבד ולבדיקה. הסריקה: 2 כמו 3, 4 מוסיף שש דליפות.
-      if(!p||p.length<2||STOP.has(p)||PLACE_BY[p]||AMBIG.has(p))return;
+      if(!p||p.length<2||STOP.has(p)||placeOwn(p))return;
       if(p in sweep||!to||norm(to).includes(p))return;
-      const g=partOf.get(p)||{to:new Set(),of:new Set(),wordy:wordy(p)};
+      const g=partOf.get(p)||{to:new Set(),of:new Set(),wordy:partWordy(p)};
       g.to.add(to); g.of.add(value); partOf.set(p,g)};
     /* שם משפחה כפול במקף ("לוי-אבקסיס", גם במקף עברי): כל חצי לבד הוא אותו אדם — «לדברי אבקסיס», «גם לוי
        אמרה» — ושניהם דלפו (הציד של 11.10). כל חצי מקבל את החצי שלו מהבדוי כשגם הוא כפול, ואחרת את כולו */
@@ -2736,6 +2744,14 @@ async function redactDocx(buf,subs,allow,opt){
   const ids={};applied.forEach((r,i)=>{if(r.rep&&!(r.rep in ids))ids[r.rep]=i});
   const preview=[];
   let blocks3=[];for(const dd of docs)blocks3=blocks3.concat(flatten(dd.doc,dd.f.name));
+  // שאלה של שכבת היישובים על מילה שהמעבר החליף כחלק של שם מהרשימה ("אלעד" מתוך «אלעד כהן»): כשלא נשאר ממנה
+  // מופע, אין על מה להחליט, ואישור שלה היה הופך את האדם ליישוב בריצה הבאה
+  {const fin=norm(blocks3.map(b=>b.text).join("\n"));
+   for(let i=flagged.length-1;i>=0;i--){
+     const f=flagged[i], v=norm(String(f.value||"")).trim(), sw=sweep[v];
+     if(f.src!=="pattern"||f.type!=="PLACE_CITY"||!sw||!sw.of||sw.place)continue;
+     if(!new RegExp(NW+"(?:[בהולמכש]|ו[בהלמכ]|כש|מה|לכ)?"+flex(v)+NWE,"u").test(fin))flagged.splice(i,1);
+   }}
   // פריט שנשאר לבדיקה אינו מסומן במסמך, ולכן הוא נראה בדיוק כמו טקסט שאיש לא נגע בו.
   // על מספר זה קטלני: מספר שנשאר בטקסט נקרא "הכלי פספס אותו", בעוד שבפועל הוא נמצא,
   // הוחלט שלא להחליף אותו אוטומטית, והוא מחכה להחלטה. סימון בצבע אזהרה אומר את זה.
