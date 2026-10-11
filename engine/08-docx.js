@@ -746,6 +746,11 @@ function labelNext(blocks){
       }else if(b.cell.tbl&&below!==undefined&&!labelLike(txt(blocks[below]))&&others.every(k=>labelLike(txt(blocks[k])))){
         // שורת כותרות ("שם העד | תפקיד", "שם הקטין | ת.ז."): התווית היא כותרת של טור, והשמות מתחתיה, לא בתא שלידה.
         // הטור נעצר בתא הראשון שאינו שם: מתחת ל"נספח | שם | עמוד" באים מסמכים (הביקורת של 11.10)
+        // טבלה עם תוויות של שורות בטור הראשון ("עיסוק", "הכנסה"): מה שמתחת לכותרת של צד הוא הערך של השורה, לא שם, ושם
+        // בטבלה כזו נקרא מתווית השורה שלו ("שם"). "התובעת | הנתבע" מעל "עיסוק" מילא את הרשימה במקצועות (ביקורת שנייה)
+        // טבלה כזו פותחת בפינה שאינה תווית של צד (ריקה, "פרט"): כשבפינה "התובעת", הטור הראשון הוא של צד, ושמו אינו תווית
+        const c0=Math.min(...rows.get(blocks[below].cell.row).map(k=>blocks[k].cell.col)), k0=at(b.cell,b.cell.r+1,c0), kc=at(b.cell,b.cell.r,c0);
+        if(c0!==b.cell.col&&k0!==undefined&&k0!==below&&/[א-ת]/.test(txt(blocks[k0]))&&!(kc!==undefined&&asRole(labs[kc])))continue;
         for(let r=b.cell.r+1;r<=Math.min(last.get(b.cell.tbl),b.cell.r+40);r++){
           const k=at(b.cell,r,b.cell.col); if(k===undefined)continue;
           if(labelLike(txt(blocks[k])))break;
@@ -806,6 +811,17 @@ function discover(blocks){
     r.count++;r.why.add(h.why);r.spk=(r.spk||0)+1;
     if(!r.ctx)r.ctx=ctxHTML(b.text,h.s,h.e);
   }
+  // כותרת של תיק: שורת "נגד" ("נ ג ד") באותו חלק, או פרטים של צד בשורה שמתחת לשם
+  const plain=b=>norm(String(b.text||"")).replace(/\u0000/g,"").trim(), at=new Map(blocks.map((b,i)=>[b,i]));
+  const vsParts=new Set(blocks.filter(b=>/^-?\s*(?:נ\s+ג\s+ד|נגד)\s*-?$/u.test(plain(b))).map(b=>b.part));
+  const DETAIL=/^(?:באמצעות|ע"י|ת\.?\s?ז|ת"ז|מ?רח(?:וב|')|ב"כ|עו"ד)/u, DETAIL_IN=/(?:^|[\s(])(?:באמצעות|ע"י|ב"כ|ת\.?\s?ז\.?|ת"ז)(?=[\s.:,]|$)/u;
+  // וגם טבלה שיש בה פרטים של צד ("ע"י ב"כ", ת"ז) באחד התאים
+  const tblOf=b=>b.cell&&b.cell.tbl!=null?b.part+"|"+b.cell.tbl:null, capTbl=new Set();
+  for(const b of blocks){const t=tblOf(b); if(t&&DETAIL_IN.test(plain(b)))capTbl.add(t)}
+  const caption=b=>{if(vsParts.has(b.part)||capTbl.has(tblOf(b)))return true;
+    const nb=blocks[at.get(b)+1]; return !!nb&&nb.part===b.part&&DETAIL.test(plain(nb))};
+  // שם מוכר מתחת לתווית של צד מעיד על הצדדים שלידו: באותה טבלה, או עד שש שורות ממנו
+  const knownTbl=new Set(), knownAt=[];
   const take=(b,h)=>{
     const r=found[h.text]||(found[h.text]={count:0,why:new Set(),conf:"medium",ctx:"",role:null,g:null,gf:0,gm:0});
     r.count++;r.why.add(h.why);
@@ -813,7 +829,13 @@ function discover(blocks){
     if(h.g==="f")r.gf++; if(h.g==="m")r.gm++;
     // שם בשכן של תווית ממלא את הרשימה רק כשהשורה היא השם בלבד ("נגה טרכטנגוט, ת.ז. …" מוצע), ומה שבא אחרי תפקיד
     // באותה שורה ואינו נראה כשם ("הנתבע - מתנגד נחרצות", unsure) מוצע ואינו ממלא אותה (הביקורת של 11.10)
-    if(h.anchor==="bid"||(h.anchor==="role"&&(!h.near||h.only)&&!h.unsure))r.conf="high";
+    // ושכן ממלא אותה רק עם ראיה של שם: מילה של שם מוכר (known), כותרת של תיק (שורת "נגד" באותו חלק, רשימת צדדים
+    // ממוספרת, או פרטי צד בשורה שמתחת: "באמצעות", ת"ז, "ע"י"), או אותו שם במקום אחר במסמך (למטה). חצי של זוג לעולם
+    // לא (pair): "מהנדסת תוכנה" מתחת ל"המבקשת:" ו«קנין נגד» מ"אורי וקנין נגד" מילאו את הרשימה (ביקורת שנייה)
+    const nearOK=!h.near||(h.only&&(h.known||h.numbered||caption(b)));
+    if(!h.pair&&(h.anchor==="bid"||(h.anchor==="role"&&nearOK&&!h.unsure)))r.conf="high";
+    else if(!h.pair&&h.anchor==="role"&&h.near&&h.only&&!h.unsure)(r.nearAt||(r.nearAt=new Set())).add(b);
+    if(!h.pair&&h.anchor==="role"&&h.near&&h.only&&h.known&&!h.unsure){const t=tblOf(b); if(t)knownTbl.add(t); else knownAt.push(b)}
     // דובר שחוזר, או דובר בשם מלא, הוא אדם בוודאות. דובר יחיד במילה אחת נשאר
     // הצעה: "שאלה:" או "הערה:" נראים אותו דבר עד שחוזרים.
     // דובר הוא מי שחוזר: "מועד אחרון לתגובה:" הוא תווית של טופס, גם כשיש בה שתי מילים.
@@ -824,6 +846,14 @@ function discover(blocks){
   for(const b of blocks) for(const h of anchoredSeen(b.text))take(b,h);
   // שם שתווית בתא או בפסקה שלידו מעידה עליו: "התובעת:" בתא אחד והשם בתא שלידו מילא את הרשימה כמו בשורה אחת
   for(const {i,h} of labelNext(blocks))take(blocks[i],h);
+  // שם בשכן של תווית בלי מילה של שם מוכר ממלא את הרשימה כשצד לידו נקרא בשם מוכר, או כשהוא כתוב גם במקום אחר
+  // במסמך, מחוץ לשכן
+  const nearKnown=b=>knownTbl.has(tblOf(b))||(!tblOf(b)&&knownAt.some(k=>k!==b&&k.part===b.part&&Math.abs(at.get(k)-at.get(b))<=6));
+  for(const [v,r] of Object.entries(found)){
+    if(r.conf==="high"||!r.nearAt)continue;
+    if([...r.nearAt].some(nearKnown)){r.conf="high";continue}
+    const rx=new RegExp(NW+flex(norm(v).trim())+NWE,"u");
+    if(blocks.some(b=>!r.nearAt.has(b)&&rx.test(norm(String(b.text||"")))))r.conf="high"}
   // "מאורי בן-שחר" הוא "אורי בן-שחר" עם אות שימוש — לא מועמד נפרד
   // אין איחוד אוטומטי לפי האות הראשונה: "שרון לוי" אינו "רון לוי"
   // עם אות שימוש, ומיזוג שגוי נותן לשני אנשים אותו כינוי.

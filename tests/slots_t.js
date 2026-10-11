@@ -131,7 +131,9 @@ async function untouched(items, words, label) {
       const raw = fs.readFileSync(path.join(__dirname, "..", "bench", "corpus", id + ".docx"));
       const cands = C.discover(await C.readBlocks(raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength)));
       const auto = autoList(cands);
-      for (const n of names) ok(auto.includes(n), id + ": the sender «" + n + "» fills the list — got «" + auto.join(" | ") + "»");
+      // a sender whose words are no known name is proposed for one tap, not filled in: a dated log's label looks the same
+      // (second review of 11.10: «איסוף מהגן», «חוג כדורגל» filled the list and changed the text under a green bar)
+      for (const n of names) ok(cands.some((c) => c.value === n && c.speaker), id + ": the sender «" + n + "» is proposed — got «" + cands.map((c) => c.value + "/" + c.conf).join(" | ") + "»");
       // «אמא:» and «אבא:» write in these chats too, and are no one's name
       ok(!cands.some((c) => /^(?:אמא|אבא)$/.test(c.value)), id + ": «אמא» and «אבא» are not proposed");
     }
@@ -263,10 +265,11 @@ async function untouched(items, words, label) {
     // the bench's c2: the sender «ליעד בן-עמיאל» is written «בן עמיאל» in a message, with a space
     const raw = fs.readFileSync(path.join(__dirname, "..", "bench", "corpus", "c2.docx"));
     const buf = raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength);
-    const auto = autoList(C.discover(await C.readBlocks(buf.slice(0))));
+    // she accepts the two proposed senders
+    const auto = [...autoList(C.discover(await C.readBlocks(buf.slice(0)))), "מייסא סרחאן", "ליעד בן-עמיאל"];
     const r2 = await C.redactDocx(buf.slice(0), auto.map((v) => ({ value: v, kind: "NAME", replacement: "" })), [], OPT);
     const o3 = r2.preview.map((b) => b.text).join("\n");
-    ok(!/עמיאל|סרחאן/.test(o3), "the bench's c2: both senders and their surnames alone are gone — «" + o3.replace(/\n/g, " ⏎ ") + "»");
+    ok(!/עמיאל|סרחאן/.test(o3), "the bench's c2: both senders, once accepted, and their surnames alone are gone — «" + o3.replace(/\n/g, " ⏎ ") + "»");
   }
   {
     // a part of a listed name, written another way: a space for the hyphen, vowel marks between the letters
