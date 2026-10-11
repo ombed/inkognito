@@ -202,7 +202,7 @@ test("M31: an English answer runs left to right on the restore screen", async ({
   await H.startScan(page);
   await expect(H.goButton(page)).toBeVisible({ timeout: 10000 });
   await H.goOn(page);
-  await page.getByRole("button", { name: /החלת הקבוצה והמשך|המשך לבדיקה|המשך לעיבוד/ }).first().click();
+  await H.throughPlaces(page, page.getByRole("button", { name: /החלת הקבוצה והמשך|המשך לבדיקה|המשך לעיבוד/ }).first());
   await expect(page.locator("[data-mark]").first()).toBeVisible({ timeout: 15000 });
   await page.evaluate(() => { navigator.clipboard.writeText = () => Promise.resolve(); });
   const bar = page.locator("[data-bar]");

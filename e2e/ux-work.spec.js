@@ -31,8 +31,8 @@ async function toWork(page, doc, names) {
   for (const n of names || []) { await input.fill(n); await input.press("Enter"); }
   await H.goOn(page);
   const run = page.getByRole("button", { name: /החלת הקבוצה|המשך לבדיקה/ }).first();
-  await expect(run).toBeVisible({ timeout: 15000 });
-  await run.click();
+  await expect(run.or(page.locator("[data-bar]")).first()).toBeVisible({ timeout: 15000 });
+  await H.throughPlaces(page, run);
   await expect(page.locator("[data-bar]")).toBeVisible({ timeout: 20000 });
 }
 const sheet = (page) => page.locator("[data-work] section").first();
@@ -83,12 +83,13 @@ test("UX #12: the work screen shows one step model, and the places button says w
   await H.serveEngineWithStub(page);
   await H.boot(page);
   await page.getByRole("checkbox").first().uncheck();
-  await H.upload(page, "hearing.docx", DOC);
+  // one town: the places screen is shown, without a map (a document with none goes straight to the check screen)
+  await H.upload(page, "hearing.docx", DOC + "\nההורים גרים בחולון.");
   await H.startScan(page);
   await expect(H.goButton(page)).toBeVisible({ timeout: 10000 });
   await H.goOn(page);
   await expect(page.getByRole("button", { name: "המשך לבדיקה" })).toBeVisible({ timeout: 15000 });
-  await page.getByRole("button", { name: "המשך לבדיקה" }).click();
+  await H.throughPlaces(page, page.getByRole("button", { name: "המשך לבדיקה" }));
   await expect(page.locator("[data-bar]")).toBeVisible({ timeout: 20000 });
   await expect(page.locator("header nav")).toHaveCount(0);
   await expect(page.locator("[data-steps]")).toContainText("2 העתקה או הורדה");
