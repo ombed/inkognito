@@ -283,6 +283,10 @@ for (const [text, want] of [
   // a footnote mark after the sentence's dot, as text pasted from Word carries it
   ["ביום 12.3.2026.3 התקיים הדיון.", "12.3.2026"],
   ["ביום 12. 3. 2026.3 התקיים הדיון.", "12. 3. 2026"],
+  // a direction mark between the month's name and the year: v73.6 reads the text without it, so the rule needs no
+  // allowance of its own (these two failed before the merge of v73.6)
+  ["במרץ" + RLM + " 2026 עזב את הבית.", "מרץ" + RLM + " 2026"],
+  ["בחודש מרץ " + RLM + "2026 עזב את הבית.", "מרץ " + RLM + "2026"],
 ]) eq(found(text), want, "«" + text + "»");
 
 console.log("\n— left alone: an amount after a month's name, the clause abbreviations, units in their other forms (review 11.10) —");
