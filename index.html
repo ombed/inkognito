@@ -1385,7 +1385,7 @@ class Component extends DCLogic {
     sel:null, filter:"all", cat:"", open:null, pane:"doc", hot:null,
     addV:"", addR:"", addK:"NAME",
 
-    rvIn:"", rvOut:"", rvLeft:[], rvLast:null, rvCopyLabel:"העתקת הטקסט המשוחזר",
+    rvIn:"", rvOut:"", rvLeft:[], rvLast:null, rvProfile:null, rvCopyLabel:"העתקת הטקסט המשוחזר",
     copyLabel:"העתקה ל־AI", busyT:"מעבד…", err:"",
     geo:null, geoV:0, geoNames:[], geoExtra:[], geoEdits:{}, popup:null, tip:null, repDraft:"", sent:{}, peoKept:[], peoNotSame:[], inline:null, inlineDraft:"",
     // הפרופיל של התיק נשמר בדפדפן אחרי כל שינוי; lastProfile הוא מה שנמצא בכניסה
@@ -1792,7 +1792,7 @@ class Component extends DCLogic {
       res:null, sel:null, hot:null, query:"", cat:"", filter:"all", addV:"", addR:"", addK:"NAME", inline:null, inlineDraft:"", popup:null, tip:null,
       repDraft:"", approved:[], formSel:null, markIdx:0, docView:"red", exportAsk:"", notice:"", leaks:[], copied:false, copyLabel:"העתקה ל־AI", undoN:0, redoN:0, rerunning:false,
       // החזרת שמות
-      rvIn:"", rvOut:"", rvCount:0, rvLeft:[], rvLast:null,
+      rvIn:"", rvOut:"", rvCount:0, rvLeft:[], rvLast:null, rvProfile:null,
       // מה שהתיק שומר (profileObj)
       rules:[], allow:[], removed:[], sent:{}};
     if(keepCase&&(S.profile||S.caseName)) for(const k of ["rules","allow","removed","sent"]) delete reset[k];
@@ -3620,7 +3620,7 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
   }
   openReverse = () => {
     const S=this.state;
-    this.setState({screen:"reverse", returnTo:S.screen==="reverse"?(S.returnTo||"entry"):S.screen, err:"",
+    this.setState({screen:"reverse", returnTo:S.screen==="reverse"?(S.returnTo||"entry"):S.screen, err:"", rvProfile:null,
       rvLast:!S.res&&!S.profile&&!S.tour?this.rvLastOffer():null});
   };
   rvGo = () => {
@@ -3629,7 +3629,8 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
        רק את המפה של התיק השמור, ולא את זו של המסמך שבעבודה — הכינוי שהכלי
        עצמו כתב רגע קודם לא נמצא. המסמך הנוכחי קודם; הפרופיל משלים שמות
        ממסמכים קודמים באותו תיק. */
-    const map=E.restorePairs((S.profile&&S.profile.map)||{}, this.currentMap());
+    // תיק שנטען כאן להחזרה בלבד (rvProfile, applyProfile): המפה שלו לבדה, לא של המסמך הפתוח של לקוח אחר
+    const rvP=S.rvProfile, map=rvP?E.restorePairs(rvP.map||{}, {}):E.restorePairs((S.profile&&S.profile.map)||{}, this.currentMap());
     if(!S.rvIn.trim()){ this.setState({err:"אין טקסט להחזרה. מדביקים כאן את התשובה שה-AI החזיר (Ctrl+V)."}); return; }
     if(!Object.keys(map).length){ this.setState({err:"עדיין אין שמות להחזרה. בחרו תיק שמור במסך הפתיחה, או ייבאו תיק מקובץ."}); return; }
     /* הכתיב שחוזר הוא הכתיב שבמסמך (UX #19): "ברקוביץ׳" ו"ברקוביץ'" התערבבו,
@@ -3642,7 +3643,7 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     };
     const pairs=Object.entries(map).map(([real,fake])=>[surface(real),fake]);
     // כינויים שיצאו קודם ושונו מאז חוזרים גם הם לאדם שלהם (H1); כינוי שכבר במפה לא נכפל
-    for(const [real,arr] of Object.entries(this.sentAll())) for(const fake of arr) if(!pairs.some(p=>p[1]===fake)) pairs.push([surface(real),fake]);
+    for(const [real,arr] of Object.entries(rvP?(rvP.sent||{}):this.sentAll())) for(const fake of arr) if(!pairs.some(p=>p[1]===fake)) pairs.push([surface(real),fake]);
     const r=E.restoreNames(S.rvIn, pairs);
     // ההחזרה בסיור היא של המסמך לדוגמה: ביומן נרשם הסיור עצמו
     if(!S.tour) this.log.add("restore",{count:r.count, left:(r.left||[]).length});
@@ -3757,6 +3758,14 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
   applyProfile(prof, name){
     try{
       const open=!!this.state.res, mine=this.state.caseName||"";
+      /* תיק שנטען ב«החזרת שמות» כשמסמך פתוח שאינו בתיק הזה — בלי תיק, או של לקוח אחר — הוא להחזרה בלבד: השמות שלו הם
+         המפה של ההחזרה, והמסמך, הרשימה שלו והתיק נשארים כמו שהם. עד כאן המסמך הפתוח הוצמד לתיק ועובד מחדש, והשמירה
+         הבאה כתבה את הלקוח שלו לתוך התיק של הלקוח האחר (הציד של 11.10). e2e/case-open-doc.spec.js */
+      if(open&&this.state.screen==="reverse"&&(name===undefined||name!==mine)){
+        this.log.add("case-restore-only",{});
+        this.setState({rvProfile:prof, err:""});
+        return;
+      }
       if(open&&mine&&name!==undefined&&name!==mine){
         this.log.add("case-kept",{});
         this.setState({notice:`המסמך הפתוח שייך לתיק «${mine}», והוא נשאר בו. כדי לעבוד עם ${name?"«"+name+"»":"הרשימה הקודמת"}, פותחים מסמך חדש.`, noticeUndo:false});

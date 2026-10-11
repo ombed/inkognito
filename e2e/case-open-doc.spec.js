@@ -146,3 +146,28 @@ test("a pause on a name that is another case's does not write the letter into th
   await expect.poll(async () => Object.keys(await cases(page)).sort()).toEqual([CASE_A.name, CASE_A.name + " 2"].sort());
   expect((await cases(page))[CASE_A.name]).toEqual(CASE_A);
 });
+
+/* A case imported on «החזרת שמות» while another client's letter is open (the hunt of 11.10, restore.md): the import is
+   for restoring that case's answer. It attached the open letter to the case and processed it again, and the next save
+   wrote the letter's client into the other client's case. Now it only supplies the case's names to the restore: the
+   letter, its list and the case stay as they were. */
+test("a case imported on «החזרת שמות» serves only the restore: the open letter and the case stay as they were", async ({ page }) => {
+  await H.serveEngineWithStub(page);
+  await H.boot(page);
+  await letterToWork(page);
+  await page.getByRole("button", { name: "החזרת שמות מתשובת AI" }).click();
+  const chooser = page.waitForEvent("filechooser");
+  await page.getByRole("button", { name: "ייבוא תיק מקובץ", exact: true }).click();
+  await (await chooser).setFiles({ name: "כרמי.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(CASE_A)) });
+  // the other client's answer comes back with that case's names
+  await page.getByLabel("תשובת ה-AI").fill("מרים הרשקוביץ ביקשה לקבוע דיון דחוף.");
+  await page.locator("[data-rv-go]").click();
+  await expect(page.locator("[data-rv-out]")).toContainText("דנה כרמי");
+  // the letter is as it was: its own two names replaced, attached to no case, and the case holds none of them
+  await page.locator("[data-rv-back]").click();
+  await expect(page.locator("[data-bar]")).toBeVisible({ timeout: 15000 });
+  await expect(paper(page)).not.toContainText("ליה");
+  await expect(paper(page)).not.toContainText("טננבאום");
+  expect(await page.evaluate(() => window.__pib.state().caseName || "")).toBe("");
+  expect(JSON.stringify(await cases(page))).not.toMatch(/ליה|טננבאום/);
+});
