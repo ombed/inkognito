@@ -1962,7 +1962,10 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     const kept=[...(S.peoKept||[])], list=[];
     const decided=S.res&&rules.length; // הכללים קיימים רק אחרי שהרשימה כבר עברה למסך הבדיקה
     for(const p of S.peo||[]){
-      if(!decided||has(p.value)) list.push(p);
+      /* «זה אותו אחד כמו…» במסך הבדיקה נרשם על הכלל בלבד, והרשימה חזרה בלעדיו: «מי בתיק» ואז «המשך» נתנו לאותו אדם
+         כינוי שני (הציד של 11.10). השורה מקבלת את המיזוג שהוחלט שם, ורואים אותו («= …») */
+      if(decided&&has(p.value)){ const r=rules.find(x=>x&&n(x.value)===n(p.value)); list.push(r&&(r.sameAs||undefined)!==(p.sameAs||undefined)?{...p, sameAs:r.sameAs||undefined}:p); }
+      else if(!decided) list.push(p);
       else if(!kept.some(k=>n(k.value)===n(p.value))) kept.push({...p});
     }
     if(decided) for(const r of rules) if((r.kind==="NAME"||r.kind==="ORG")&&r.value&&!list.some(p=>n(p.value)===n(r.value)))
