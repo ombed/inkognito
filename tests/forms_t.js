@@ -68,6 +68,15 @@ for (const [text, want] of [
   ["המבקשת מתגוררת ברח. הנרקיס 9 בחיפה.", "ברח. הנרקיס 9"],
   ["המשיב מתגורר במשק 45 במושב בית זית.", "45"],
   ["ת.ד. 4521, חיפה", "4521"],
+  // a longer address label, and a residence verb before the street with no street word (the hunt of 11.10, the last forms)
+  ["מען למכתבים: הנרקיס 9 חיפה", "הנרקיס 9"],
+  ["כתובת מגורים: הנרקיס 9, חיפה", "הנרקיס 9"],
+  ["כתובת המבקשת: אחד העם 5, תל אביב", "אחד העם 5"],
+  ["המבקשת מתגוררת בהנרקיס 9 בחיפה.", "הנרקיס 9"],
+  ["המבקשת גרה בהנרקיס 9 בחיפה.", "הנרקיס 9"],
+  ["האב מתגורר ברוטשילד 12/4, תל אביב.", "רוטשילד 12/4"],
+  ["מקום מגוריה בבן יהודה 30, תל אביב.", "בן יהודה 30"],
+  ["הילדים גרים עם האם, והאב גר באחד העם 5 בחולון.", "אחד העם 5"],
   // a person's account: any subdomain, with or without https, more networks, a bare @handle
   ["ראו את הפוסט בכתובת https://m.facebook.com/noga.trachtengot.5 מיום שני.", "https://m.facebook.com/noga.trachtengot.5"],
   ["ראו את הפוסט בכתובת facebook.com/noga.trachtengot.5 מיום שני.", "facebook.com/noga.trachtengot.5"],
@@ -84,6 +93,13 @@ for (const [text, want] of [
 
 console.log("\n— left alone: numbers that identify no one —");
 for (const text of [
+  // a residence verb before a town, a floor, a flat or a building, or a number of years: no address
+  "המבקשת גרה בחיפה 12 שנים.",
+  "הילדים גרים בתל אביב 3 ימים בשבוע.",
+  "האב מתגורר בקומה 3 של הבניין.",
+  "הם גרים בדירה 4 חדרים.",
+  "המבקשת מתגוררת בבית 2 קומות.",
+  "הם גרו באותה דירה 5 שנים.",
   "הסכום הוא 1,234,567 ש\"ח.",
   "שכר של 12 345 ש\"ח בחודש.",
   "בשנים 2019-2021 גרו יחד.",
