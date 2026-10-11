@@ -1,32 +1,39 @@
 # InKognito launch runbook
 
-Everything still to do before inkognito.co.il goes live, in order. Each step says who does it.
+Everything still to do before inkognito.co.il goes live, in order, and how to keep it running (9). Each step says who does it.
 "Owner" steps are dashboard clicks; Claude can guide each one live. Written 4 October 2026 on
 branch `inkognito`, from the build plus three research reports (Cloudflare Pages, email with
 Resend, Israeli law) and an independent security review.
 
-**Already done** (by 5.10):
-- **The Supabase project** (Frankfurt). Migrations 0001–0010 are all live and verified.
+**Already done** (by 11.10):
+- **The Supabase project** (Frankfurt). Migrations 0001–0012 are all live and verified.
   - 0009 (5.10): a byte budget for logs, names only from Google, profiles only once confirmed.
   - 0010 (5.10): the keep-awake request.
   - 0006 (5.10): the daily sign-ups email. A test was sent.
+  - 0011 (7.10): email change, «הורדת המידע שלי», the deletion email, the owner's delete.
+  - 0012 (8.10): a record of what each account agreed to, and when.
 - **Sign-in** with Google, or with an email and a password.
 - **The rest of the build:** the gate, the hosted build (`dist/`), the admin page and the legal
   pages.
 - **The site runs on inkognito.co.il**, with www redirected to it (5.4). It is kept out of search
   engines until launch (7).
 - **Email:** it goes out through Resend from contact@inkognito.co.il (4.1). The templates were
-  pasted in their final versions on 5.10.
+  pasted in their final versions on 8.10 (all four: the footer line, and the new Change Email Address).
 - **Google sign-in** is open to every account (6).
 - **The tool speaks to its users in the plural** (v59, public tool and hosted alike).
 
-**Left:**
-- The owner's full test on the live site (sign-up, confirmation, reset, Google, a document, the
-  admin page).
-- Then launch day (7): `LAUNCHED = true`, Search Console, and the move from the GitHub Pages
-  address.
-- Deferred by the owner on 5.10 ("not for now"): Resend's paid plan (4.2), Supabase Pro (7), and
-  a custom domain for Google's sign-in screen (6). Revisit them when users arrive.
+**Left** (the order agreed on 10.10):
+- The owner's full test on the live site, in Gmail and in an Outlook or Microsoft 365 inbox:
+  sign-up, confirmation, reset, email change with two inboxes, Google, a document, the demo, the
+  admin page, deleting an account.
+- Supabase Pro (7), with the custom domain for Google's sign-in screen (6), Turnstile on sign-up,
+  leaked-password protection (8) and the password-changed notice. Turnstile loads Cloudflare's
+  script on the sign-in page, so that page's security policy changes first, and the privacy page
+  may need a line.
+- The domain's auto-renew, the uptime monitor and the Gmail filter (9.2–9.4).
+- Cloudflare's AI-crawler setting, a dry run, then launch day (7): `LAUNCHED = true`, Search
+  Console and Bing. The reviewing lawyer reads the legal pages in the weeks after.
+- Before announcing beyond a small circle: Resend's paid plan (4.2). The announcement: end of 7.
 
 ---
 
@@ -55,13 +62,14 @@ the lightest level, and these accounts control the whole service.
    - **Browser Cache TTL.** The zone's default (4 hours) replaces the site's own "check again every
      time" on the public scripts (config.js, login.js, cloud.js…), so after a deploy a browser
      could run a new page with an old script. The owner's dashboard did not offer "Respect
-     Existing Headers" (5.10), so it is solved in the build instead (386ecc3). Every page names its
+     Existing Headers" (5.10), so it is solved in the build instead (7ad01d9). Every page names its
      public scripts and styles with a content hash (`config.js?v=a5ade2eb53`), so a new page always
      loads its own version. The tool's files under /app/ are `private`, which Cloudflare leaves
      alone.
-4. **DMARC:** DNS → Add record → TXT, name `_dmarc`, value
-   `v=DMARC1; p=none; rua=mailto:contact@inkognito.co.il`. (Or Email → DMARC Management.)
+4. **DMARC** (done with Email → DMARC Management): `_dmarc` is `v=DMARC1; p=none` with Cloudflare's own
+   address for the reports, which are read there.
    Tighten to `quarantine` later, once reports are clean.
+5. **Renewal:** every year, before the end date (9.2).
 
 ## 2. contact@inkognito.co.il → your Gmail (owner, 5 minutes)
 
@@ -73,6 +81,8 @@ Test from a different account.
 Replying *as* contact@ from Gmail ("Send mail as") is being retired by Google for outside
 addresses (January 2027, maybe refused for new setups already). For now, reply from your own
 Gmail; decide later between a mail program that sends through Resend, or Google Workspace.
+
+The Gmail filter and the daily routine for this inbox: 9.4.
 
 ## 3. Resend, the sender of sign-in emails (owner, 15 minutes)
 
@@ -114,8 +124,8 @@ Gmail; decide later between a mail program that sends through Resend, or Google 
    (done 4.10); every sign-up, resend and password reset counts. Resend's free plan also has a
    daily cap, and the sign-in page says so plainly when either cap is reached. **Move Resend to a
    paid plan before announcing** to more than a small circle (deferred by the owner, 5.10). The
-   numbers are in `../inkognito-private/limits.md`.
-   The templates were pasted again in their final versions on 5.10.
+   numbers are in `../notes/limits.md`.
+   The templates were pasted again in their final versions on 8.10 (all four: the footer line, and the new Change Email Address).
 3. **Authentication → URL Configuration** (done 4.10 with step 5.3, once https://inkognito.co.il/login
    opened; the pages.dev entry then deleted, so that no email can carry a pages.dev link again):
    Site URL `https://inkognito.co.il/login`, with `/login`: when a request names no return page
@@ -142,16 +152,16 @@ Gmail; decide later between a mail program that sends through Resend, or Google 
    confirms such an account with an update, and 0008 drops any password set before that update.
    The person then signs in with Google, or sets a password with "forgot password".
 
-## 5. Cloudflare Pages: put the site live (owner with Claude; done 4.10 except `www`, step 4)
+## 5. Cloudflare Pages: put the site live (owner with Claude; done 4.10, `www` 5.10)
 
 From the repository folder, on branch `inkognito`:
 
 ```
 npm install
 npm run build:hosted
-npx wrangler login
-npx wrangler pages project create inkognito --production-branch=main
-npx wrangler pages deploy dist --project-name=inkognito --branch=main
+npx --yes wrangler@4.147.0 login
+npx --yes wrangler@4.147.0 pages project create inkognito --production-branch=main
+npx --yes wrangler@4.147.0 pages deploy dist --project-name=inkognito --branch=main
 ```
 
 (`functions/` is picked up from the current folder. Cloudflare gave the project the address
@@ -178,6 +188,7 @@ npx wrangler pages deploy dist --project-name=inkognito --branch=main
 5. Repeat the checks on `https://inkognito.co.il`, and view the source of `/privacy` to confirm
    nothing was injected (no `email-decode`, no `beacon.min.js`). Every public script and style the
    pages name carries `?v=` and its content hash (1.3), and each of those addresses answers 200.
+6. **To undo a deploy:** Cloudflare keeps every deployment (9.1).
 
 ## 6. Google sign-in for everyone (owner; done 5.10)
 
@@ -212,18 +223,18 @@ Checked 5.10:
 - Left for the lawyer: whether the accessibility rules apply at all (small-business exemptions),
   and the transfer basis for the US processors.
 - The database definitions document (מסמך הגדרות מאגר): drafted for you outside the repository
-  (`../inkognito-private/database-definitions.he.md`); keep it, and review it every year by
+  (`../notes/database-definitions.he.md`); keep it, and review it every year by
   31 December.
-- Search engines (done 4.10): the home, privacy, terms and accessibility pages are indexable
-  under their inkognito.co.il addresses (canonical links, sitemap.xml); the tool, admin, sign-in
-  and 404 pages, and every pages.dev copy, are kept out. **On launch day, Claude sets
+- Search engines (done 4.10): the home, privacy, terms, accessibility, security and help pages and the four guides are indexable
+  under their inkognito.co.il addresses (canonical links, sitemap.xml); the tool, the demo, and the
+  admin, sign-in, what's-new, account-deleted and 404 pages, and every pages.dev copy, are kept out. **On launch day, Claude sets
   `LAUNCHED = true` in scripts/build-hosted.js, builds and deploys**: until then the whole
   domain sends `X-Robots-Tag: noindex`. After launch, add the site in Google Search Console and
   submit `https://inkognito.co.il/sitemap.xml`. (The three step screenshots
   show no product name or version, so the rename needs no new ones.)
-- Her move from the GitHub Pages address, at a time agreed with her.
+- Done 6.10: the GitHub Pages address forwards here (docs/ROLLBACK.md).
 - **Supabase Pro** ($25 a month) matters beyond Google's screen: the free plan keeps no backups,
-  and Pro also turns on leaked-password protection (8). Deferred by the owner (5.10). A free
+  and Pro also turns on leaked-password protection (8). Moved before launch by the owner (9.10). A free
   project also pauses after a quiet week, and sign-in and the tool would stop until it is
   restored in the dashboard. So since 5.10 the database asks its own API one tiny question every
   four hours (0010, `public.ping()` with the site's public key). If that ever stops, Supabase
@@ -231,8 +242,7 @@ Checked 5.10:
 - From the night review (5.10), decided by the owner on 5.10:
   - **The site's code on GitHub:** publish the `inkognito` branch, after a scan for anything
     private (done: nothing secret or personal; the scan's small points are fixed in this file).
-  - **Mail to contact@ is kept 12 months** (privacy page, section 6). Once a month, in Gmail:
-    `to:contact@inkognito.co.il older_than:1y`, select all, delete.
+  - **Mail to contact@ is kept 12 months** (privacy page, section 6). Once a month, in Gmail (9.4).
   - **The tool speaks to its users in the plural** (v59, PR #77; tests/address_t.js keeps it so).
     The site's own pages were already neutral.
 - **One database migration: applied 5.10.** Three findings from the night review, each low on
@@ -265,13 +275,60 @@ Checked 5.10:
   If a sign-up or a confirmation fails afterwards, `supabase/rollback/0009_restore_signups.sql`
   makes them work again at once; `supabase/rollback/0009_full.sql` goes back to 0008.
 
+### The announcement (owner, after launch day; then 10 minutes a week)
+
+- **Who hears first:** a small circle. First the lawyer the tool was built for (its first
+  user), then a few lawyers who already feel the problem: they redact by hand, work on family,
+  minors', medical or criminal files, or have clients who forbid AI. Ask each of them for one
+  line of feedback after a week. Keep the circle small until Resend's paid plan (4.2). The free
+  plan sends 100 emails a day, and every sign-up, resend, password reset, email change (two
+  emails), account deletion and morning sign-ups email counts toward that.
+- **The reason to share:** the plain-language guide to the Bar's AI opinion 60/24
+  (`guide-bar-opinion-60-24`, drafted 10.10 on the review page). It waits for your choices,
+  then for the reviewing lawyer to check the three sentences that are our interpretation. The
+  message links to the guide, and the guide links to the tool. There is room for it:
+  `_routes.json` holds 84 of Cloudflare's 100 rules since 11.10, and a page takes one.
+- **Each week:**
+  - Cloudflare → inkognito.co.il → **Analytics** → **Traffic**: requests and unique
+    visitors, counted at Cloudflare's edge (free, no script, no cookie). Crawlers are
+    included, and the two uptime monitors add about 1,150 requests a day.
+  - Three numbers from the admin page:
+    - «נרשמו ב־7 הימים האחרונים»
+    - «פעילים ב־7 הימים האחרונים»
+    - «מסמכים עד היום»
+  - Each morning after a sign-up, the sign-ups email (4.4).
+
+  Write the numbers down each week: they show whether lawyers feel the problem, before more
+  features are built.
+
+Cloudflare's **Web Analytics** stays off (1.3):
+- **Why it would not load.** It is a script from `static.cloudflareinsights.com`, and every
+  page's security policy refuses it (`script-src 'self'`). `no-transform` also stops
+  Cloudflare's automatic injection ("the Beacon script will not be automatically injected",
+  Cloudflare's Web Analytics FAQ). For the switch on the Pages project, Cloudflare says only
+  that the snippet is added on the next deployment, so there the security policy is what stops
+  it.
+- **Why it stays off.** Cloudflare says Web Analytics "does not collect or use your visitors'
+  personal data", but turning it on would still break two promises:
+  - the privacy page uses information «רק למטרות האלה», and says
+    «שימוש במידע למטרה חדשה ייעשה רק בהסכמה מפורשת מראש» (section 4);
+  - the security page says «הכלי באתר הזה לא פונה לאתרים אחרים» (section 1).
+- **What turning it on would take:** a new security policy, new lines in sections 3–5 of the
+  privacy page and in the security page, and the 14 days' notice of the privacy page's
+  section 8.
+- **The Traffic numbers** need no new line, on our reading: they are totals of the requests
+  Cloudflare already handles (sections 3 and 5), and no person can be identified in them. Add
+  that reading to the reviewing lawyer's list.
+- **To check that it is off:** Workers & Pages → `inkognito` → **Metrics** shows **Enable**
+  under Web Analytics. (No beacon was on the live pages when checked on 10.10.)
+
 ## 8. Later, when it grows
 
-- Done 5.10 (80de769): the admin page reads every user and every log page by page, in a fixed
+- Done 5.10 (4ae7e5f): the admin page reads every user and every log page by page, in a fixed
   order, up to the count the database gives. It no longer stops silently at Supabase's
   1,000-row page.
-- The tool's page (337 KB) goes out uncompressed. `no-transform`, which keeps Cloudflare's
-  scripts out, also stops Cloudflare compressing it; gzipped it is about 94 KB. The gate can
+- The tool's page (425 KB) goes out uncompressed. `no-transform`, which keeps Cloudflare's
+  scripts out, also stops Cloudflare compressing it; gzipped it is about 117 KB. The gate can
   compress it itself (`content-encoding: gzip`). Check it live with a session.
 
 - At 10,000 users the data-security level rises from "managed by an individual" to "basic":
@@ -299,3 +356,165 @@ Checked 5.10:
 - Before charging: open the tax files; the consumer-law identity details (name, ID, address)
   and the 14-day cancellation right may apply; marketing emails need opt-in and the word
   "פרסומת".
+
+## 9. Keeping it running (owner + Claude)
+
+1. **Undo a bad deploy** (owner, 2 minutes). Roll back first, look for the cause after.
+   Workers & Pages → `inkognito` → **Deployments** → **All deployments** → the **⋯** menu of the
+   last good one → **Rollback to this deployment** → confirm. The switch is instant. Any
+   production deployment can be chosen, including a newer one again later (Cloudflare's Pages
+   docs, "Rollbacks"). The whole deployment comes back: pages, tool, gate and headers. Each row
+   names the commit it was built from and has its own address
+   (`https://<id>.inkognito-4f1.pages.dev`, kept out of search engines), so you can open the old
+   one first. Then Claude runs the live checks (5.2, 5.5). Open tabs keep their version until
+   refreshed, and saved cases are not touched.
+   Do this once, before it is ever needed: open the **⋯** menu of an older row, check that it
+   offers **Rollback to this deployment**, and close it. (Cloudflare's page talks about
+   production deployments in general, and ours are uploaded with wrangler.)
+
+   It does not undo:
+   - **The database.** Migrations stay applied. 0009, 0011 and 0012 have undo files in
+     `supabase/rollback/`, and Claude runs the matching one with your go-ahead. Before you go
+     back past a migration (the last is 0012, 8.10), Claude checks that the older site works
+     with it.
+   - **Settings outside the deployment:** Supabase (templates, URL Configuration, SMTP),
+     Cloudflare DNS, the `www` redirect, Email Routing, and the project's own settings (Fail
+     closed, the domain).
+   - **The code.** The `inkognito` branch still holds the bad commit, and the next deploy would
+     bring it back. Claude reverts it first (through a PR on `main` when it came from there).
+   - **After launch day,** a deployment from before launch puts `noindex` back on every page
+     (`LAUNCHED = false`). Go back no further than launch, or let Claude rebuild the older
+     version with `LAUNCHED = true`.
+
+   **Claude rebuilds an older version** (15 minutes) when the one wanted is not in the list, or
+   needs a change:
+   - `git tag --list "live/*"` lists v48 to v62: the old public tool's tags, for the GitHub
+     Pages address (docs/ROLLBACK.md). They hold no `site/`, `functions/` or
+     `scripts/build-hosted.js`, so they cannot build this site.
+   - Since 11.10 Claude tags each inkognito.co.il deploy once its live checks pass, `ink/vNN.k`
+     (`ink/v73.3`, `ink/v73.4`; `ink/v73.4-2` for a second deploy of the same version), and
+     pushes the tag. Earlier deploys have none: use the commit shown in the deployment's row.
+     Older rows may name commits the repository no longer has: find the same change by its date
+     and title.
+   - Claude builds it in a folder beside the repository, so the repository folder stays as it
+     is. The deploy runs from that folder's root, so the gate in `functions/` goes too. From the
+     repository folder (a commit hash can stand in for the tag):
+     ```
+     git fetch --tags origin
+     git worktree add ../redeploy ink/v73.4
+     cd ../redeploy
+     npm ci
+     npm run build:hosted
+     npx --yes wrangler@4.147.0 pages deploy dist --project-name=inkognito --branch=main
+     cd -
+     git worktree remove ../redeploy
+     ```
+     Keep `--branch=main`. Without it, wrangler takes the branch name from the folder, which is
+     a tag here, and the upload becomes a preview instead of production. Then the live checks
+     (5.2, 5.5).
+
+2. **The domain's renewal** (owner, 10 minutes now, then one reminder a year). inkognito.co.il
+   was registered through MyNames on 3.10.2026 for one year: the registry's WHOIS shows
+   `assigned: 03-10-2026`, `validity: 03-10-2027` and the registrar Drubit Raid LTD
+   (mynames.co.il). Renewing is entirely the holder's job: neither the registry nor MyNames
+   promises a reminder (ISOC-IL's registration rules, 17.3; MyNames' terms, 7.5).
+   - In MyNames, turn on **«חידוש אוטומטי»**. MyNames calls it only a helper (terms 7.5), so
+     check afterwards that the renewal went through. Claude can read the new `validity` in the
+     registry's WHOIS.
+   - **«הגדרות חשבון»** → a payment method valid past 3.10.2027. MyNames is paid in advance
+     (terms 7.2), by card or from «קרדיט» loaded on the account (7.2.1). See which one the
+     renewal takes, and keep it able to pay: a failed or cancelled payment loses the domain
+     (terms 7.9.2).
+   - A calendar reminder for 3.9.2027, a month before the end. If it has not renewed by then,
+     renew by hand. Renewal opens on 3.7.2027, three months before the end, and the new period
+     counts from the old end date, so renewing early loses nothing. Up to five years can be
+     bought at once (ISOC-IL 17.1).
+   - The same week, Claude moves `Expires` in `site/.well-known/security.txt` (now 2027-10-06)
+     to just under a year from that day, e.g. 2028-09-01 if done on 3.9.2027.
+     `tests/hosted_t.js` fails once the date passes, and also while it is more than 366 days
+     ahead (RFC 9116 asks for less than a year).
+
+   If it lapses, the registry may suspend the name without notice, which takes it out of the
+   DNS. It may cancel the name once a 30-day grace period has passed, and may extend that grace
+   by up to 90 more days (ISOC-IL 4.6 and 17.3). Then:
+   - the site, the tool and the demo stop answering, and the old GitHub Pages address forwards
+     to nothing;
+   - sign-in emails can no longer be checked against the domain's records, so they land in spam
+     or are refused, and their links lead to https://inkognito.co.il/login; mail to contact@
+     bounces (its MX records are on the domain);
+   - Google sign-in passes Google and Supabase, then sends the person to
+     https://inkognito.co.il/login, which is gone;
+   - about a week later, Cloudflare deletes the zone. A free zone whose nameservers are gone
+     becomes "Moved" and is deleted 7 days after. Every DNS record from steps 1–5 goes with it:
+     Resend's, Email Routing's, DMARC, `www`;
+   - once the name is released, whoever takes it gets contact@'s mail. The sign-in links would
+     also hand them live sessions, because the sign-in uses the implicit flow, which puts the
+     tokens in the address. If the name is ever lost, remove it from Supabase's URL
+     Configuration (4.3) at once.
+
+3. **An alert when the site is down** (owner, 10 minutes). UptimeRobot's free plan has 50
+   monitors, a check every 5 minutes, keyword checks and email alerts (uptimerobot.com/pricing,
+   uptimerobot.com/keyword-monitoring). Its terms (modified 24.6.2026) say "UptimeRobot is
+   available for any use, including commercial and business use", while its pricing page calls
+   Free "Good for hobby and non-profit projects". Look again before charging.
+   - Sign up with your Gmail (the one contact@ forwards to): alerts go there.
+   - **New monitor**, type **Keyword**: URL `https://inkognito.co.il/`, keyword
+     `"alternateName":"InKognito"`, including the quotes. It is in the home page's structured
+     data, and on no Cloudflare error page or parked-domain page. Down when the keyword
+     **does not exist**, every **5 minutes**, by email.
+   - A second monitor for the gate, which the home page skips: type **Keyword**, URL
+     `https://inkognito.co.il/app/`, keyword `login.js`, **Follow redirections** left on (the
+     default). With no session, the gate sends that address to the sign-in page, which loads
+     `login.js`. Cloudflare's error page (Fail closed, once the free daily requests are spent)
+     or a deploy that left the gate out would show something else. This monitor uses 288 of the
+     100,000 free daily requests.
+   - Test once: change the first keyword to `"alternateName":"InKognitoX"`, wait for the email
+     (within 10 minutes), check that it did not go to spam, then change the keyword back.
+   - Neither monitor sees Supabase: without a session, the gate never asks it. On
+     https://status.supabase.com/, use **Subscribe to updates** to get emails (the project is
+     in eu-central-1, Frankfurt). For a paused project, Supabase sends its own emails, a week
+     before and when it happens.
+
+   When it fires, open the address yourself, on the phone over mobile data too. Then check:
+   - https://www.cloudflarestatus.com/: an incident at Cloudflare (Pages, DNS) is theirs to fix;
+   - Workers & Pages → `inkognito` → **Deployments**: was there a deploy just before? Roll it
+     back (9.1);
+   - if only the gate's monitor fired, the free daily requests may be spent; they come back at
+     midnight UTC (03:00 in Israel in summer, 02:00 in winter);
+   - if the name does not resolve: the domain (9.2), and Cloudflare → inkognito.co.il →
+     **Overview**;
+   - if people write that the tool shows «השירות לא זמין כרגע», the gate could not reach
+     Supabase: check https://status.supabase.com/ and the Supabase dashboard (for a paused
+     project, **Resume project**);
+   - if people write that the sign-in email does not come: that email's status in Resend's
+     dashboard, and https://resend-status.com/. The free plan's 100 emails a day may be
+     spent (4.2).
+
+   Then tell Claude when the alert came; Claude runs the live checks (5.2, 5.5).
+
+4. **The support inbox** (owner, 5 minutes now, then a look every working day). Mail to
+   contact@inkognito.co.il reaches your Gmail through Cloudflare (2). The site promises an
+   answer within two working days: «ונענה תוך שני ימי עסקים» in the home page's FAQ and on the
+   help page, «נענה תוך שני ימי עסקים» on the security page. It also promises an answer to a
+   privacy request within 30 days (a refusal to show someone their data, with the reason,
+   within 21), and an accessibility fault fixed within 60 days.
+   - One Gmail filter: search box → **Show search options** → **To**
+     `contact@inkognito.co.il` → **Create filter** → **Star it**, **Apply the label**
+     `InKognito` (New label…), **Never send it to Spam**, **Also apply filter to matching
+     conversations** → **Create filter**. DMARC reports do not come to this inbox; they are in
+     Cloudflare → Email → **DMARC Management** (1.4).
+   - Every working day, check the `InKognito` label. Unstar a mail once it is answered, so a
+     star means waiting. Act only on a request sent from the account's own address:
+     - a deletion: the admin page → «חיפוש לפי שם או מייל» → «מחיקה»;
+     - a copy of someone's data: «ייצוא» on the admin page, or they download it themselves
+       with «הורדת המידע שלי» in the account panel;
+     - a security report: tell Claude the same day.
+   - Once a month (7), delete old mail:
+     - Search `to:contact@inkognito.co.il older_than:11m`, tick the box above the list (then
+       **Select all conversations that match this search** if there is more than one page),
+       and delete. Run monthly, `11m` keeps nothing past the privacy page's 12 months. With
+       Gmail's conversation view on (the default), your replies go too; the privacy page
+       promises the same 12 months for them.
+     - Then search `in:trash to:contact@inkognito.co.il`, select all → **Delete forever**.
+       Otherwise Trash keeps them 30 more days.
+     - Set a calendar reminder for the first Sunday of each month.
