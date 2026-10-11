@@ -47,7 +47,8 @@ try {
   ok(r.status === 0, "the sweep ran: exit " + r.status + " " + (r.stderr || "").split("\n").slice(-3).join(" "));
   const md = fs.readFileSync(path.join(dir, "sweep.md"), "utf8");
   ok(md.includes(KEPT), "the section not re-run is kept byte for byte");
-  ok(!md.includes("999"), "the re-run section replaced its old numbers");
+  // the seeded rows, not the digits: a timing such as 1999 ms contains "999", and a loaded machine failed the check
+  ok(!md.includes("| off | 999 | 999 |") && !md.includes("| on ◀ | 998 | 998 |"), "the re-run section replaced its old numbers");
   ok((md.match(/^## body — /gm) || []).length === 1, "the re-run section appears once");
   ok(md.indexOf("## body — ") < md.indexOf("## prefixes — "), "sections stay in parameter order");
   ok(/## body — [^\n]*\n\nModel off, \d+ documents, commit \S+, generated \d{4}-\d\d-\d\d\./.test(md), "the re-run section says model off, the commit and the date");
