@@ -180,7 +180,8 @@ for (const p of ["index.html", "privacy.html", "terms.html", "accessibility.html
    the page the focus went on to (the class of the account panel's, review of 6.10; WCAG 2.4.11).
    Moving through its links keeps it open. */
 for (const p of ["index.html", "privacy.html", "terms.html", "accessibility.html", "changes.html", "security.html", "help.html", "login.html", "404.html"])
-  test(`the phone menu closes when the focus leaves it, and not while it moves through it (${p})`, async ({ page }) => {
+  test(`the phone menu closes when the focus leaves it, and not while it moves through it (${p})`, async ({ page, browserName }) => {
+    test.skip(browserName === "webkit", "the WebKit the tests run has no key that reaches a link (Safari's Option+Tab); Chrome and Firefox walk it");
     await siteAtRoot(page);
     await page.route(PROJECT + "/**", (route) => route.fulfill({ json: {} }));
     await page.setViewportSize({ width: 390, height: 844 });

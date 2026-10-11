@@ -144,7 +144,8 @@ const barButtons = (page) => page.getByRole("banner").getByRole("button").evalua
    after it is the page's first below the bar, Shift+Tab goes back the same way, and in the banner it
    is read right after the day/night button. Its panel stays outside the tool's page (the page
    engine copies whatever is put inside what it draws). */
-test("Tab reaches the account button right after the day/night button, and goes on below the bar", async ({ page }) => {
+test("Tab reaches the account button right after the day/night button, and goes on below the bar", async ({ page, browserName }) => {
+  test.skip(browserName === "webkit", "the WebKit the tests run has no key that reaches a link (Safari's Option+Tab); Chrome and Firefox walk it");
   await hosted(page);
   await boot(page);
   await expect.poll(() => inTopBar(page)).toBe(true);
@@ -245,7 +246,8 @@ test("every link of the account panel and of the card that asks is underlined", 
    past its button, left it open over the page, aria-expanded still true, the next stops under it
    (review of 6.10; WCAG 2.4.11, focus not hidden). Moving inside it, or between it and its button,
    keeps it open. */
-test("the account panel closes when the focus leaves it, and not while it moves inside it", async ({ page }) => {
+test("the account panel closes when the focus leaves it, and not while it moves inside it", async ({ page, browserName }) => {
+  test.skip(browserName === "webkit", "the WebKit the tests run has no key that reaches a link (Safari's Option+Tab); Chrome and Firefox walk it");
   await hosted(page);
   await boot(page);
   const btn = page.getByRole("button", { name: "חשבון", exact: true }), pane = page.locator("#ink-account-panel");
@@ -414,7 +416,8 @@ test("signing out ends the session and the cookie, and lands on the home page, t
   expect((await page.context().cookies()).find((c) => c.name === "ink_at")).toBeUndefined();
 });
 
-test("a file the gate answered with the sign-in page is asked for again after renewing, and a missing cookie is written again", async ({ page }) => {
+test("a file the gate answered with the sign-in page is asked for again after renewing, and a missing cookie is written again", async ({ page, browserName }) => {
+  test.skip(browserName === "webkit", "Playwright's WebKit cannot answer a request with a redirect; Chrome and Firefox run it");
   test.info().annotations.push({ type: "no-self-check" });
   const calls = await hosted(page);
   const NEW = [b64({ alg: "HS256", typ: "JWT" }), b64({ sub: "00000000-0000-0000-0000-00000000000a", role: "authenticated", iat: Math.floor(Date.now() / 1000), exp: Math.floor(Date.now() / 1000) + 3600 }), "renewed"].join(".");
@@ -743,7 +746,7 @@ test("the card names the report on missed names, links the details, and its samp
    58 minutes ahead without any timer firing, and the very next request the tool makes to the
    site must already carry a renewed token: otherwise the gate refuses it (the model's parts, on
    the first scan after a long pause). */
-test("after a long pause, the tool's next request to the site carries a renewed token", async ({ page }) => {
+test("after a long pause, the tool's next request to the site carries a renewed token", async ({ page, browserName }) => {
   const NEW = [b64({ alg: "HS256", typ: "JWT" }), b64({ sub: SESSION.user.id, role: "authenticated", exp: Math.floor(Date.now() / 1000) + 7200, n: 2 }), "sig2"].join(".");
   await page.clock.install();
   const calls = await hosted(page);
@@ -753,7 +756,8 @@ test("after a long pause, the tool's next request to the site carries a renewed 
   await page.clock.setSystemTime(Date.now() + 3500 * 1000);
   const sent = page.waitForRequest((r) => r.url().endsWith("/dist/app/hosted-resources.js?probe"));
   await page.evaluate(() => window.fetch("./hosted-resources.js?probe").then((r) => r.status));
-  const cookie = (await (await sent).allHeaders()).cookie || "";
+  // the WebKit the tests run does not show a request's Cookie header: there the page's own cookie, which the request carries
+  const cookie = browserName === "webkit" ? (await sent, await page.evaluate(() => document.cookie)) : (await (await sent).allHeaders()).cookie || "";
   expect(cookie).toContain("ink_at=" + NEW);
   // supabase-js's own 30-second timer may renew in the same moment: two renewals are harmless
   // (Supabase accepts a reused refresh token for a few seconds); what matters is the cookie above

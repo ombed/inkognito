@@ -16,7 +16,7 @@ const SESSION = { access_token: [b64({ alg: "HS256" }), b64({ sub: "00000000-000
 
 test.beforeAll(() => { build(path.join(__dirname, "..", "dist")); });
 
-test("the built tool opens under /app/ and its model loads from the re-split parts", async ({ page }) => {
+test("the built tool opens under /app/ and its model loads from the re-split parts", async ({ page, browserName }) => {
   test.setTimeout(300000);
   await page.route(PROJECT + "/**", (route) => {
     const p = new URL(route.request().url()).pathname;
@@ -42,8 +42,12 @@ test("the built tool opens under /app/ and its model loads from the re-split par
   expect(logs.some((l) => l.includes("קובץ המשקולות נבדק מול הגרסה הנעולה")), "the joined weights passed the pinned SHA-256").toBe(true);
   const parts = new Set(asked.filter((u) => /\/dist\/app\/models\/[^/]+\/onnx\/model_quantized\.onnx\.part\d+of8$/.test(u)));
   expect(parts.size).toBe(8);
-  // the runtime's WebAssembly from the site itself, in its parts, and React and the fonts too
-  expect(asked.filter((u) => /\/dist\/app\/vendor\/ort-[^/]+\/ort-wasm-simd-threaded\.asyncify\.wasm\.part\d$/.test(u)).length).toBeGreaterThanOrEqual(2);
+  // the runtime's WebAssembly from the site itself, and React and the fonts too. Chrome and Firefox get the asyncify build,
+  // in parts; Safari gets the build without asyncify (nerRuntime, engine/08-docx.js), small enough to be one file. The
+  // site ships both (ORT_FILES, scripts/hosted.js)
+  const ort = asked.filter((u) => /\/dist\/app\/vendor\/ort-[^/]+\/ort-wasm-simd-threaded(?:\.asyncify)?\.wasm(?:\.part\d)?$/.test(u));
+  if (browserName === "webkit") expect(ort.some((u) => /ort-wasm-simd-threaded\.wasm$/.test(u)), "Safari's build, whole").toBe(true);
+  else expect(ort.filter((u) => /\.asyncify\.wasm\.part\d$/.test(u)).length, "the asyncify build, in parts").toBeGreaterThanOrEqual(2);
   expect(asked.some((u) => /\/dist\/app\/vendor\/react-18\.3\.1\.production\.min\.js$/.test(u))).toBe(true);
   expect(asked.some((u) => /\/dist\/app\/fonts\/rubik-hebrew-400-normal\.woff2$/.test(u))).toBe(true);
   // and nothing from any other site: every request went to this site or the (stand-in) project

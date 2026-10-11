@@ -483,7 +483,8 @@ const signInHere = async (page) => {
    the admin page: the cancel came back with an empty error_description, and the page took it for a
    fresh visit, so the retry opened the app (review of 6.10). Once it has ended there, the tab's next,
    ordinary sign-in opens the app. */
-test("a sign-in from the admin page that Google cancelled is tried again and ends on the admin page; a later ordinary one opens the app", async ({ page }) => {
+test("a sign-in from the admin page that Google cancelled is tried again and ends on the admin page; a later ordinary one opens the app", async ({ page, browserName }) => {
+  test.skip(browserName === "webkit", "Playwright's WebKit cannot answer a request with a redirect; Chrome and Firefox run it");
   await stub(page, { "/auth/v1/authorize": google(CANCELLED, SIGNED_IN), "/auth/v1/user": { body: SESSION.user }, "/auth/v1/token": { body: SESSION } });
   await adminPage(page);
   await page.goto(LOGIN + "?next=admin");
@@ -500,7 +501,8 @@ test("a sign-in from the admin page that Google cancelled is tried again and end
   expect(await signInHere(page)).toBe("/site/app/");
 });
 
-test("a sign-in from the admin page cancelled at Google and then left: a later ordinary one in the tab opens the app", async ({ page }) => {
+test("a sign-in from the admin page cancelled at Google and then left: a later ordinary one in the tab opens the app", async ({ page, browserName }) => {
+  test.skip(browserName === "webkit", "Playwright's WebKit cannot answer a request with a redirect; Chrome and Firefox run it");
   await stub(page, { "/auth/v1/authorize": google(CANCELLED), "/auth/v1/token": { body: SESSION } });
   await adminPage(page);
   await page.goto(LOGIN + "?next=admin");
@@ -540,7 +542,7 @@ test("the gate's reason is about the app: after a sign-in from the admin page wa
   expect(new URL(page.url()).pathname).toBe("/site/app/");
 });
 
-test("someone already signed in goes straight to the app, with the gate's cookie", async ({ page }) => {
+test("someone already signed in goes straight to the app, with the gate's cookie", async ({ page, browserName }) => {
   await stub(page, { "/auth/v1/user": { body: SESSION.user } });
   await signedIn(page);
   await page.goto(LOGIN);
@@ -548,8 +550,10 @@ test("someone already signed in goes straight to the app, with the gate's cookie
   const c = await gateCookie(page);
   expect(c && c.value).toBe(JWT);
   expect(c.path).toBe("/");
-  expect(c.sameSite).toBe("Lax");
-  expect(c.expires * 1000).toBeGreaterThan(Date.now() + 3500 * 1000);
+  // the WebKit the tests run reports every cookie as SameSite=None, whatever it was given (Safari keeps Lax)
+  if (browserName !== "webkit") expect(c.sameSite).toBe("Lax");
+  // as long as the session (an hour), with room for a slow run: Safari's engine came within a second of 3500 s
+  expect(c.expires * 1000).toBeGreaterThan(Date.now() + 3000 * 1000);
 });
 
 test("a browser that refuses the cookie is told so, instead of being sent to a gate that would send it back", async ({ page }) => {
