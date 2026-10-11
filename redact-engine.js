@@ -297,11 +297,19 @@ function gender(v,hint){
 function hash32(s){let h=0x811c9dc5;
   for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,0x01000193)>>>0}
   return h>>>0}
+/* שם בדוי שהוא גם מילה בטקסט רגיל — לבד, או אחרי אות שימוש — לא נבחר (הציד של 11.10). ה-AI כותב את המילה במובן
+   הרגיל שלה, וההחזרה שמה שם את השם האמיתי של הלקוח: «השופטת דנה בבקשה» (דנה, פועל), «מליאת הכנסת», «שרותי בריאות»,
+   «לעשות את מירב המאמצים». הרשימה נמדדה בקורפוס חדשות עברי ציבורי (49,700 משפטים, רק ספירות): שם שמופיע כמילה מחוץ
+   לכל ישות לפחות 5 פעמים, או אחרי אות שימוש לפחות 10, ואינו שם פי כמה יותר משהוא מילה; ונבדקה בעין. שם משפחה כפול
+   שאחד מחלקיו מילה («בן-דוד» הוא בן דוד) לא נבחר גם הוא */
+const WORDISH=new Set(["יהודית","מיכל","ממן","חנה","מזרחי","איתי","פרץ","דנה","מרים","ליאת","מלמד","מירב","עמי","רותי"]);
+const poolWordy=v=>WORDISH.has(v)||WORDLIKE.has(v)||STOP.has(v)||(typeof COMMON!=="undefined"&&COMMON.has(v))||(typeof VRB!=="undefined"&&VRB.has(v));
 function pickFrom(arr,seed,used,forbidden){
   const n=arr.length;
   for(let k=0;k<n;k++){
     const v=arr[(seed+k*7+((seed>>>8)%3))%n];
     if(used.has(v)||forbidden.has(v)||WORDLIKE.has(v))continue;
+    if(WORDISH.has(v)||(/-/.test(v)&&v.split("-").some(poolWordy)))continue;
     if(typeof PLACE_BY!=="undefined"&&PLACE_BY[v])continue;
     if(STOP.has(v))continue;
     return v}
