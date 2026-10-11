@@ -8,6 +8,18 @@ async function eng(){
 }
 
 const esc = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+/* תו ש-XML 1.0 אינו יכול לשמור נכתב כאלמנט של Word, או יורד. מעבר שורה ידני של Word (Shift+Enter)
+   מגיע בהדבקה כ-U+000B, מעבר עמוד כ-U+000C, ו-Acrobat מעתיק מקף של סוף שורה כ-U+0002: הם נכתבו לקובץ
+   כמו שהם, הקורא של הכלי עצמו דחה אותו («XML פגום»), וניסיון נוסף לא עזר (הציד של 11.10). חצי של זוג
+   תווים (surrogate) יורד גם הוא, כדי שלא יהפוך ל-U+FFFD בטקסט. */
+const AS_ELEMENT = {"\u000B":"<w:br/>", "\u000C":'<w:br w:type="page"/>', "\u001E":"<w:noBreakHyphen/>", "\u001F":"<w:softHyphen/>"};
+const NOT_XML = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g;
+function runBody(text){
+  const wt = s => s ? `<w:t xml:space="preserve">${esc(s)}</w:t>` : "";
+  let out = "", last = 0;
+  for(const m of String(text).matchAll(NOT_XML)){ out += wt(text.slice(last, m.index)) + (AS_ELEMENT[m[0]]||""); last = m.index + m[0].length; }
+  return (out + wt(text.slice(last))) || `<w:t xml:space="preserve"></w:t>`;
+}
 const XD = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n`;
 const W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
 const R = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
@@ -20,7 +32,7 @@ function para(text, head){
     ? `<w:spacing w:before="0" w:after="240" w:line="276" w:lineRule="auto"/><w:jc w:val="center"/>`
     : `<w:spacing w:before="0" w:after="160" w:line="360" w:lineRule="auto"/><w:jc w:val="both"/>`}</w:pPr>`;
   const rPr = `<w:rPr><w:rtl/>${head?`<w:b/><w:bCs/><w:sz w:val="28"/><w:szCs w:val="28"/>`:""}</w:rPr>`;
-  return `<w:p>${pPr}<w:r>${rPr}<w:t xml:space="preserve">${esc(text)}</w:t></w:r></w:p>`;
+  return `<w:p>${pPr}<w:r>${rPr}${runBody(text)}</w:r></w:p>`;
 }
 
 const SECT = `<w:sectPr><w:pgSz w:w="11906" w:h="16838"/>`+
@@ -86,7 +98,7 @@ const APP = XD+
 
 export async function textToDocx(text){
   const {zip, ENC} = await eng();
-  const lines = String(text||"").replace(/\r\n/g,"\n").replace(/\u00a0/g," ").split("\n");
+  const lines = String(text||"").replace(/\r\n?/g,"\n").replace(/\u00a0/g," ").split("\n");
   let seen = 0, body = "";
   for(const raw of lines){
     const line = raw.trim();

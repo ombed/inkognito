@@ -11,7 +11,7 @@
 | person: title attached | 7 | 1 | 1 | 0 |
 | person: same person, one clean and one corrupted spelling | 9 | 3 | 9 | 0 |
 | person: name split across two runs mid-word | 2 | 1 | 1 | 0 |
-| org: private body, must be redacted | 7 | 3 | 4 | 0 |
+| org: private body, must be redacted | 8 | 2 | 3 | 0 |
 | place: town (lexicon-aided) | 11 | 2 | 2 | 0 |
 | trap: section references and other numbers that identify no one | – | – | – | 0 |
 | pii: full date (omitted by default) | 18 | 0 | 0 | 0 |
@@ -67,7 +67,7 @@
 | filing | 35 | 6 | 8 | 1 |
 | transcript | 23 | 10 | 12 | 0 |
 | welfare | 22 | 5 | 7 | 0 |
-| medical | 14 | 5 | 5 | 0 |
+| medical | 15 | 4 | 4 | 0 |
 | police | 22 | 3 | 3 | 0 |
 | bank | 17 | 1 | 1 | 0 |
 | chat | 21 | 2 | 2 | 0 |
@@ -138,7 +138,6 @@ Counted, not optimised for: the list is read, accept-all is not how the tool is 
 - h3 · person: Russian name · ולריה קוזנצוב: missed, **leaked**: ולריה קוזנצוב, קוזנצוב
 - h3 · person: Ethiopian name · יונס גטהון: missed, **leaked**: יונס גטהון, גטהון
 - h3 · person: two-letter surname · איה נץ: missed, **leaked**: איה נץ, נץ
-- h3 · org: private body, must be redacted · מכון שורשים: missed, **leaked**: מכון שורשים, שורשים
 - p1 · person: same person, one clean and one corrupted spelling · ארטיום מורוזוב: missed, **leaked**: ארטיום מורוזוב, מורוזב
 - p2 · place: town · גבעת עדה: missed, **leaked**: גבעת עדה
 - p3 · person: two-letter surname · עלמה כץ: missed, **leaked**: עלמה כץ, כץ
@@ -172,46 +171,46 @@ Counted, not optimised for: the list is read, accept-all is not how the tool is 
 
 | doc | genre | ms | rules confirmed | unlisted |
 |---|---|---|---|---|
-| m1 | meeting | 137 | 4 | 1 |
-| m2 | meeting | 52 | 6 | 0 |
-| m3 | meeting | 55 | 3 | 0 |
-| m4 | meeting | 49 | 3 | 1 |
-| f1 | filing | 79 | 10 | 1 |
-| f2 | filing | 92 | 12 | 1 |
-| f3 | filing | 42 | 5 | 0 |
-| f4 | filing | 66 | 8 | 3 |
-| t1 | transcript | 49 | 6 | 0 |
-| t2 | transcript | 49 | 5 | 1 |
-| t3 | transcript | 46 | 6 | 1 |
-| t4 | transcript | 62 | 8 | 1 |
-| w1 | welfare | 27 | 1 | 0 |
-| w2 | welfare | 27 | 3 | 0 |
-| w3 | welfare | 21 | 2 | 0 |
-| w4 | welfare | 35 | 4 | 1 |
-| h1 | medical | 43 | 6 | 2 |
-| h2 | medical | 26 | 2 | 0 |
-| h3 | medical | 27 | 3 | 3 |
-| p1 | police | 28 | 2 | 1 |
-| p2 | police | 22 | 3 | 1 |
-| p3 | police | 21 | 1 | 0 |
-| p4 | police | 22 | 3 | 0 |
-| b1 | bank | 37 | 4 | 2 |
-| b2 | bank | 20 | 1 | 0 |
-| b3 | bank | 23 | 1 | 0 |
-| c1 | chat | 25 | 2 | 0 |
+| m1 | meeting | 223 | 4 | 1 |
+| m2 | meeting | 57 | 6 | 0 |
+| m3 | meeting | 32 | 3 | 0 |
+| m4 | meeting | 40 | 3 | 1 |
+| f1 | filing | 74 | 10 | 1 |
+| f2 | filing | 79 | 12 | 1 |
+| f3 | filing | 37 | 5 | 0 |
+| f4 | filing | 40 | 8 | 3 |
+| t1 | transcript | 45 | 6 | 0 |
+| t2 | transcript | 38 | 5 | 1 |
+| t3 | transcript | 45 | 6 | 1 |
+| t4 | transcript | 61 | 8 | 1 |
+| w1 | welfare | 32 | 1 | 0 |
+| w2 | welfare | 37 | 3 | 0 |
+| w3 | welfare | 31 | 2 | 0 |
+| w4 | welfare | 34 | 4 | 1 |
+| h1 | medical | 47 | 6 | 2 |
+| h2 | medical | 29 | 2 | 0 |
+| h3 | medical | 38 | 4 | 3 |
+| p1 | police | 32 | 2 | 1 |
+| p2 | police | 44 | 3 | 1 |
+| p3 | police | 30 | 1 | 0 |
+| p4 | police | 42 | 4 | 0 |
+| b1 | bank | 40 | 4 | 2 |
+| b2 | bank | 24 | 1 | 0 |
+| b3 | bank | 16 | 1 | 0 |
+| c1 | chat | 21 | 2 | 0 |
 | c2 | chat | 36 | 4 | 1 |
 | c3 | chat | 29 | 2 | 0 |
-| c4 | chat | 36 | 4 | 0 |
-| x1 | position | 41 | 5 | 1 |
-| x2 | position | 23 | 4 | 0 |
-| x3 | position | 36 | 4 | 0 |
-| a1 | audio | 17 | 3 | 0 |
-| a2 | audio | 31 | 5 | 0 |
+| c4 | chat | 56 | 4 | 0 |
+| x1 | position | 46 | 5 | 1 |
+| x2 | position | 33 | 4 | 0 |
+| x3 | position | 39 | 4 | 0 |
+| a1 | audio | 24 | 3 | 0 |
+| a2 | audio | 36 | 5 | 0 |
 | a3 | audio | 47 | 7 | 1 |
-| a4 | audio | 21 | 4 | 0 |
-| v1 | interview | 25 | 2 | 0 |
-| v2 | interview | 30 | 3 | 0 |
-| v3 | interview | 18 | 2 | 0 |
-| s1 | structure | 41 | 4 | 2 |
-| s2 | structure | 36 | 4 | 2 |
-| s3 | structure | 37 | 4 | 2 |
+| a4 | audio | 54 | 4 | 0 |
+| v1 | interview | 41 | 2 | 0 |
+| v2 | interview | 52 | 3 | 0 |
+| v3 | interview | 19 | 2 | 0 |
+| s1 | structure | 49 | 4 | 2 |
+| s2 | structure | 30 | 4 | 2 |
+| s3 | structure | 41 | 4 | 2 |

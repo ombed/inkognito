@@ -20,7 +20,7 @@ function findPatterns(text,on,flag,more){
       // לא נכון, או שהוא לא ישראלי. עד כאן מספר כזה נעלם לגמרי: לא הוחלף, לא סומן,
       // לא הופיע ברשימה, ולכן הגיע ל-AI כמו שהוא בלי שום סימן. תשע ספרות שנראות
       // כמו ת"ז הן החשד הכי מובהק שיש, ולכן הן עולות לבדיקה במקום להימחק.
-      const bad=!!(p.v&&!p.v(m[0]));
+      const bad=!!(p.v&&!p.v(m[0],n,m.index));
       if(bad&&p.strict)continue;
       const g=p.g, s=g? m.index+m[0].indexOf(m[g]) : m.index, e=s+(g?m[g].length:m[0].length);
       if(g&&!m[g])continue; if(e<=s)continue;
@@ -78,6 +78,83 @@ function ageZones(n){
   const b=/(?<![\d])(\d{1,3})\s+(?:שנה|שנים|שנתיים|וחצי)(?![א-ת])/gu;
   while((m=b.exec(n)))z.push([m.index,m.index+m[1].length]);
   return z}
+/* כתובת מקודדת (הציד של 11.10): "%D7%93%D7%A0%D7%94" הוא "דנה" לכל דפדפן, ולכלים כאן הוא היה תווים
+   לטיניים. שם מהרשימה בתוך כתובת כזאת לא נמצא, דווח "לא מופיע במסמך", ויצא עם הקובץ. פענוח עד שלוש
+   פעמים (כתובת שקודדה פעמיים), עם מפה מכל תו בפענוח אל הטווח שלו במקור, כדי שההחלפה תיכתב במקומו. */
+function pctDecode(s){
+  let d="";const map=[];
+  for(let i=0;i<s.length;){
+    if(s[i]!=="%"||!/^%[0-9A-Fa-f]{2}/.test(s.slice(i,i+3))){d+=s[i];map.push([i,i+1]);i++;continue}
+    const bytes=[];let j=i;
+    while(/^%[0-9A-Fa-f]{2}/.test(s.slice(j,j+3))){bytes.push(parseInt(s.slice(j+1,j+3),16));j+=3}
+    for(let k=0;k<bytes.length;){
+      const b0=bytes[k], n=b0<0x80?1:(b0>>5)===6?2:(b0>>4)===14?3:(b0>>3)===30?4:0;
+      let cp=n===1?b0:-1;
+      if(n>1&&k+n<=bytes.length){cp=b0&(0xff>>(n+1));
+        for(let q=1;q<n;q++){const c=bytes[k+q];if((c&0xC0)!==0x80){cp=-1;break}cp=(cp<<6)|(c&0x3F)}
+        if(cp<[0,0,0x80,0x800,0x10000][n]||cp>0x10FFFF||(cp>=0xD800&&cp<=0xDFFF))cp=-1}
+      const a=i+k*3;
+      // רצף שאינו UTF-8 תקין נשאר כמו שהוא
+      if(cp<0){for(let q=0;q<3;q++){d+=s[a+q];map.push([a+q,a+q+1])}k++;continue}
+      const ch=String.fromCodePoint(cp);
+      for(let q=0;q<ch.length;q++){d+=ch[q];map.push([a,a+n*3])}
+      k+=n}
+    i=j}
+  return {d,map}}
+function pctDecodeAll(s){
+  let cur={d:s,map:Array.from({length:s.length},(_,i)=>[i,i+1])};
+  for(let r=0;r<3&&/%[0-9A-Fa-f]{2}/.test(cur.d);r++){
+    const nx=pctDecode(cur.d); if(nx.d===cur.d)break;
+    nx.map=nx.map.map(([a,b])=>[cur.map[a][0],cur.map[b-1][1]]); cur=nx}
+  return cur}
+// אותו פענוח בלי מפה, לטקסט ארוך (הבדיקה האחרונה קוראת כך חלק שלם)
+function pctPlain(s){
+  for(let r=0;r<3&&/%[0-9A-Fa-f]{2}/.test(s);r++){
+    const n=s.replace(/(?:%[0-9A-Fa-f]{2})+/g,m=>{try{return decodeURIComponent(m)}catch(_){return pctDecode(m).d}});
+    if(n===s)break; s=n}
+  return s}
+// הכללים שרצים על כתובת: מספרים מזהים, דוא"ל, כתובת רחוב וקישור אישי. לא תאריך, לא מספר רכב ולא מספר תיק,
+// שכתובת ציבורית מלאה בהם ("/2024-03-12/", "18-2023"), ולא יישוב ("he.wikipedia.org/wiki/חיפה")
+const ADDR_PAT=new Set(["EMAIL","PHONE_MOBILE","PHONE_LAND","ISRAELI_ID","ISRAELI_ID_SEP","ISRAELI_ID_LABELED","IBAN",
+  "URL_PERSONAL","URL_PRIVATE","ADDRESS_STREET","ADDRESS_LABELED","PASSPORT","SSN","BANK_ACCOUNT","BANK_ACCOUNT_SHORT","LAWYER_LIC"]);
+/* היסט התאריכים של מסמך (הציד של 11.10). תאריך שזז בדיוק אל תאריך אחר שבמסמך ("1.2.2026" אל "1.10.2026", כשגם
+   הוא שם) יוצא כערך אמיתי, וכך גם תאריך מלא שמכיל חודש ושנה של המסמך ("12 במרץ 2026" מכיל את "מרץ 2026"). חודש
+   ושנה זזים בחודשים שלמים, ולכן ברשימה של חודשים כמעט כל הזזה נוחתת על חודש אחר שלה.
+   ההיסט נשאר בטווח שהבעלים בחר, 30 עד 400 יום (ביקורת 11.10): עד כאן הוא עלה עד שלא נשארה התנגשות, שמונה שנים
+   לרשימה של 96 חודשים, וכל גיל ומועד שה-AI מחשב יצא שגוי בשנים; והחיפוש בנה מחרוזות לכל היסט, 15 שניות על 1,000
+   תאריכים. בתוך הטווח נבחר הראשון, מההיסט של המסמך והלאה, שאין בו התנגשות, ואם אין כזה, זה עם הכי מעט. מה שנשאר
+   אינו דליפה: הבדיקה האחרונה סופרת כמה פעמים כל תאריך נכתב כבדוי (verify). nd: הטקסט המנורמל */
+function dateOffFor(nd){
+  const base=30+(typeof hash32==="function"?hash32(nd):0)%371;
+  const P=nd&&PAT.find(p=>p.n==="DATE"); if(!P)return base;
+  // מה שהזיהוי רואה: בלי התווים הבלתי נראים (detect/squeeze)
+  const DAY=864e5, full=new Set(), dm=new Set(), my=new Set(), dms=new Map();
+  P.rx.lastIndex=0;
+  for(const m of nd.replace(/\u0000/g,"").matchAll(P.rx)){
+    const p=parseDate(m[0]); if(!p)continue;
+    if(p.d==null)my.add(p.y*12+p.m-1);
+    else if(p.y==null){dm.add(p.m*32+p.d); dms.set(p.m*32+p.d,Date.UTC(dateRefYear(p),p.m-1,p.d)/DAY)}
+    else full.add(Date.UTC(p.y,p.m-1,p.d)/DAY);
+  }
+  if(!full.size&&!dm.size&&!my.size)return base;
+  const cal=new Map(), at=k=>{let v=cal.get(k); if(!v){const t=new Date(k*DAY); v=[t.getUTCDate(),t.getUTCMonth()+1,t.getUTCFullYear()]; cal.set(k,v)} return v};
+  const fulls=[...full], dmv=[...dms.values()], myv=[...my];
+  // כמה ערכים מוזזים הם ערך אמיתי, או מכילים אחד; עוצר כשכבר אין סיכוי לשפר את הטוב ביותר
+  const clash=(off,cap)=>{
+    let c=0; const k=Math.round(off/30.4375);
+    for(const v of myv) if(my.has(v+k)&&++c>=cap)return c;
+    for(const v of dmv){const [d,mo]=at(v+off); if(dm.has(mo*32+d)&&++c>=cap)return c}
+    for(const v of fulls){const g=v+off, [d,mo,y]=at(g); if((full.has(g)||dm.has(mo*32+d)||my.has(y*12+mo-1))&&++c>=cap)return c}
+    return c;
+  };
+  let best=base, bc=Infinity;
+  for(let i=0;i<371;i++){
+    const off=30+(base-30+i)%371, c=clash(off,bc);
+    if(!c)return off;
+    if(c<bc){bc=c;best=off}
+  }
+  return best;
+}
 /* מילה שהיא גם מילה רגילה, לא רק שם: שם פרטי שהוא מילה, מילה שכיחה, מילת עצירה או פועל — או
    מילה שהטקסט עצמו כותב עם ה' הידיעה ("הכהן"). toks: המילים של הטקסט. בדיקה אחת לצורה עם אות
    שימוש של שם קצר כאן, ולחלק של שם שעומד לבד בתשובת AI (restoreNames). */
@@ -112,8 +189,8 @@ class Engine{
     // ולומר את זה, מאשר לערבב שני אנשים.
     this.collided=[];
     const nd=docText?norm(docText):"";
-    // היסט התאריכים: אחד לכל המסמך, נגזר ממנו ולכן זהה בכל ריצה חוזרת
-    this.dateOff=30+(typeof hash32==="function"?hash32(nd):0)%371;
+    // היסט התאריכים: אחד לכל המסמך, נגזר ממנו ולכן זהה בכל ריצה חוזרת, ובלי תאריך מוזז שהוא תאריך אמיתי במסמך
+    this.dateOff=dateOffFor(nd);
     // כינוי שהוצמד לכלל אחרי ריצה (pinned, ראו pinReps בממשק) תקף רק כשהסגנון הוא
     // "שם"; בתווית, ███ או ריק הוא נופל, כדי שהחלפת מצב במסך הבדיקה עדיין תעבוד.
     for(const s of subs) if(s.pinned&&s.replacement&&this.styleFor({type:s.kind,style:s.style})!=="name") s.replacement="";
@@ -150,10 +227,13 @@ class Engine{
       // "שרן" היה צריך להוסיף ביד, אחת-אחת, ו"לשי" עדיין יכול היה לצאת גלוי.
       const shortSingle = s.kind==="NAME" && nv.split(/\s+/).length===1 && nv.length<=3;
       const isWord=x=>wordish(x,this.forbidden);
+      // יישוב שהוא גם מילה או צירוף, שחזר מהתיק (cond, applyProfile בדף): מוחלף רק במופע שהטקסט מראה שהוא מקום,
+      // באותו תחליף; במופע אחר שכבת היישובים שואלת. כלל גורף החליף את «אני חוששת לשלומי» במסמך הבא (הביקורת של 11.10)
+      const cond=s.kind==="PLACE"&&!!s.cond&&typeof placeCond==="function"&&placeCond(nv);
       for(const [v,pre] of variants(s.value,lvl,protect)){
         if(seen.has(v))continue; seen.add(v);
         this.rules.push({rx:new RegExp(NW+flex(v)+NWE,"gu"),base:s.value,
-          kind:s.kind,rep:s.replacement,style:s.style||null,pre,auto:s.auto,soft:!!pre&&shortSingle&&isWord(norm(v).trim())});
+          kind:s.kind,rep:s.replacement,style:s.style||null,pre,auto:s.auto,cond,soft:!!pre&&shortSingle&&isWord(norm(v).trim())});
       }
       // "עמותת שביל הלב" אושרה: גם "שביל הלב" לבדו הוא אותו גוף, כמו שם משפחה
       // לבדו אצל אדם. אחרת המופע הראשון מוחלף והשני נשאר בטקסט.
@@ -209,18 +289,19 @@ class Engine{
   blocked(s,e,zones){return zones.some(([a,b])=>a<=s&&e<=b)}
   // תווים בלתי נראים (squeeze): הזיהוי רץ על מה שהקורא רואה, והמיקומים חוזרים לטקסט המקורי. ההחלפה מכסה את
   // התווים שבתוך הערך; סימני כיוון שלפניו ואחריו נשארים מחוצה לה, כדי שזוגות הבידוד יישארו שלמים.
+  // addr: הטקסט הוא כתובת מפוענחת. שם בה מחובר ב-_ או ב-+ ("דנה_שגיא.pdf", "?q=דנה+שגיא"), ורק כללי הכתובת רצים.
   // more: שמות שתווית בשכן מעידה עליהם (labelNext), במיקומים של הטקסט המקורי; עוברים לטקסט שהקורא רואה
-  detect(text,more){
+  detect(text,addr,more){
     const q=squeeze(text);
-    if(!q) return this.detectSeen(text,more&&more.map(h=>({...h})));
+    if(!q) return this.detectSeen(text,addr,more&&more.map(h=>({...h})));
     // כמה תווים נראים יש לפני המקום x בטקסט המקורי: זה המקום שלו בטקסט שבלי התווים
     const seen=x=>{let lo=0,hi=q.pos.length; while(lo<hi){const m=(lo+hi)>>1; if(q.pos[m]<x)lo=m+1; else hi=m} return lo};
     const m2=(more||[]).map(h=>{const s=seen(h.s),e=seen(h.e); return {...h,s,e,text:q.t.slice(s,e)}}).filter(h=>h.e>h.s);
-    const hits=this.detectSeen(q.t,m2);
+    const hits=this.detectSeen(q.t,addr,m2);
     for(const h of hits){ h.s=q.pos[h.s]; h.e=q.pos[h.e-1]+1; h.text=text.slice(h.s,h.e); }
     return hits;
   }
-  detectSeen(text,more){
+  detectSeen(text,addr,more){
     const n=norm(text),zones=[];
     const AGE=ageZones(n);
     // רשימת ההיתר תופסת גם צורות עם אות שימוש, ו-ש היא אות שימוש: "אל תחליפו" על
@@ -235,10 +316,13 @@ class Engine{
         // גם כשלפני הערך האחר עומדת אות שימוש: "ושרון" הוא ו+שרון, לא וש+רון
         if(tok!==own&&(listed.has(tok)||SING.some(p=>tok.startsWith(p)&&tok.slice(1)!==own&&listed.has(tok.slice(1)))))continue;
         zones.push([m.index,m.index+m[0].length])}});
-    const hits=[];
+    const hits=[], nl=addr?n.replace(/[_+]/g," "):n;
+    let scan=null;
+    const placeHere=(s,e)=>{ if(!scan)scan=placeScan(n); const x=scan.find(y=>y.s<e&&s<y.e); return !x||placeSure(n,x,scan); };
     for(const r of this.rules){r.rx.lastIndex=0;let m;
-      while((m=r.rx.exec(n))){
+      while((m=r.rx.exec(nl))){
         const s=m.index,e=s+m[0].length;
+        if(r.cond&&!placeHere(s,e))continue;
         /* ערך שברשימה מוחלף גם בתוך קטע ארוך יותר שהותר (v35): "לא שם"
            על קטע ארוך שהמודל הדביק ("אסתר גבאי ברזילי", דוגמה בדויה) כתב את כל הקטע
            לרשימת ההיתר, ומאז "אסתר" שברשימה נשארה גלויה בתוכו. אזור היתר
@@ -260,14 +344,40 @@ class Engine{
           why:r.auto?"התגלה אוטומטית מההקשר":(r.pre?`מהרשימה שהגדרתם, עם אות השימוש "${r.pre}" שנשמרה`:"מהרשימה שהגדרתם"),
           review:!!r.pre,conf:"high"});
       }}
-    for(const h of findPatterns(text,this.opt.on,this.opt.flag,more)){
+    const on=addr?(this._addrOn||(this._addrOn=new Set([...this.opt.on].filter(k=>ADDR_PAT.has(k))))):this.opt.on;
+    for(const h of findPatterns(text,on,addr?new Set():this.opt.flag,addr?null:more)){
       if(this.blocked(h.s,h.e,zones))continue;
+      // בכתובת, הקישור האישי שהוא הכתובת עצמה כבר נשפט לפי השרת שלה, והוא היה מסתיר את מה שבתוכה
+      if(addr&&/^URL_/.test(h.type)&&/^[\s("'<[]*$/.test(text.slice(0,h.s)))continue;
+      // בכתובת, טלפון קווי נלקח רק מהפרמטרים (אחרי "?"), לא מהנתיב: שם "04-54321-12" הוא חלק משם הקובץ של פסק דין בנבו
+      // («FA-21-04-54321-12.htm»), והקישור הציבורי נשבר (הסקירה של 11.10). מספר שכבר הוחלף במסמך יוצא מהכתובת בכל מקום בה
+      if(addr&&h.type==="PHONE_LAND"){ const qi=text.indexOf("?"); if(qi<0||h.s<qi) continue; }
+      // וכך גם כתובת שהוקלדה בטקסט: מתחילת המילה (http, www) ועד "?" שלה, "04-54321-12" הוא שם קובץ ולא טלפון
+      if(!addr&&h.type==="PHONE_LAND"){ let a=h.s; while(a>0&&!/\s/.test(text[a-1]))a--;
+        if(/^(?:https?:\/\/|www\.)/i.test(text.slice(a))&&!text.slice(a,h.s).includes("?")) continue; }
+      // "אל תחליפו" על יישוב חל על כל כתיב שלו: «נהרייה» הוא «נהריה» (PLACE_ALT, הציד של 11.10)
+      if(h.place&&(this.allowN||[]).includes(norm(h.place).trim()))continue;
       // גיל אינו מזהה, וההבטחה הייתה "הכול חוץ מגילאים": "בת 9", "בן 12", "גיל 7",
       // "3 שנים" — מספר בהקשר של גיל נשאר גם כשמספרים מושמטים. צר ומבוסס הקשר בלבד.
       if(this.blocked(h.s,h.e,AGE))continue;
       h.review=h.conf!=="high"; h.base=h.base||h.text; hits.push(h);
     }
+    if(!addr&&/%[0-9A-Fa-f]{2}/.test(text))for(const h of this.encoded(text))hits.push(h);
     return resolve(hits)}
+  /* כתובת מקודדת בטקסט (הציד של 11.10): כל מילה שיש בה %XX מפוענחת, כללי הכתובת רצים על הפענוח,
+     והפגיעה חוזרת אל המקום שלה בטקסט, עם הערך המפוענח. אחוז בטקסט רגיל ("בשיעור של %50") אינו כתובת:
+     רק מילה שנראית כמו כתובת או נתיב, או שהפענוח שלה נותן אות עברית או @ */
+  encoded(text){
+    const out=[],rx=/\S+/g;let m;
+    while((m=rx.exec(text))){
+      const tok=m[0]; if(!/%[0-9A-Fa-f]{2}/.test(tok))continue;
+      const dd=pctDecodeAll(tok);
+      if(dd.d===tok||(!/[א-ת@]/.test(dd.d)&&!/[/\\:]/.test(tok)))continue;
+      for(const h of this.detect(dd.d,true)){
+        const a=dd.map[h.s][0],b=dd.map[h.e-1][1],raw=tok.slice(a,b);
+        if(raw===h.text)continue;
+        out.push({...h,s:m.index+a,e:m.index+b,text:raw,dtext:h.text,enc:true})}}
+    return out}
   /* מה נכנס במקום ערך: name (שם או יישוב בדוי), label (פלוני א׳ / [ת"ז א׳]),
      black (███), או blank — הערך נמחק נקי מהטקסט.
 

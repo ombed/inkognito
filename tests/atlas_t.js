@@ -108,5 +108,23 @@ console.log("\n— end to end: the kind survives in the document —");
   ok(ms < 750, "mapping four towns takes well under a second (" + Math.round(ms) + " ms)");
 }
 
+{
+  /* «קבוצה אחרת» replaces every substitute she did not type. Since a substitute is never a word (v73.8: «חדרה»,
+     «מודיעין»), the six best groups for these five towns all sent Netanya to Ashdod, and the button left it */
+  const names = ["חולון", "רמת גן", "בת ים", "ראשון לציון", "נתניה"];
+  let g = C.geoMap(names, 0, new Set(), new Set()), v = 0, all = true, kept = true;
+  for (let k = 0; k < 4; k++) {
+    const prev = {}; g.map.forEach((m, i) => { if (i) prev[m.from] = m.to; });
+    const n = C.geoMap(names, v + 1, new Set(), new Set(), prev);
+    if (!n.map.every((m) => prev[m.from] === undefined || prev[m.from] !== m.to)) all = false;
+    if (n.variant == null) kept = false;
+    v = n.variant; g = n;
+  }
+  ok(all, "another group replaces every substitute she did not type, press after press");
+  ok(kept, "and says where it is in the ranking, so the next press goes on from there");
+  // without the current substitutes the map is the ranked group as before
+  ok(C.geoMap(names, 0, new Set(), new Set()).variant === undefined, "the first map is the best group, unchanged");
+}
+
 console.log(`\n${pass} passed, ${fail} failed\n`);
 process.exit(fail ? 1 : 0);

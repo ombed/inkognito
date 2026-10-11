@@ -2798,15 +2798,17 @@
    "genre": "medical",
    "cat": "O_PRIVATE",
    "canonical": "מכון שורשים",
-   "found": false,
-   "leaked": true,
+   "found": true,
+   "leaked": false,
    "fp": 0,
-   "via": [],
-   "matched": [],
-   "leakedSurfaces": [
-    "מכון שורשים",
+   "via": [
+    "flagged",
+    "applied"
+   ],
+   "matched": [
     "שורשים"
-   ]
+   ],
+   "leakedSurfaces": []
   },
   {
    "doc": "h3",
@@ -3220,6 +3222,7 @@
    "fp": 0,
    "via": [
     "suggest",
+    "flagged",
     "applied"
    ],
    "matched": [
@@ -5588,189 +5591,189 @@
   {
    "id": "m1",
    "genre": "meeting",
-   "ms": 137,
+   "ms": 223,
    "rules": 4,
    "unlisted": 1
   },
   {
    "id": "m2",
    "genre": "meeting",
-   "ms": 52,
+   "ms": 57,
    "rules": 6,
    "unlisted": 0
   },
   {
    "id": "m3",
    "genre": "meeting",
-   "ms": 55,
+   "ms": 32,
    "rules": 3,
    "unlisted": 0
   },
   {
    "id": "m4",
    "genre": "meeting",
-   "ms": 49,
+   "ms": 40,
    "rules": 3,
    "unlisted": 1
   },
   {
    "id": "f1",
    "genre": "filing",
-   "ms": 79,
+   "ms": 74,
    "rules": 10,
    "unlisted": 1
   },
   {
    "id": "f2",
    "genre": "filing",
-   "ms": 92,
+   "ms": 79,
    "rules": 12,
    "unlisted": 1
   },
   {
    "id": "f3",
    "genre": "filing",
-   "ms": 42,
+   "ms": 37,
    "rules": 5,
    "unlisted": 0
   },
   {
    "id": "f4",
    "genre": "filing",
-   "ms": 66,
+   "ms": 40,
    "rules": 8,
    "unlisted": 3
   },
   {
    "id": "t1",
    "genre": "transcript",
-   "ms": 49,
+   "ms": 45,
    "rules": 6,
    "unlisted": 0
   },
   {
    "id": "t2",
    "genre": "transcript",
-   "ms": 49,
+   "ms": 38,
    "rules": 5,
    "unlisted": 1
   },
   {
    "id": "t3",
    "genre": "transcript",
-   "ms": 46,
+   "ms": 45,
    "rules": 6,
    "unlisted": 1
   },
   {
    "id": "t4",
    "genre": "transcript",
-   "ms": 62,
+   "ms": 61,
    "rules": 8,
    "unlisted": 1
   },
   {
    "id": "w1",
    "genre": "welfare",
-   "ms": 27,
+   "ms": 32,
    "rules": 1,
    "unlisted": 0
   },
   {
    "id": "w2",
    "genre": "welfare",
-   "ms": 27,
+   "ms": 37,
    "rules": 3,
    "unlisted": 0
   },
   {
    "id": "w3",
    "genre": "welfare",
-   "ms": 21,
+   "ms": 31,
    "rules": 2,
    "unlisted": 0
   },
   {
    "id": "w4",
    "genre": "welfare",
-   "ms": 35,
+   "ms": 34,
    "rules": 4,
    "unlisted": 1
   },
   {
    "id": "h1",
    "genre": "medical",
-   "ms": 43,
+   "ms": 47,
    "rules": 6,
    "unlisted": 2
   },
   {
    "id": "h2",
    "genre": "medical",
-   "ms": 26,
+   "ms": 29,
    "rules": 2,
    "unlisted": 0
   },
   {
    "id": "h3",
    "genre": "medical",
-   "ms": 27,
-   "rules": 3,
+   "ms": 38,
+   "rules": 4,
    "unlisted": 3
   },
   {
    "id": "p1",
    "genre": "police",
-   "ms": 28,
+   "ms": 32,
    "rules": 2,
    "unlisted": 1
   },
   {
    "id": "p2",
    "genre": "police",
-   "ms": 22,
+   "ms": 44,
    "rules": 3,
    "unlisted": 1
   },
   {
    "id": "p3",
    "genre": "police",
-   "ms": 21,
+   "ms": 30,
    "rules": 1,
    "unlisted": 0
   },
   {
    "id": "p4",
    "genre": "police",
-   "ms": 22,
-   "rules": 3,
+   "ms": 42,
+   "rules": 4,
    "unlisted": 0
   },
   {
    "id": "b1",
    "genre": "bank",
-   "ms": 37,
+   "ms": 40,
    "rules": 4,
    "unlisted": 2
   },
   {
    "id": "b2",
    "genre": "bank",
-   "ms": 20,
+   "ms": 24,
    "rules": 1,
    "unlisted": 0
   },
   {
    "id": "b3",
    "genre": "bank",
-   "ms": 23,
+   "ms": 16,
    "rules": 1,
    "unlisted": 0
   },
   {
    "id": "c1",
    "genre": "chat",
-   "ms": 25,
+   "ms": 21,
    "rules": 2,
    "unlisted": 0
   },
@@ -5791,42 +5794,42 @@
   {
    "id": "c4",
    "genre": "chat",
-   "ms": 36,
+   "ms": 56,
    "rules": 4,
    "unlisted": 0
   },
   {
    "id": "x1",
    "genre": "position",
-   "ms": 41,
+   "ms": 46,
    "rules": 5,
    "unlisted": 1
   },
   {
    "id": "x2",
    "genre": "position",
-   "ms": 23,
+   "ms": 33,
    "rules": 4,
    "unlisted": 0
   },
   {
    "id": "x3",
    "genre": "position",
-   "ms": 36,
+   "ms": 39,
    "rules": 4,
    "unlisted": 0
   },
   {
    "id": "a1",
    "genre": "audio",
-   "ms": 17,
+   "ms": 24,
    "rules": 3,
    "unlisted": 0
   },
   {
    "id": "a2",
    "genre": "audio",
-   "ms": 31,
+   "ms": 36,
    "rules": 5,
    "unlisted": 0
   },
@@ -5840,49 +5843,49 @@
   {
    "id": "a4",
    "genre": "audio",
-   "ms": 21,
+   "ms": 54,
    "rules": 4,
    "unlisted": 0
   },
   {
    "id": "v1",
    "genre": "interview",
-   "ms": 25,
+   "ms": 41,
    "rules": 2,
    "unlisted": 0
   },
   {
    "id": "v2",
    "genre": "interview",
-   "ms": 30,
+   "ms": 52,
    "rules": 3,
    "unlisted": 0
   },
   {
    "id": "v3",
    "genre": "interview",
-   "ms": 18,
+   "ms": 19,
    "rules": 2,
    "unlisted": 0
   },
   {
    "id": "s1",
    "genre": "structure",
-   "ms": 41,
+   "ms": 49,
    "rules": 4,
    "unlisted": 2
   },
   {
    "id": "s2",
    "genre": "structure",
-   "ms": 36,
+   "ms": 30,
    "rules": 4,
    "unlisted": 2
   },
   {
    "id": "s3",
    "genre": "structure",
-   "ms": 37,
+   "ms": 41,
    "rules": 4,
    "unlisted": 2
   }
