@@ -250,7 +250,11 @@ const PAT=[
  ["FARM","כתובת",`(?<![א-ת]{2})(?:משק|נחלה)\\s+(?:מס'?\\s*)?(\\d{1,4})(?![\\d])`,1,null,2,1],
  ["PARCEL","כתובת",`(?:גוש|חלק(?:ה|ות)|תת[-\\s]?חלק(?:ה|ות))\\s*(?:מס'?\\s*)?(\\d{1,6}(?:[-–]\\d{1,6})?)(?![\\d.,]\\d|\\s*(?:${D_UNIT}|%))`,1,null,2,1],
  ["DOB","תאריך לידה","(?:יליד(?:ת|י)?|ת\\.?\\s?לידה|תאריך\\s+לידה)[:\\s-]*(\\d{1,2}[./-]\\d{1,2}[./-]\\d{2,4})",1,null,2,1],
- ["URL_PERSONAL","קישור אישי","(?<![\\w.@/])(?:https?://)?(?:[a-z]{1,3}\\.)?(?:www\\.)?(?:(?:facebook|fb|linkedin|instagram|twitter|x|tiktok|threads|youtube)\\.(?:com|net)|t\\.me)/[^\\s\"'<>)\\]]+",0,null,2,1],
+ // גם וואטסאפ (wa.me, api., chat.), youtu.be, fb.me, m.me, טלגרם וכל תת-דומיין (הציד של 11.10): עד כאן יצאו כמו שהם
+ ["URL_PERSONAL","קישור אישי","(?<![\\w.@/])(?:https?://)?(?:[a-z0-9-]{1,20}\\.)?(?:www\\.)?(?:(?:facebook|fb|linkedin|instagram|twitter|x|tiktok|threads|youtube|snapchat|messenger|whatsapp)\\.(?:com|net)|youtu\\.be|instagr\\.am|lnkd\\.in|fb\\.me|m\\.me|wa\\.me|t\\.me|telegram\\.(?:me|dog))/[^\\s\"'<>)\\]]+",0,null,2,1],
+ // תיקייה בענן של המשרד (SharePoint, OneDrive, Drive, Dropbox, WeTransfer) ומיקום במפה: שם הלקוח, המייל של עורכת הדין
+ // או הכתובת של הבית יושבים בתוך הכתובת, מקודדים (הציד של 11.10)
+ ["URL_PRIVATE","קישור אישי","(?<![\\w.@/])(?:https?://)?(?:[a-z0-9-]{1,40}\\.)*(?:(?:sharepoint\\.com|onedrive\\.live\\.com|1drv\\.ms|drive\\.google\\.com|docs\\.google\\.com|dropbox\\.com|box\\.com|wetransfer\\.com|we\\.tl|maps\\.app\\.goo\\.gl|maps\\.apple\\.com|waze\\.com|maps\\.google\\.(?:com|co\\.il))/[^\\s\"'<>)\\]]+|(?:google\\.(?:com|co\\.il)|goo\\.gl)/maps[/?@][^\\s\"'<>)\\]]*)",0,null,2,1],
  ["HANDLE","קישור אישי","(?<![\\w.@/])@[A-Za-z0-9_](?:[A-Za-z0-9_.]{1,28}[A-Za-z0-9_])(?![\\w@])",0,null,2,1],
  ["ZIPCODE","מיקוד","(?:מיקוד|ת\\.?ד\\.?)[:\\s.]*(\\d{5,7})",1,null,3,1],
  ["POBOX","מיקוד","(?<![א-ת])ת\\.?\\s?ד\\.?[:\\s.]*(\\d{1,6})(?![\\d])",1,null,3,1],
