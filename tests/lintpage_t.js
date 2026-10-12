@@ -21,8 +21,10 @@ const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
   const found = (await lintPage(bad)).filter((p) => p.severity === 2);
   ok(found.some((p) => p.rule === "no-undef" && p.line === line), `the injected undefined name is an error at index.html:${line}: ` + JSON.stringify(found.slice(0, 3)));
 
+  // the head's first inline script, wherever comments above it put it (a fixed line 15 broke on 12.10)
   const inline = html.replace("<script>/*", "<script>undefinedInHead();/*");
-  ok((await lintPage(inline)).some((p) => p.rule === "no-undef" && p.line === 15), "an inline head script is linted too");
+  const headLine = html.slice(0, html.indexOf("<script>/*")).split("\n").length;
+  ok((await lintPage(inline)).some((p) => p.rule === "no-undef" && p.line === headLine), `an inline head script is linted too (line ${headLine})`);
 
   console.log(`\n${pass} passed, ${fail} failed`);
   process.exitCode = fail ? 1 : 0;

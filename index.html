@@ -7,8 +7,9 @@
 <meta name="description" content="החלפת שמות ופרטים מזהים במסמכי Word ו־PDF לפני שליחה ל־AI, והחזרת השמות האמיתיים לתשובה. המסמך נשאר במחשב שלכם.">
 <meta name="theme-color" content="#1D3A2E">
 <meta name="referrer" content="no-referrer">
-<!-- מדיניות אבטחת התוכן (ביקורת H14): לאן העמוד רשאי לפנות. connect-src הוא העיקר: גם קוד זר
-     שירוץ כאן לא יוכל לשלוח את המסמך או את מפת השמות לשום כתובת שאינה ברשימה. המודל יושב באתר
+<!-- מדיניות אבטחת התוכן (ביקורת H14): לאן העמוד רשאי לפנות. connect-src הוא העיקר: קוד זר שירוץ כאן
+     לא יוכל לשלוח את המסמך או את מפת השמות בבקשת רשת (fetch, XHR, WebSocket) לכתובת שאינה ברשימה. מעבר לדף
+     אחר (ניווט) אינו נעצר בה (הביקורת מבחוץ, 12.10). המודל יושב באתר
      עצמו (models/), ולכן אין לו כתובת כאן. ה-CDN: ספריית ההרצה של המודל, נבדקת ב-SHA-256, ומפת העולם.
      'unsafe-eval' נדרש לשכבת ההרצה (התבנית מוערכת ב-new Function) ול-WebAssembly. -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: https://unpkg.com; worker-src 'self' blob:; connect-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob:; object-src 'none'; base-uri 'self'; form-action 'none'">
@@ -288,17 +289,23 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
 </div></div>
 <script>
 (function(){
-  console.log("אינקוגניטו — גרסה v73.10");
-  var stuck=setTimeout(function(){
+  console.log("אינקוגניטו — גרסה v73.11");
+  /* הכלי באתר צריך חיבור כדי להיפתח: בכל פתיחה נבדקת הכניסה לחשבון (דף האבטחה). עד 12.10 ההודעה כאן הבטיחה שבלי
+     אינטרנט הכלי עובד, וכשלא היה חיבור היא הוצגה בדיוק אז (הנוסח שאושר, 12.10). בלי חיבור היא מוצגת מיד, ולא אחרי
+     תשע שניות של «נטען…» */
+  var stuckShow=function(){
     var b=document.getElementById("boot"); if(!b) return;
     b.className="stuck";
     document.getElementById("boot-msg").innerHTML=
       location.protocol==="file:"
       ? "הקובץ נפתח מהדיסק. הדפדפן חוסם מקור מקומי, ולכן הכלי צריך כתובת "+
         "<code>https</code> — גם כדי לשמור את מודל הזיהוי."
-      : "הכלי לא נטען. בפעם הראשונה צריך חיבור לאינטרנט, ואחר כך הכלי עובד גם בלעדיו. "+
-        "אם זה חוזר, רעננו את הדף עם <code>Ctrl+Shift+R</code>.";
-  },9000);
+      : navigator.onLine===false
+      ? "אין חיבור לאינטרנט. כדי לפתוח את הכלי צריך חיבור, כי בכל פתיחה נבדקת הכניסה לחשבון."
+      : "הכלי לא נטען. אם זה חוזר, רעננו את הדף עם <code>Ctrl+Shift+R</code>.";
+  };
+  var stuck=setTimeout(stuckShow,9000);
+  if(navigator.onLine===false&&location.protocol!=="file:") stuckShow();
   var obs=new MutationObserver(function(){
     if(!document.getElementById("dc-root")) return;
     clearTimeout(stuck); obs.disconnect();
@@ -335,8 +342,8 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
         console.log("עובד שירות: "+served);
         var el=document.getElementById("ver"); if(!el) return;
         if(chip===null) chip=el.innerHTML; else el.innerHTML=chip;
-        if(served==="v73.10") return;
-        el.innerHTML='גרסה v73.10 · <b style="color:var(--warn)">יש גרסה חדשה: רעננו עם Ctrl+Shift+R</b>';
+        if(served==="v73.11") return;
+        el.innerHTML='גרסה v73.11 · <b style="color:var(--warn)">יש גרסה חדשה: רעננו עם Ctrl+Shift+R</b>';
       });
       var ask=function(){ if(sw.controller) sw.controller.postMessage("version") };
       sw.ready.then(ask);
@@ -1371,7 +1378,7 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
 
 </div>
 </x-dc>
-<footer><nav data-foot aria-label="מידע ומסמכים משפטיים"><a href="https://inkognito.co.il/" target="_blank" rel="noopener">עמוד הבית</a><a href="https://inkognito.co.il/terms" target="_blank" rel="noopener">תנאי שימוש</a><a href="https://inkognito.co.il/privacy" target="_blank" rel="noopener">מדיניות פרטיות</a><a href="https://inkognito.co.il/accessibility" target="_blank" rel="noopener">הצהרת נגישות</a><a href="mailto:contact@inkognito.co.il">יצירת קשר</a></nav><div id="ver">גרסה v73.10</div></footer>
+<footer><nav data-foot aria-label="מידע ומסמכים משפטיים"><a href="https://inkognito.co.il/" target="_blank" rel="noopener">עמוד הבית</a><a href="https://inkognito.co.il/terms" target="_blank" rel="noopener">תנאי שימוש</a><a href="https://inkognito.co.il/privacy" target="_blank" rel="noopener">מדיניות פרטיות</a><a href="https://inkognito.co.il/accessibility" target="_blank" rel="noopener">הצהרת נגישות</a><a href="mailto:contact@inkognito.co.il">יצירת קשר</a></nav><div id="ver">גרסה v73.11</div></footer>
 <script type="text/x-dc" data-dc-script data-props="{&quot;docFont&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;serif&quot;,&quot;sans&quot;],&quot;default&quot;:&quot;serif&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;עיצוב&quot;},
 &quot;railWidth&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:340,&quot;max&quot;:500,&quot;step&quot;:4,&quot;default&quot;:404,&quot;unit&quot;:&quot;px&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;עיצוב&quot;}}">
 class Component extends DCLogic {
@@ -1752,7 +1759,7 @@ class Component extends DCLogic {
     }
     const has = await E.nerCached();
     this.setState({nerOff:false, nerHave:!!has, nerHint: has
-      ? "המודל שמור במחשב. אין הורדה נוספת, וזה עובד גם בלי אינטרנט."
+      ? "המודל שמור במחשב, ואין הורדה נוספת."
       : "בהפעלה הראשונה יורדים כ-185MB. אחר כך המודל נשאר במחשב."});
   }
 

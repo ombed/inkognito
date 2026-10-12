@@ -4,7 +4,7 @@
 
 **Owner's decisions (2026-09-23), which override anything below that says otherwise:**
 1. The section 1 rule is accepted as written, including that a "net safety gain" is blocked and decided by the owner at checkpoint 3.
-2. **Claude judges** the model suggestions on the private set of real documents (section 4.4), not the owner. Nothing from that set leaves the machine: no repo, commit, PR, doc, artifact or memory. Reports are counts only, and its results are not published. Identifying text found in a local fixture is replaced there with invented text of the same shape, so any leak test case keeps its shape.
+2. **Claude judges** the model suggestions on the private set of real documents (section 4.4), not the owner. Nothing from that set goes into the repo, a commit, a PR, a doc, an artifact or memory; reports are counts only, and its results are not published. Reading a document to judge it sends its text to Anthropic's API: the set holds documents that were already redacted, and the owner approved this on 23.9.2026. Identifying text found in a local fixture is replaced there with invented text of the same shape, so any leak test case keeps its shape.
 3. Download ceiling: ≤ 250 MB without asking the user; 250–450 MB only with the owner's OK and a first-run warning; > 450 MB not shipped.
 4. `tests/protocol.txt` gets a blind key committed to the repo. NEMO, BMC and Knesset UD stay outside the repo in `paintItBlack/public-bench/`; only aggregate scores are committed.
 5. Two corrections to the draft: a branch push does not deploy (only merges to `main` do); timing numbers here are from this PC, not the user's machine.
@@ -358,7 +358,7 @@ Compute time is under an hour. **Downloads come to about 5.8 GB**: about 50 minu
   Anything else is refused, whatever its script (Hebrew, Latin, digits in ID or phone shapes, emails, paths). A test covers this.
 - **Exceptions and stack traces are wrapped** during private runs, because transformers.js and ORT errors can echo input.
 - `compare.js` emits only **category-level counts** for private runs. The per-entity diff is keyed by `cat`, never by `canonical` or a surface form.
-- Private predictions, judgements and hashes stay under `private-bench/`. Claude reads them to judge (decision 2); they never leave the machine.
+- Private predictions, judgements and hashes are stored only under `private-bench/`. Claude reads them to judge (decision 2), which sends their text to Anthropic's API.
 - Private runs use `allowRemoteModels=false`, with every model already cached.
 - For leak shapes, the harness opens **only `leak-report.json`** inside the zips (in memory). It never opens the redacted docx, the session logs or the case profile.
 - **Models:** pinned revision plus sha256 on every load; no `trust_remote_code`; `.bin` files loaded with `weights_only=True`.
