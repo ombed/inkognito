@@ -51,3 +51,5 @@ coverage/
 vendor/transformers-*.min.js
 vendor/pdfjs-*/
 tests/*-core.mjs
+bench/protocol-result.json
+bench/outputs-no-model.json

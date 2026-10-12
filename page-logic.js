@@ -53,14 +53,22 @@
     return "mixed(" + g.length + ")";
   }
 
-  // rough genre from structure: speaker turns, numbered sections, prose
+  /* The shape is coarse on purpose (the engineering audit, 12.10): the exact letter count of every word of a name,
+     beside the exact size of the document, comes close to a fingerprint of the person and the file. A word of up to
+     three letters keeps its length (one, two and three letters behave differently); a longer one gives its band: 4 for
+     four or five letters, 6 for six or seven, 8 for eight and more. The document's counts are exact up to 9, then the
+     lower edge of a band that doubles: 10, 20, 40, 80… bench/from-leak.js rebuilds a document from these as before. */
+  const lenBand = (n) => (n <= 3 ? n : n <= 5 ? 4 : n <= 7 ? 6 : 8);
+  const band = (n) => (n < 10 ? n : 10 * 2 ** Math.floor(Math.log2(n / 10)));
+
+  // rough genre from structure: speaker turns, numbered sections, prose (from the exact counts; only the report is coarse)
   function docShape(blocks, E) {
     const paras = blocks.map((b) => b.text).filter((t) => t && t.trim());
     const turns = paras.filter((t) => /^[^\n:]{1,40}:\s/.test(t)).length;
     const numbered = paras.filter((t) => /^\d+\.\s/.test(t)).length;
     const words = paras.reduce((n, t) => n + t.split(/\s+/).length, 0);
     const genre = turns >= Math.max(3, paras.length * 0.3) ? "transcript" : numbered >= 3 ? "filing" : /\[\d{1,2}\.\d{1,2}\.\d{2,4}, \d{1,2}:\d{2}\]/.test(paras[0] || "") ? "chat" : "prose";
-    return { paragraphs: paras.length, words, speakerTurns: turns, numbered, genre };
+    return { paragraphs: band(paras.length), words: band(words), speakerTurns: band(turns), numbered: band(numbered), genre };
   }
 
   /* blocks: the original document blocks; text: what she marked; ctx:
@@ -73,7 +81,7 @@
     const words = nt.split(/\s+/).filter(Boolean);
     const shape = {
       v: ctx.version || "", when: new Date().toISOString(), kind: ctx.kind || "NAME",
-      words: words.length, lens: words.map((w) => w.length),
+      words: words.length, lens: words.map((w) => lenBand(w.length)),
       hyphen: /[-־]/.test(nt), geresh: /['"׳״]/.test(nt), nikud: /[֑-ׇ]/.test(text), digits: /\d/.test(nt),
       prefix: null, before: "none", after: "none", gapBefore: "", gapAfter: "",
       occurrences: 0, otherForms: 0, inList: false, listForm: null,
@@ -212,5 +220,5 @@
     return log;
   }
 
-  return { classify, docShape, leakShape, leakReport, sessionLog };
+  return { classify, docShape, leakShape, leakReport, sessionLog, lenBand, band };
 });

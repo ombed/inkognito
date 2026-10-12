@@ -56,7 +56,8 @@ test("marking a missed name records a shape with no text, and the copy carries n
   const rep = JSON.parse(copied);
   expect(rep.count).toBe(1);
   expect(rep.shapes[0].words).toBe(1);
-  expect(rep.shapes[0].lens).toEqual([10]);
+  // ten letters: the band of eight and more (12.10, the engineering audit: bands, not exact lengths)
+  expect(rep.shapes[0].lens).toEqual([8]);
   expect(["definite", "common"]).toContain(rep.shapes[0].before); // "השכן": a class, never the word
   expect(copied).not.toContain("קרבוטינסקי");
   expect(copied).not.toContain("רונית");

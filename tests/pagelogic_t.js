@@ -17,7 +17,21 @@ const cands = E.discover(blocks);
 // a surname that only appears behind a prefix letter, once
 const s1 = PL.leakShape(E, blocks, "בהילי", { kind: "NAME", version: "v14", cands, rules: [{ value: "רונית לוי" }] });
 ok("prefix letter recorded", s1.prefix === "ב");
-ok("one word of four letters after the prefix", s1.words === 1 && s1.lens[0] === 5);
+// five letters with the prefix: the band of four and five (12.10: the report gives bands, not exact lengths)
+ok("one word of four letters after the prefix", s1.words === 1 && s1.lens[0] === 4);
+
+/* The report is coarse on purpose (the engineering audit, 12.10): exact letter counts beside the document's exact
+   size come close to a fingerprint. Up to three letters a length is exact; then 4 (4–5), 6 (6–7), 8 (8 and more).
+   The document's counts are exact below 10, then 10, 20, 40, 80… The genre still comes from the exact counts. */
+ok("word lengths in bands: " + [1, 2, 3, 4, 5, 6, 7, 8, 12, 30].map(PL.lenBand).join(","), [1, 2, 3, 4, 5, 6, 7, 8, 12, 30].map(PL.lenBand).join(",") === "1,2,3,4,4,6,6,8,8,8");
+ok("counts in doubling bands: " + [0, 9, 10, 19, 20, 39, 40, 1234].map(PL.band).join(","), [0, 9, 10, 19, 20, 39, 40, 1234].map(PL.band).join(",") === "0,9,10,10,20,20,40,640");
+{
+  const turns = Array.from({ length: 23 }, (_, i) => ({ text: (i % 2 ? "השופטת" : "העד") + ": משפט קצר מספר " + (i + 1) + ".", part: "body" }));
+  const d = PL.docShape(turns, E);
+  ok("a transcript of 23 turns is still a transcript, reported as 20 paragraphs and 20 turns: " + JSON.stringify(d), d.genre === "transcript" && d.paragraphs === 20 && d.speakerTurns === 20);
+  const long = PL.leakShape(E, [{ text: "המבקשת אלכסנדרה וולקובסקה-ברקוביץ הגישה.", part: "body" }], "אלכסנדרה וולקובסקה-ברקוביץ", { kind: "NAME" });
+  ok("a long name gives bands, not its letter counts: " + JSON.stringify(long.lens), JSON.stringify(long.lens) === "[8,8]");
+}
 ok("the stem never appears bare", s1.stemOccurrences === 0);
 ok("the word before is classified, not kept", ["verb", "prefixed", "other"].includes(s1.before) && !JSON.stringify(s1).includes("פגש"));
 ok("not in the list", s1.inList === false);

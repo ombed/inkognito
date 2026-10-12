@@ -25,24 +25,33 @@ async function unzip(buf,caps){
   const dv=new DataView(buf),N=buf.byteLength;let e=-1;
   for(let i=N-22;i>=Math.max(0,N-66000);i--) if(dv.getUint32(i,true)===0x06054b50){e=i;break}
   if(e<0) throw new Error("הקובץ לא נראה כמו ‎.docx תקין");
-  const n=dv.getUint16(e+10,true);let p=dv.getUint32(e+16,true);const out=[];
-  for(let i=0;i<n;i++){
-    if(dv.getUint32(p,true)!==0x02014b50) throw new Error("מבנה הקובץ פגום");
-    const meth=dv.getUint16(p+10,true),cs=dv.getUint32(p+20,true),
-      nl=dv.getUint16(p+28,true),el=dv.getUint16(p+30,true),cl=dv.getUint16(p+32,true),
-      lo=dv.getUint32(p+42,true);
-    const name=new TextDecoder().decode(new Uint8Array(buf,p+46,nl));
-    // שני רכיבים באותו שם: הכלי היה מנקה אחד, ו-Word עלול להציג את השני (הביקורת ההנדסית, 12.10). Word משווה
-    // שמות רכיבים בלי הבדל בין אותיות גדולות לקטנות, ולכן גם word/Document.xml ליד word/document.xml
-    if(out.some(f=>f.name.toLowerCase()===name.toLowerCase())) throw new Error("מבנה הקובץ פגום");
-    const lnl=dv.getUint16(lo+26,true),lel=dv.getUint16(lo+28,true);
-    const raw=new Uint8Array(buf,lo+30+lnl+lel,cs);
-    out.push({name,meth,raw});p+=46+nl+el+cl;
-  }
+  /* קובץ שבור או בנוי לתקוף נדחה תמיד באותה הודעה (הביקורת ההנדסית, 12.10): מיקום שמחוץ לקובץ זרק עד כאן
+     RangeError באנגלית, וזרם דחוס שבור זרק TypeError. כל רכיב נבדק גם מול סכום הביקורת (CRC) שהקובץ נושא:
+     רכיב ששונה או נחתך אחרי שנכתב נדחה, כמו ש-Word עצמו מתלונן עליו. tests/zipfuzz_t.js */
+  const BAD="מבנה הקובץ פגום", out=[];
+  try{
+    const n=dv.getUint16(e+10,true);let p=dv.getUint32(e+16,true);
+    for(let i=0;i<n;i++){
+      if(dv.getUint32(p,true)!==0x02014b50) throw new Error(BAD);
+      const meth=dv.getUint16(p+10,true),crc=dv.getUint32(p+16,true),cs=dv.getUint32(p+20,true),
+        nl=dv.getUint16(p+28,true),el=dv.getUint16(p+30,true),cl=dv.getUint16(p+32,true),
+        lo=dv.getUint32(p+42,true);
+      if(meth!==0&&meth!==8) throw new Error(BAD);
+      const name=new TextDecoder().decode(new Uint8Array(buf,p+46,nl));
+      // שני רכיבים באותו שם: הכלי היה מנקה אחד, ו-Word עלול להציג את השני (הביקורת ההנדסית, 12.10). Word משווה
+      // שמות רכיבים בלי הבדל בין אותיות גדולות לקטנות, ולכן גם word/Document.xml ליד word/document.xml
+      if(out.some(f=>f.name.toLowerCase()===name.toLowerCase())) throw new Error(BAD);
+      if(dv.getUint32(lo,true)!==0x04034b50) throw new Error(BAD);
+      const lnl=dv.getUint16(lo+26,true),lel=dv.getUint16(lo+28,true);
+      const raw=new Uint8Array(buf,lo+30+lnl+lel,cs);
+      out.push({name,meth,crc,raw});p+=46+nl+el+cl;
+    }
+  }catch(err){ throw err instanceof RangeError?new Error(BAD):err; }
   let left=cap.total;
   for(const f of out){
-    f.data = f.meth===0 ? raw2(f.raw) : await inflate(f.raw, Math.min(cap.part,left));
-    left-=f.data.length; if(left<0) throw new Error("מבנה הקובץ פגום");
+    try{ f.data = f.meth===0 ? raw2(f.raw) : await inflate(f.raw, Math.min(cap.part,left)); }catch(_){ throw new Error(BAD); }
+    left-=f.data.length; if(left<0) throw new Error(BAD);
+    if(crc32(f.data)!==f.crc) throw new Error(BAD);
   }
   return out;
 }
@@ -3907,9 +3916,84 @@ function isoDateIn(s){
   for(const c of [t,...(t.match(/\d{1,2}[./-]\d{1,2}[./-]\d{2,4}|\d{4}-\d{1,2}-\d{1,2}|\d{1,2}\s+[בל]?-?[א-ת]+,?\s+\d{4}/g)||[])]){
     const p=parseDate(c); if(p&&p.y!=null)return p.y+"-"+String(p.m).padStart(2,"0")+"-"+String(p.d).padStart(2,"0")}
   return null}
+/* פרטים נסתרים בתמונות שבמסמך (הביקורת ההנדסית, 12.10): צילום מטלפון נושא בתוכו את המקום (GPS), המצלמה, התאריך,
+   לפעמים שם של אדם ותמונה ממוזערת. הכלי לא קורא את מה שבתמונה, אבל את אלה מסירים בלי לגעת בתמונה עצמה.
+   JPEG: יוצאים EXIF ו-XMP (APP1), APP3 עד APP13, APP15, הערות (COM), APP2 שאינו פרופיל צבע, וכל מה שאחרי סוף
+   התמונה (EOI; טלפונים מצרפים שם תמונות נוספות). נשארים JFIF (APP0), פרופיל הצבע (APP2 ICC) ו-Adobe (APP14),
+   כי בלעדיהם הצבעים משתנים. כיוון הצילום נשמר ב-EXIF חדש שאין בו דבר מלבדו, אחרת צילום מטלפון יוצא על הצד.
+   PNG: יוצאים tEXt, zTXt, iTXt, eXIf, tIME ומה שאחרי IEND. קובץ שלא נקרא עד סופו נשאר כמו שהוא (null).
+   tests/imgmeta_t.js */
+const u16=(u,i,le)=>le?u[i]|(u[i+1]<<8):(u[i]<<8)|u[i+1];
+const u32=(u,i,le)=>(le?(u[i]|(u[i+1]<<8)|(u[i+2]<<16)|(u[i+3]<<24)):((u[i]<<24)|(u[i+1]<<16)|(u[i+2]<<8)|u[i+3]))>>>0;
+function exifOrientation(seg){
+  // seg: APP1 בלי הסמן והאורך; "Exif\0\0" ואחריו כותרת TIFF
+  if(seg.length<14||String.fromCharCode(...seg.subarray(0,4))!=="Exif")return 0;
+  const t=seg.subarray(6), le=t[0]===0x49; if(!le&&t[0]!==0x4D)return 0;
+  const ifd=u32(t,4,le); if(ifd+2>t.length)return 0;
+  const n=u16(t,ifd,le);
+  for(let k=0;k<n;k++){ const e=ifd+2+12*k; if(e+12>t.length)return 0;
+    if(u16(t,e,le)===0x0112&&u16(t,e+2,le)===3){ const o=u16(t,e+8,le); return o>=1&&o<=8?o:0; } }
+  return 0;
+}
+function orientApp1(o){
+  // FF E1, אורך 34, "Exif\0\0", TIFF big-endian, IFD0 עם רשומה אחת: Orientation (SHORT) = o
+  return new Uint8Array([0xFF,0xE1,0,34,0x45,0x78,0x69,0x66,0,0,0x4D,0x4D,0,0x2A,0,0,0,8,0,1,0x01,0x12,0,3,0,0,0,1,0,o,0,0,0,0,0,0]);
+}
+const cat=parts=>{ const out=new Uint8Array(parts.reduce((n,p)=>n+p.length,0)); let o=0; for(const p of parts){ out.set(p,o); o+=p.length; } return out; };
+function stripJpeg(u){
+  if(u.length<4||u[0]!==0xFF||u[1]!==0xD8)return null;
+  const out=[u.subarray(0,2)]; let p=2, orient=0, changed=false, ended=false;
+  while(p<u.length){
+    if(u[p]!==0xFF)return null;
+    const m=u[p+1];
+    if(m===0xFF){ p++; continue; }
+    if(m===0xD9){ out.push(u.subarray(p,p+2)); p+=2; ended=true; break; }
+    if((m>=0xD0&&m<=0xD7)||m===0x01){ out.push(u.subarray(p,p+2)); p+=2; continue; }
+    if(p+4>u.length)return null;
+    const len=u16(u,p+2,false); if(len<2||p+2+len>u.length)return null;
+    const seg=u.subarray(p,p+2+len), body=seg.subarray(4);
+    const icc=m===0xE2&&String.fromCharCode(...body.subarray(0,11))==="ICC_PROFILE";
+    const drop=m===0xE1||(m===0xE2&&!icc)||(m>=0xE3&&m<=0xED)||m===0xEF||m===0xFE;
+    if(m===0xE1&&!orient){ const o=exifOrientation(body); if(o>1)orient=o; }
+    if(drop)changed=true; else out.push(seg);
+    p+=2+len;
+    if(m===0xDA){
+      // הנתונים המקודדים עד הסמן הבא: FF 00 הוא בית רגיל, FF D0..D7 הם סמני איפוס שבתוך הנתונים
+      const s=p;
+      while(p+1<u.length&&!(u[p]===0xFF&&u[p+1]!==0x00&&!(u[p+1]>=0xD0&&u[p+1]<=0xD7)))p++;
+      if(p+1>=u.length)return null;
+      out.push(u.subarray(s,p));
+    }
+  }
+  if(!ended)return null;
+  if(p<u.length)changed=true;
+  if(!changed)return null;
+  if(orient)out.splice(out[1]&&out[1][1]===0xE0?2:1,0,orientApp1(orient));
+  return cat(out);
+}
+function stripPng(u){
+  const SIG=[137,80,78,71,13,10,26,10];
+  if(u.length<8||SIG.some((b,i)=>u[i]!==b))return null;
+  const out=[u.subarray(0,8)]; let p=8, changed=false, ended=false;
+  while(p+12<=u.length){
+    const len=u32(u,p,false), type=String.fromCharCode(...u.subarray(p+4,p+8));
+    if(p+12+len>u.length)return null;
+    if(/^(?:tEXt|zTXt|iTXt|eXIf|tIME)$/.test(type))changed=true; else out.push(u.subarray(p,p+12+len));
+    p+=12+len;
+    if(type==="IEND"){ ended=true; break; }
+  }
+  if(!ended)return null;
+  if(p<u.length)changed=true;
+  return changed?cat(out):null;
+}
+function stripImageMeta(name,u){
+  if(/\.(?:jpe?g|jfif)$/i.test(name))return stripJpeg(u);
+  if(/\.png$/i.test(name))return stripPng(u);
+  return null;
+}
 async function redactDocx(buf,subs,allow,opt){
   const files=await unzip(buf);
-  const rep={ins:0,del:0,cm:0,rsid:0,hidden:0,dropped:[],meta:[],rels:[],sweep:0};
+  const rep={ins:0,del:0,cm:0,rsid:0,hidden:0,img:0,dropped:[],meta:[],rels:[],sweep:0};
   // קטע מיובא נכתב כפסקאות לפני הכול, והחלק שלו יוצא מהקובץ כמו כל חלק שהוסר
   const chunks=await inlineChunks(files,0);
   let keep=files.filter(f=>{
@@ -3919,6 +4003,8 @@ async function redactDocx(buf,subs,allow,opt){
   // הקישורים של חלק שהוסר (ההערות) הולכים איתו: בלעדיו נשארו בקובץ, יתומים (הציד של 11.10)
   {const gone=new Set(rep.dropped.map(n=>n.replace(/([^/]*)$/,"_rels/$1.rels")));keep=keep.filter(f=>!gone.has(f.name))}
   for(const f of keep){
+    // תמונה: בלי מקום, מצלמה, תאריך ומחבר (stripImageMeta)
+    if(/(?:^|\/)media\/[^/]+$/i.test(f.name)){ const c=stripImageMeta(f.name,f.data); if(c){ f.data=c; rep.img++; } }
     if(f.name.endsWith(".rels")||f.name==="[Content_Types].xml"){
       let s=TXT.decode(f.data);
       for(const d of rep.dropped){
@@ -5609,4 +5695,4 @@ export {nerLast, hiddenPart, nerForget, VRB, COMMON, KNOWN_FIRST, NW, NWE, crc32
   resolve, Engine, flatten, acceptTracked, stripComments, redactDocx, partName, ctxHTML, verify,
   discover, PLACES, PLACE_BY, geoMap, geoNames, placesFound, examplesOf, findPlaces, fakePlace,
   atlasTags, atlasDiff, atlasPenalty, placeKind, nerEnv, nerCached, nerPersist, nerLoad, nerRun,
-  TITLE_RX, ORG_RX, likelyOrg, cleanEntry, trimEdges, pseudoRX, restoreNames, restorePairs, STOP, gender, origin, readBlocks, isTextPart, setAliasKey, hmac32};
+  TITLE_RX, ORG_RX, likelyOrg, cleanEntry, trimEdges, pseudoRX, restoreNames, restorePairs, STOP, gender, origin, readBlocks, isTextPart, setAliasKey, hmac32, stripImageMeta};
