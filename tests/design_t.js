@@ -5,7 +5,7 @@ const { build, OUT } = require("../scripts/build-design.js");
 const path = require("path");
 
 let pass = 0, fail = 0;
-const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+const html = require("../scripts/page-parts.js").pageWithLogic();
 let want; try { want = build(html); pass++; } catch (e) { fail++; console.log("  FAIL build threw: " + e.message); }
 if (want !== undefined) {
   const have = fs.existsSync(OUT) ? fs.readFileSync(OUT, "utf8") : "";

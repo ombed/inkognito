@@ -36,7 +36,8 @@ const rules = {
 const js = require("@eslint/js");
 module.exports = [
   // engine/ holds the sections that concatenate into redact-engine.js; the whole is linted, the parts are not modules
-  { ignores: ["node_modules/**", "vendor/**", "support.js", "engine/**", "tests/app.html", "tests/core.js", "tests/*-core.js", "bench/.engine*.cjs", "test-results/**", "playwright-report/**"] },
+  // page-component.js, the page's component logic, is linted by scripts/lint-page.js with the page's own globals
+  { ignores: ["node_modules/**", "vendor/**", "support.js", "page-component.js", "engine/**", "tests/app.html", "tests/core.js", "tests/*-core.js", "bench/.engine*.cjs", "test-results/**", "playwright-report/**"] },
   { files: ["redact-engine.js", "pdf-text.js", "text-to-docx.js"], languageOptions: { ecmaVersion: 2022, sourceType: "module", globals: globals.browser }, rules: { ...js.configs.recommended.rules, ...rules } },
   { files: ["page-logic.js"], languageOptions: { ecmaVersion: 2022, sourceType: "script", globals: { ...globals.browser, module: "readonly" } }, rules: { ...js.configs.recommended.rules, ...rules } },
   // forward/sw.js replaces sw.js at the old address after the move (scripts/build-forward.js)

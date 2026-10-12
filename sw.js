@@ -7,7 +7,7 @@
    בטעינה השנייה, וזו דרך בטוחה להריץ קוד ישן בלי לדעת. */
 const V="hedact-v74";
 const FILES=["./","./index.html","./manifest.webmanifest","./icon.svg",
-  "./support.js","./page-logic.js","./redact-engine.js","./pdf-text.js","./text-to-docx.js"];
+  "./support.js","./page-component.js","./page-logic.js","./redact-engine.js","./pdf-text.js","./text-to-docx.js"];
 // מה שהכלי צריך כדי לעלות ולהיראות כמו שצריך בלי רשת: ספריית ההרצה (React) וכל הגופנים.
 // עד v60 הם נשמרו רק כשהתבקשו בזמן שהעובד כבר שולט בדף: React של הביקור הראשון נטען לפני
 // שהעובד קם, גופנים של מסך שעוד לא נפתח לא נשמרו, ובכל עדכון הם נמחקים עם המטמון הישן.
@@ -95,7 +95,7 @@ self.addEventListener("fetch",e=>{
   // נוגעים במפורש רק בקבצים שלנו שברשימה. כל בקשה אחרת עוברת ישר לרשת:
   // עובד שירות שמושך אליו כל מה שבמקור שובר כל מה שיושב לידו.
   // L21 בביקורת השנייה: page-logic.js נשמר במטמון אבל לא הוגש ממנו, ובלי רשת נכשל
-  const MINE=/(?:^|\/)(?:index\.html|support\.js|page-logic\.js|redact-engine\.js|pdf-text\.js|text-to-docx\.js|manifest\.webmanifest|icon(?:-\d+)?\.(?:svg|png))$|\/$/;
+  const MINE=/(?:^|\/)(?:index\.html|support\.js|page-component\.js|page-logic\.js|redact-engine\.js|pdf-text\.js|text-to-docx\.js|manifest\.webmanifest|icon(?:-\d+)?\.(?:svg|png))$|\/$/;
   if(u.origin===location.origin&&MINE.test(u.pathname)){
     e.respondWith((async()=>{
       const c=await caches.open(V);

@@ -18,7 +18,7 @@ const { JSDOM } = require("jsdom");
 let pass = 0, fail = 0;
 const ok = (c, m) => { c ? pass++ : (fail++, console.log("  ✗ " + m)); };
 
-const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+const html = require("../scripts/page-parts.js").pageWithLogic();
 const app = html.slice(html.indexOf('type="text/x-dc"'));
 const doc = new JSDOM(html.slice(0, html.indexOf('<script type="text/x-dc"'))).window.document;
 const LIVE = '[role="status"],[aria-live]';

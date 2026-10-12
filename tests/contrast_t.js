@@ -10,7 +10,7 @@ const path = require("path");
 let pass = 0, fail = 0;
 const ok = (c, m) => { c ? pass++ : (fail++, console.log("  ✗ " + m)); };
 
-const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+const html = require("../scripts/page-parts.js").pageWithLogic();
 const cut = html.indexOf('type="text/x-dc"');
 const template = html.slice(0, cut), app = html.slice(cut);
 // a CSS opacity, or an SVG opacity attribute (the old square logo's lines were drawn at opacity=".5";

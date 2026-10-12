@@ -8,7 +8,7 @@ const WORKER = new URL("./vendor/pdfjs-4.6.82/pdf.worker.min.mjs", import.meta.u
 export async function pdfToText(buf){
   const pdfjs = await import(/* webpackIgnore: true */ LIB);
   pdfjs.GlobalWorkerOptions.workerSrc = WORKER;
-  const doc = await pdfjs.getDocument({data:new Uint8Array(buf)}).promise;
+  const doc = await pdfjs.getDocument({data:new Uint8Array(buf),isEvalSupported:false}).promise;
   const out=[], perPage=[];
   for(let p=1; p<=doc.numPages; p++){
     const pageLines=[];
