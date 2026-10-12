@@ -6,12 +6,22 @@ const CRC=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;
   for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
 function crc32(u8){let c=0xFFFFFFFF;for(let i=0;i<u8.length;i++)c=CRC[(c^u8[i])&255]^(c>>>8);
   return (c^0xFFFFFFFF)>>>0}
-async function pipe(u8,S,fmt){const s=new Blob([u8]).stream().pipeThrough(new S(fmt));
-  return new Uint8Array(await new Response(s).arrayBuffer())}
-const inflate=u8=>pipe(u8,DecompressionStream,"deflate-raw");
+/* פריסה עם תקרה (הביקורת ההנדסית, 12.10): קובץ שנבנה לתקוף — כמה קילובייט שנפרסים לג'יגה — הקפיא את הלשונית.
+   רכיב שנפרס מעבר ל-ZIP_CAP.part, או קובץ שכל רכיביו יחד עוברים את ZIP_CAP.total, נעצר ונדחה כפגום */
+const ZIP_CAP={part:256*1024*1024, total:512*1024*1024};
+async function pipe(u8,S,fmt,cap){const s=new Blob([u8]).stream().pipeThrough(new S(fmt));
+  if(!cap) return new Uint8Array(await new Response(s).arrayBuffer());
+  const r=s.getReader(), parts=[]; let n=0;
+  for(;;){ const {done,value}=await r.read(); if(done)break; n+=value.length;
+    if(n>cap){ try{ await r.cancel(); }catch(_){} throw new Error("מבנה הקובץ פגום"); }
+    parts.push(value); }
+  const out=new Uint8Array(n); let o=0; for(const p of parts){ out.set(p,o); o+=p.length; }
+  return out}
+const inflate=(u8,cap)=>pipe(u8,DecompressionStream,"deflate-raw",cap||ZIP_CAP.part);
 const deflate=u8=>pipe(u8,CompressionStream,"deflate-raw");
 
-async function unzip(buf){
+async function unzip(buf,caps){
+  const cap={...ZIP_CAP,...(caps||{})};
   const dv=new DataView(buf),N=buf.byteLength;let e=-1;
   for(let i=N-22;i>=Math.max(0,N-66000);i--) if(dv.getUint32(i,true)===0x06054b50){e=i;break}
   if(e<0) throw new Error("הקובץ לא נראה כמו ‎.docx תקין");
@@ -22,11 +32,18 @@ async function unzip(buf){
       nl=dv.getUint16(p+28,true),el=dv.getUint16(p+30,true),cl=dv.getUint16(p+32,true),
       lo=dv.getUint32(p+42,true);
     const name=new TextDecoder().decode(new Uint8Array(buf,p+46,nl));
+    // שני רכיבים באותו שם: הכלי היה מנקה אחד, ו-Word עלול להציג את השני (הביקורת ההנדסית, 12.10). Word משווה
+    // שמות רכיבים בלי הבדל בין אותיות גדולות לקטנות, ולכן גם word/Document.xml ליד word/document.xml
+    if(out.some(f=>f.name.toLowerCase()===name.toLowerCase())) throw new Error("מבנה הקובץ פגום");
     const lnl=dv.getUint16(lo+26,true),lel=dv.getUint16(lo+28,true);
     const raw=new Uint8Array(buf,lo+30+lnl+lel,cs);
     out.push({name,meth,raw});p+=46+nl+el+cl;
   }
-  for(const f of out) f.data = f.meth===0 ? raw2(f.raw) : await inflate(f.raw);
+  let left=cap.total;
+  for(const f of out){
+    f.data = f.meth===0 ? raw2(f.raw) : await inflate(f.raw, Math.min(cap.part,left));
+    left-=f.data.length; if(left<0) throw new Error("מבנה הקובץ פגום");
+  }
   return out;
 }
 const raw2=u=>new Uint8Array(u);
@@ -86,7 +103,18 @@ const DROP=["word/comments.xml","word/commentsExtended.xml","word/commentsIds.xm
 /* ══════════════════════════ עברית ══════════════════════════ */
 const NM={"\u05f3":"'","\u05f4":'"',"\u2018":"'","\u2019":"'","\u201c":'"',"\u201d":'"',
   "\u05be":"-","\u2010":"-","\u2011":"-","\u2012":"-","\u2013":"-","\u2014":"-",
-  "\u00a0":" ","\u2007":" ","\u202f":" "};
+  "\u00a0":" ","\u2007":" ","\u202f":" ",
+  /* ספרות ברוחב מלא ובכתב ערבי, ואותיות עבריות בצורות התצוגה ש-PDF מוציא (שׁ, בּ...), לצורתן הרגילה, תו בתו: ת"ז
+     בספרות כאלה לא נמצא, ושם באותיות כאלה לא הושווה לרשימה (הביקורת ההנדסית, 12.10). tests/aliaskey_t.js */
+  "\uff10":"\u0030","\u0660":"\u0030","\u06f0":"\u0030","\uff11":"\u0031","\u0661":"\u0031","\u06f1":"\u0031","\uff12":"\u0032","\u0662":"\u0032",
+  "\u06f2":"\u0032","\uff13":"\u0033","\u0663":"\u0033","\u06f3":"\u0033","\uff14":"\u0034","\u0664":"\u0034","\u06f4":"\u0034","\uff15":"\u0035",
+  "\u0665":"\u0035","\u06f5":"\u0035","\uff16":"\u0036","\u0666":"\u0036","\u06f6":"\u0036","\uff17":"\u0037","\u0667":"\u0037","\u06f7":"\u0037",
+  "\uff18":"\u0038","\u0668":"\u0038","\u06f8":"\u0038","\uff19":"\u0039","\u0669":"\u0039","\u06f9":"\u0039","\ufb1d":"\u05d9","\ufb20":"\u05e2",
+  "\ufb21":"\u05d0","\ufb22":"\u05d3","\ufb23":"\u05d4","\ufb24":"\u05db","\ufb25":"\u05dc","\ufb26":"\u05dd","\ufb27":"\u05e8","\ufb28":"\u05ea",
+  "\ufb2a":"\u05e9","\ufb2b":"\u05e9","\ufb2c":"\u05e9","\ufb2d":"\u05e9","\ufb2e":"\u05d0","\ufb2f":"\u05d0","\ufb30":"\u05d0","\ufb31":"\u05d1",
+  "\ufb32":"\u05d2","\ufb33":"\u05d3","\ufb34":"\u05d4","\ufb35":"\u05d5","\ufb36":"\u05d6","\ufb38":"\u05d8","\ufb39":"\u05d9","\ufb3a":"\u05da",
+  "\ufb3b":"\u05db","\ufb3c":"\u05dc","\ufb3e":"\u05de","\ufb40":"\u05e0","\ufb41":"\u05e1","\ufb43":"\u05e3","\ufb44":"\u05e4","\ufb46":"\u05e6",
+  "\ufb47":"\u05e7","\ufb48":"\u05e8","\ufb49":"\u05e9","\ufb4a":"\u05ea","\ufb4b":"\u05d5","\ufb4c":"\u05d1","\ufb4d":"\u05db","\ufb4e":"\u05e4"};
 /* \u05ea\u05d5\u05d5\u05d9\u05dd \u05e9\u05d4\u05e7\u05d5\u05e8\u05d0 \u05dc\u05d0 \u05e8\u05d5\u05d0\u05d4 (\u05d4\u05e6\u05d9\u05d3 \u05e9\u05dc 11.10): \u05de\u05e7\u05e3 \u05e8\u05da, \u05de\u05e6\u05d8\u05e8\u05e3 \u05de\u05d9\u05dc\u05d9\u05dd, BOM, \u05d5\u05e1\u05d9\u05de\u05e0\u05d9 \u05db\u05d9\u05d5\u05d5\u05df \u2014 \u05d1\u05d9\u05d3\u05d5\u05d3 (LRI/RLI/FSI/PDI),
    \u05d4\u05d8\u05d1\u05e2\u05d4 \u05d5\u05d4\u05d9\u05e4\u05d5\u05da (LRE\u2026RLO), ALM. \u05d9\u05d9\u05e6\u05d5\u05d0 \u05e9\u05dc \u05d5\u05d5\u05d8\u05e1\u05d0\u05e4 \u05d5\u05d8\u05e7\u05e1\u05d8 \u05e9\u05d4\u05d5\u05e2\u05ea\u05e7 \u05de\u05d0\u05e4\u05dc\u05d9\u05e7\u05e6\u05d9\u05d5\u05ea \u05e2\u05d5\u05d8\u05e4\u05d9\u05dd \u05d1\u05d4\u05dd \u05e9\u05de\u05d5\u05ea \u05d5\u05de\u05e1\u05e4\u05e8\u05d9\u05dd, \u05d5-Word \u05de\u05db\u05e0\u05d9\u05e1
    \u05de\u05e7\u05e3 \u05e8\u05da \u05d1\u05d0\u05de\u05e6\u05e2 \u05de\u05d9\u05dc\u05d4. \u05e2\u05d3 \u05db\u05d0\u05df \u05e8\u05e7 LRM, RLM \u05d5-ZWSP/ZWNJ/ZWJ \u05d4\u05d9\u05d5 \u05db\u05d0\u05df: \u05e9\u05dd \u05d1\u05e8\u05e9\u05d9\u05de\u05d4 \u05e9\u05d1\u05ea\u05d5\u05db\u05d5 \u05d0\u05d5 \u05e1\u05d1\u05d9\u05d1 \u05de\u05d9\u05dc\u05d5\u05ea\u05d9\u05d5 \u05d0\u05d7\u05d3 \u05de\u05d4\u05d0\u05d7\u05e8\u05d9\u05dd \u05dc\u05d0
@@ -334,10 +362,13 @@ const FEM=new Set(POOL.he_f.concat(POOL.ar_f,["שרון","דליה","נירית"
  "פרידה","רוזה","קלרה","ויקטוריה","מרינה","ליאורה","תמי","הודיה","אביטל","מעיין",
  "ספיר","שירז","מיטל","אביגייל","רעות","שירלין","ברכה","גאולה","יעלה"]));
 const MASC=new Set(POOL.he_m.concat(POOL.ar_m));
+/* אות עם גרש שמסמנת תעתיק מערבית: ח׳ (ח'אלד), ת׳, ד׳, ז׳, ט׳, ע׳ (ע'סאן). עד 12.10 התבנית הייתה [ח'ג'ת'ד'ז'],
+   שהגרש עצמו בתוכה, וכל שם עם גרש נחשב ערבי: «יואב ברקוביץ'» קיבל שם בדוי ערבי (הביקורת ההנדסית). ג׳ (ג'ון) וצ׳
+   (ברקוביץ') נשארים בחוץ: הם באים גם משמות באנגלית ובסלאבית. tests/aliaskey_t.js */
 function origin(v){
   const w=v.split(/[\s-]+/);
   if(w.some(x=>AR_HINT.has(x)||AR_NAMES.has(x)))return "ar";
-  if(/[ח'ג'ת'ד'ז']/.test(v)&&/'/.test(v))return "ar";
+  if(/[חתדזטע]['׳’]/.test(v))return "ar";
   return "he"}
 // המגדר נקבע קודם כל לפי מה שכתוב במסמך ("הנתבעת", "גב'"), ורק אחר כך
 // לפי השם עצמו. סיומת ה' היא ניחוש אחרון, לא כלל.
@@ -357,6 +388,50 @@ function gender(v,hint){
 function hash32(s){let h=0x811c9dc5;
   for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,0x01000193)>>>0}
   return h>>>0}
+/* מפתח סודי לשמות הבדויים (החלטת הבעלים, 12.10; הביקורת ההנדסית). השם הבדוי נגזר מהשם האמיתי בקוד ציבורי בלבד,
+   ולכן מי שהחזיק את הטקסט שה־AI ראה ורשימת חשודים יכול היה לחשב לכל חשוד את השם הבדוי שלו ולאשר מי במסמך; ואותו
+   אדם קיבל אותו שם בדוי אצל כל עורך דין. כך גם יישוב: 1,100 יישובים, וכל יישוב בדוי היה הפיך. עם מפתח של 256 ביט
+   שנשמר בדפדפן של החשבון ואינו יוצא ממנו, הגזירה היא HMAC-SHA-256: אותו שם בדוי בכל מסמך שלה, ובלי המפתח אי אפשר
+   לחשב אותו. hash32 לבדו, עם המפתח בתחילתו, לא היה מספיק: המצב הפנימי שלו 32 ביט, וזה ניתן לניחוש. בלי מפתח
+   (הבדיקות, Node) הגזירה כמו קודם. SHA-256 כאן סינכרוני, כי השם נבחר באמצע זיהוי סינכרוני. tests/aliaskey_t.js */
+const SHA_K=[0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,
+  0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,
+  0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+  0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,
+  0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,
+  0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+function sha256Sync(bytes){
+  const l=bytes.length, pad=new Uint8Array(((l+9+63)>>6)<<6), dv=new DataView(pad.buffer), w=new Uint32Array(64);
+  pad.set(bytes); pad[l]=0x80; dv.setUint32(pad.length-4,(l*8)>>>0); dv.setUint32(pad.length-8,Math.floor(l/0x20000000));
+  const H=[0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+  const rot=(x,n)=>(x>>>n)|(x<<(32-n));
+  for(let o=0;o<pad.length;o+=64){
+    for(let i=0;i<16;i++) w[i]=dv.getUint32(o+i*4);
+    for(let i=16;i<64;i++){ const a=w[i-15], b=w[i-2];
+      w[i]=(w[i-16]+(rot(a,7)^rot(a,18)^(a>>>3))+w[i-7]+(rot(b,17)^rot(b,19)^(b>>>10)))|0; }
+    let [a,b,c,d,e,f,g,h]=H;
+    for(let i=0;i<64;i++){
+      const t1=(h+(rot(e,6)^rot(e,11)^rot(e,25))+((e&f)^(~e&g))+SHA_K[i]+w[i])|0;
+      const t2=((rot(a,2)^rot(a,13)^rot(a,22))+((a&b)^(a&c)^(b&c)))|0;
+      h=g; g=f; f=e; e=(d+t1)|0; d=c; c=b; b=a; a=(t1+t2)|0;
+    }
+    H[0]=(H[0]+a)|0; H[1]=(H[1]+b)|0; H[2]=(H[2]+c)|0; H[3]=(H[3]+d)|0; H[4]=(H[4]+e)|0; H[5]=(H[5]+f)|0; H[6]=(H[6]+g)|0; H[7]=(H[7]+h)|0;
+  }
+  const out=new Uint8Array(32), odv=new DataView(out.buffer);
+  H.forEach((x,i)=>odv.setUint32(i*4,x>>>0));
+  return out;
+}
+// HMAC-SHA-256 (RFC 2104) של s במפתח (64 תווי hex), 32 הביטים הראשונים
+function hmac32(keyHex,s){
+  const key=new Uint8Array(64); for(let i=0;i<32;i++) key[i]=parseInt(keyHex.slice(i*2,i*2+2),16);
+  const m=new TextEncoder().encode(s), inner=new Uint8Array(64+m.length), outer=new Uint8Array(96);
+  for(let i=0;i<64;i++){ inner[i]=key[i]^0x36; outer[i]=key[i]^0x5c; }
+  inner.set(m,64); outer.set(sha256Sync(inner),64);
+  const d=sha256Sync(outer); return ((d[0]<<24)|(d[1]<<16)|(d[2]<<8)|d[3])>>>0;
+}
+let ALIAS_KEY=null;
+function setAliasKey(k){ ALIAS_KEY=typeof k==="string"&&/^[0-9a-f]{64}$/.test(k)?k:null; return !!ALIAS_KEY; }
+function aliasSeed(s){ return ALIAS_KEY?hmac32(ALIAS_KEY,s):hash32(s); }
 /* שם בדוי שהוא גם מילה בטקסט רגיל — לבד, או אחרי אות שימוש — לא נבחר (הציד של 11.10). ה-AI כותב את המילה במובן
    הרגיל שלה, וההחזרה שמה שם את השם האמיתי של הלקוח: «השופטת דנה בבקשה» (דנה, פועל), «מליאת הכנסת», «שרותי בריאות»,
    «לעשות את מירב המאמצים». הרשימה נמדדה בקורפוס חדשות עברי ציבורי (49,700 משפטים, רק ספירות): שם שמופיע כמילה מחוץ
@@ -420,16 +495,22 @@ function latinOf(s){
   return String(s||"").replace(/[א-ת][א-ת'׳"״-]*/g,w=>{
     const one=/^([א-ת])['׳]$/.exec(w); if(one)return HORD_LAT[one[1]]||translit(w);
     return w.split("-").map(p=>LATIN[p.replace(/׳/g,"'")]||translit(p)).join("-")})}
+/* צעד שזר לגודל המאגר, כך שכל השמות בו נבדקים: צעד 7 על מאגר של 28 (שמות המשפחה הערביים) בדק 4 מהם בלבד. הניסיון
+   הראשון לא משתנה. ואם כולם תפוסים, השם עם המספר נבדק גם הוא מול התפוסים: עד 12.10 שני אנשים יכלו לקבל אותו שם בדוי,
+   וההחזרה לא ידעה למי להחזיר (הביקורת ההנדסית). tests/aliaskey_t.js */
+const gcd=(a,b)=>{while(b){[a,b]=[b,a%b]}return a};
 function pickFrom(arr,seed,used,forbidden){
   const n=arr.length;
+  let step=7; while(gcd(step,n)!==1) step++;
   for(let k=0;k<n;k++){
-    const v=arr[(seed+k*7+((seed>>>8)%3))%n];
+    const v=arr[(seed+k*step+((seed>>>8)%3))%n];
     if(used.has(v)||forbidden.has(v)||WORDLIKE.has(v))continue;
     if(WORDISH.has(v)||(/-/.test(v)&&v.split("-").some(poolWordy)))continue;
     if(typeof PLACE_BY!=="undefined"&&PLACE_BY[v])continue;
     if(STOP.has(v))continue;
     return v}
-  return arr[seed%n]+" "+((seed%89)+11)}
+  for(let j=0;j<89;j++){ const v=arr[seed%n]+" "+(((seed+j)%89)+11); if(!used.has(v)) return v; }
+  return arr[seed%n]+" "+((seed%89)+11)+"-"+(used.size+1)}
 // שם פרטי לבד או שם משפחה לבד — נשמר אותו סוג, אחרת "כהן" הופך ל"יעל"
 // והמשפט "מר כהן טען" נשבר.
 // סיומות של שם משפחה: מילה בודדת כזאת מקבלת שם משפחה בדוי גם בלי ראיה אחרת
@@ -447,7 +528,7 @@ const ORG_TAILS=["אורנים","הגפן","שקד","נווה","הרימון","�
 function orgHead(v){ const m=ORG_HEADS.exec(norm(v).trim()); return m?m[0]:null; }
 function fakeOrg(value,used,forbidden){
   const head=orgHead(value);
-  const seed=hash32(norm(value).trim());
+  const seed=aliasSeed(norm(value).trim());
   const raw=value.trim().split(/\s+/);
   const headWords=head?head.split(/\s+/).length:0;
   const pre=head?raw.slice(0,headWords).join(" "):"";
@@ -463,7 +544,7 @@ function fakeOrg(value,used,forbidden){
 function fakeName(value,hint,used,forbidden,firstish){
   const org=origin(value), g=gender(value,hint);
   const parts=value.trim().split(/\s+/);
-  const seed=hash32(norm(value).trim());
+  const seed=aliasSeed(norm(value).trim());
   const firsts=POOL[org+"_"+(g==="f"?"f":"m")], surs=POOL[org+"_s"];
   if(parts.length===1){
     // מילה אחת: שם פרטי כשהיא שם פרטי מוכר, או כשהמסמך מציג אותה אחרי מילת
@@ -475,7 +556,7 @@ function fakeName(value,hint,used,forbidden,firstish){
     const out=pickFrom(isFirst?firsts:surs,seed,used,forbidden);
     used.add(out);return out}
   const f=pickFrom(firsts,seed,used,forbidden); used.add(f);
-  const s=pickFrom(surs,hash32("s"+norm(value)),used,forbidden); used.add(s);
+  const s=pickFrom(surs,aliasSeed("s"+norm(value)),used,forbidden); used.add(s);
   // "אלעד בן דוד" → "דניאל בן קפלן": המילית נשארת, כי היא חלק מהמבנה
   // ולא מהזהות. שם משפחה כפול אחר → שם משפחה בדוי אחד, פשוט יותר.
   const PARTS=new Set(["בן","בת","אבו","אל","דה","ואן","בר"]);
@@ -2161,7 +2242,7 @@ function fakePlace(value,used,forbidden,kind){
     }
     return true;
   };
-  const start=hash32(norm(String(value||"")).trim())%pool.length;
+  const start=(typeof aliasSeed==="function"?aliasSeed:hash32)(norm(String(value||"")).trim())%pool.length;
   for(let k=0;k<pool.length;k++){
     const cand=pool[(start+k)%pool.length];
     if(free(cand))return cand;
@@ -2754,6 +2835,9 @@ class Engine{
   constructor(subs,allow,opt,docText){
     subs=subs.map(x=>({...x}));
     this.opt=opt; this.subs=subs;
+    // המפתח הסודי של השמות הבדויים, מהדפדפן של החשבון (setAliasKey). רק אפשרויות שמציינות אותו משנות אותו
+    // (null מנקה): מנוע שנבנה בלי השדה לא יחזיר בשקט את הגזירה הציבורית, שכל אחד יכול לחשב
+    if(typeof setAliasKey==="function"&&opt&&Object.prototype.hasOwnProperty.call(opt,"aliasKey")) setAliasKey(opt.aliasKey);
     // שם בדוי שכבר מופיע במסמך האמיתי הוא מלכודת: אי אפשר יהיה להחזיר
     // אותו, והוא ייראה כאילו הוא שייך למישהו. אוספים את כל מילות המסמך
     // ואוסרים עליהן.
@@ -5525,4 +5609,4 @@ export {nerLast, hiddenPart, nerForget, VRB, COMMON, KNOWN_FIRST, NW, NWE, crc32
   resolve, Engine, flatten, acceptTracked, stripComments, redactDocx, partName, ctxHTML, verify,
   discover, PLACES, PLACE_BY, geoMap, geoNames, placesFound, examplesOf, findPlaces, fakePlace,
   atlasTags, atlasDiff, atlasPenalty, placeKind, nerEnv, nerCached, nerPersist, nerLoad, nerRun,
-  TITLE_RX, ORG_RX, likelyOrg, cleanEntry, trimEdges, pseudoRX, restoreNames, restorePairs, STOP, gender, origin, readBlocks, isTextPart};
+  TITLE_RX, ORG_RX, likelyOrg, cleanEntry, trimEdges, pseudoRX, restoreNames, restorePairs, STOP, gender, origin, readBlocks, isTextPart, setAliasKey, hmac32};
