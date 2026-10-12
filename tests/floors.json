@@ -42,7 +42,7 @@
  "benchlib_t.js": 4,
  "license_t.js": 2,
  "failopen_t.js": 15,
- "gate_t.js": 6,
+ "gate_t.js": 16,
  "vendor_t.js": 38,
  "lintpage_t.js": 5,
  "gender_t.js": 7,

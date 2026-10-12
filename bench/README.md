@@ -6,6 +6,7 @@ Re-run after every detection change; compare `results.md` in the diff.
     npm run bench            # regenerate the corpus, run the chain with the model, write results.md
     npm run bench:nomodel    # the deterministic layers alone, written to results-no-model.md (runs in CI)
     npm run gate             # compare results-no-model.json with baseline-no-model.json, entity by entity; CI runs it with GATE_BLOCKING=1
+    node bench/gate.js --model   # the same for the model-on run: results.json against baseline-model.json (CI, report only)
     node bench/sweep.js      # score every tunable at several values, write sweep.md (model on, ~10 minutes)
     node bench/sweep.js --only=min   # re-run one tunable; the other sections of sweep.md are kept
     node bench/spans.js      # characterise the model's span boundaries against the key, write spans.md
@@ -99,8 +100,16 @@ returns the same engine with textual patches applied, for the sweep.
 
 ## The gate
 
-`gate.js` compares the deterministic run with `baseline-no-model.json` per
-category and prints every category that got worse. It is report-only: the
-CI step shows it, nothing fails. Once the numbers have held still for a few
-runs, set `GATE_BLOCKING=1` in the workflow. Re-seed the baseline by copying
-`results-no-model.json` over it when a change is meant to move the numbers.
+`gate.js` compares the deterministic run with `baseline-no-model.json` entity by
+entity (document, category, canonical name) and blocks in CI (`GATE_BLOCKING=1`)
+on every entity that got worse, that is new to the corpus and failing, or that is
+gone from it. `--model` does the same for the model-on run against
+`baseline-model.json`; in CI that one reports only, until its baseline has held
+on CI's machines.
+
+In CI the baseline is the one at the PR's base (or main before a push), read
+with `git show` (`GATE_BASE_REF`): a change cannot pass by regenerating its own
+baseline (outside review, 12.10). A change that is meant to make an entity worse
+names it in `gate-accepted.json` with a reason, a sentence, and updates the
+baseline in the same change; once that is on main, the entry matches nothing and
+the gate reports it as stale, to be removed.
