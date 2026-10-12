@@ -32,28 +32,28 @@ console.log("\n— the texts name the deletion mark the review screen draws —"
   }
 }
 
-console.log("\n— the network table names every library the tool loads from a CDN —");
+/* What users run is inkognito.co.il (the outside review of 12.10, the owner's wording of 12.10). There every library the
+   code names at a CDN (support.js, the map's libraries in index.html) is served from the site itself: the hosted build
+   (scripts/hosted.js, branch inkognito) copies each one, strips the CDN hosts from the page's policy, and stops if a CDN
+   address is left. The README says so, and says the tool needs a connection to open; nothing promises it works offline. */
+console.log("\n— the network section describes the site users run —");
 {
   const md = read("README.md");
   const section = (md.split("## מה נטען מהרשת")[1] || "").split("\n## ")[0];
-  const rows = section.split("\n").filter((l) => /^\| /.test(l) && !/^\| (?:מאיפה|---)/.test(l));
-  ok(rows.length >= 2, "README.md has the network table: " + rows.length + " rows");
-  const libs = [];
-  // React and ReactDOM: every first visit, and every update (support.js; sw.js keeps them at install)
+  ok(/inkognito\.co\.il/.test(section) && /לא פונה לאתרים אחרים/.test(section), "README.md: on inkognito.co.il the tool contacts no other site");
+  ok(/צריך חיבור כדי להיפתח/.test(section), "README.md: the tool needs a connection to open");
+  ok(!/unpkg\.com|cdn\.jsdelivr\.net/.test(section), "README.md: no CDN in the section on what users run");
+  // the CDN addresses the code names, which the hosted build must serve from the site (still there in main's code)
   const support = read("support.js");
-  for (const [v, name] of [["REACT_URL", "React"], ["REACT_DOM_URL", "ReactDOM"]]) {
-    const url = (support.match(new RegExp("var " + v + ' = "([^"]+)"')) || [])[1];
-    ok(!!url, "support.js names " + v);
-    if (url) libs.push({ name, url, version: true });
-  }
-  // the map's libraries, once the map is shown (index.html)
-  const map = [...read("index.html").matchAll(/\["([\w-]+)","(https:\/\/[^"]+)","sha\d+-/g)];
-  ok(map.length >= 2, "index.html names the map's libraries: " + map.map((m) => m[1]).join(", "));
-  for (const m of map) libs.push({ name: m[1], url: m[2], version: false });
-  for (const lib of libs) {
-    const host = new URL(lib.url).hostname, ver = (lib.url.match(/@(\d+\.\d+\.\d+)/) || [])[1];
-    const row = rows.find((r) => r.startsWith("| " + host + " |") && new RegExp("(?<![\\w-])" + lib.name + "(?![\\w-])").test(r));
-    ok(!!row && (!lib.version || row.includes(ver)), `the table has a row for ${host} that names ${lib.name}${lib.version ? " " + ver : ""}`);
+  ok(/var REACT_URL = "https:\/\/unpkg\.com\//.test(support), "support.js still names React at unpkg, which the hosted build replaces");
+}
+
+console.log("\n— nothing promises the tool works offline —");
+{
+  const offline = /(?:עובד|ייפתח|נפתח)[^.\n]{0,40}בלי (?:רשת|אינטרנט|חיבור)|בלי (?:רשת|אינטרנט|חיבור)[^.\n]{0,20}(?:עובד|ייפתח)|גם בלעדיו/;
+  for (const [f, text] of [["README.md", read("README.md")], ["index.html", strip(read("index.html"))]]) {
+    const m = text.match(offline);
+    ok(!m, `${f} promises no offline use${m ? ": «" + m[0] + "»" : ""}`);
   }
 }
 

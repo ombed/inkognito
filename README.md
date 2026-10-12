@@ -7,7 +7,7 @@ The hosted service adds sign-in and, only with the user's consent, a usage log w
 It was built for a real client, a lawyer, and shaped by her feedback and her session logs, which record timings and clicks but never text.
 The interface is in Hebrew; the Hebrew documentation follows this section.
 
-**Live:** https://inkognito.co.il · **Try it without an account:** https://inkognito.co.il/demo/ (a guided tour on an invented document) · **Demo video (36 s):** [docs/demo/demo.mp4](docs/demo/demo.mp4), on an invented court transcript from the benchmark corpus
+**Live:** https://inkognito.co.il (served from the `inkognito` branch; `main` holds the tool's code) · **Try it without an account:** https://inkognito.co.il/demo/ (a guided tour on an invented document) · **Demo video (36 s):** [docs/demo/demo.mp4](docs/demo/demo.mp4), on an invented court transcript from the benchmark corpus
 
 ![Demo: load a document, review the people found, redact, paste an AI answer, get the real names back](docs/demo/demo.gif)
 
@@ -17,17 +17,19 @@ The interface is in Hebrew; the Hebrew documentation follows this section.
 
 - **Benchmark** ([bench/results.md](bench/results.md)): 43 invented documents with 335 keyed entries: 272 identifying details the tool must replace and 63 traps it must leave alone (public bodies, idioms, «פלוני»), built to cover the hard cases (prefix letters, nikud, transcription typos, look-alike surnames, names hidden in headers, footnotes and alt text). With the model on: 2 missed, 2 leaked, 3 false positives.
 - It scores **the whole pipeline**, not the model alone: it runs the same chain as the page and checks the output file a user would send, so a leak in any layer counts.
-- A **blocking CI gate** ([bench/gate.js](bench/gate.js)) runs the deterministic layers on every change and compares each entity with itself in the committed baseline; any entity that gets worse fails the build. The model-on run downloads the weights, so it is run by hand.
+- A **blocking CI gate** ([bench/gate.js](bench/gate.js)) runs the deterministic layers on every change and compares each entity with itself in the baseline on main, so a change cannot pass by rewriting its own; any entity that gets worse fails the build, and a regression is accepted only by naming it with a reason. The model-on run is in CI too, reporting only for now.
 - **Model choice** ([docs/model-eval/](docs/model-eval/README.md)): 16 configurations of 9 local Hebrew models, with the decision rule written and committed before any run. Only one passed: DictaBERT-parse's NER head with a corrected tokenizer, which now ships.
-- **A real document:** on a public Knesset committee transcript ([tests/protocol.txt](tests/protocol.txt), 1,431 words), the people list opens with 6 of the 10 participants the test checks, read from the header. Once the other four are typed in, all ten are found everywhere they appear, including two misspellings of one name, and two people nobody listed are flagged for review (`npm run report`).
+- **A real document:** a public Knesset committee transcript ([tests/protocol.txt](tests/protocol.txt), 1,431 words), keyed blind in two independent passes. With every suggestion accepted (v73.10, 12 October 2026), 1 of its 71 mentions of people is left in the text, 0 of 11 places and 3 of 27 private bodies. It also shows what's next: 9 of its 18 public bodies are replaced too.
 
 ## How it's built
 
-- Vanilla JavaScript, no framework and no build step for the page; the engine is plain files concatenated into one script.
+- No build step for the page: plain JavaScript, with the interface drawn by React 18 through a small template runtime (`support.js`). The engine is plain files concatenated into one script. On inkognito.co.il every library, font and the model are served from the site itself.
 - Name recognition: the NER head of DictaBERT-parse, exported to ONNX, quantized to 8 bits and run in the browser with transformers.js. It is served from this site and checked against a pinned SHA-256 before use.
 - Rules, Hebrew prefix handling and a gazetteer run alongside the model; the model only adds suggestions.
-- Tests: about 3,700 Node checks and over 300 Playwright browser tests in CI, plus the benchmark gate above.
-- Developed with Claude Code as the coding agent. The design decisions are mine, and I can explain each one.
+- Tests: about 7,500 Node checks and 338 Playwright browser tests in CI, WebKit and Firefox before each release that changes the page, plus the benchmark gates above.
+- Developed with Claude Code as the coding agent. Each decision is recorded with its reasons: the model choice in [docs/model-eval/](docs/model-eval/README.md), the rest in the changelog and the code.
+
+**Licence:** source-available under [PolyForm Shield 1.0.0](LICENSE). Read it before using the code in a product of your own.
 
 ---
 
@@ -60,7 +62,7 @@ https://ombed.github.io/inkognito/, מגישה מ-main את דף ההעברה ש
 | `redact-engine.js` | המנוע: זיהוי, החלפה, אימות, DOCX |
 | `pdf-text.js` | חילוץ טקסט מ-PDF |
 | `text-to-docx.js` | הפיכת טקסט מודבק ל-docx לצורך העיבוד |
-| `sw.js` | עובד שירות — התקנה ועבודה בלי רשת |
+| `sw.js` | עובד שירות — שומר את קבצי הכלי במטמון, כדי שייפתח מהר |
 | `manifest.webmanifest` | הגדרות התקנה |
 | `icon.svg`, `icon-192.png`, `icon-512.png` | אייקונים |
 | `vendor/transformers-4.2.0.min.js` | ספריית מודל הזיהוי (transformers.js), מהאתר עצמו ולא מ-CDN |
@@ -142,18 +144,11 @@ GitHub Pages או כל אירוח סטטי מספיק. **כתובת `https` הי
 
 ## מה נטען מהרשת
 
-| מאיפה | מה | מתי |
-|---|---|---|
-| unpkg.com | React, ReactDOM 18.3.1 (עם `integrity`) | בביקור הראשון ובכל עדכון, ואחר כך מהמטמון |
-| unpkg.com | d3, topojson | רק כשלוחצים «הצגת המפה», ואחר כך מהמטמון |
-| cdn.jsdelivr.net | קובץ ה-WebAssembly של ספריית ההרצה (נבדק מול SHA-256), קובץ הגיאומטריה למפה | כשהמודל נטען לראשונה, ובפעם הראשונה שנפתח מסך המפה |
-
-מודל הזיהוי עצמו (185MB) יורד מהאתר, מ-`models/`, ולא מאתר אחר: פעם אחת, רק אם «מודל זיהוי
-עברי מקומי» דלוק. איך נבחר, מה עוד נבדק ולמה: `docs/model-eval/README.md`, עם כל הנתונים.
-
-אף אחת מהבקשות האלה לא מכילה דבר מהמסמך. ספריות ההרצה נטענות עם
-`integrity`, כך שקובץ שהוחלף בצד ה-CDN לא ירוץ. הביקור הראשון דורש
-חיבור; אחריו הכל יושב במטמון והכלי עובד גם בלי רשת.
+באתר inkognito.co.il הכלי לא פונה לאתרים אחרים: הספריות, הגופנים, ספריית ההרצה של המודל
+והמודל עצמו (185MB) מגיעים מהאתר, והדף רשאי לפנות רק לאתר ולשירות ההתחברות. אף בקשה לא מכילה
+דבר מהמסמך. המודל יורד פעם אחת ונבדק מול SHA-256 נעול. הכלי צריך חיבור כדי להיפתח, כי בכל
+פתיחה נבדקת הכניסה לחשבון. איך המודל נבחר, מה עוד נבדק ולמה: `docs/model-eval/README.md`, עם
+כל הנתונים.
 
 ## בדיקת קבלה
 

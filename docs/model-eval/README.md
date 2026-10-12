@@ -23,7 +23,7 @@ precision, recall and F-scores on every case we knew of and on the real document
 Three conditions held throughout:
 - The model must run in the user's browser. No cloud service was considered.
 - No fine-tuning. There is no safe training data.
-- Real documents never leave the machine. Results on them are not published here.
+- Real documents are stored only on the owner's computer, and results on them are not published here. Claude read the redacted ones to judge suggestions, which sends their text to Anthropic's API, with the owner's approval.
 
 ## The short answer
 
