@@ -916,10 +916,18 @@ test.describe("offline", () => {
     await page.evaluate(async () => { await navigator.serviceWorker.ready; });
     await page.reload();
     await expect(page.locator("#dc-root")).toBeAttached({ timeout: 60000 });
+    // the computer reports it is offline, as with Wi-Fi off; Playwright cuts the network but leaves navigator.onLine
+    // true (seen 12.10), and then the page shows, after nine seconds, only that the tool did not load
+    await page.addInitScript(() => Object.defineProperty(Navigator.prototype, "onLine", { get: () => false, configurable: true }));
     await context.setOffline(true);
     await page.reload().catch(() => {});
     await expect(page.locator("#boot-msg")).toHaveText("אין חיבור לאינטרנט. כדי לפתוח את הכלי צריך חיבור, כי בכל פתיחה נבדקת הכניסה לחשבון.", { timeout: 5000 });
     await expect(page.locator("#dc-root")).toHaveCount(0);
     await expect(page.locator("body")).not.toContainText("גם בלעדיו");
+    // offline the page falls back to React's CDN address and the site's policy refuses it: that refusal is the policy
+    // holding, so it is checked here, then cleared for the guard in base.js
+    const refused = await page.evaluate(() => window.__csp || []);
+    expect(refused.length > 0 && refused.every((r) => /^script-src\S* https:\/\/unpkg\.com\/react(?:-dom)?@/.test(r)), "only React's CDN address is refused: " + JSON.stringify(refused)).toBe(true);
+    await page.evaluate(() => { window.__csp = []; });
   });
 });
