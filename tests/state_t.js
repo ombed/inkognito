@@ -85,6 +85,7 @@ const SESSION = {
   noticeUndo: "set with every notice; the notice itself is the document's",
   helpOpen: "the «עזרה» menu is open",
   demoEnd: "the no-account demo is over (its end card)",
+  pw: "the case-file password dialog (export or import), open over any screen and closed by its own buttons",
 };
 // cleared by «מסמך חדש», and kept when the next document is loaded otherwise
 const NEW_DOC_ONLY = {
