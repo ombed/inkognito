@@ -176,7 +176,15 @@ class Engine{
     // אותו, והוא ייראה כאילו הוא שייך למישהו. אוספים את כל מילות המסמך
     // ואוסרים עליהן.
     this.forbidden=new Set();
-    if(docText)for(const w of (norm(docText).match(WRX)||[]))this.forbidden.add(w);
+    /* וגם המילה בלי גרש בסופה («ברקוביץ׳» ← «ברקוביץ») ובלי אות שימוש בתחילתה («וברקוביץ» ← «ברקוביץ»): שם בדוי שהוא
+       מילה אמיתית של המסמך בצורה אחרת הוא אותה מלכודת (12.10: «ברקוביץ», שם משפחה בדוי מהמאגר, נבחר לאדם אחר במסמך שבו
+       «יואב ברקוביץ׳» אמיתי; בבדיקת הדפדפן של v73.13, אחד למאה מפתחות). tests/forbidden_t.js */
+    if(docText)for(const w of (norm(docText).match(WRX)||[])){
+      this.forbidden.add(w);
+      const bare=w.replace(/['"]+$/,"");
+      if(bare!==w&&bare.length>1)this.forbidden.add(bare);
+      if(bare.length>=4&&PFX.has(bare[0]))this.forbidden.add(bare.slice(1));
+    }
     this.gmap={}; for(const s of subs) if(s.g)this.gmap[s.value]=s.g;
     // מה המסמך אומר על מילה בודדת: אחרי "הקטין", "האם", "מר", "התובעת:" היא שם
     // פרטי, והמילה שלפניה מסגירה גם מגדר. זה מכריע שם פרטי מול שם משפחה בשם
