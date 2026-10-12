@@ -1,0 +1,4 @@
+{
+  "note": "Regressions the recall gate lets through, each entity named with a reason written by hand, a sentence (bench/gate.js). Empty it once the baseline on main has moved on: the gate reports entries that match nothing as stale.",
+  "accepted": []
+}
