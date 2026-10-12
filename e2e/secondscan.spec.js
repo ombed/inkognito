@@ -17,9 +17,13 @@ test("names the cleaning did not find turn the status amber, wait with «להח�
   await H.goOn(page);
   await H.throughPlaces(page, page.getByRole("button", { name: /החלת הקבוצה והמשך|המשך לבדיקה|המשך לעיבוד/ }).first());
   const bar = page.locator("[data-bar-text]");
+  const item = (v) => page.locator("[data-pend-item]").filter({ hasText: v }).first();
+  // «אבי בוסקילה» waits in «לבדיקה» as a suggested name: she says it is one, so what is left is the scan's
+  const sug = page.locator("[data-review-item]").filter({ hasText: "אבי בוסקילה" }).first();
+  await sug.getByRole("button", { name: "כן, זה שם" }).click();
+  await expect(sug).toHaveCount(0, { timeout: 15000 });
   await expect(bar).toContainText("בבדיקה שנייה נמצאו פרטים שאינם ברשימה", { timeout: 15000 });
   await expect(bar).toContainText("2 מילים שנראות כמו שמות. כדאי לבדוק אותם לפני שליחה.");
-  const item = (v) => page.locator("[data-pend-item]").filter({ hasText: v }).first();
   await expect(item("קארין")).toContainText("בבדיקה שנייה · אדם");
   await expect(item("שלומית")).toContainText("בבדיקה שנייה · אדם");
 

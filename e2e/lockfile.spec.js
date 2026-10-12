@@ -24,6 +24,7 @@ test("«ייצוא לקובץ» asks for a password, and the file it downloads i
   await H.goOn(page);
   await H.throughPlaces(page, page.getByRole("button", { name: /החלת הקבוצה והמשך|המשך לבדיקה|המשך לעיבוד/ }).first());
   await expect(page.locator("[data-bar]")).toBeVisible({ timeout: 15000 });
+  await page.getByRole("button", { name: /התיק ורשימת השמות/ }).click();
   await page.getByRole("button", { name: "ייצוא לקובץ" }).first().click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toContainText(PW_EXPORT);
