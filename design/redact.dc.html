@@ -1580,7 +1580,7 @@ class Component extends DCLogic {
     }
     const has = await E.nerCached();
     this.setState({nerOff:false, nerHave:!!has, nerHint: has
-      ? "המודל שמור במחשב. אין הורדה נוספת, וזה עובד גם בלי אינטרנט."
+      ? "המודל שמור במחשב, ואין הורדה נוספת."
       : "בהפעלה הראשונה יורדים כ-185MB. אחר כך המודל נשאר במחשב."});
   }
 
