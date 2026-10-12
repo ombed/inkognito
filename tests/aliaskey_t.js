@@ -103,6 +103,14 @@ console.log("\n— a Word file with two entries of one name is refused —");
   const one = mkzip([{ name: "word/document.xml", body }]);
   const files = await C.unzip(ab(one));
   ok(files.length === 1 && new TextDecoder().decode(files[0].data).includes("דנה כהן"), "one entry reads as before");
+  const refused = async (z, caps) => { try { await C.unzip(ab(z), caps); return ""; } catch (e) { return String(e.message); } };
+  // Word compares part names without case: word/Document.xml beside word/document.xml is the same part twice
+  ok(/פגום/.test(await refused(mkzip([{ name: "word/document.xml", body }, { name: "word/Document.xml", body }]))), "the same name in other letter case is refused too");
+  // a part that inflates past its limit, and parts that together pass the file's limit (small limits stand in for 256 and 512 MB)
+  const big = "א".repeat(600);
+  ok(/פגום/.test(await refused(mkzip([{ name: "word/document.xml", body: big + big }]), { part: 1000, total: 5000 })), "a part past the part limit is refused");
+  ok(/פגום/.test(await refused(mkzip([{ name: "word/a.xml", body: big }, { name: "word/b.xml", body: big }, { name: "word/c.xml", body: big }]), { part: 1500, total: 3000 })), "parts past the file's limit together are refused");
+  ok((await refused(mkzip([{ name: "word/a.xml", body: big }, { name: "word/b.xml", body: big }]), { part: 1500, total: 3000 })) === "", "under both limits, the file reads");
   console.log(`\n${pass} passed, ${fail} failed`);
   process.exitCode = fail ? 1 : 0;
 })();

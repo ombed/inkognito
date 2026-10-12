@@ -23,7 +23,8 @@ const def = code.match(/\bcaseKey\(k\)\{[^}]*\}/);
 ok(!!def, "index.html defines caseKey(k)");
 ok(!!def && /window\.__inkStoreSuffix/.test(def[0]) && /k\+":"\+s/.test(def[0]), "caseKey reads window.__inkStoreSuffix and joins it with a colon: " + (def ? def[0] : "none"));
 const list = code.match(/static CASE_KEYS=\[[^\]]*\]/);
-const inList = (i) => !!list && i > list.index && i < list.index + list[0].length;
+const gone = code.match(/static GONE_WITH_CASES=\[[^\]]*\]/);
+const inList = (i) => [list, gone].some((l) => !!l && i > l.index && i < l.index + l[0].length);
 const uses = [...code.matchAll(/"redact-(?:cases|profile-last|alias-key)"/g)];
 ok(uses.length >= 10, "the case keys are found in the code: " + uses.length);
 const bare = uses.filter((m) => !/caseKey\($/.test(code.slice(Math.max(0, m.index - 13), m.index)) && !inList(m.index))
@@ -31,10 +32,12 @@ const bare = uses.filter((m) => !/caseKey\($/.test(code.slice(Math.max(0, m.inde
 ok(bare.length === 0, "no case key is used without caseKey(): " + bare.join(" · "));
 
 console.log("\n— the cases of every account go only by a button of their own; deleting the model keeps them —");
-// the key of the invented names (12.10) is a case key too: one per account, and it goes with the cases
-ok(!!list && list[0] === 'static CASE_KEYS=["redact-cases","redact-profile-last","redact-alias-key"]', "CASE_KEYS lists the three case keys: " + (list ? list[0] : "none"));
+ok(!!list && list[0] === 'static CASE_KEYS=["redact-cases","redact-profile-last"]', "CASE_KEYS lists the two case keys: " + (list ? list[0] : "none"));
+// the key of the invented names (12.10): one per account (caseKey), cleared with the cases, and not counted as one
+ok(!!gone && gone[0] === 'static GONE_WITH_CASES=["redact-alias-key"]', "GONE_WITH_CASES lists the key of the invented names: " + (gone ? gone[0] : "none"));
 const forget = code.match(/\bforgetCases\(\)\{[\s\S]*?\n {2}\}/);
 ok(!!forget && /K\.some\(c=>k===c\|\|k\.startsWith\(c\+":"\)\)/.test(forget[0]), "forgetCases removes each case key and every key that is it followed by a colon");
+ok(!!forget && /const K=\[\.\.\.this\.constructor\.CASE_KEYS, \.\.\.this\.constructor\.GONE_WITH_CASES\]/.test(forget[0]), "forgetCases removes the key of the invented names with the cases");
 const mf = code.match(/modelForget = async \(\) => \{[\s\S]*?\n {2}\};/);
 ok(!!mf, "modelForget («מחיקת המודל והקבצים השמורים מהמחשב») is found");
 ok(!!mf && !/forgetCases|CASE_KEYS|caseKey|localStorage|redact-|cases:|lastProfile:|profile:/.test(mf[0]),

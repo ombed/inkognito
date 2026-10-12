@@ -2535,7 +2535,7 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
   /* ── עיבוד ── */
   /* המפתח הסודי של השמות הבדויים (החלטת הבעלים, 12.10; הביקורת ההנדסית): נוצר פעם אחת בדפדפן הזה, לכל חשבון לחוד
      (caseKey), ולא יוצא ממנו. בלעדיו כל אחד יכול היה לחשב מהקוד הציבורי את השם הבדוי של כל שם אמיתי, ולאשר מי במסמך.
-     «ניקוי התיקים מהמחשב» מוחק גם אותו (CASE_KEYS). אם האחסון חסום, מפתח לביקור הזה בלבד */
+     «ניקוי התיקים מהמחשב» מוחק גם אותו (GONE_WITH_CASES). אם האחסון חסום, מפתח לביקור הזה בלבד */
   aliasKey(){
     if(this._aliasKey) return this._aliasKey;
     const k=this.caseKey("redact-alias-key"), good=v=>/^[0-9a-f]{64}$/.test(String(v||""));
@@ -3215,10 +3215,12 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
      זה המקום היחיד שלא עובר דרך caseKey, כי הוא לא של חשבון אחד. מחיקת המודל (modelForget) מחקה איתה את כל
      התיקים, בלי שאלה ובמילים שמדברות רק על המודל (הביקורת העצמאית, 6.10); עכשיו היא של «ניקוי התיקים מהמחשב»
      בלבד (clearCases), במילים שאושרו ואחרי שאלה. tests/casekey_t.js */
-  static CASE_KEYS=["redact-cases","redact-profile-last","redact-alias-key"];
+  static CASE_KEYS=["redact-cases","redact-profile-last"];
+  // מפתח השמות הבדויים (aliasKey, 12.10) נמחק עם התיקים, אבל הוא לא תיק: casesHere לא סופר אותו
+  static GONE_WITH_CASES=["redact-alias-key"];
   forgetCases(){
     try{
-      const K=this.constructor.CASE_KEYS, gone=[];
+      const K=[...this.constructor.CASE_KEYS, ...this.constructor.GONE_WITH_CASES], gone=[];
       for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(K.some(c=>k===c||k.startsWith(c+":"))) gone.push(k); }
       for(const k of gone) localStorage.removeItem(k);
     }catch(_){}
@@ -3807,8 +3809,7 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
   /* «ניקוי התיקים מהמחשב» (הנוסח שאושר, 7.10.2026): כל התיקים השמורים במחשב הזה, של כל חשבון (forgetCases), אחרי
      שאלה. גם התיק שמחובר למסמך שבעבודה מתנתק, אחרת השינוי הבא היה שומר אותו שוב. e2e/restore-ux.spec.js */
   casesHere(){
-    // מפתח השמות הבדויים נמחק עם התיקים, אבל הוא לא תיק: הוא נשמר כבר בטעינה, והכפתור היה מופיע גם כשאין תיק
-    try{ const K=this.constructor.CASE_KEYS.filter(c=>c!=="redact-alias-key");
+    try{ const K=this.constructor.CASE_KEYS;
       for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(K.some(c=>k===c||k.startsWith(c+":"))) return true; } }catch(_){}
     return false;
   }
