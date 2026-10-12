@@ -1664,6 +1664,8 @@ class Component extends DCLogic {
        "המשך" (ביקורת QA 010): קובץ שאינו docx תקין, או docx בלי טקסט, לא מקבל ✓. */
     const bad=(m,code)=>{ this.log.add("file-reject",{why:code||"other"}); this._fileErrN=(this._fileErrN||0)+1; this.setState({fileErr:m, err:"", pending:false, name:"", buf:null}); };
     if(!/\.(docx|pdf)$/i.test(f.name)) return bad("נדרש קובץ Word (docx) או PDF. קובץ doc ישן — לשמור מחדש ב-Word בתור docx.", "type");
+    // כמו בטקסט מודבק (usePastedText): המסמך הקודם יורד מהמסך כבר עכשיו, לפני שהקובץ החדש נקרא ונבדק
+    this.setState({...this.docReset(true)});
     let buf; try{ buf = await f.arrayBuffer(); }catch(_){ return bad("לא הצלחנו לפתוח את הקובץ. אם הוא שמור בענן (OneDrive, Dropbox) — להוריד עותק למחשב; אם הוא פתוח ב-Word — לסגור אותו, ולבחור אותו שוב.", "read"); }
     if(/\.pdf$/i.test(f.name)) return this.loadPdf(buf, f);
     let blocks;
@@ -1766,13 +1768,18 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     if(!this.state.E) return this.afterEngine(()=>this.usePastedText());
     const txt=(this.state.pasteText||"").trim();
     if(txt.length<20){ this.setState({err:"צריך קצת יותר טקסט כדי שהזיהוי יעבוד."}); return; }
+    /* המסמך הקודם יורד מהמסך עכשיו, ולא אחרי שהטקסט מוכן (12.10): הכנת הטקסט לוקחת רגע, ועד כאן כרטיס המסמך הקודם
+       ו«המשך — איתור שמות במסמך» שלו נשארו בו, ולחיצה ברגע הזה המשיכה עם המסמך של הלקוח הקודם (נמצא בבדיקת WebKit
+       תחת עומס). הטקסט שבתיבה נשאר. e2e/load-now.spec.js */
+    const raw=this.state.pasteText;
+    this.setState({...this.docReset(true), pasteText:raw, err:""});
     try{
       const {textToDocx} = await import("./text-to-docx.js");
       const buf = await textToDocx(txt);
       const blocks = await this.blocksOf(buf);
       const chars = txt.length;
       // הטקסט שבתיבה הוא המסמך הזה, ונשאר בה; טקסט של מסמך קודם נמחק עם כל השאר
-      this.setState({...this.docReset(true), pasteText:this.state.pasteText, err:"", buf, name:"טקסט שהודבק", pending:true, nerAsk:false,
+      this.setState({...this.docReset(true), pasteText:raw, err:"", buf, name:"טקסט שהודבק", pending:true, nerAsk:false,
         origBlocks:blocks.map(b=>({part:b.part, text:b.text})),
         pendMeta:`${blocks.length===1?"פסקה אחת":blocks.length+" פסקאות"} · ${chars>=1000?`כ-${(chars/1000).toFixed(1)} אלף תווים`:chars+" תווים"} · טקסט מודבק`});
     }catch(e){ this.setState({err:"הכנת הטקסט נכשלה. אפשר לנסות שוב. (פרטים טכניים: "+(e.message||e)+")"}); }
