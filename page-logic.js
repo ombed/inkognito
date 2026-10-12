@@ -220,5 +220,34 @@
     return log;
   }
 
-  return { classify, docShape, leakShape, leakReport, sessionLog, lenBand, band };
+  /* A case file with a password (the owner's decision of 12.10, «A»; the engineering audit: exports in plain text). The
+     export is encrypted with AES-GCM under a key derived from the password (PBKDF2-SHA-256, 600,000 rounds, a random
+     salt and nonce), so a file left in the downloads folder, a mail or a USB stick no longer shows the real names. The
+     file says only that it is locked and how. A wrong password and a changed file both fail to open (the GCM tag). A
+     plain file, as every export before 12.10 and the old address's download, still imports. tests/lockfile_t.js */
+  const LOCK = { kdf: "PBKDF2-SHA-256", iter: 600000, cipher: "AES-GCM-256" };
+  const b64 = (u) => { let s = ""; for (const b of u) s += String.fromCharCode(b); return globalThis.btoa(s); };
+  const unb64 = (s) => Uint8Array.from(globalThis.atob(String(s || "")), (c) => c.charCodeAt(0));
+  async function lockKey(pw, salt, iter) {
+    const S = globalThis.crypto.subtle;
+    const base = await S.importKey("raw", new TextEncoder().encode(String(pw)), "PBKDF2", false, ["deriveKey"]);
+    return S.deriveKey({ name: "PBKDF2", salt, iterations: iter, hash: "SHA-256" }, base, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+  }
+  async function lockJSON(obj, pw) {
+    const salt = globalThis.crypto.getRandomValues(new Uint8Array(16)), iv = globalThis.crypto.getRandomValues(new Uint8Array(12));
+    const key = await lockKey(pw, salt, LOCK.iter);
+    const data = new Uint8Array(await globalThis.crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(JSON.stringify(obj))));
+    return { inkognito: "locked", v: 1, kdf: LOCK.kdf, iter: LOCK.iter, cipher: LOCK.cipher, salt: b64(salt), iv: b64(iv), data: b64(data) };
+  }
+  const isLocked = (o) => !!o && o.inkognito === "locked" && typeof o.data === "string";
+  async function unlockJSON(o, pw) {
+    if (!isLocked(o) || o.v !== 1 || o.kdf !== LOCK.kdf || o.cipher !== LOCK.cipher) throw new Error("not a locked file of this kind");
+    // the file's own count of rounds, within bounds: a file made to take an hour to open is refused
+    if (!Number.isInteger(o.iter) || o.iter < 100000 || o.iter > 5000000) throw new Error("rounds out of bounds");
+    const key = await lockKey(pw, unb64(o.salt), o.iter);
+    const plain = await globalThis.crypto.subtle.decrypt({ name: "AES-GCM", iv: unb64(o.iv) }, key, unb64(o.data));
+    return JSON.parse(new TextDecoder().decode(plain));
+  }
+
+  return { classify, docShape, leakShape, leakReport, sessionLog, lenBand, band, lockJSON, unlockJSON, isLocked, LOCK };
 });
