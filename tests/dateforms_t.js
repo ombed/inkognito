@@ -160,12 +160,13 @@ console.log("\n— one document, one offset, every form —");
 console.log("\n— no shifted date is a real date of the same document —");
 {
   // the offset a document gets from its text alone (before this change, its only offset)
-  const base = (t) => 30 + C.hash32(C.norm(t)) % 371;
+  const base = (t) => C.dateOffBase(C.norm(t));
   // two dates exactly that offset apart: the first one, shifted, would be the second one
   let text = null, second = null;
-  for (let k = 0; k < 800 && !text; k++) {
-    const d = new Date(Date.UTC(2026, 1, 1 + 30 + k)), s = d.getUTCDate() + "." + (d.getUTCMonth() + 1) + "." + d.getUTCFullYear();
-    const t = "ביום 1.2.2026 התקיים דיון.\nהתגובה תוגש עד ליום " + s + ".";
+  // the offset is whole weeks (12.10): each week, with a few wordings of the second line, until one collides
+  for (let v = 0; v < 40 && !text; v++) for (let w = 5; w < 58 && !text; w++) {
+    const d = new Date(Date.UTC(2026, 1, 1 + 7 * w)), s = d.getUTCDate() + "." + (d.getUTCMonth() + 1) + "." + d.getUTCFullYear();
+    const t = "ביום 1.2.2026 התקיים דיון.\nהתגובה תוגש עד ליום " + s + (v ? ", בקשה " + v : "") + ".";
     if (C.fakeDate("1.2.2026", base(t)) === s) { text = t; second = s; }
   }
   ok(!!text, "a document with two dates one offset apart was built");
@@ -365,6 +366,27 @@ const pad2 = (n) => String(n).padStart(2, "0");
   ok(took < 2000 && off >= 30 && off <= 400, "a thousand dates and sixty months: the offset (" + off + " days) in " + took + " ms; it took 15 s");
 }
 
+/* Whole weeks (the owner's decision of 12.10, the outside review): «ביום חמישי, 12.3.2026» stays a Thursday. A shift
+   of single days put the date on another weekday while the text still named the old one, and the AI reasoned on the
+   wrong day. Still one offset per document, in the owner's range. */
+console.log("\n— the offset is whole weeks: a weekday in the text still matches its date —");
+{
+  const DAYS = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
+  const parse = (s) => { const m = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec(s); return m ? new Date(Date.UTC(+m[3], +m[2] - 1, +m[1])) : null; };
+  let n = 0;
+  for (let k = 0; k < 40; k++) {
+    const d = dayOf(2026, 7 + k * 9), real = dnum(2026, 7 + k * 9);
+    const text = "ביום " + DAYS[d.getUTCDay()] + ", " + real + ", התקיים דיון בעניין המשמורת. מסמך " + (k + 1) + ".";
+    const eng = new C.Engine([], [], ALL, text);
+    const h = eng.detect(text).find((x) => x.type === "DATE");
+    const out = h && parse(eng.repFor(h));
+    const days = out ? Math.round((out - d) / 864e5) : NaN;
+    if (eng.dateOff % 7 === 0 && days === eng.dateOff && out.getUTCDay() === d.getUTCDay() && days >= 30 && days <= 400) n++;
+    else console.log("  ✗ " + text + " → " + (h ? eng.repFor(h) : "no date") + " (offset " + eng.dateOff + ")");
+  }
+  ok(n === 40, "40 documents: each date moves by whole weeks, within 30 to 400 days, onto the same weekday (" + n + " of 40)");
+}
+
 console.log("\n— a long row of numbers is read in linear time (review 11.10) —");
 for (const [name, text] of [
   ["4,000 amounts in one paragraph", "סכומים: " + Array.from({ length: 4000 }, (_, i) => (i % 9 + 1) + "," + String((i * 37) % 1000).padStart(3, "0")).join(", ")],
@@ -444,10 +466,11 @@ const run = async (lines) => {
   {
     // two dates one offset apart (the offset a document of these lines got from its text before this change)
     let lines = null, second = null;
-    for (let k = 0; k < 800 && !lines; k++) {
-      const d = new Date(Date.UTC(2026, 1, 1 + 30 + k)), s = d.getUTCDate() + "." + (d.getUTCMonth() + 1) + "." + d.getUTCFullYear();
-      const l = ["החלטה", "ביום 1.2.2026 התקיים דיון.", "התגובה תוגש עד ליום " + s + "."];
-      if (C.fakeDate("1.2.2026", 30 + C.hash32(C.norm(l.join("\n"))) % 371) === s) { lines = l; second = s; }
+    // the offset is whole weeks (12.10): each week, with a few wordings of the last line, until one collides
+    for (let v = 0; v < 40 && !lines; v++) for (let w = 5; w < 58 && !lines; w++) {
+      const d = new Date(Date.UTC(2026, 1, 1 + 7 * w)), s = d.getUTCDate() + "." + (d.getUTCMonth() + 1) + "." + d.getUTCFullYear();
+      const l = ["החלטה", "ביום 1.2.2026 התקיים דיון.", "התגובה תוגש עד ליום " + s + (v ? ", בקשה " + v : "") + "."];
+      if (C.fakeDate("1.2.2026", C.dateOffBase(C.norm(l.join("\n")))) === s) { lines = l; second = s; }
     }
     ok(!!lines, "a document with two dates one offset apart was built");
     if (lines) {
