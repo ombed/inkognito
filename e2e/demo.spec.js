@@ -60,8 +60,9 @@ test("the demo walks to the restore on the sample, saves nothing, and its end le
   await expect(end).toContainText("הדגמה על מסמך בדוי. למסמכים אמיתיים: חשבון חינם");
   await expect(end.getByRole("link", { name: "פתיחת חשבון חינם" })).toBeFocused();
   await expect(end.getByRole("link")).toHaveAttribute("href", SIGNUP);
-  // nothing of it was written to the browser: no case, no last list, not even that the tour was seen
-  expect(await page.evaluate(() => Object.keys(window.localStorage).filter((k) => /^redact-(cases|profile-last|intro-seen|tour-seen)/.test(k)))).toEqual([]);
+  // nothing of it was written to the browser: no case, no last list, no key of the invented names (12.10: the
+  // demo's lives for the visit only), not even that the tour was seen
+  expect(await page.evaluate(() => Object.keys(window.localStorage).filter((k) => /^redact-(cases|profile-last|intro-seen|tour-seen|alias-key)/.test(k)))).toEqual([]);
 });
 
 test("skipping the tour in the demo ends it the same way", async ({ page }) => {

@@ -2363,11 +2363,13 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
   aliasKey(){
     if(this._aliasKey) return this._aliasKey;
     const k=this.caseKey("redact-alias-key"), good=v=>/^[0-9a-f]{64}$/.test(String(v||""));
-    let v=null; try{ v=localStorage.getItem(k); }catch(_){}
+    // בהדגמה שבלי חשבון (window.__inkDemo) שום דבר לא נשמר: גם המפתח הוא לביקור הזה בלבד
+    const keep=!window.__inkDemo;
+    let v=null; if(keep) try{ v=localStorage.getItem(k); }catch(_){}
     if(!good(v)){
       const b=new Uint8Array(32); crypto.getRandomValues(b);
       v=Array.from(b, x=>x.toString(16).padStart(2,"0")).join("");
-      try{ localStorage.setItem(k,v); }catch(_){}
+      if(keep) try{ localStorage.setItem(k,v); }catch(_){}
     }
     return this._aliasKey=v;
   }
