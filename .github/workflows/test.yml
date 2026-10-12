@@ -28,6 +28,10 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Node suites and browser checks
         run: npm test
+      # The files that have joined the type checks (tsconfig.check.json; engine/globals.d.ts names what the engine's
+      # sections share): page-logic.js and engine/03-fakenames.js since 12.10, more one at a time (the audit, item 14)
+      - name: Type checks
+        run: npm run -s check:types
       - name: Benchmark, deterministic layers
         run: npm run bench:nomodel
       - name: The baseline's commit (the PR's base, or main before this push)

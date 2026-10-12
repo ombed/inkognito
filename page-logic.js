@@ -12,7 +12,7 @@
    that reproduces it. */
 (function (root, factory) {
   if (typeof module === "object" && module.exports) module.exports = factory();
-  else root.PL = factory();
+  else /** @type {any} */ (root).PL = factory();
 })(typeof self !== "undefined" ? self : this, function () {
   const HEB = /[֐-׿]/;
   const PFX = new Set(["מ", "ב", "ל", "ו", "ה", "ש", "כ"]);
