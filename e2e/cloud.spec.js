@@ -733,12 +733,13 @@ test("the card names the report on missed names, links the details, and its samp
   await expect(card.getByRole("link", { name: "הפירוט המלא" })).toHaveAttribute("href", /\/privacy$/);
   await card.getByText("מה בדיוק יישלח?").click();
   const sample = JSON.parse(await card.locator("pre").innerText());
-  expect(sample.leaks.shapes[0].lens).toEqual([10]);
+  // «קרבוטינסקי» has ten letters; since v74 the report gives a long word's band, not its length (page-logic.js, lenBand)
+  expect(sample.leaks.shapes[0].lens).toEqual([8]);
   expect(JSON.stringify(sample)).not.toMatch(/[֐-׿]{3,}/);
   await card.getByRole("button", { name: "כן, לשלוח" }).click();
   await newDoc(page);
   await expect.poll(() => submits(calls).length).toBe(1);
-  expect(submits(calls)[0].body.p_leaks.shapes[0].lens).toEqual([10]);
+  expect(submits(calls)[0].body.p_leaks.shapes[0].lens).toEqual([8]);
 });
 
 /* A background tab: the browser slows its timers, so supabase-js's own refresh (every 30 s,
