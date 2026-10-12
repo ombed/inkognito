@@ -56,3 +56,5 @@ site/vendor/
 .wrangler/
 .dev.vars
 tests/*-core.mjs
+bench/protocol-result.json
+bench/outputs-no-model.json

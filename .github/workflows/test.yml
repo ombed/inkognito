@@ -28,6 +28,10 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Node suites and browser checks
         run: npm test
+      # The files that have joined the type checks (tsconfig.check.json; engine/globals.d.ts names what the engine's
+      # sections share): page-logic.js and engine/03-fakenames.js since 12.10, more one at a time (the audit, item 14)
+      - name: Type checks
+        run: npm run -s check:types
       - name: Benchmark, deterministic layers
         run: npm run bench:nomodel
       - name: The baseline's commit (the PR's base, or main before this push)
@@ -50,6 +54,11 @@ jobs:
         run: node bench/gate.js
         env:
           GATE_BLOCKING: "1"
+      # What the change does to the output itself (12.10): the deterministic layers' text for each document of the
+      # synthetic corpus must equal bench/golden/, so an engine change shows its output, line by line, in the PR
+      - name: Output against bench/golden
+        if: always()
+        run: node bench/golden.js
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -87,6 +96,13 @@ jobs:
       # baseline was made on. Blocking once a few runs show it holds.
       - name: Recall gate, model on
         run: node bench/gate.js --model
+      # The figures README quotes from the blind test (tests/protocol.txt, locked in bench/protocol.lock.json) are
+      # measured on every change, and bench/protocol-claims.js fails when README and the measurement differ (12.10).
+      - name: The blind test, and the figures README quotes from it
+        if: always()
+        run: |
+          npm run -s bench:protocol -- --json bench/protocol-result.json
+          node bench/protocol-claims.js bench/protocol-result.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -94,4 +110,5 @@ jobs:
           path: |
             bench/results.json
             bench/results.md
+            bench/protocol-result.json
           retention-days: 14

@@ -139,8 +139,11 @@ test("UX #17: the profile buttons say export and import, and export says where t
   await expect(page.locator("[data-bar]")).toBeVisible({ timeout: 20000 });
   await page.getByRole("button", { name: /התיק ורשימת השמות/ }).click();
   await expect(page.getByRole("button", { name: "ייבוא מקובץ" })).toBeVisible();
-  const d = page.waitForEvent("download");
   await page.getByRole("button", { name: "ייצוא לקובץ" }).click();
+  // the case file's password first (the owner's decision of 12.10, e2e/lockfile.spec.js)
+  await page.locator("[data-pw-in]").fill("a long password 7");
+  const d = page.waitForEvent("download");
+  await page.locator("[data-pw-ok]").click();
   const name = (await d).suggestedFilename();
   expect(name).toMatch(/^(?:תיק-.*|רשימת-שמות)\.json$/);
   await expect(page.locator("[data-notice]")).toContainText(name);

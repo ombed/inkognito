@@ -46,12 +46,13 @@ test("a failed verification stops the download until she says so", async ({ page
   const L = require("../tests/structure-lib.js");
   const NAME = L.NAME;
   // numbering.xml was this part until the pipeline learnt to clear list text, and every XML part
-  // it does not walk is now cleared by a last pass (the rest of H10). An embedded object, written
-  // as UTF-16 the way Word's OLE streams are, is read by the final check and cleaned by nothing.
+  // it does not walk is now cleared by a last pass (the rest of H10). An embedded object was it until
+  // 12.10, when the cleaning began to remove embedded files (dropObjects); an ActiveX control's
+  // binary, written as UTF-16 the way Word writes them, is read by the final check and cleaned by nothing.
   const ole = Buffer.from("OLE " + NAME + " END", "utf16le");
   const file = Buffer.from(new Uint8Array(mkzip([...L.base,
     { name: "word/document.xml", body: L.doc(L.P(L.R(`${NAME}: אני מבקשת לפתוח.`)) + L.P(L.R("אבנר שטרן: בבקשה.")) + L.P(L.R(`${NAME}: תודה.`)) + L.P(L.R("אבנר שטרן: נכון."))) },
-    { name: "word/embeddings/oleObject1.bin", body: ole }])));
+    { name: "word/activeX/activeX1.bin", body: ole }])));
   await H.serveEngineWithStub(page);
   await H.boot(page);
   await page.getByRole("checkbox").first().uncheck();

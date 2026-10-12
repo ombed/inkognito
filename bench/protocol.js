@@ -57,4 +57,12 @@ const count = (t, s) => (t.match(new RegExp("(?<![\\u05d0-\\u05ea])[ובהלמכ
   console.log(`  places:          ${occ(places, out)} of ${occ(places, G.text)} occurrences left`);
   console.log(`  private bodies:  ${occ(privateBodies, out)} of ${occ(privateBodies, G.text)} occurrences left`);
   console.log(`  public bodies:   ${publicBodies.filter((s) => count(out, s) < count(G.text, s)).length} of ${publicBodies.length} changed (they must stay)`);
+  // --json <file>: the same figures for bench/protocol-claims.js, which holds README to them (CI, 12.10)
+  const at = process.argv.indexOf("--json");
+  if (at > 0 && process.argv[at + 1]) {
+    const res = { model: !noModel, people: { left: whole + part, of: people.length, whole, part },
+      places: { left: occ(places, out), of: occ(places, G.text) }, privateBodies: { left: occ(privateBodies, out), of: occ(privateBodies, G.text) },
+      publicBodies: { changed: publicBodies.filter((s) => count(out, s) < count(G.text, s)).length, of: publicBodies.length } };
+    fs.writeFileSync(process.argv[at + 1], JSON.stringify(res, null, 1) + "\n");
+  }
 })().catch((e) => { console.error(e); process.exit(1); });

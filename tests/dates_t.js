@@ -80,8 +80,12 @@ console.log("\n— restored, also in the AI's own spelling —");
   const N = [["12.3", "27.4"]];
   for (const said of ["27.4", "27/4", "27 באפריל", "27.04"])
     eq(C.restoreNames("ביום " + said + " נפגשו.", N).text, "ביום 12.3 נפגשו.", "a day and month without a year, written as «" + said + "»");
-  for (const t of ["ביום 27/4/2026 נפגשו.", "ביום 28.4 נפגשו.", "ביום 4.27 נפגשו.", "ב-27 באפריל 2026."])
+  for (const t of ["ביום 27/4/2026 נפגשו.", "ביום 4.27 נפגשו.", "ב-27 באפריל 2026."])
     eq(C.restoreNames(t, N).text, t, "not the shifted day and month as it went out, left alone: «" + t + "»");
+  // another day the AI wrote beside the shifted one is a date it computed from it: until 12.10 it stayed as written, six
+  // weeks off; it now moves back by the same offset, and is marked (the owner's decision «A»; tests/dateback_t.js)
+  const later = C.restoreNames("ביום 28.4 נפגשו.", N);
+  eq(later.text + " " + JSON.stringify((later.dates || []).map((d) => d.now)), "ביום 13.3 נפגשו. [\"13.3\"]", "another day beside the shifted one moves back by the same days, marked");
   const I = [["2026-03-12", "2026-04-27"]];
   eq(C.restoreNames("ב-27.4.2026 ושוב ב-2026-04-27.", I).text, "ב-2026-03-12 ושוב ב-2026-03-12.", "year first, and the AI's other spelling of it");
 }

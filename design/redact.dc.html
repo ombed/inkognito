@@ -225,6 +225,19 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
       <a href="{{ demoSignup }}" style="padding:7px 16px;border-radius:999px;background:var(--accent);color:var(--panel);font-size:13px;font-weight:600;text-decoration:none;white-space:nowrap">פתיחת חשבון חינם</a>
     </div>
   </sc-if>
+  <sc-if value="{{ pwOn }}">
+    <div data-pw-layer style="position:fixed;inset:0;z-index:95;background:rgba(10,14,12,.5);display:grid;place-items:center;padding:16px">
+      <div data-pw role="dialog" aria-modal="true" aria-labelledby="pw-t" style="width:min(420px,100%);background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:0 24px 60px rgba(0,0,0,.35)">
+        <label id="pw-t" for="pw-in" style="display:block;margin:0 0 10px;font-size:15px;font-weight:500;line-height:1.5">{{ pwLabel }}</label>
+        <input id="pw-in" data-pw-in type="password" autocomplete="new-password" dir="ltr" value="{{ pwValue }}" onChange="{{ onPwIn }}" onKeyDown="{{ onPwKey }}" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:15px;background:var(--paper);color:var(--ink)">
+        <sc-if value="{{ pwErr }}"><p data-pw-err role="alert" style="margin:10px 0 0;font-size:13px;color:var(--bad)">{{ pwErr }}</p></sc-if>
+        <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">
+          <button type="button" onClick="{{ onPwCancel }}" style="padding:9px 16px;border-radius:10px;border:1px solid var(--line);font-size:13.5px;color:var(--ink2)">ביטול</button>
+          <button type="button" data-pw-ok onClick="{{ onPwOk }}" disabled="{{ pwOkOff }}" style="padding:9px 16px;border-radius:10px;background:var(--accent);color:var(--panel);font-size:13.5px;font-weight:600">{{ pwOk }}</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
   <sc-if value="{{ demoEnd }}">
     <div data-demo style="position:fixed;inset:0;z-index:90;background:rgba(10,14,12,.5);display:grid;place-items:center;padding:16px">
       <div data-demo-end role="dialog" aria-modal="true" aria-labelledby="demo-end-t" style="max-width:440px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:24px;box-shadow:0 24px 60px rgba(0,0,0,.35);text-align:center">
@@ -769,9 +782,12 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
         <span>הם מסומנים בתשובה. כדאי לתקן אותם ביד לפני שמשתמשים בה.</span>
         <ul style="margin:6px 0 0;padding-inline-start:18px;color:var(--ink)"><sc-for list="{{ rvLeftItems }}" as="x" hint-placeholder-count="2"><li>{{ x.t }}</li></sc-for></ul>
       </div></sc-if>
+      <sc-if value="{{ rvDatesOn }}"><div data-rv-dates key="{{ rvKey }}" style="margin:0 0 10px;padding:11px 14px;border-radius:10px;background:var(--accent-soft);color:var(--ink);font-size:13px;line-height:1.6">
+        <ul style="margin:0;padding-inline-start:18px"><sc-for list="{{ rvDateItems }}" as="x" hint-placeholder-count="1"><li>{{ x.t }}</li></sc-for></ul>
+      </div></sc-if>
       <sc-if value="{{ rvLeftNone }}"><p data-rv-left-none key="{{ rvKey }}" style="margin:0 0 10px;font-size:13px;color:var(--ink2)">לא נמצא בתשובה פרט בדוי שלא הוחזר.</p></sc-if></sc-if></div><!-- השגיאה והתוצאה נאמרות לקורא מסך: אזור המצב כבר במסך כשהתוצאה מגיעה (בדיקה חיה, 6.10), וכל החזרה מעלה אותן כאלמנט חדש (rvKey), כך שגם תוצאה או שגיאה זהות לקודמות נאמרות שוב (הביקורת של 6.10) -->
     <sc-if value="{{ rvOut }}">
-      <div data-rv-out dir="rtl" style="background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:18px;font:15px/1.9 'Noto Serif Hebrew',serif;white-space:pre-wrap"><sc-for list="{{ rvParas }}" as="pg" hint-placeholder-count="3"><div dir="auto" style="min-height:1.9em;text-align:start"><sc-for list="{{ pg.segs }}" as="sg" hint-placeholder-count="3"><sc-if value="{{ sg.plain }}"><span>{{ sg.t }}</span></sc-if><sc-if value="{{ sg.mark }}"><mark data-left title="{{ sg.title }}" style="background:var(--warn-soft);color:inherit;border-bottom:2px dashed var(--warn);border-radius:3px;padding:0 1px">{{ sg.t }}</mark></sc-if></sc-for></div></sc-for></div><!-- כל פסקה בכיוון של האות הראשונה שלה, בבלוק משלה כמו המסמך במסך הבדיקה: dir="auto" על התשובה כולה נתן לה כיוון אחד (בדיקה חיה, 6.10), ובבלוק אחד עם unicode-bidi:plaintext יישר Firefox את כל הפסקאות לפי הראשונה (בדיקה ב-Firefox, 10.10) -->
+      <div data-rv-out dir="rtl" style="background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:18px;font:15px/1.9 'Noto Serif Hebrew',serif;white-space:pre-wrap"><sc-for list="{{ rvParas }}" as="pg" hint-placeholder-count="3"><div dir="auto" style="min-height:1.9em;text-align:start"><sc-for list="{{ pg.segs }}" as="sg" hint-placeholder-count="3"><sc-if value="{{ sg.plain }}"><span>{{ sg.t }}</span></sc-if><sc-if value="{{ sg.mark }}"><mark data-left title="{{ sg.title }}" style="background:var(--warn-soft);color:inherit;border-bottom:2px dashed var(--warn);border-radius:3px;padding:0 1px">{{ sg.t }}</mark></sc-if><sc-if value="{{ sg.date }}"><mark data-rv-date title="{{ sg.title }}" style="background:var(--accent-soft);color:inherit;border-bottom:2px dotted var(--accent);border-radius:3px;padding:0 1px">{{ sg.t }}</mark></sc-if></sc-for></div></sc-for></div><!-- כל פסקה בכיוון של האות הראשונה שלה, בבלוק משלה כמו המסמך במסך הבדיקה: dir="auto" על התשובה כולה נתן לה כיוון אחד (בדיקה חיה, 6.10), ובבלוק אחד עם unicode-bidi:plaintext יישר Firefox את כל הפסקאות לפי הראשונה (בדיקה ב-Firefox, 10.10) -->
       <div style="display:flex;gap:9px;margin-top:11px;flex-wrap:wrap">
         <button onClick="{{ onRvCopy }}" style="{{ rvCopyStyle }}">{{ rvCopyLabel }}</button>
         <sc-if value="{{ rvBackOn }}"><button data-rv-back onClick="{{ onBack }}" style="padding:12px 18px;border-radius:10px;border:1px solid var(--line);background:var(--panel);font-weight:500;font-size:14px;white-space:nowrap" style-hover="background:var(--panel2)">חזרה למסמך</button></sc-if>
@@ -1213,11 +1229,11 @@ class Component extends DCLogic {
     mode:"real", o:{auto:true, places:true, ner:true, near:true, numStyle:"blank"},
     nerOff:false, nerHint:"", nerMsg:"", nerPct:null, nerBox:false, nerUsed:false,
     buf:null, name:"", cands:[], peo:[], peoSug:[], peoIn:"", peoNote:"", scanning:false,
-    rules:[], allow:[], res:null, profile:null,
+    rules:[], allow:[], res:null, profile:null, pw:null,
     sel:null, filter:"all", cat:"", open:null, pane:"doc", hot:null,
     addV:"", addR:"", addK:"NAME",
 
-    rvIn:"", rvOut:"", rvLeft:[], rvLast:null, rvProfile:null, rvCopyLabel:"העתקת הטקסט המשוחזר",
+    rvIn:"", rvOut:"", rvLeft:[], rvDates:[], rvLast:null, rvProfile:null, rvCopyLabel:"העתקת הטקסט המשוחזר",
     copyLabel:"העתקה ל־AI", busyT:"מעבד…", err:"",
     geo:null, geoV:0, geoNames:[], geoExtra:[], geoEdits:{}, popup:null, tip:null, repDraft:"", sent:{}, peoKept:[], peoNotSame:[], inline:null, inlineDraft:"",
     // הפרופיל של התיק נשמר בדפדפן אחרי כל שינוי; lastProfile הוא מה שנמצא בכניסה
@@ -1635,7 +1651,7 @@ class Component extends DCLogic {
       res:null, sel:null, hot:null, query:"", cat:"", filter:"all", addV:"", addR:"", addK:"NAME", inline:null, inlineDraft:"", popup:null, tip:null,
       repDraft:"", approved:[], formSel:null, markIdx:0, docView:"red", exportAsk:"", notice:"", leaks:[], copied:false, copyLabel:"העתקה ל־AI", undoN:0, redoN:0, rerunning:false,
       // החזרת שמות
-      rvIn:"", rvOut:"", rvCount:0, rvLeft:[], rvLast:null, rvProfile:null,
+      rvIn:"", rvOut:"", rvCount:0, rvLeft:[], rvDates:[], rvLast:null, rvProfile:null,
       // מה שהתיק שומר (profileObj)
       rules:[], allow:[], removed:[], sent:{}};
     if(keepCase&&(S.profile||S.caseName)) for(const k of ["rules","allow","removed","sent"]) delete reset[k];
@@ -1651,6 +1667,8 @@ class Component extends DCLogic {
        "המשך" (ביקורת QA 010): קובץ שאינו docx תקין, או docx בלי טקסט, לא מקבל ✓. */
     const bad=(m,code)=>{ this.log.add("file-reject",{why:code||"other"}); this._fileErrN=(this._fileErrN||0)+1; this.setState({fileErr:m, err:"", pending:false, name:"", buf:null}); };
     if(!/\.(docx|pdf)$/i.test(f.name)) return bad("נדרש קובץ Word (docx) או PDF. קובץ doc ישן — לשמור מחדש ב-Word בתור docx.", "type");
+    // כמו בטקסט מודבק (usePastedText): המסמך הקודם יורד מהמסך כבר עכשיו, לפני שהקובץ החדש נקרא ונבדק
+    this.setState({...this.docReset(true)});
     let buf; try{ buf = await f.arrayBuffer(); }catch(_){ return bad("לא הצלחנו לפתוח את הקובץ. אם הוא שמור בענן (OneDrive, Dropbox) — להוריד עותק למחשב; אם הוא פתוח ב-Word — לסגור אותו, ולבחור אותו שוב.", "read"); }
     if(/\.pdf$/i.test(f.name)) return this.loadPdf(buf, f);
     let blocks;
@@ -1720,7 +1738,7 @@ td{border-bottom:1px solid #f0f0f0;padding:6px 4px;vertical-align:top}
 <div class="warn">הדוח מכיל את הפרטים המקוריים לצד התחליפים. הוא נועד לתיק הפנימי — אין לשלוח אותו לכלי AI או לצד שלישי.</div>
 <h2>סטטוס אימות</h2>
 <p class="sub">${v.passed?"לא נשאר בקובץ אף שם או מספר שהוחלף":"האימות נכשל: נשארו בקובץ שמות או מספרים שהיה צריך להחליף"} ·
-נסרקו ${v.parts} חלקים · ${(v.near||[]).length} מילים בכתיב דומה · ${(v.suggest||[]).length} שמות שלא ברשימה · ${v.embedded.length} קבצים מוטמעים שלא נסרקו</p>
+נסרקו ${v.parts} חלקים · ${(v.near||[]).length} מילים בכתיב דומה · ${(v.suggest||[]).length} שמות שלא ברשימה · ${v.embedded.length} תמונות שלא נסרקו</p>
 <h2>הוחלף (${rows.size})</h2>
 <table><tr><th>ערך במקור</th><th>הוחלף ב</th><th>סוג</th><th>מופעים</th><th>היכן</th></tr>
 ${[...rows.values()].sort((a,b)=>b.n-a.n).map(r=>`<tr><td>${esc(r.value)}</td><td>${esc(r.rep)}</td><td>${esc(r.label)}</td><td>${r.n}</td><td>${esc([...r.parts].join(", "))}</td></tr>`).join("")}</table>
@@ -1753,13 +1771,18 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     if(!this.state.E) return this.afterEngine(()=>this.usePastedText());
     const txt=(this.state.pasteText||"").trim();
     if(txt.length<20){ this.setState({err:"צריך קצת יותר טקסט כדי שהזיהוי יעבוד."}); return; }
+    /* המסמך הקודם יורד מהמסך עכשיו, ולא אחרי שהטקסט מוכן (12.10): הכנת הטקסט לוקחת רגע, ועד כאן כרטיס המסמך הקודם
+       ו«המשך — איתור שמות במסמך» שלו נשארו בו, ולחיצה ברגע הזה המשיכה עם המסמך של הלקוח הקודם (נמצא בבדיקת WebKit
+       תחת עומס). הטקסט שבתיבה נשאר. e2e/load-now.spec.js */
+    const raw=this.state.pasteText;
+    this.setState({...this.docReset(true), pasteText:raw, err:""});
     try{
       const {textToDocx} = await import("./text-to-docx.js");
       const buf = await textToDocx(txt);
       const blocks = await this.blocksOf(buf);
       const chars = txt.length;
       // הטקסט שבתיבה הוא המסמך הזה, ונשאר בה; טקסט של מסמך קודם נמחק עם כל השאר
-      this.setState({...this.docReset(true), pasteText:this.state.pasteText, err:"", buf, name:"טקסט שהודבק", pending:true, nerAsk:false,
+      this.setState({...this.docReset(true), pasteText:raw, err:"", buf, name:"טקסט שהודבק", pending:true, nerAsk:false,
         origBlocks:blocks.map(b=>({part:b.part, text:b.text})),
         pendMeta:`${blocks.length===1?"פסקה אחת":blocks.length+" פסקאות"} · ${chars>=1000?`כ-${(chars/1000).toFixed(1)} אלף תווים`:chars+" תווים"} · טקסט מודבק`});
     }catch(e){ this.setState({err:"הכנת הטקסט נכשלה. אפשר לנסות שוב. (פרטים טכניים: "+(e.message||e)+")"}); }
@@ -2731,9 +2754,23 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
      בתוך "מה נמצא והוחלף". עכשיו רשימה אחת: אנשים שמחכים (אחרי תואר, לפי הקשר)
      קודם, אחריהם שמות מגוף הטקסט, שיבושי כתיב, מספרים, ובסוף מקומות וגופים. */
   static BLOCK_LBL=/^(?:שם|אדם|ת"ז|ת״ז|תעודת זהות|טלפון|טלפון נייד|טלפון קווי|פקס|דוא"ל|כתובת דוא"ל|כתובת|חשבון בנק|מספר רכב|תאריך לידה|כרטיס אשראי|IBAN|דרכון|התנגשות פרופיל|התנגשות תחליף)/;
+  /* השורה של הבדיקה השנייה בפס, בנוסח שאושר (12.10): «2 מילים שנראות כמו שמות ומספר אחד שנראה כמו ת״ז. כדאי לבדוק
+     אותם לפני שליחה.» אותה תבנית לכל מספר ולכל סוג */
+  secondLine(items){
+    const names=items.filter(x=>x.kind==="name").length, ids=items.filter(x=>/^ISRAELI_ID/.test(x.pat||"")).length,
+      mails=items.filter(x=>x.pat==="EMAIL").length, other=items.length-names-ids-mails, parts=[];
+    if(names) parts.push(names===1?"מילה אחת שנראית כמו שם":names+" מילים שנראות כמו שמות");
+    if(ids) parts.push(ids===1?"מספר אחד שנראה כמו ת״ז":ids+" מספרים שנראים כמו ת״ז");
+    if(other) parts.push(other===1?"מספר אחד שנראה כמו מספר מזהה":other+" מספרים שנראים כמו מספרים מזהים");
+    if(mails) parts.push(mails===1?"כתובת מייל אחת":mails+" כתובות מייל");
+    const and=p=>/^\d/.test(p)?"ו-"+p:"ו"+p;
+    const said=parts.length>1?parts.slice(0,-1).join(", ")+" "+and(parts[parts.length-1]):parts[0];
+    const one=items.length===1, fem=one&&(names===1||mails===1);
+    return said+". כדאי לבדוק "+(one?(fem?"אותה":"אותו"):"אותם")+" לפני שליחה.";
+  }
   pendingReview(){
     const S=this.state, E=S.E, RES=S.res;
-    const out={people:[], numbers:[], soft:[], sug:[], near:[], count:0, blocking:0};
+    const out={people:[], numbers:[], soft:[], sug:[], near:[], second:[], count:0, blocking:0};
     if(!RES||!E) return out;
     const n=v=>E.norm(E.trimEdges(String(v||""))).trim();
     const decided=v=>S.allow.some(a=>n(a)===n(v))||S.rules.some(r=>n(r.value)===n(v));
@@ -2750,7 +2787,11 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     out.sug=this.sugList().filter(x=>!seen.has(n(x.value)));
     out.near=this.nearList().filter(x=>!seen.has(n(x.value)));
     out.blocking=out.people.length+out.numbers.length+out.sug.length+out.near.length;
-    out.count=out.blocking+out.soft.length;
+    /* הבדיקה השנייה של התוצאה (secondScan; החלטת הבעלים, 12.10, «A»): מה שנמצא בה מחכה כאן, אבל אינו חוסם: הפס כתום,
+       וההעתקה וההורדה פתוחות. מה שכבר מחכה כאן בקבוצה אחרת, או שכבר הוחלט, לא חוזר */
+    const waiting=new Set([...seen, ...out.sug.map(x=>n(x.value)), ...out.near.map(x=>n(x.value))]);
+    out.second=(RES.second||[]).filter(x=>!waiting.has(n(x.value))&&!decided(x.value));
+    out.count=out.blocking+out.soft.length+out.second.length;
     return out;
   }
   // "שם" הוא מפתח פנימי; על המסך אותו סוג נקרא "אדם" בכל מקום (UX #11)
@@ -2874,7 +2915,7 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
   cleanStats(st){
     return [["טקסט שנמחק במעקב שינויים",st.del],["שינויים שהתקבלו",st.ins],["סימוני הערות",st.cm],
       ["חלקים שהוסרו",(st.dropped||[]).length],["שדות מטא-דאטה",(st.meta||[]).length],["קישורים שנוטרלו",(st.rels||[]).length],
-      ["מזהי עריכה",st.rsid],["נתונים נסתרים שהוסרו",st.hidden],["החלפות אחידות",st.sweep],
+      ["מזהי עריכה",st.rsid],["קבצים מוטמעים שהוסרו",st.embedded],["נתונים נסתרים שהוסרו",st.hidden],["החלפות אחידות",st.sweep],
       ["חלקים שהכלי אינו קורא, שנוקו מערכים מהרשימה",(st.residue||[]).length]].filter(x=>x[1]);
   }
   verifyFailed(){ const v=this.state.res&&this.state.res.verification; return !!(v&&v.passed===false&&(v.leaks||[]).length); }
@@ -3381,7 +3422,7 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     const nx=T[t.i+1];
     // מצעד ההעתקה אל מסך ההחזרה: התשובה לדוגמה כבר בתיבה, ושם «החזרת שמות» מחזירה אותה
     if(nx.screen==="reverse"&&cur.screen!=="reverse"){
-      this.setState({tour:{...t, i:t.i+1}, screen:"reverse", returnTo:"work", rvIn:this.tourAnswer(), rvOut:"", rvLeft:[], rvCount:0, err:""});
+      this.setState({tour:{...t, i:t.i+1}, screen:"reverse", returnTo:"work", rvIn:this.tourAnswer(), rvOut:"", rvLeft:[], rvDates:[], rvCount:0, err:""});
       return;
     }
     // בצעד ההחזרה, כפתור הכרטיס עושה מה שעושה הכפתור שבמסך (rvGo מעביר לצעד הבא); תיבה שרוקנה מתמלאת שוב
@@ -3457,8 +3498,30 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
   dropStored(name){
     try{ const m=JSON.parse(localStorage.getItem(this.caseKey("redact-cases"))||"{}"); delete m[name]; localStorage.setItem(this.caseKey("redact-cases"), JSON.stringify(m)); }catch(_){}
   }
-  saveProfile = () => {
-    const prof=this.profileObj();
+  /* קובץ תיק עם סיסמה (החלטת הבעלים, 12.10, «A», הנוסח אושר; הביקורת ההנדסית): «ייצוא לקובץ» שואל סיסמה, והקובץ שיורד
+     מוצפן (PL.lockJSON). ייבוא של קובץ כזה שואל אותה (onProfFile). קובץ רגיל, מלפני 12.10 או מהכתובת הישנה, נקלט כמו קודם.
+     e2e/lockfile.spec.js */
+  static PW_EXPORT="סיסמה לקובץ התיקים (צריך אותה כדי לייבא אותו):";
+  static PW_IMPORT="הקובץ מוגן בסיסמה. סיסמה:";
+  static PW_BAD="הסיסמה לא נכונה, או שהקובץ פגום.";
+  pwOpen(mode){ this.setState({pw:{mode, value:"", err:"", busy:false}}, ()=>{ const el=document.querySelector("[data-pw-in]"); if(el) el.focus(); }); }
+  pwCancel = () => { this._pwFile=null; this.setState({pw:null}); };
+  pwSubmit = async () => {
+    const S=this.state, pw=S.pw; if(!pw||pw.busy||!pw.value) return;
+    this.setState({pw:{...pw, busy:true, err:""}});
+    if(pw.mode==="export"){
+      const locked=await window.PL.lockJSON(this.profileObj(), pw.value);
+      this.setState({pw:null}, ()=>this.saveProfileFile(locked));
+      return;
+    }
+    let inner=null;
+    try{ inner=await window.PL.unlockJSON(this._pwFile, pw.value); }catch(_){ inner=null; }
+    if(!inner){ this.log.add("profile-import-locked",{ok:false}); this.setState({pw:{...pw, value:"", busy:false, err:this.constructor.PW_BAD}}, ()=>{ const el=document.querySelector("[data-pw-in]"); if(el) el.focus(); }); return; }
+    const all=this._pwAll; this._pwFile=null; this.log.add("profile-import-locked",{ok:true});
+    this.setState({pw:null}, ()=>this.importParsed(inner, all));
+  };
+  saveProfile = () => { if(window.__inkDemo) return; this.pwOpen("export"); };
+  saveProfileFile = (prof) => {
     const blob=new Blob([JSON.stringify(prof,null,1)],{type:"application/json"});
     const u=URL.createObjectURL(blob), a=document.createElement("a");
     const name=(this.state.caseName?"תיק-"+this.state.caseName.replace(/[\\/:*?"<>|]+/g," ").trim():"רשימת-שמות")+".json";
@@ -3466,7 +3529,7 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(()=>URL.revokeObjectURL(u), 4000);
     // "שמירה" רמזה שהתיק לא נשמר עד הלחיצה; זה ייצוא, והוא אומר לאן (UX #17)
-    this.log.add("profile-export",{});
+    this.log.add("profile-export",{locked:!!(window.PL&&window.PL.isLocked(prof))});
     this.setState({profileDirty:false, notice:`הקובץ «${name}» ירד לתיקיית ההורדות. התיק עצמו נשמר בדפדפן גם בלי זה.`, noticeUndo:false});
   };
   loadProfileClick = () => { if(window.__inkDemo) return; this._importAll=false; if(this.profEl) this.profEl.click(); };
@@ -3550,24 +3613,28 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     const cross=taken.filter(x=>!x.own&&words(x.f).some(w=>mineW.has(w))).map(x=>x.f);
     if(cross.length){
       if(!S.tour) this.log.add("restore-other-doc",{n:cross.length});
-      this.setState({rvOut:"", rvCount:0, rvLeft:[], err:"בתשובה יש שמות בדויים של מסמך אחר, ולכן היא לא הוחזרה. פותחים את המסמך או התיק שלה."});
+      this.setState({rvOut:"", rvCount:0, rvLeft:[], rvDates:[], err:"בתשובה יש שמות בדויים של מסמך אחר, ולכן היא לא הוחזרה. פותחים את המסמך או התיק שלה."});
       return;
     }
-    const r=E.restoreNames(S.rvIn, pairs, earlier);
+    // תאריך שה-AI חישב מתאריך מוזז זז אחורה בהזזה של המסמך הפתוח (backDates; החלטת הבעלים, 12.10). תיק שנטען להחזרה
+    // בלבד: ההזזה נלמדת מזוגות התאריכים שלו, אם יש אחת ודאית
+    const r=E.restoreNames(S.rvIn, pairs, earlier, {off: rvP?undefined:(S.res&&S.res.dateOff)});
     // ההחזרה בסיור היא של המסמך לדוגמה: ביומן נרשם הסיור עצמו
-    if(!S.tour) this.log.add("restore",{count:r.count, left:(r.left||[]).length});
+    if(!S.tour) this.log.add("restore",{count:r.count, left:(r.left||[]).length, dates:(r.dates||[]).length});
     // כינוי שמשותף ליותר מאדם אחד אינו "לא נמצא" — הוא נמצא ולא הוחזר, וזה מה שנאמר (M3)
     const conflictMsg=(r.conflict&&r.conflict.length)?`«${r.conflict.join("», «")}» ${r.conflict.length===1?"הוא שם בדוי":"הם שמות בדויים"} של יותר מאדם אחד במסמך הזה, ולכן לא הוחזר${r.conflict.length===1?"":"ו"}; אפשר לתקן את זה בכרטיס של אחד מהם.`:"";
     // "לא נמצא אף שם בדוי" רק כשבאמת לא נמצא: כינוי שנשאר בתשובה נמצא, והרשימה שלו אומרת מה נשאר
     // שם בדוי של מסמך קודם (earlier) אינו מהרשימה הזו: תשובה שיש בה רק כאלה היא של מסמך אחר, וזה מה שנאמר, לצד הרשימה שלהם
     const none=!r.count&&!(r.left||[]).some(x=>!x.earlier);
-    this.setState({rvOut:r.text, rvCount:r.count, rvLeft:r.left||[], err: conflictMsg||(none?"לא נמצא בתשובה אף שם בדוי מהרשימה. ייתכן שהתשובה שייכת למסמך או לתיק אחר.":"")},
+    this.setState({rvOut:r.text, rvCount:r.count, rvLeft:r.left||[], rvDates:r.dates||[], err: conflictMsg||(none?"לא נמצא בתשובה אף שם בדוי מהרשימה. ייתכן שהתשובה שייכת למסמך או לתיק אחר.":"")},
       ()=>{ const el=document.querySelector("[data-rv-result]"); if(el&&el.scrollIntoView) el.scrollIntoView({block:"start", behavior:(window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches)?"auto":"smooth"});
         // בצעד ההחזרה של הסיור, ההחזרה עצמה מעבירה לצעד הבא, בכפתור שבמסך כמו בכפתור הכרטיס
         const t=this.state.tour, T=this.constructor.TOUR;
         if(t&&T[t.i]&&T[t.i].restore&&this.state.rvOut) this.setState({tour:{...t, i:t.i+1}}); });
   };
   // שורה ברשימת מה שנשאר בתשובה: «בדוי» במקום «אמיתי», וכמה פעמים כשיותר מפעם אחת; כינוי של יותר מאדם אחד — בלי אמיתי
+  // החלטת הבעלים, 12.10 («A», בנוסח שהוצג): תאריך בתשובה שזז אחורה כי ה-AI חישב אותו מתאריך מוזז
+  static DATE_BACK="תאריך שה-AI חישב מתאריך מוזז, והוחזר בהתאם. כדאי לבדוק.";
   leftLine(x){
     const n=x.at.length;
     // שם בדוי של מסמך קודם בסשן: האמיתי אינו ידוע כאן, והשם מסומן כמו שהוא
@@ -3577,10 +3644,11 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
   // התשובה שחזרה, בקטעים: מה שנשאר בה מהפרטים הבדויים מסומן, והשורה שלו מהרשימה היא התיאור שלו
   rvSegs(){
     const S=this.state, t=S.rvOut||"", at=[];
-    for(const x of S.rvLeft||[]) for(const [s,e] of x.at) at.push([s,e,this.leftLine(x)]);
+    for(const x of S.rvLeft||[]) for(const [s,e] of x.at) at.push([s,e,this.leftLine(x),false]);
+    for(const x of S.rvDates||[]) for(const [s,e] of x.at) at.push([s,e,this.constructor.DATE_BACK,true]);
     at.sort((a,b)=>a[0]-b[0]);
     const out=[]; let i=0;
-    for(const [s,e,title] of at){ if(s<i) continue; if(s>i) out.push({t:t.slice(i,s), plain:true}); out.push({t:t.slice(s,e), mark:true, title}); i=e; }
+    for(const [s,e,title,date] of at){ if(s<i) continue; if(s>i) out.push({t:t.slice(i,s), plain:true}); out.push({t:t.slice(s,e), mark:!date, date, title}); i=e; }
     if(i<t.length||!out.length) out.push({t:t.slice(i), plain:true});
     return out;
   }
@@ -3632,9 +3700,16 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
   onProfFile = async e => {
     const f=e.target.files[0]; e.target.value=""; if(!f) return;
     const all=!!this._importAll; this._importAll=false;
+    let parsed=null;
+    try{ parsed=JSON.parse(await f.text()); }catch(_){ parsed=undefined; }
+    // קובץ עם סיסמה: הסיסמה קודם (pwSubmit), ואחר כך אותה דרך
+    if(parsed&&window.PL&&window.PL.isLocked(parsed)){ this._pwFile=parsed; this._pwAll=all; this.pwOpen("import"); return; }
+    this.importParsed(parsed, all);
+  };
+  importParsed(prof, all){
     let cases=false;
     try{
-      const prof=JSON.parse(await f.text());
+      if(prof===undefined) throw new Error("JSON");
       // קובץ של כל התיקים נקלט מכל כפתור ייבוא; כל קובץ אחר הוא הפרופיל של תיק אחד, כמו קודם
       if(prof&&prof.inkognito==="cases"){ cases=true; this.importCases(prof); return; }
       // אותה בדיקה של כל פרופיל שנכנס או נקרא (profileOk), עם אותה הודעה של קובץ שאינו פרופיל
@@ -3648,7 +3723,7 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
       const why=/JSON|Unexpected|Expected|position/i.test(m)?this.constructor.BAD_PROFILE:m;
       this.setState({err:"ייבוא התיק נכשל: "+why+". קובץ תיק הוא הקובץ שירד בלחיצה על «ייצוא לקובץ» (סיומת ‎.json)."});
     }
-  };
+  }
   /* «ניקוי התיקים מהמחשב» (הנוסח שאושר, 7.10.2026): כל התיקים השמורים במחשב הזה, של כל חשבון (forgetCases), אחרי
      שאלה. גם התיק שמחובר למסמך שבעבודה מתנתק, אחרת השינוי הבא היה שומר אותו שוב. e2e/restore-ux.spec.js */
   casesHere(){
@@ -4010,6 +4085,8 @@ const KIND_NAME={NAME:"אדם", ORG:"גוף", PLACE:"מקום"};
       rvLeftNone:!!S.rvOut&&!(S.rvLeft||[]).length&&S.rvCount>0,
       rvLeftHead:(n=>n===1?"נשאר בתשובה פרט בדוי אחד":"נשארו בתשובה "+n+" פרטים בדויים")((S.rvLeft||[]).length),
       rvLeftItems:(S.rvLeft||[]).map(x=>({t:this.leftLine(x)})),
+      rvDatesOn:!!S.rvOut&&(S.rvDates||[]).length>0,
+      rvDateItems:(S.rvDates||[]).map(x=>({t:"«"+x.now+"»: "+this.constructor.DATE_BACK})),
       rvParas:this.rvParas(),
       // «חזרה למסמך» גם מתחת לתוצאה, כשיש מסמך לחזור אליו; בכפתור העליון בלי מסמך כתוב «לבחירת מסמך»
       rvBackOn:back.to==="work"&&!S.tour,
@@ -4110,6 +4187,12 @@ const KIND_NAME={NAME:"אדם", ORG:"גוף", PLACE:"מקום"};
       onGoNow:()=>{ if(!S.scanning) return; this._goneAhead=this._scan; this.log.add("go-without-model",{names:S.peo.length});
         this.setState({scanning:false, nerBox:false, nerUsed:false, peoNote:"ממשיכים בלי לחכות. השמות כאן נלקחו מראש המסמך ומשמות הדוברים; שמות שהמודל ימצא בהמשך יתווספו לרשימה, או יוחלפו במסמך אם כבר המשכתם."}); },
       onLoadProf:this.loadProfileClick, onSaveProf:this.saveProfile, onImportCases:this.importCasesClick,
+      pwOn:!!S.pw, pwLabel:S.pw?(S.pw.mode==="export"?this.constructor.PW_EXPORT:this.constructor.PW_IMPORT):"",
+      pwValue:S.pw?S.pw.value:"", pwErr:S.pw?S.pw.err:"", pwOk:S.pw&&S.pw.mode==="export"?"ייצוא לקובץ":"ייבוא מקובץ",
+      pwOkOff:!S.pw||!S.pw.value||!!S.pw.busy,
+      onPwIn:e=>{ const p=this.state.pw; if(p) this.setState({pw:{...p, value:e.target.value, err:""}}); },
+      onPwKey:e=>{ if(e.key==="Enter"){ e.preventDefault(); this.pwSubmit(); } else if(e.key==="Escape"){ e.preventDefault(); this.pwCancel(); } },
+      onPwOk:this.pwSubmit, onPwCancel:this.pwCancel,
       casesHere:this.casesHere(), onClearCases:this.clearCases,
       fileErr:S.screen==="entry"?(S.fileErr||""):"",
       /* הודעה שחוזרת באותן מילים נאמרת שוב: אזור חי שלא השתנה אינו אומר דבר, ולכן כל דחייה של קובץ וכל החזרת
@@ -4195,7 +4278,7 @@ const KIND_NAME={NAME:"אדם", ORG:"גוף", PLACE:"מקום"};
       rvIn:S.rvIn, rvOut:S.rvOut, rvCopyLabel:S.rvCopyLabel,
       // תשובה חדשה בתיבה: התוצאה של הקודמת יורדת, ו«החזרת שמות» חוזר להיות הפעולה. עד כאן היא נשארה מתחת לתשובה החדשה,
       // עם הכותרת שלה, וכפתור ההעתקה המלא העתיק אותה (הציד של 11.10)
-      onRvIn:e=>this.setState({rvIn:e.target.value, err:"", ...(S.rvOut?{rvOut:"", rvLeft:[], rvCount:0}:{})}),
+      onRvIn:e=>this.setState({rvIn:e.target.value, err:"", ...(S.rvOut?{rvOut:"", rvLeft:[], rvDates:[], rvCount:0}:{})}),
       onRvGo:this.rvGo,
       // אחרי החזרה, ההעתקה היא הפעולה הראשית; לפני — ההחזרה (UX #19). ריק — אין מה להחזיר (UX #20).
       rvEmpty:!(S.rvIn||"").trim(),
@@ -4488,7 +4571,11 @@ const KIND_NAME={NAME:"אדם", ORG:"גוף", PLACE:"מקום"};
     v.pendItems=[...PRv.people, ...PRv.numbers, ...PRv.soft].map(x=>({
       value:x.value, tag:this.kindLabel(x.label)+(x.why?" · "+x.why:""), ctx:x.ctx||{pre:"",hit:"",post:""},
       onAdd:()=>{ this.log.add("review-act",{act:"replace", kind:this.kindOfLabel(x.label)}); this.addRule(E.trimEdges(x.value), this.kindOfLabel(x.label), "", "review"); },
-      onKeep:()=>{ this.log.add("review-act",{act:"keep"}); this.addAllow(E.trimEdges(x.value)); }}));
+      onKeep:()=>{ this.log.add("review-act",{act:"keep"}); this.addAllow(E.trimEdges(x.value)); }}))
+      .concat(PRv.second.map(x=>({
+        value:x.value, tag:"בבדיקה שנייה · "+this.kindLabel(x.label), ctx:x.ctx||{pre:"",hit:"",post:""},
+        onAdd:()=>{ this.log.add("review-act",{act:"replace", kind:this.engineKindOf(x.label), src:"second"}); this.addRule(E.trimEdges(x.value), this.engineKindOf(x.label), "", "review"); },
+        onKeep:()=>{ this.log.add("review-act",{act:"keep", src:"second"}); this.addAllow(E.trimEdges(x.value)); }})));
 
     // המסנן הזה מראה מה שלא הוחלף; "לבדיקה" הוא הפאנל, עם מספר משלו (UX #13)
     v.tabs=[["all","הכל",RES.applied.length+RES.flagged.length],["rep","הוחלף",RES.applied.length],
@@ -4608,13 +4695,17 @@ const KIND_NAME={NAME:"אדם", ORG:"גוף", PLACE:"מקום"};
       // אנשים קודם, ספקות ברמת המילה בסוף
       const ordered=[...PR.people.map(x=>x.value), ...PR.numbers.map(x=>x.value), ...PR.sug.map(x=>x.value), ...PR.near.map(x=>x.value), ...PR.soft.map(x=>x.value)];
       text=listNames(ordered)+". מה שלא הוחלט יגיע ל-AI כמו שהוא.";
+    } else if(PR.second.length){ kind="warn";
+      title="בבדיקה שנייה נמצאו פרטים שאינם ברשימה";
+      text=this.secondLine(PR.second);
     } else if(PR.soft.length||ver.embedded.length||this.nearPartial()){ kind="warn";
       const bits=[], np=this.nearPartial();
       if(np) bits.push(`הבדיקה של כתיב דומה עברה רק על ${np.read} מתוך ${np.of} השמות ברשימה`);
       if(PR.soft.length) bits.push((PR.soft.length===1?"מקום או גוף אחד ממתין":PR.soft.length+" מקומות או גופים ממתינים")+" בפאנל «לבדיקה» — ההחלטה שלכם");
-      if(ver.embedded.length) bits.push(ver.embedded.length+" תמונות או קבצים מוטמעים שלא נסרקו");
+      // קבצים מוטמעים יוצאים מהקובץ (dropObjects, 12.10): מה שנשאר בלי סריקה הוא תמונות
+      if(ver.embedded.length) bits.push(ver.embedded.length+" תמונות שלא נסרקו");
       title="השמות והמספרים הוחלפו. נשארו פריטים שכדאי לבדוק";
-      text=bits.join(" · ")+(ver.embedded.length?". טקסט בתוך תמונה או קובץ מוטמע אינו נסרק.":".");
+      text=bits.join(" · ")+(ver.embedded.length?". טקסט בתוך תמונה אינו נסרק.":".");
     } else {
       // בלי מונחי מנוע (UX #15)
       title="לא נשארו בטקסט שמות או מספרים מהרשימה";

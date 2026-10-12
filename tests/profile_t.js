@@ -216,8 +216,10 @@ ok(/profileOk\(/.test(body("readLast")) && /\.rules\.length/.test(body("readLast
   ok(/profileOk\(file\.last\)/.test(im) && im.indexOf("profileOk(file.last)") < first, "importCases checks the last profile before it writes anything");
 }
 {
-  const f = body("onProfFile");
+  // since 12.10 a file goes onProfFile → (its password, when it has one) → importParsed, which applies it
+  const f = body("importParsed"), g = body("onProfFile");
   ok(/profileOk\(prof\)/.test(f) && f.indexOf("profileOk(prof)") < f.indexOf("applyProfile(prof,"), "a profile file is checked by profileOk before it is applied");
+  ok(/this\.importParsed\(parsed, all\)/.test(g) && /isLocked\(parsed\)/.test(g) && !/applyProfile\(/.test(g), "onProfFile hands every file to importParsed, a locked one after its password, and applies nothing itself");
 }
 // the members of the component class, by position
 const heads = [...code.matchAll(/\n {2}(?:static |async )?([A-Za-z_$][\w$]*)(?:\([^)\n]*\)\s*\{| = )/g)].map((m) => [m.index, m[1]]);

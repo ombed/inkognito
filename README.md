@@ -27,7 +27,7 @@ The interface is in Hebrew; the Hebrew documentation follows this section.
 - Name recognition: the NER head of DictaBERT-parse, exported to ONNX, quantized to 8 bits and run in the browser with transformers.js. It is served from this site and checked against a pinned SHA-256 before use.
 - Rules, Hebrew prefix handling and a gazetteer run alongside the model; the model only adds suggestions.
 - Tests: about 7,500 Node checks and 338 Playwright browser tests in CI, WebKit and Firefox before each release that changes the page, plus the benchmark gates above.
-- Developed with Claude Code as the coding agent. Each decision is recorded with its reasons: the model choice in [docs/model-eval/](docs/model-eval/README.md), the rest in the changelog and the code.
+- Developed with Claude Code as the coding agent. Each decision is recorded with its reasons: the model choice in [docs/model-eval/](docs/model-eval/README.md), the rest in the changelog and the code. Who does what, and what the owner catches that the agent and the tests miss: [docs/HOW-IT-WAS-BUILT.md](docs/HOW-IT-WAS-BUILT.md).
 
 **Licence:** source-available under [PolyForm Shield 1.0.0](LICENSE). Read it before using the code in a product of your own.
 
@@ -124,13 +124,13 @@ GitHub Pages או כל אירוח סטטי מספיק. **כתובת `https` הי
 
 | קובץ | שורה | המחרוזת | תפקיד |
 |---|---|---|---|
-| `index.html` | 1381 | `<div id="ver">גרסה v73.14</div>` | השבב התחתון — מה שנראה על המסך |
-| `index.html` | 292 | `console.log("… גרסה v73.14")` | שורת הפתיחה בקונסול |
-| `index.html` | 345 | `if(served==="v73.14") return;` | **בדיקת ההשוואה** מול מה שהעובד מגיש |
-| `index.html` | 346 | `el.innerHTML='גרסה v73.14 · …'` | תווית האזהרה שמוצגת כשיש פער |
-| `sw.js` | 8 | `const V="hedact-v73.14";` | מפתח המטמון |
+| `index.html` | 1397 | `<div id="ver">גרסה v74</div>` | השבב התחתון — מה שנראה על המסך |
+| `index.html` | 292 | `console.log("… גרסה v74")` | שורת הפתיחה בקונסול |
+| `index.html` | 345 | `if(served==="v74") return;` | **בדיקת ההשוואה** מול מה שהעובד מגיש |
+| `index.html` | 346 | `el.innerHTML='גרסה v74 · …'` | תווית האזהרה שמוצגת כשיש פער |
+| `sw.js` | 8 | `const V="hedact-v74";` | מפתח המטמון |
 
-מספרי השורות נכונים לגרסה v73.14 והם עזר בלבד — לחפש את המחרוזת, לא לסמוך
+מספרי השורות נכונים לגרסה v74 והם עזר בלבד — לחפש את המחרוזת, לא לסמוך
 על המספר.
 
 **בדיקת ההשוואה (`if(served===…)`, השורה השלישית בטבלה) היא הכי קלה לפספוס, והפספוס שקט-למחצה.** אם השבב והקונסול
