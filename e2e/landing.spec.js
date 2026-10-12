@@ -334,6 +334,8 @@ test("after signing out, the home page offers once to clear the cases in this br
     window.localStorage.setItem("redact-cases:acct-1", JSON.stringify({ "א נ׳ ב": c("א נ׳ ב"), "ג נ׳ ד": c("ג נ׳ ד") }));
     window.localStorage.setItem("redact-profile-last:acct-2", JSON.stringify(c("")));
     window.localStorage.setItem("redact-theme", "dark");
+    // the key of the invented names (12.10): deleted with the cases, and not counted as one
+    window.localStorage.setItem("redact-alias-key:acct-1", "ab".repeat(32));
   });
   await page.goto(HOME + "?out=1");
   const note = page.locator(".out-note");

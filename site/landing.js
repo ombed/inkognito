@@ -49,7 +49,11 @@
     } catch (_) {}
     return n;
   };
-  const dropCases = () => { try { Object.keys(localStorage).filter(isCaseKey).forEach((k) => localStorage.removeItem(k)); } catch (_) {} };
+  /* The key of the invented names ("redact-alias-key", per account; index.html, aliasKey, 12.10) goes with the
+     cases: with it, the invented names in what was sent to an AI could be computed again. It is not a case,
+     so it is not counted. */
+  const goesWithCases = (k) => isCaseKey(k) || /^redact-alias-key(:|$)/.test(k);
+  const dropCases = () => { try { Object.keys(localStorage).filter(goesWithCases).forEach((k) => localStorage.removeItem(k)); } catch (_) {} };
 
   /* After signing out (the account panel lands here with ?out, cloud.js): one line, once, about the cases
      left in this browser, with the real names in them; on a shared computer they should go (the owner's
