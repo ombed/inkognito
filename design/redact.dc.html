@@ -769,9 +769,12 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
         <span>הם מסומנים בתשובה. כדאי לתקן אותם ביד לפני שמשתמשים בה.</span>
         <ul style="margin:6px 0 0;padding-inline-start:18px;color:var(--ink)"><sc-for list="{{ rvLeftItems }}" as="x" hint-placeholder-count="2"><li>{{ x.t }}</li></sc-for></ul>
       </div></sc-if>
+      <sc-if value="{{ rvDatesOn }}"><div data-rv-dates key="{{ rvKey }}" style="margin:0 0 10px;padding:11px 14px;border-radius:10px;background:var(--accent-soft);color:var(--ink);font-size:13px;line-height:1.6">
+        <ul style="margin:0;padding-inline-start:18px"><sc-for list="{{ rvDateItems }}" as="x" hint-placeholder-count="1"><li>{{ x.t }}</li></sc-for></ul>
+      </div></sc-if>
       <sc-if value="{{ rvLeftNone }}"><p data-rv-left-none key="{{ rvKey }}" style="margin:0 0 10px;font-size:13px;color:var(--ink2)">לא נמצא בתשובה פרט בדוי שלא הוחזר.</p></sc-if></sc-if></div><!-- השגיאה והתוצאה נאמרות לקורא מסך: אזור המצב כבר במסך כשהתוצאה מגיעה (בדיקה חיה, 6.10), וכל החזרה מעלה אותן כאלמנט חדש (rvKey), כך שגם תוצאה או שגיאה זהות לקודמות נאמרות שוב (הביקורת של 6.10) -->
     <sc-if value="{{ rvOut }}">
-      <div data-rv-out dir="rtl" style="background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:18px;font:15px/1.9 'Noto Serif Hebrew',serif;white-space:pre-wrap"><sc-for list="{{ rvParas }}" as="pg" hint-placeholder-count="3"><div dir="auto" style="min-height:1.9em;text-align:start"><sc-for list="{{ pg.segs }}" as="sg" hint-placeholder-count="3"><sc-if value="{{ sg.plain }}"><span>{{ sg.t }}</span></sc-if><sc-if value="{{ sg.mark }}"><mark data-left title="{{ sg.title }}" style="background:var(--warn-soft);color:inherit;border-bottom:2px dashed var(--warn);border-radius:3px;padding:0 1px">{{ sg.t }}</mark></sc-if></sc-for></div></sc-for></div><!-- כל פסקה בכיוון של האות הראשונה שלה, בבלוק משלה כמו המסמך במסך הבדיקה: dir="auto" על התשובה כולה נתן לה כיוון אחד (בדיקה חיה, 6.10), ובבלוק אחד עם unicode-bidi:plaintext יישר Firefox את כל הפסקאות לפי הראשונה (בדיקה ב-Firefox, 10.10) -->
+      <div data-rv-out dir="rtl" style="background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:18px;font:15px/1.9 'Noto Serif Hebrew',serif;white-space:pre-wrap"><sc-for list="{{ rvParas }}" as="pg" hint-placeholder-count="3"><div dir="auto" style="min-height:1.9em;text-align:start"><sc-for list="{{ pg.segs }}" as="sg" hint-placeholder-count="3"><sc-if value="{{ sg.plain }}"><span>{{ sg.t }}</span></sc-if><sc-if value="{{ sg.mark }}"><mark data-left title="{{ sg.title }}" style="background:var(--warn-soft);color:inherit;border-bottom:2px dashed var(--warn);border-radius:3px;padding:0 1px">{{ sg.t }}</mark></sc-if><sc-if value="{{ sg.date }}"><mark data-rv-date title="{{ sg.title }}" style="background:var(--accent-soft);color:inherit;border-bottom:2px dotted var(--accent);border-radius:3px;padding:0 1px">{{ sg.t }}</mark></sc-if></sc-for></div></sc-for></div><!-- כל פסקה בכיוון של האות הראשונה שלה, בבלוק משלה כמו המסמך במסך הבדיקה: dir="auto" על התשובה כולה נתן לה כיוון אחד (בדיקה חיה, 6.10), ובבלוק אחד עם unicode-bidi:plaintext יישר Firefox את כל הפסקאות לפי הראשונה (בדיקה ב-Firefox, 10.10) -->
       <div style="display:flex;gap:9px;margin-top:11px;flex-wrap:wrap">
         <button onClick="{{ onRvCopy }}" style="{{ rvCopyStyle }}">{{ rvCopyLabel }}</button>
         <sc-if value="{{ rvBackOn }}"><button data-rv-back onClick="{{ onBack }}" style="padding:12px 18px;border-radius:10px;border:1px solid var(--line);background:var(--panel);font-weight:500;font-size:14px;white-space:nowrap" style-hover="background:var(--panel2)">חזרה למסמך</button></sc-if>
@@ -1217,7 +1220,7 @@ class Component extends DCLogic {
     sel:null, filter:"all", cat:"", open:null, pane:"doc", hot:null,
     addV:"", addR:"", addK:"NAME",
 
-    rvIn:"", rvOut:"", rvLeft:[], rvLast:null, rvProfile:null, rvCopyLabel:"העתקת הטקסט המשוחזר",
+    rvIn:"", rvOut:"", rvLeft:[], rvDates:[], rvLast:null, rvProfile:null, rvCopyLabel:"העתקת הטקסט המשוחזר",
     copyLabel:"העתקה ל־AI", busyT:"מעבד…", err:"",
     geo:null, geoV:0, geoNames:[], geoExtra:[], geoEdits:{}, popup:null, tip:null, repDraft:"", sent:{}, peoKept:[], peoNotSame:[], inline:null, inlineDraft:"",
     // הפרופיל של התיק נשמר בדפדפן אחרי כל שינוי; lastProfile הוא מה שנמצא בכניסה
@@ -1632,7 +1635,7 @@ class Component extends DCLogic {
       res:null, sel:null, hot:null, query:"", cat:"", filter:"all", addV:"", addR:"", addK:"NAME", inline:null, inlineDraft:"", popup:null, tip:null,
       repDraft:"", approved:[], formSel:null, markIdx:0, docView:"red", exportAsk:"", notice:"", leaks:[], copied:false, copyLabel:"העתקה ל־AI", undoN:0, redoN:0, rerunning:false,
       // החזרת שמות
-      rvIn:"", rvOut:"", rvCount:0, rvLeft:[], rvLast:null, rvProfile:null,
+      rvIn:"", rvOut:"", rvCount:0, rvLeft:[], rvDates:[], rvLast:null, rvProfile:null,
       // מה שהתיק שומר (profileObj)
       rules:[], allow:[], removed:[], sent:{}};
     if(keepCase&&(S.profile||S.caseName)) for(const k of ["rules","allow","removed","sent"]) delete reset[k];
@@ -3364,7 +3367,7 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     const nx=T[t.i+1];
     // מצעד ההעתקה אל מסך ההחזרה: התשובה לדוגמה כבר בתיבה, ושם «החזרת שמות» מחזירה אותה
     if(nx.screen==="reverse"&&cur.screen!=="reverse"){
-      this.setState({tour:{...t, i:t.i+1}, screen:"reverse", returnTo:"work", rvIn:this.tourAnswer(), rvOut:"", rvLeft:[], rvCount:0, err:""});
+      this.setState({tour:{...t, i:t.i+1}, screen:"reverse", returnTo:"work", rvIn:this.tourAnswer(), rvOut:"", rvLeft:[], rvDates:[], rvCount:0, err:""});
       return;
     }
     // בצעד ההחזרה, כפתור הכרטיס עושה מה שעושה הכפתור שבמסך (rvGo מעביר לצעד הבא); תיבה שרוקנה מתמלאת שוב
@@ -3533,24 +3536,28 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     const cross=taken.filter(x=>!x.own&&words(x.f).some(w=>mineW.has(w))).map(x=>x.f);
     if(cross.length){
       if(!S.tour) this.log.add("restore-other-doc",{n:cross.length});
-      this.setState({rvOut:"", rvCount:0, rvLeft:[], err:"בתשובה יש שמות בדויים של מסמך אחר, ולכן היא לא הוחזרה. פותחים את המסמך או התיק שלה."});
+      this.setState({rvOut:"", rvCount:0, rvLeft:[], rvDates:[], err:"בתשובה יש שמות בדויים של מסמך אחר, ולכן היא לא הוחזרה. פותחים את המסמך או התיק שלה."});
       return;
     }
-    const r=E.restoreNames(S.rvIn, pairs, earlier);
+    // תאריך שה-AI חישב מתאריך מוזז זז אחורה בהזזה של המסמך הפתוח (backDates; החלטת הבעלים, 12.10). תיק שנטען להחזרה
+    // בלבד: ההזזה נלמדת מזוגות התאריכים שלו, אם יש אחת ודאית
+    const r=E.restoreNames(S.rvIn, pairs, earlier, {off: rvP?undefined:(S.res&&S.res.dateOff)});
     // ההחזרה בסיור היא של המסמך לדוגמה: ביומן נרשם הסיור עצמו
-    if(!S.tour) this.log.add("restore",{count:r.count, left:(r.left||[]).length});
+    if(!S.tour) this.log.add("restore",{count:r.count, left:(r.left||[]).length, dates:(r.dates||[]).length});
     // כינוי שמשותף ליותר מאדם אחד אינו "לא נמצא" — הוא נמצא ולא הוחזר, וזה מה שנאמר (M3)
     const conflictMsg=(r.conflict&&r.conflict.length)?`«${r.conflict.join("», «")}» ${r.conflict.length===1?"הוא שם בדוי":"הם שמות בדויים"} של יותר מאדם אחד במסמך הזה, ולכן לא הוחזר${r.conflict.length===1?"":"ו"}; אפשר לתקן את זה בכרטיס של אחד מהם.`:"";
     // "לא נמצא אף שם בדוי" רק כשבאמת לא נמצא: כינוי שנשאר בתשובה נמצא, והרשימה שלו אומרת מה נשאר
     // שם בדוי של מסמך קודם (earlier) אינו מהרשימה הזו: תשובה שיש בה רק כאלה היא של מסמך אחר, וזה מה שנאמר, לצד הרשימה שלהם
     const none=!r.count&&!(r.left||[]).some(x=>!x.earlier);
-    this.setState({rvOut:r.text, rvCount:r.count, rvLeft:r.left||[], err: conflictMsg||(none?"לא נמצא בתשובה אף שם בדוי מהרשימה. ייתכן שהתשובה שייכת למסמך או לתיק אחר.":"")},
+    this.setState({rvOut:r.text, rvCount:r.count, rvLeft:r.left||[], rvDates:r.dates||[], err: conflictMsg||(none?"לא נמצא בתשובה אף שם בדוי מהרשימה. ייתכן שהתשובה שייכת למסמך או לתיק אחר.":"")},
       ()=>{ const el=document.querySelector("[data-rv-result]"); if(el&&el.scrollIntoView) el.scrollIntoView({block:"start", behavior:(window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches)?"auto":"smooth"});
         // בצעד ההחזרה של הסיור, ההחזרה עצמה מעבירה לצעד הבא, בכפתור שבמסך כמו בכפתור הכרטיס
         const t=this.state.tour, T=this.constructor.TOUR;
         if(t&&T[t.i]&&T[t.i].restore&&this.state.rvOut) this.setState({tour:{...t, i:t.i+1}}); });
   };
   // שורה ברשימת מה שנשאר בתשובה: «בדוי» במקום «אמיתי», וכמה פעמים כשיותר מפעם אחת; כינוי של יותר מאדם אחד — בלי אמיתי
+  // החלטת הבעלים, 12.10 («A», בנוסח שהוצג): תאריך בתשובה שזז אחורה כי ה-AI חישב אותו מתאריך מוזז
+  static DATE_BACK="תאריך שה-AI חישב מתאריך מוזז, והוחזר בהתאם. כדאי לבדוק.";
   leftLine(x){
     const n=x.at.length;
     // שם בדוי של מסמך קודם בסשן: האמיתי אינו ידוע כאן, והשם מסומן כמו שהוא
@@ -3560,10 +3567,11 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
   // התשובה שחזרה, בקטעים: מה שנשאר בה מהפרטים הבדויים מסומן, והשורה שלו מהרשימה היא התיאור שלו
   rvSegs(){
     const S=this.state, t=S.rvOut||"", at=[];
-    for(const x of S.rvLeft||[]) for(const [s,e] of x.at) at.push([s,e,this.leftLine(x)]);
+    for(const x of S.rvLeft||[]) for(const [s,e] of x.at) at.push([s,e,this.leftLine(x),false]);
+    for(const x of S.rvDates||[]) for(const [s,e] of x.at) at.push([s,e,this.constructor.DATE_BACK,true]);
     at.sort((a,b)=>a[0]-b[0]);
     const out=[]; let i=0;
-    for(const [s,e,title] of at){ if(s<i) continue; if(s>i) out.push({t:t.slice(i,s), plain:true}); out.push({t:t.slice(s,e), mark:true, title}); i=e; }
+    for(const [s,e,title,date] of at){ if(s<i) continue; if(s>i) out.push({t:t.slice(i,s), plain:true}); out.push({t:t.slice(s,e), mark:!date, date, title}); i=e; }
     if(i<t.length||!out.length) out.push({t:t.slice(i), plain:true});
     return out;
   }
@@ -3993,6 +4001,8 @@ const KIND_NAME={NAME:"אדם", ORG:"גוף", PLACE:"מקום"};
       rvLeftNone:!!S.rvOut&&!(S.rvLeft||[]).length&&S.rvCount>0,
       rvLeftHead:(n=>n===1?"נשאר בתשובה פרט בדוי אחד":"נשארו בתשובה "+n+" פרטים בדויים")((S.rvLeft||[]).length),
       rvLeftItems:(S.rvLeft||[]).map(x=>({t:this.leftLine(x)})),
+      rvDatesOn:!!S.rvOut&&(S.rvDates||[]).length>0,
+      rvDateItems:(S.rvDates||[]).map(x=>({t:"«"+x.now+"»: "+this.constructor.DATE_BACK})),
       rvParas:this.rvParas(),
       // «חזרה למסמך» גם מתחת לתוצאה, כשיש מסמך לחזור אליו; בכפתור העליון בלי מסמך כתוב «לבחירת מסמך»
       rvBackOn:back.to==="work"&&!S.tour,
@@ -4178,7 +4188,7 @@ const KIND_NAME={NAME:"אדם", ORG:"גוף", PLACE:"מקום"};
       rvIn:S.rvIn, rvOut:S.rvOut, rvCopyLabel:S.rvCopyLabel,
       // תשובה חדשה בתיבה: התוצאה של הקודמת יורדת, ו«החזרת שמות» חוזר להיות הפעולה. עד כאן היא נשארה מתחת לתשובה החדשה,
       // עם הכותרת שלה, וכפתור ההעתקה המלא העתיק אותה (הציד של 11.10)
-      onRvIn:e=>this.setState({rvIn:e.target.value, err:"", ...(S.rvOut?{rvOut:"", rvLeft:[], rvCount:0}:{})}),
+      onRvIn:e=>this.setState({rvIn:e.target.value, err:"", ...(S.rvOut?{rvOut:"", rvLeft:[], rvDates:[], rvCount:0}:{})}),
       onRvGo:this.rvGo,
       // אחרי החזרה, ההעתקה היא הפעולה הראשית; לפני — ההחזרה (UX #19). ריק — אין מה להחזיר (UX #20).
       rvEmpty:!(S.rvIn||"").trim(),

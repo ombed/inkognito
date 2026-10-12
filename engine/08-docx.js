@@ -1293,7 +1293,8 @@ async function redactDocx(buf,subs,allow,opt){
   // ירוק רק כשאין דליפות, אין ממצאים פתוחים, ואין ערוץ שלא נותח
   ver.complete=ver.passed&&!remaining.length&&!ver.embedded.length&&
     !near.length&&!suggest.length&&!incomplete.length;
-  return {blob,applied,flagged,preview,structural:rep,verification:ver,map:eng.map};
+  // dateOff: ההזזה של התאריכים במסמך הזה, בימים; ההחזרה מזיזה בה אחורה תאריך שה-AI חישב (backDates)
+  return {blob,applied,flagged,preview,structural:rep,verification:ver,map:eng.map,dateOff:eng.dateOff};
 }
 const PARTN={"document.xml":"גוף המסמך","footnotes.xml":"הערות שוליים","endnotes.xml":"הערות סיום"};
 function partName(p){
@@ -2319,7 +2320,41 @@ function lev(a,b){
 // כינוי שלא נמצא הוא לא בהכרח תקלה, אבל כדאי לדעת עליו.
 /* earlier: שמות בדויים של מסמכים קודמים בסשן הזה, בלי האמיתיים שלהם (המסך שומר אותם בזיכרון בלבד). מה שמהם נמצא
    בתשובה נרשם כמה שנשאר, כדי שהמסך לא יאמר שלא נשאר בה פרט בדוי (הציד של 11.10) */
-function restoreNames(txt,pairs,earlier){
+/* תאריך שה-AI חישב מתאריך מוזז (החלטת הבעלים, 12.10, «A»; הביקורת ההנדסית, H2): «45 יום מ-27.4.2026, כלומר עד
+   11.6.2026». 27.4.2026 חוזר, כי הכלי כתב אותו; 11.6.2026 נשאר מוזז, והמועד שהיא קוראת שגוי בהזזה של המסמך. כל
+   תאריך אחר בתשובה, עד שנה לפני או אחרי התאריכים שהכלי כתב, זז אחורה באותה הזזה ומסומן לבדיקה; תאריך רחוק יותר (חוק
+   משנת 1962) נשאר כמו שנכתב, וכך גם תאריך שהוא תאריך אמיתי מהרשימה (היא כתבה אותו בשאלה). ההזזה: של המסמך הפתוח
+   (off, בימים), או זו שכל זוגות התאריכים הידועים מסכימים עליה; בלי הזזה אחת ודאית (תיק של כמה מסמכים) כלום לא זז.
+   known: [{f, t}], חלקי התאריך הבדוי והאמיתי. מוסיף ל-took ומחזיר את מה שזז. tests/dateback_t.js */
+const dayNum=p=>p&&p.d!=null&&p.m?Date.UTC(p.y??dateRefYear(p),p.m-1,p.d)/864e5:null;
+function backDates(txt,took,known,off){
+  const fakes=known.map(x=>dayNum(x.f)).filter(Number.isFinite);
+  if(!Number.isInteger(off)||!off){
+    const offs=new Set(known.map(x=>dayNum(x.f)-dayNum(x.t)).filter(Number.isFinite));
+    off=offs.size===1?[...offs][0]:0;
+  }
+  const P=PAT.find(p=>p.n==="DATE");
+  if(!off||!fakes.length||!P)return [];
+  const lo=Math.min(...fakes)-366, hi=Math.max(...fakes)+366;
+  const realDays=new Set(known.map(x=>dayNum(x.t)).filter(Number.isFinite)), out=[];
+  // היום והחודש של תאריך שהכלי כתב, בכתיב אחר («27.4» שה-AI הוסיף לו שנה): לא כאן. הוא חוזר בכתיב שיצא, ובכל כתיב
+  // אחר נרשם במה שנשאר (dateforms_t), כי השנה שהוסיף אינה שלה
+  const fakeDM=new Set(known.map(x=>x.f.d+"."+x.f.m));
+  const NT=norm(txt);
+  for(const m of NT.matchAll(new RegExp(P.rx.source,"gu"))){
+    const v=m[P.g||0]; if(!v||(P.v&&!P.v(v)))continue;
+    const s=m.index+(P.g?m[0].indexOf(v):0), e=s+v.length;
+    if(took.some(t=>t[0]<e&&s<t[1]))continue;
+    // קצה של טווח («4-23.12.2026», «23.12-4.1»): לא מחזירים חצי טווח, כמו בתאריכים שהכלי כתב
+    if(/[0-9][\s\u00a0]?[-–—־][\s\u00a0]?$/.test(NT.slice(Math.max(0,s-4),s))||/^[\s\u00a0]?[-–—־][\s\u00a0]?[0-9]/.test(NT.slice(e,e+4)))continue;
+    const raw=txt.slice(s,e), p=parseDate(raw), n=dayNum(p);
+    if(n==null||n<lo||n>hi||realDays.has(n)||fakeDM.has(p.d+"."+p.m))continue;
+    const now=fakeDate(raw,-off); if(!now||now===raw)continue;
+    took.push([s,e,now]); out.push({s,e,was:raw,now});
+  }
+  return out;
+}
+function restoreNames(txt,pairs,earlier,dateOpt){
   // כל צורה של כל אדם (restoreForms). "מה לא נמצא" נשאר של הזוגות עצמם
   const own=new Set(pairs.map(p=>p[1])); pairs=restoreForms(pairs);
   const seen=new Map(), conflict=new Set();
@@ -2444,10 +2479,15 @@ function restoreNames(txt,pairs,earlier){
     if(!partWordy(k,kk))n+=run(rx,back(v),held,fitsPart(k));
     else if(!(WORDLIKE.has(kk)||COMMON.has(kk)||STOP.has(kk)||VRB.has(kk)))toksOnly.set(k,v);
   }
+  // תאריכים שה-AI חישב מתאריכים מוזזים: זזים אחורה ומסומנים (backDates)
+  const moved=backDates(txt,took,days,dateOpt&&dateOpt.off);
   let out="",at=0;
   for(const [s,e,t] of took.sort((a,b)=>a[0]-b[0])){out+=txt.slice(at,s)+t;at=e}
   const left=leftOver(txt,took,{conflict,held,bad,reals,seen,partial,toks,dates:lone,wordOne,toksOnly,earlier});
-  return {text:out+txt.slice(at),count:n,missing,conflict:[...conflict],left};
+  // המקום של כל תאריך שזז בטקסט שחוזר: ההחלפות שלפניו משנות את האורך
+  const shiftAt=p=>took.reduce((d,[s,e,t])=>e<=p?d+t.length-(e-s):d,0);
+  const dates=moved.map(x=>({was:x.was,now:x.now,at:[[x.s+shiftAt(x.s),x.s+shiftAt(x.s)+x.now.length]]}));
+  return {text:out+txt.slice(at),count:n,missing,conflict:[...conflict],left,dates};
 }
 /* מה שנשאר בתשובה מהפרטים הבדויים שהכלי נתן ולא הוחזר, כדי שמסך ההחזרה יסמן אותו ויאמר מה לתקן ביד
    (החזרת שמות, 7.10.2026): כינוי של יותר מאדם אחד; שם מלא דבוק לאותיות שאינן אותיות שימוש ("אלירן כהןים");
