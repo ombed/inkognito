@@ -292,7 +292,8 @@
    ],
    "matched": [
     "מורן רוזנטל",
-    "מורן"
+    "מורן",
+    "רוזנטל"
    ],
    "leakedSurfaces": []
   },
@@ -302,7 +303,7 @@
    "cat": "P_SHARED_SURNAME",
    "canonical": "נמרוד רוזנטל",
    "found": true,
-   "leaked": true,
+   "leaked": false,
    "fp": 0,
    "via": [
     "suggest",
@@ -310,11 +311,10 @@
    ],
    "matched": [
     "ונמרוד רוזנטל",
-    "מורן רוזנטל"
-   ],
-   "leakedSurfaces": [
+    "מורן רוזנטל",
     "רוזנטל"
-   ]
+   ],
+   "leakedSurfaces": []
   },
   {
    "doc": "m3",
@@ -773,7 +773,6 @@
    "fp": 0,
    "via": [
     "discover",
-    "flagged",
     "applied"
    ],
    "matched": [
@@ -792,14 +791,13 @@
    "fp": 0,
    "via": [
     "discover",
-    "flagged",
     "applied"
    ],
    "matched": [
     "נמרוד רוזנטל",
-    "רוזנטל",
     "מורן רוזנטל",
-    "ורוזנטל נשואים"
+    "ורוזנטל נשואים",
+    "רוזנטל"
    ],
    "leakedSurfaces": []
   },
@@ -4702,7 +4700,8 @@
    ],
    "matched": [
     "יונס אגבריה",
-    "יונס"
+    "יונס",
+    "אגבריה"
    ],
    "leakedSurfaces": []
   },
@@ -4712,7 +4711,7 @@
    "cat": "P_SHARED_SURNAME",
    "canonical": "סוהא אגבריה",
    "found": true,
-   "leaked": true,
+   "leaked": false,
    "fp": 0,
    "via": [
     "suggest",
@@ -4720,11 +4719,10 @@
    ],
    "matched": [
     "וסוהא אגבריה",
-    "יונס אגבריה"
-   ],
-   "leakedSurfaces": [
+    "יונס אגבריה",
     "אגבריה"
-   ]
+   ],
+   "leakedSurfaces": []
   },
   {
    "doc": "a4",
@@ -5591,301 +5589,301 @@
   {
    "id": "m1",
    "genre": "meeting",
-   "ms": 223,
+   "ms": 241,
    "rules": 4,
    "unlisted": 1
   },
   {
    "id": "m2",
    "genre": "meeting",
-   "ms": 57,
+   "ms": 59,
    "rules": 6,
    "unlisted": 0
   },
   {
    "id": "m3",
    "genre": "meeting",
-   "ms": 32,
+   "ms": 45,
    "rules": 3,
    "unlisted": 0
   },
   {
    "id": "m4",
    "genre": "meeting",
-   "ms": 40,
+   "ms": 65,
    "rules": 3,
    "unlisted": 1
   },
   {
    "id": "f1",
    "genre": "filing",
-   "ms": 74,
+   "ms": 90,
    "rules": 10,
    "unlisted": 1
   },
   {
    "id": "f2",
    "genre": "filing",
-   "ms": 79,
-   "rules": 12,
+   "ms": 89,
+   "rules": 11,
    "unlisted": 1
   },
   {
    "id": "f3",
    "genre": "filing",
-   "ms": 37,
+   "ms": 48,
    "rules": 5,
    "unlisted": 0
   },
   {
    "id": "f4",
    "genre": "filing",
-   "ms": 40,
+   "ms": 72,
    "rules": 8,
    "unlisted": 3
   },
   {
    "id": "t1",
    "genre": "transcript",
-   "ms": 45,
+   "ms": 62,
    "rules": 6,
    "unlisted": 0
   },
   {
    "id": "t2",
    "genre": "transcript",
-   "ms": 38,
+   "ms": 53,
    "rules": 5,
    "unlisted": 1
   },
   {
    "id": "t3",
    "genre": "transcript",
-   "ms": 45,
+   "ms": 59,
    "rules": 6,
    "unlisted": 1
   },
   {
    "id": "t4",
    "genre": "transcript",
-   "ms": 61,
+   "ms": 94,
    "rules": 8,
    "unlisted": 1
   },
   {
    "id": "w1",
    "genre": "welfare",
-   "ms": 32,
+   "ms": 69,
    "rules": 1,
    "unlisted": 0
   },
   {
    "id": "w2",
    "genre": "welfare",
-   "ms": 37,
+   "ms": 70,
    "rules": 3,
    "unlisted": 0
   },
   {
    "id": "w3",
    "genre": "welfare",
-   "ms": 31,
+   "ms": 73,
    "rules": 2,
    "unlisted": 0
   },
   {
    "id": "w4",
    "genre": "welfare",
-   "ms": 34,
+   "ms": 89,
    "rules": 4,
    "unlisted": 1
   },
   {
    "id": "h1",
    "genre": "medical",
-   "ms": 47,
+   "ms": 121,
    "rules": 6,
    "unlisted": 2
   },
   {
    "id": "h2",
    "genre": "medical",
-   "ms": 29,
+   "ms": 68,
    "rules": 2,
    "unlisted": 0
   },
   {
    "id": "h3",
    "genre": "medical",
-   "ms": 38,
+   "ms": 60,
    "rules": 4,
    "unlisted": 3
   },
   {
    "id": "p1",
    "genre": "police",
-   "ms": 32,
+   "ms": 63,
    "rules": 2,
    "unlisted": 1
   },
   {
    "id": "p2",
    "genre": "police",
-   "ms": 44,
+   "ms": 42,
    "rules": 3,
    "unlisted": 1
   },
   {
    "id": "p3",
    "genre": "police",
-   "ms": 30,
+   "ms": 35,
    "rules": 1,
    "unlisted": 0
   },
   {
    "id": "p4",
    "genre": "police",
-   "ms": 42,
+   "ms": 57,
    "rules": 4,
    "unlisted": 0
   },
   {
    "id": "b1",
    "genre": "bank",
-   "ms": 40,
+   "ms": 50,
    "rules": 4,
    "unlisted": 2
   },
   {
    "id": "b2",
    "genre": "bank",
-   "ms": 24,
+   "ms": 33,
    "rules": 1,
    "unlisted": 0
   },
   {
    "id": "b3",
    "genre": "bank",
-   "ms": 16,
+   "ms": 32,
    "rules": 1,
    "unlisted": 0
   },
   {
    "id": "c1",
    "genre": "chat",
-   "ms": 21,
+   "ms": 34,
    "rules": 2,
    "unlisted": 0
   },
   {
    "id": "c2",
    "genre": "chat",
-   "ms": 36,
+   "ms": 45,
    "rules": 4,
    "unlisted": 1
   },
   {
    "id": "c3",
    "genre": "chat",
-   "ms": 29,
+   "ms": 58,
    "rules": 2,
    "unlisted": 0
   },
   {
    "id": "c4",
    "genre": "chat",
-   "ms": 56,
+   "ms": 59,
    "rules": 4,
    "unlisted": 0
   },
   {
    "id": "x1",
    "genre": "position",
-   "ms": 46,
+   "ms": 52,
    "rules": 5,
    "unlisted": 1
   },
   {
    "id": "x2",
    "genre": "position",
-   "ms": 33,
+   "ms": 30,
    "rules": 4,
    "unlisted": 0
   },
   {
    "id": "x3",
    "genre": "position",
-   "ms": 39,
+   "ms": 37,
    "rules": 4,
    "unlisted": 0
   },
   {
    "id": "a1",
    "genre": "audio",
-   "ms": 24,
+   "ms": 25,
    "rules": 3,
    "unlisted": 0
   },
   {
    "id": "a2",
    "genre": "audio",
-   "ms": 36,
+   "ms": 34,
    "rules": 5,
    "unlisted": 0
   },
   {
    "id": "a3",
    "genre": "audio",
-   "ms": 47,
+   "ms": 55,
    "rules": 7,
    "unlisted": 1
   },
   {
    "id": "a4",
    "genre": "audio",
-   "ms": 54,
+   "ms": 48,
    "rules": 4,
    "unlisted": 0
   },
   {
    "id": "v1",
    "genre": "interview",
-   "ms": 41,
+   "ms": 43,
    "rules": 2,
    "unlisted": 0
   },
   {
    "id": "v2",
    "genre": "interview",
-   "ms": 52,
+   "ms": 37,
    "rules": 3,
    "unlisted": 0
   },
   {
    "id": "v3",
    "genre": "interview",
-   "ms": 19,
+   "ms": 23,
    "rules": 2,
    "unlisted": 0
   },
   {
    "id": "s1",
    "genre": "structure",
-   "ms": 49,
+   "ms": 50,
    "rules": 4,
    "unlisted": 2
   },
   {
    "id": "s2",
    "genre": "structure",
-   "ms": 30,
+   "ms": 49,
    "rules": 4,
    "unlisted": 2
   },
   {
    "id": "s3",
    "genre": "structure",
-   "ms": 41,
+   "ms": 57,
    "rules": 4,
    "unlisted": 2
   }

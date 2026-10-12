@@ -2840,6 +2840,21 @@ function dateOffFor(nd){
    שימוש של שם קצר כאן, ולחלק של שם שעומד לבד בתשובת AI (restoreNames). */
 function wordish(x,toks){
   return WORDLIKE.has(x)||COMMON.has(x)||STOP.has(x)||VRB.has(x)||(!!toks&&toks.has("ה"+x))}
+/* שם המשפחה של שם אמיתי, כמפתח: כל מה שאחרי השם הפרטי («לוי», «בן דוד», «כהן-לוי»). מילה אחת לבדה היא שם משפחה רק
+   כשהיא לא שם פרטי מוכר. ושם בדוי מפורק לראש (השם הפרטי, ומילית אם יש: «דניאל בן») ולשם המשפחה. (sameSurname) */
+const SUR_PARTS=new Set(["בן","בת","אבו","אל","דה","ואן","בר"]);
+function surKeyOf(real){
+  const w=norm(String(real||"")).replace(/\u0000/g,"").trim().split(/\s+/).filter(Boolean);
+  if(w.length>=2)return w.slice(1).join(" ");
+  return w.length===1&&!KNOWN_FIRST.has(w[0])?w[0]:null;
+}
+function splitFake(fake){
+  const w=String(fake||"").trim().split(/\s+/).filter(Boolean);
+  if(!w.length)return null;
+  if(w.length===1)return {head:[],sur:(POOL.he_s.includes(w[0])||POOL.ar_s.includes(w[0]))?w[0]:null};
+  const h=w.length>2&&SUR_PARTS.has(w[1])?2:1;
+  return {head:w.slice(0,h),sur:w.slice(h).join(" ")};
+}
 class Engine{
   constructor(subs,allow,opt,docText){
     subs=subs.map(x=>({...x}));
@@ -2867,6 +2882,14 @@ class Engine{
         for(const s of subs) if(s.kind==="NAME"&&!this.gmap[s.value]&&norm(s.value).trim().split(/\s+/)[0]===w) this.gmap[s.value]=FEMCTX.has(m[1])?"f":"m"; }
     }
     this.used=new Set();
+    // שם משפחה אמיתי ← שם המשפחה הבדוי שלו (sameSurname). מהתיק קודם: כל אדם עם תחליף, כדי שבן משפחה במסמך הבא יקבל
+    // את שם המשפחה הבדוי שהמשפחה כבר קיבלה
+    this.surOf=new Map();
+    for(const s of subs){
+      if((s.kind||"NAME")!=="NAME"||!s.replacement)continue;
+      const k=surKeyOf(s.value), sp=splitFake(s.replacement);
+      if(k&&sp&&sp.sur&&!this.surOf.has(k)) this.surOf.set(k,sp.sur);
+    }
     // פרופיל שכופה "יעל רוזן" על מישהי, כשיעל רוזן אמיתית מופיעה במסמך
     // הזה — שתי נשים היו מתמזגות לשם אחד. עדיף לשבור עקביות פעם אחת
     // ולומר את זה, מאשר לערבב שני אנשים.
@@ -3097,6 +3120,22 @@ class Engine{
     if(d) return d;
     return this.opt.mode==="block"?"black":this.opt.mode==="label"?"label":"name";
   }
+  /* בני משפחה (החלטת הבעלים, 12.10, «A»; הביקורת ההנדסית): אותו שם משפחה אמיתי מקבל אותו שם משפחה בדוי, במסמך ובתיק,
+     וה-AI רואה משפחה: «רונית לוי», «דוד לוי» ← «מיכל כהן», «יואב כהן». השם הפרטי נשאר של כל אחד, ולכן השם המלא נשאר
+     ייחודי, ושם המשפחה לבדו חוזר בהחזרה אחד לאחד. המחיר, שהבעלים קיבלו: שני זרים עם אותו שם משפחה שכיח חולקים גם את
+     הבדוי. שם משפחה בדוי מהתיק שהוא מילה במסמך הזה (forbidden) לא נלקח, ונבחר אחר. tests/surname_t.js */
+  sameSurname(real,fake){
+    const k=surKeyOf(real), sp=splitFake(fake);
+    if(!k||!sp||!sp.sur)return fake;
+    const had=this.surOf.get(k);
+    if(had&&had!==sp.sur&&!norm(had).split(/\s+/).some(w=>this.forbidden.has(w))){
+      const out=sp.head.concat(had).join(" ");
+      this.used.add(norm(out).trim());
+      return out;
+    }
+    if(!had)this.surOf.set(k,sp.sur);
+    return fake;
+  }
   repFor(h){
     // התאום הלועזי: האיות הלועזי של השם הבדוי של בן הזוג העברי שלו (twins)
     if(h.twinOf) return addPre(h.pre||"",latinOf(this.repFor({...h.twinOf,pre:""})));
@@ -3118,7 +3157,7 @@ class Engine{
       let n=this.cnt[fam]||0; do n++; while(this.used.has(norm(lbl(n)).trim())); this.cnt[fam]=n;
       const real=style==="name";
       if(fam==="NAME"&&real)
-        base=fakeName(canonical,this.gmap[canonical]||h.g,this.used,this.forbidden,this.firstish);
+        base=this.sameSurname(canonical,fakeName(canonical,this.gmap[canonical]||h.g,this.used,this.forbidden,this.firstish));
       // יישוב מקבל שם יישוב אמיתי, כמו ששם מקבל שם. מסך היישובים קודם כשהוא
       // מציע משהו, כי הוא שומר על המרחקים; זה מה שקורה לכל השאר, כולל מה שנגזר
       // ממילת יישוב ("מושב X", "שכונת Y"). מוסד רפואי, עסק או מוסד חינוך נשאר
@@ -5590,7 +5629,7 @@ function restoreNames(txt,pairs,earlier,dateOpt){
      כאן רק שם של שתי מילים בדיוק וחלק של ארבע אותיות ומעלה: "מר כהן", "רחל תעדכן", "בני הזוג
      כהן" ושני החלקים של "יפעת בן פלדמן" נשארו בדויים (בדיקה בכלי החי, 6.10).
      reals: כל החלקים האמיתיים של כל חלק של אדם, גם של חלק שלא יוחזר, בשביל מה שנשאר בתשובה (leftOver) */
-  const partial=new Map(), bad=new Set(), reals=new Map(), firstOf=new Map();
+  const partial=new Map(), bad=new Set(), reals=new Map(), firstOf=new Map(), ownerOf=new Map();
   for(const [real,pseudo,form] of pairs){
     // צורה (restoreForms) חוזרת רק כשם שלם: אין לה חלקים לבד
     if(!real||!pseudo||pseudo==="███"||form)continue;
@@ -5601,7 +5640,14 @@ function restoreNames(txt,pairs,earlier,dateOpt){
       for(const [k] of ps)bad.add(k);
       continue;
     }
-    for(const [k,v] of ps){if(seen.has(k)||(partial.has(k)&&partial.get(k)!==v))bad.add(k);else{partial.set(k,v);firstOf.set(k,norm(String(pseudo)).trim().split(/\s+/)[0])}}
+    const whole=norm(String(pseudo)).trim();
+    for(const [k,v] of ps){
+      if(seen.has(k)||(partial.has(k)&&partial.get(k)!==v))bad.add(k);
+      /* אותו חלק לשני אנשים, וגם האמיתי שלהם אחד: שם המשפחה של משפחה (sameSurname, 12.10). הוא חוזר, ובלי בדיקת השם
+         הפרטי (fitsPart): «גב' כהן» היא «גב' לוי» בין אם זו רונית ובין אם אחרת מהמשפחה */
+      else if(partial.has(k)){if(ownerOf.get(k)!==whole)firstOf.delete(k);}
+      else{partial.set(k,v);ownerOf.set(k,whole);firstOf.set(k,whole.split(/\s+/)[0])}
+    }
   }
   for(const k of bad)partial.delete(k);
   const longFirst=m=>[...m.entries()].sort((a,b)=>b[0].length-a[0].length);

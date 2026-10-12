@@ -2421,7 +2421,7 @@ function restoreNames(txt,pairs,earlier,dateOpt){
      כאן רק שם של שתי מילים בדיוק וחלק של ארבע אותיות ומעלה: "מר כהן", "רחל תעדכן", "בני הזוג
      כהן" ושני החלקים של "יפעת בן פלדמן" נשארו בדויים (בדיקה בכלי החי, 6.10).
      reals: כל החלקים האמיתיים של כל חלק של אדם, גם של חלק שלא יוחזר, בשביל מה שנשאר בתשובה (leftOver) */
-  const partial=new Map(), bad=new Set(), reals=new Map(), firstOf=new Map();
+  const partial=new Map(), bad=new Set(), reals=new Map(), firstOf=new Map(), ownerOf=new Map();
   for(const [real,pseudo,form] of pairs){
     // צורה (restoreForms) חוזרת רק כשם שלם: אין לה חלקים לבד
     if(!real||!pseudo||pseudo==="███"||form)continue;
@@ -2432,7 +2432,14 @@ function restoreNames(txt,pairs,earlier,dateOpt){
       for(const [k] of ps)bad.add(k);
       continue;
     }
-    for(const [k,v] of ps){if(seen.has(k)||(partial.has(k)&&partial.get(k)!==v))bad.add(k);else{partial.set(k,v);firstOf.set(k,norm(String(pseudo)).trim().split(/\s+/)[0])}}
+    const whole=norm(String(pseudo)).trim();
+    for(const [k,v] of ps){
+      if(seen.has(k)||(partial.has(k)&&partial.get(k)!==v))bad.add(k);
+      /* אותו חלק לשני אנשים, וגם האמיתי שלהם אחד: שם המשפחה של משפחה (sameSurname, 12.10). הוא חוזר, ובלי בדיקת השם
+         הפרטי (fitsPart): «גב' כהן» היא «גב' לוי» בין אם זו רונית ובין אם אחרת מהמשפחה */
+      else if(partial.has(k)){if(ownerOf.get(k)!==whole)firstOf.delete(k);}
+      else{partial.set(k,v);ownerOf.set(k,whole);firstOf.set(k,whole.split(/\s+/)[0])}
+    }
   }
   for(const k of bad)partial.delete(k);
   const longFirst=m=>[...m.entries()].sort((a,b)=>b[0].length-a[0].length);

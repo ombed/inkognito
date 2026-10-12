@@ -1,6 +1,6 @@
 # Benchmark results (no model)
 
-43 documents, 335 keyed entities: 272 identifying details the tool must replace, and 63 traps and public bodies it must leave alone. Model off. Generated 2026-10-11.
+43 documents, 335 keyed entities: 272 identifying details the tool must replace, and 63 traps and public bodies it must leave alone. Model off. Generated 2026-10-12.
 
 ## Per category
 
@@ -22,7 +22,7 @@
 | person: role word directly before, no colon | 6 | 0 | 0 | 0 |
 | org: body whose name reads like a person's | 3 | 0 | 0 | 0 |
 | place: neighbourhood | 4 | 2 | 2 | 0 |
-| person: two people sharing a surname | 10 | 0 | 4 | 0 |
+| person: two people sharing a surname | 10 | 0 | 2 | 0 |
 | person: Russian name | 7 | 1 | 1 | 0 |
 | person: nikud on one occurrence | 0 | 3 | 3 | 0 |
 | person: once, only with a prefix letter (expected to fail) | 0 | 3 | 3 | 0 |
@@ -63,7 +63,7 @@
 
 | genre | found | missed | leaked | false positives |
 |---|---|---|---|---|
-| meeting | 17 | 10 | 13 | 0 |
+| meeting | 17 | 10 | 12 | 0 |
 | filing | 35 | 6 | 8 | 1 |
 | transcript | 23 | 10 | 12 | 0 |
 | welfare | 22 | 5 | 7 | 0 |
@@ -72,7 +72,7 @@
 | bank | 17 | 1 | 1 | 0 |
 | chat | 21 | 2 | 2 | 0 |
 | position | 12 | 1 | 2 | 2 |
-| audio | 17 | 3 | 8 | 0 |
+| audio | 17 | 3 | 7 | 0 |
 | interview | 8 | 3 | 3 | 0 |
 | structure | 12 | 3 | 3 | 0 |
 
@@ -100,7 +100,6 @@ Counted, not optimised for: the list is read, accept-all is not how the tool is 
 - m2 · person: full name, surname alone, first name alone · אריאל הורוביץ: found via flagged+applied as «אריאל», **leaked**: הורוביץ
 - m2 · org: private body, must be redacted · מעון גן הדובים: found via flagged+applied as «מעון», **leaked**: גן הדובים
 - m2 · place: neighbourhood · שכונת נווה רם: missed, **leaked**: שכונת נווה רם, נווה רם
-- m3 · person: two people sharing a surname · נמרוד רוזנטל: found via suggest+applied as «ונמרוד רוזנטל», «מורן רוזנטל», **leaked**: רוזנטל
 - m3 · person: nikud on one occurrence · מיקה: missed, **leaked**: מיקה
 - m3 · person: once, only with a prefix letter · הילי: missed, **leaked**: הילי, בהילי
 - m3 · person: name that reads like a body's · עומרי גן: missed, **leaked**: עומרי גן
@@ -151,7 +150,6 @@ Counted, not optimised for: the list is read, accept-all is not how the tool is 
 - a1 · person: only in corrupted form, never cleanly · וסילייב: missed, **leaked**: וסיליב
 - a2 · person: same person, one clean and one corrupted spelling · אלמליח: found via suggest as «אתמול ואלמליך», **leaked**: אלמליח, אלמליך
 - a2 · person: minor, first name only · אסיף: missed, **leaked**: אסיף
-- a3 · person: two people sharing a surname · סוהא אגבריה: found via suggest+applied as «וסוהא אגבריה», «יונס אגבריה», **leaked**: אגבריה
 - a4 · person: same person, one clean and one corrupted spelling · תורגמן: found via suggest+applied as «בסוף טורגמן», **leaked**: תורגמן
 - a4 · person: same person, one clean and one corrupted spelling · מקונן: found via suggest+applied as «מקונן», **leaked**: מכונן
 - v1 · person: minor, first name only · תהל: missed, **leaked**: תהל
@@ -171,46 +169,46 @@ Counted, not optimised for: the list is read, accept-all is not how the tool is 
 
 | doc | genre | ms | rules confirmed | unlisted |
 |---|---|---|---|---|
-| m1 | meeting | 223 | 4 | 1 |
-| m2 | meeting | 57 | 6 | 0 |
-| m3 | meeting | 32 | 3 | 0 |
-| m4 | meeting | 40 | 3 | 1 |
-| f1 | filing | 74 | 10 | 1 |
-| f2 | filing | 79 | 12 | 1 |
-| f3 | filing | 37 | 5 | 0 |
-| f4 | filing | 40 | 8 | 3 |
-| t1 | transcript | 45 | 6 | 0 |
-| t2 | transcript | 38 | 5 | 1 |
-| t3 | transcript | 45 | 6 | 1 |
-| t4 | transcript | 61 | 8 | 1 |
-| w1 | welfare | 32 | 1 | 0 |
-| w2 | welfare | 37 | 3 | 0 |
-| w3 | welfare | 31 | 2 | 0 |
-| w4 | welfare | 34 | 4 | 1 |
-| h1 | medical | 47 | 6 | 2 |
-| h2 | medical | 29 | 2 | 0 |
-| h3 | medical | 38 | 4 | 3 |
-| p1 | police | 32 | 2 | 1 |
-| p2 | police | 44 | 3 | 1 |
-| p3 | police | 30 | 1 | 0 |
-| p4 | police | 42 | 4 | 0 |
-| b1 | bank | 40 | 4 | 2 |
-| b2 | bank | 24 | 1 | 0 |
-| b3 | bank | 16 | 1 | 0 |
-| c1 | chat | 21 | 2 | 0 |
-| c2 | chat | 36 | 4 | 1 |
-| c3 | chat | 29 | 2 | 0 |
-| c4 | chat | 56 | 4 | 0 |
-| x1 | position | 46 | 5 | 1 |
-| x2 | position | 33 | 4 | 0 |
-| x3 | position | 39 | 4 | 0 |
-| a1 | audio | 24 | 3 | 0 |
-| a2 | audio | 36 | 5 | 0 |
-| a3 | audio | 47 | 7 | 1 |
-| a4 | audio | 54 | 4 | 0 |
-| v1 | interview | 41 | 2 | 0 |
-| v2 | interview | 52 | 3 | 0 |
-| v3 | interview | 19 | 2 | 0 |
-| s1 | structure | 49 | 4 | 2 |
-| s2 | structure | 30 | 4 | 2 |
-| s3 | structure | 41 | 4 | 2 |
+| m1 | meeting | 241 | 4 | 1 |
+| m2 | meeting | 59 | 6 | 0 |
+| m3 | meeting | 45 | 3 | 0 |
+| m4 | meeting | 65 | 3 | 1 |
+| f1 | filing | 90 | 10 | 1 |
+| f2 | filing | 89 | 11 | 1 |
+| f3 | filing | 48 | 5 | 0 |
+| f4 | filing | 72 | 8 | 3 |
+| t1 | transcript | 62 | 6 | 0 |
+| t2 | transcript | 53 | 5 | 1 |
+| t3 | transcript | 59 | 6 | 1 |
+| t4 | transcript | 94 | 8 | 1 |
+| w1 | welfare | 69 | 1 | 0 |
+| w2 | welfare | 70 | 3 | 0 |
+| w3 | welfare | 73 | 2 | 0 |
+| w4 | welfare | 89 | 4 | 1 |
+| h1 | medical | 121 | 6 | 2 |
+| h2 | medical | 68 | 2 | 0 |
+| h3 | medical | 60 | 4 | 3 |
+| p1 | police | 63 | 2 | 1 |
+| p2 | police | 42 | 3 | 1 |
+| p3 | police | 35 | 1 | 0 |
+| p4 | police | 57 | 4 | 0 |
+| b1 | bank | 50 | 4 | 2 |
+| b2 | bank | 33 | 1 | 0 |
+| b3 | bank | 32 | 1 | 0 |
+| c1 | chat | 34 | 2 | 0 |
+| c2 | chat | 45 | 4 | 1 |
+| c3 | chat | 58 | 2 | 0 |
+| c4 | chat | 59 | 4 | 0 |
+| x1 | position | 52 | 5 | 1 |
+| x2 | position | 30 | 4 | 0 |
+| x3 | position | 37 | 4 | 0 |
+| a1 | audio | 25 | 3 | 0 |
+| a2 | audio | 34 | 5 | 0 |
+| a3 | audio | 55 | 7 | 1 |
+| a4 | audio | 48 | 4 | 0 |
+| v1 | interview | 43 | 2 | 0 |
+| v2 | interview | 37 | 3 | 0 |
+| v3 | interview | 23 | 2 | 0 |
+| s1 | structure | 50 | 4 | 2 |
+| s2 | structure | 49 | 4 | 2 |
+| s3 | structure | 57 | 4 | 2 |
