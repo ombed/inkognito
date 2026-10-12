@@ -1,5 +1,7 @@
 const { test, expect } = require("./base");
 const H = require("./helpers");
+// about the browser's own key: no fixed one (e2e/base.js, aliasPin)
+test.use({ aliasPin: null });
 
 /* The invented names come from a secret key kept in this browser (the owner's decision, 12.10; the engineering audit).
    Until then they came from the real name by public code alone: anyone holding the text the AI saw and a list of

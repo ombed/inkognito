@@ -1,5 +1,7 @@
 const { test, expect } = require("./base");
 const H = require("./helpers");
+// the demo keeps its key for the visit only: no fixed key is put in the storage it checks (e2e/base.js, aliasPin)
+test.use({ aliasPin: null });
 
 /* The no-account demo on inkognito.co.il (the owner's decisions 18 and 29, 6.10; built 8.10.2026, v68). The
    hosted build serves the tool at /demo/ with window.__inkDemo set and no sign-in. Strict: the invented
