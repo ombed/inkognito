@@ -1,0 +1,45 @@
+name: hosted-build
+
+# The hosted site, built by GitHub from this branch: every file's SHA-256 is published with the run, and the build is
+# attested (built by this workflow, from this commit), so what inkognito.co.il serves can be checked against the
+# repository, and a firm can check it too (the engineering audit, item 17: today the site is built and deployed from
+# the owner's computer). Notes plan C3, first step: deploys still run from the owner's computer; the build is
+# reproducible (no clock, no randomness, LF everywhere by .gitattributes), so a file served live has one of these
+# hashes, or it is not what the repository holds.
+on:
+  push:
+    branches: [inkognito]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Build the hosted site
+        run: npm run -s build:hosted
+      - name: The SHA-256 of every file it would serve
+        run: |
+          (cd dist && find . -type f -print0 | sort -z | xargs -0 sha256sum) > dist-sha256.txt
+          echo "### The hosted build of ${GITHUB_SHA::7}: $(wc -l < dist-sha256.txt) files" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"; grep -E ' \./(index|app/index|app/redact-engine)\.(html|js)$' dist-sha256.txt >> "$GITHUB_STEP_SUMMARY"; echo '```' >> "$GITHUB_STEP_SUMMARY"
+      - name: Attest the build (who built it, from which commit)
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: dist-sha256.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hosted-dist-sha256
+          path: dist-sha256.txt
+          retention-days: 90
