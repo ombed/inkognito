@@ -902,3 +902,24 @@ test("«שינוי כתובת המייל» sends the link to both addresses and 
   expect(put.body.email).toBe("new@example.co.il");
   expect(decodeURIComponent(put.query)).toContain("redirect_to=");
 });
+
+/* Offline (the owner's decision of 12.10, review item d0-offline A): the tool on the site needs a connection to open,
+   because every opening checks the account (the security page says so). After one visit the service worker keeps the
+   tool's files, and offline the page came up from them and said «ואחר כך הכלי עובד גם בלעדיו» while it could not
+   start. Offline the tool does not open, and says at once that there is no connection and why. */
+test.describe("offline", () => {
+  test.use({ serviceWorkers: "allow" });
+  test("after a visit, offline the tool does not open and says there is no connection", async ({ page, context }) => {
+    test.info().annotations.push({ type: "no-self-check" });
+    await hosted(page);
+    await boot(page);
+    await page.evaluate(async () => { await navigator.serviceWorker.ready; });
+    await page.reload();
+    await expect(page.locator("#dc-root")).toBeAttached({ timeout: 60000 });
+    await context.setOffline(true);
+    await page.reload().catch(() => {});
+    await expect(page.locator("#boot-msg")).toHaveText("אין חיבור לאינטרנט. כדי לפתוח את הכלי צריך חיבור, כי בכל פתיחה נבדקת הכניסה לחשבון.", { timeout: 5000 });
+    await expect(page.locator("#dc-root")).toHaveCount(0);
+    await expect(page.locator("body")).not.toContainText("גם בלעדיו");
+  });
+});
