@@ -6,8 +6,17 @@ const CRC=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;
   for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
 function crc32(u8){let c=0xFFFFFFFF;for(let i=0;i<u8.length;i++)c=CRC[(c^u8[i])&255]^(c>>>8);
   return (c^0xFFFFFFFF)>>>0}
+/* פריסה עם תקרה (הביקורת ההנדסית, 12.10): קובץ שנבנה לתקוף — כמה קילובייט שנפרסים לג'יגה — הקפיא את הלשונית.
+   רכיב שנפרס מעבר ל-INFLATE_CAP נעצר, והקובץ נדחה כפגום */
+const INFLATE_CAP=256*1024*1024;
 async function pipe(u8,S,fmt){const s=new Blob([u8]).stream().pipeThrough(new S(fmt));
-  return new Uint8Array(await new Response(s).arrayBuffer())}
+  if(typeof DecompressionStream==="undefined"||S!==DecompressionStream) return new Uint8Array(await new Response(s).arrayBuffer());
+  const r=s.getReader(), parts=[]; let n=0;
+  for(;;){ const {done,value}=await r.read(); if(done)break; n+=value.length;
+    if(n>INFLATE_CAP){ try{ await r.cancel(); }catch(_){} throw new Error("מבנה הקובץ פגום"); }
+    parts.push(value); }
+  const out=new Uint8Array(n); let o=0; for(const p of parts){ out.set(p,o); o+=p.length; }
+  return out}
 const inflate=u8=>pipe(u8,DecompressionStream,"deflate-raw");
 const deflate=u8=>pipe(u8,CompressionStream,"deflate-raw");
 
@@ -22,6 +31,8 @@ async function unzip(buf){
       nl=dv.getUint16(p+28,true),el=dv.getUint16(p+30,true),cl=dv.getUint16(p+32,true),
       lo=dv.getUint32(p+42,true);
     const name=new TextDecoder().decode(new Uint8Array(buf,p+46,nl));
+    // שני רכיבים באותו שם: הכלי היה מנקה אחד, ו-Word עלול להציג את השני (הביקורת ההנדסית, 12.10)
+    if(out.some(f=>f.name===name)) throw new Error("מבנה הקובץ פגום");
     const lnl=dv.getUint16(lo+26,true),lel=dv.getUint16(lo+28,true);
     const raw=new Uint8Array(buf,lo+30+lnl+lel,cs);
     out.push({name,meth,raw});p+=46+nl+el+cl;

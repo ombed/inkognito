@@ -24,14 +24,15 @@ ok(!!def, "index.html defines caseKey(k)");
 ok(!!def && /window\.__inkStoreSuffix/.test(def[0]) && /k\+":"\+s/.test(def[0]), "caseKey reads window.__inkStoreSuffix and joins it with a colon: " + (def ? def[0] : "none"));
 const list = code.match(/static CASE_KEYS=\[[^\]]*\]/);
 const inList = (i) => !!list && i > list.index && i < list.index + list[0].length;
-const uses = [...code.matchAll(/"redact-(?:cases|profile-last)"/g)];
+const uses = [...code.matchAll(/"redact-(?:cases|profile-last|alias-key)"/g)];
 ok(uses.length >= 10, "the case keys are found in the code: " + uses.length);
 const bare = uses.filter((m) => !/caseKey\($/.test(code.slice(Math.max(0, m.index - 13), m.index)) && !inList(m.index))
   .map((m) => code.slice(Math.max(0, m.index - 50), m.index + 25).replace(/\s+/g, " "));
 ok(bare.length === 0, "no case key is used without caseKey(): " + bare.join(" · "));
 
 console.log("\n— the cases of every account go only by a button of their own; deleting the model keeps them —");
-ok(!!list && list[0] === 'static CASE_KEYS=["redact-cases","redact-profile-last"]', "CASE_KEYS lists the two case keys: " + (list ? list[0] : "none"));
+// the key of the invented names (12.10) is a case key too: one per account, and it goes with the cases
+ok(!!list && list[0] === 'static CASE_KEYS=["redact-cases","redact-profile-last","redact-alias-key"]', "CASE_KEYS lists the three case keys: " + (list ? list[0] : "none"));
 const forget = code.match(/\bforgetCases\(\)\{[\s\S]*?\n {2}\}/);
 ok(!!forget && /K\.some\(c=>k===c\|\|k\.startsWith\(c\+":"\)\)/.test(forget[0]), "forgetCases removes each case key and every key that is it followed by a colon");
 const mf = code.match(/modelForget = async \(\) => \{[\s\S]*?\n {2}\};/);

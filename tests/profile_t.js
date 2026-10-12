@@ -231,7 +231,8 @@ const app0 = code.indexOf('type="text/x-dc"');
 const DISPLAY = /^localStorage\.getItem\("redact-(?:theme|intro-seen|tour-seen)"\)/;
 const reads = [...code.matchAll(/localStorage\.getItem\(/g)].filter((m) => app0 > 0 && m.index > app0 && !DISPLAY.test(code.slice(m.index, m.index + 50)))
   .map((m) => memberAt(m.index));
-const RAW = ["readCases", "readLast", "writeCase", "deleteCase", "importCases", "dropStored"];
+// aliasKey reads only the key of the invented names (12.10), and takes it only as 64 hex characters
+const RAW = ["readCases", "readLast", "writeCase", "deleteCase", "importCases", "dropStored", "aliasKey"];
 ok(reads.length >= 7, "the reads of the case keys are found: " + reads.length);
 ok(reads.every((n) => RAW.includes(n)), "a case key is read only in " + RAW.join(", ") + " (the last four only write the stored map back, or compare a name): " + reads.join(", "));
 
