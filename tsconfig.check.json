@@ -1,0 +1,13 @@
+{
+  "//": "Type checks of the files that have joined them (notes plan C2, first step; engine/globals.d.ts). Not a build: nothing is emitted.",
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "target": "es2022",
+    "lib": ["es2022", "dom"],
+    "skipLibCheck": true,
+    "moduleDetection": "force"
+  },
+  "files": ["page-logic.js", "engine/03-fakenames.js", "engine/globals.d.ts"]
+}

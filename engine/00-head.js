@@ -25,24 +25,33 @@ async function unzip(buf,caps){
   const dv=new DataView(buf),N=buf.byteLength;let e=-1;
   for(let i=N-22;i>=Math.max(0,N-66000);i--) if(dv.getUint32(i,true)===0x06054b50){e=i;break}
   if(e<0) throw new Error("הקובץ לא נראה כמו ‎.docx תקין");
-  const n=dv.getUint16(e+10,true);let p=dv.getUint32(e+16,true);const out=[];
-  for(let i=0;i<n;i++){
-    if(dv.getUint32(p,true)!==0x02014b50) throw new Error("מבנה הקובץ פגום");
-    const meth=dv.getUint16(p+10,true),cs=dv.getUint32(p+20,true),
-      nl=dv.getUint16(p+28,true),el=dv.getUint16(p+30,true),cl=dv.getUint16(p+32,true),
-      lo=dv.getUint32(p+42,true);
-    const name=new TextDecoder().decode(new Uint8Array(buf,p+46,nl));
-    // שני רכיבים באותו שם: הכלי היה מנקה אחד, ו-Word עלול להציג את השני (הביקורת ההנדסית, 12.10). Word משווה
-    // שמות רכיבים בלי הבדל בין אותיות גדולות לקטנות, ולכן גם word/Document.xml ליד word/document.xml
-    if(out.some(f=>f.name.toLowerCase()===name.toLowerCase())) throw new Error("מבנה הקובץ פגום");
-    const lnl=dv.getUint16(lo+26,true),lel=dv.getUint16(lo+28,true);
-    const raw=new Uint8Array(buf,lo+30+lnl+lel,cs);
-    out.push({name,meth,raw});p+=46+nl+el+cl;
-  }
+  /* קובץ שבור או בנוי לתקוף נדחה תמיד באותה הודעה (הביקורת ההנדסית, 12.10): מיקום שמחוץ לקובץ זרק עד כאן
+     RangeError באנגלית, וזרם דחוס שבור זרק TypeError. כל רכיב נבדק גם מול סכום הביקורת (CRC) שהקובץ נושא:
+     רכיב ששונה או נחתך אחרי שנכתב נדחה, כמו ש-Word עצמו מתלונן עליו. tests/zipfuzz_t.js */
+  const BAD="מבנה הקובץ פגום", out=[];
+  try{
+    const n=dv.getUint16(e+10,true);let p=dv.getUint32(e+16,true);
+    for(let i=0;i<n;i++){
+      if(dv.getUint32(p,true)!==0x02014b50) throw new Error(BAD);
+      const meth=dv.getUint16(p+10,true),crc=dv.getUint32(p+16,true),cs=dv.getUint32(p+20,true),
+        nl=dv.getUint16(p+28,true),el=dv.getUint16(p+30,true),cl=dv.getUint16(p+32,true),
+        lo=dv.getUint32(p+42,true);
+      if(meth!==0&&meth!==8) throw new Error(BAD);
+      const name=new TextDecoder().decode(new Uint8Array(buf,p+46,nl));
+      // שני רכיבים באותו שם: הכלי היה מנקה אחד, ו-Word עלול להציג את השני (הביקורת ההנדסית, 12.10). Word משווה
+      // שמות רכיבים בלי הבדל בין אותיות גדולות לקטנות, ולכן גם word/Document.xml ליד word/document.xml
+      if(out.some(f=>f.name.toLowerCase()===name.toLowerCase())) throw new Error(BAD);
+      if(dv.getUint32(lo,true)!==0x04034b50) throw new Error(BAD);
+      const lnl=dv.getUint16(lo+26,true),lel=dv.getUint16(lo+28,true);
+      const raw=new Uint8Array(buf,lo+30+lnl+lel,cs);
+      out.push({name,meth,crc,raw});p+=46+nl+el+cl;
+    }
+  }catch(err){ throw err instanceof RangeError?new Error(BAD):err; }
   let left=cap.total;
   for(const f of out){
-    f.data = f.meth===0 ? raw2(f.raw) : await inflate(f.raw, Math.min(cap.part,left));
-    left-=f.data.length; if(left<0) throw new Error("מבנה הקובץ פגום");
+    try{ f.data = f.meth===0 ? raw2(f.raw) : await inflate(f.raw, Math.min(cap.part,left)); }catch(_){ throw new Error(BAD); }
+    left-=f.data.length; if(left<0) throw new Error(BAD);
+    if(crc32(f.data)!==f.crc) throw new Error(BAD);
   }
   return out;
 }

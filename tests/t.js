@@ -132,8 +132,11 @@ for(const said of ["06.03.2026","6.03.2026","06/03/2026","6 במרץ 2026","6 ב
   eq(C.restoreNames("נקבע ל-"+said+".",D1).text,"נקבע ל-1.1.2026.","a leading zero or another month spelling: «"+said+"»");
 const D2=[["11.2.26","16.11.26"]];
 eq(C.restoreNames("ב-16.11.2026 וב-16/11/26.",D2).text,"ב-11.2.26 וב-11.2.26.","a two-digit year, written by the AI in full or with a slash");
-for(const t of ["ב-16.11.2027.","ב-16.11.20261.","ב-116.11.2026.","ב-16 בנובמבר.","ב-16.11.","ב-11/16/2026.","ב-16 בנובמבר 2027.","ב-17 בנובמבר 2026.","שעה 16:11:2026."])
+for(const t of ["ב-16.11.2027.","ב-16.11.20261.","ב-116.11.2026.","ב-16 בנובמבר.","ב-16.11.","ב-11/16/2026.","ב-16 בנובמבר 2027.","שעה 16:11:2026."])
   eq(back(t),t,"not the shifted date, left alone: «"+t+"»");
+// the day after the shifted one is a date the AI computed from it: it moves back by the same days, marked (the owner's
+// decision of 12.10, «A»; tests/dateback_t.js). It stayed as written before
+eq(back("ב-17 בנובמבר 2026."),"ב-12 בפברואר 2026.","a day the AI computed from the shifted one moves back by the same days");
 // the same invented day stands for two real days (two documents of one case shifted by different amounts):
 // each spelling that went out comes back to its own day, and another spelling of it is not guessed
 r=C.restoreNames("16.11.2026, 16/11/2026 ו-16 בנובמבר 2026.",[["1.1.2026","16.11.2026"],["3.3.2026","16/11/2026"]]);

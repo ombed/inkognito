@@ -22,6 +22,7 @@ const TEXT = [
   "התיקים ששמרתם בדפדפן הזה לא עוברים לבד. כדי להעביר אותם, מורידים אותם כאן לקובץ, ואחרי ההרשמה בוחרים «ייבוא תיקים מקובץ».",
   "הקובץ מכיל את שמות הלקוחות שבתיקים: שמרו אותו כמו כל מסמך של תיק.",
 ];
+const WIPE = "מחיקה מהדפדפן הזה", WIPED = "התיקים נמחקו מהדפדפן הזה.";
 const DOWNLOAD = "הורדת התיקים לקובץ", GO = "מעבר לאינקוגניטו", WORDMARK = "אינקוגניטו";
 const stripComments = (s) => s.replace(/<!--[\s\S]*?-->/g, " ").replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:\\])\/\/[^\n]*/g, "$1");
 
@@ -50,7 +51,10 @@ const stripComments = (s) => s.replace(/<!--[\s\S]*?-->/g, " ").replace(/\/\*[\s
   ok(/<noscript>[\s\S]*<a href="https:\/\/inkognito\.co\.il\/">inkognito\.co\.il<\/a>[\s\S]*<\/noscript>/.test(page), "without script, a plain link to inkognito.co.il");
   // every word a visitor can see is one of these: no other text came in with the page
   const body = page.slice(page.indexOf("<body>")).replace(/<script>[\s\S]*?<\/script>/g, " ").replace(/<!--[\s\S]*?-->/g, " ").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-  ok(body === [WORDMARK, ...TEXT, DOWNLOAD, GO, "inkognito.co.il"].join(" "), "the page says these words and no others: " + body);
+  // after the download: «מחיקה מהדפדפן הזה», and when they are gone «התיקים נמחקו מהדפדפן הזה.» (both hidden until then)
+  ok(page.includes('<div class="actions" id="wipe-row" hidden><button type="button" id="wipe">' + WIPE + "</button></div>"), "the delete button, in the approved words, hidden until the download");
+  ok(page.includes('<div id="wiped" role="status" tabindex="-1" hidden>' + WIPED + "</div>"), "the line after deleting, in the approved words, hidden until then");
+  ok(body === [WORDMARK, ...TEXT, DOWNLOAD, GO, WIPE, WIPED, "inkognito.co.il"].join(" "), "the page says these words and no others: " + body);
 
   console.log("\n— nothing leaves the browser —");
   const urls = [...(page + sw).matchAll(/\bhttps?:\/\/[^\s"'<>)]+/g)].map((m) => m[0]);
@@ -82,7 +86,11 @@ const stripComments = (s) => s.replace(/<!--[\s\S]*?-->/g, " ").replace(/\/\*[\s
   console.log("\n— what the page reads, and what it does with nothing —");
   const code = stripComments(script);
   ok(code.includes('"redact-cases"') && code.includes('"redact-profile-last"') && !/redact-(?:cases|profile-last):/.test(code), "it reads the public tool's own keys, with no account suffix");
-  ok(!/localStorage\.(?:setItem|removeItem|clear)\b/.test(code), "it never writes or removes anything saved");
+  ok(!/localStorage\.(?:setItem|clear)\b/.test(code), "it never writes anything saved");
+  // it removes the cases only on «מחיקה מהדפדפן הזה», after the approved question (the owner's decision of 12.10, «A»)
+  const rm = code.indexOf("localStorage.removeItem"), ask = code.indexOf('confirm("למחוק מהמחשב הזה את כל התיקים השמורים? אי אפשר לבטל את זה.")');
+  ok((code.match(/localStorage\.removeItem/g) || []).length === 1 && ask > 0 && ask < rm && /\^redact-\(cases\|profile-last\|alias-key\)\(:\|\$\)/.test(code.slice(ask, rm + 40)),
+    "it removes only the case keys, in one place, after asking in the approved words");
   ok(code.includes('location.replace("https://inkognito.co.il/")'), "with nothing saved it replaces itself with inkognito.co.il");
   ok(/\{ inkognito: "cases", v: 1, exported, cases: cases \|\| \{\}, last \}/.test(code), "the file is the cases format: " + (code.match(/const file = [^;]*;/) || ["none"])[0]);
   ok(code.includes('a.download = "inkognito-cases-" + exported.slice(0, 10) + ".json";'), "named inkognito-cases-<YYYY-MM-DD>.json");

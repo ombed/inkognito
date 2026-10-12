@@ -276,3 +276,32 @@ test("a file the moved page downloads, imported in the tool, brings every case; 
     site.server.close();
   }
 });
+
+/* The old address keeps the cases in that browser until they are deleted (the owner's decision of 12.10, «A»). After the
+   download, and only then, «מחיקה מהדפדפן הזה» appears (the words of the sign-out note); it asks first, in the words of
+   «ניקוי התיקים מהמחשב», and then says «התיקים נמחקו מהדפדפן הזה.» On «no» nothing is deleted. */
+test("after the download the moved page offers to delete the cases from this browser, asks first, and then says so", async ({ page }) => {
+  const site = await serve(forwardSite());
+  try {
+    const outside = await guard(page);
+    await seedOld(page, { "redact-cases": CASES, "redact-profile-last": LAST });
+    await page.goto(site.base + "/index.html");
+    const wipe = page.getByRole("button", { name: "מחיקה מהדפדפן הזה", exact: true });
+    await expect(wipe).toBeHidden();
+    await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: DOWNLOAD, exact: true }).click()]);
+    await expect(wipe).toBeVisible();
+    let asked = "";
+    page.once("dialog", (d) => { asked = d.message(); d.dismiss(); });
+    await wipe.click();
+    await expect.poll(() => asked).toBe("למחוק מהמחשב הזה את כל התיקים השמורים? אי אפשר לבטל את זה.");
+    expect(await page.evaluate(() => !!localStorage.getItem("redact-cases")), "«no» keeps them").toBe(true);
+    page.once("dialog", (d) => d.accept());
+    await wipe.click();
+    await expect(page.getByRole("status")).toHaveText("התיקים נמחקו מהדפדפן הזה.");
+    expect(await page.evaluate(() => Object.keys(localStorage).filter((k) => /^redact-(cases|profile-last)/.test(k)))).toEqual([]);
+    await expect(page.getByRole("button", { name: DOWNLOAD, exact: true })).toBeHidden();
+    expect(outside, "nothing left the browser").toEqual([]);
+  } finally {
+    site.server.close();
+  }
+});

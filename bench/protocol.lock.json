@@ -1,0 +1,8 @@
+{
+ "why": "The blind test and its answer key, locked (the engineering audit, 12.10): a change to either fails tests/protocol_lock_t.js until this file is updated in the same change, with the reason in its commit.",
+ "locked": "2026-10-12",
+ "files": {
+  "tests/protocol.txt": "dcbceb5d8073e8545081d3f105a8f6b3d72d90e392e9b75004d7c09d27a27631",
+  "bench/model-eval/gold/protocol.json": "ae8408fc00f62d57f2c1eca1960fec96150a470115542ee8275e5da0559d58ae"
+ }
+}

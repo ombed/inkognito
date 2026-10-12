@@ -7,7 +7,7 @@
      publishes this page as index.html and as 404.html; e2e/moved.spec.js and tests/forward_t.js check it.
      The policy allows only this page's own script and style, by their hashes: nothing is fetched, and
      nothing can be sent anywhere. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-YfpafsEyFyUE0zNF7IuyEn7b7mmRgdsjvkIt9351twE='; style-src 'sha256-4S/1EjRVR9L0D5pgFX2klMz6OfAcONDneW6vqgtit6I='; img-src data:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-cU8jC35vuWWfXRUsVSXyxEFvesrlSw71J3nPN5ftNYY='; style-src 'sha256-2kns36SypvNiONCl8TnjqleqoVQQiONb6n3/4GNW/u8='; img-src data:; base-uri 'none'; form-action 'none'">
 <meta name="robots" content="noindex">
 <meta name="inkognito" content="moved">
 <meta name="referrer" content="no-referrer">
@@ -31,12 +31,15 @@ html.dark header{box-shadow:inset 0 -1px 0 rgba(216,182,90,.3)}
 main{max-width:660px;margin:0 auto;padding:44px 22px 72px}
 p{margin:0 0 16px;max-width:62ch}
 #moved>p:first-child{font-size:20px;line-height:1.55;font-weight:500;margin-bottom:20px}
+[hidden]{display:none!important}
 .actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:28px}
-#download,#go{font:inherit;font-size:15px;line-height:1.3;letter-spacing:.01em;padding:12px 20px;border-radius:10px;text-align:center;cursor:pointer}
+#download,#go,#wipe{font:inherit;font-size:15px;line-height:1.3;letter-spacing:.01em;padding:12px 20px;border-radius:10px;text-align:center;cursor:pointer}
 #download{border:0;background:var(--accent);color:var(--panel);font-weight:600}
 #download:hover{background:var(--accent-hover)}
 #go{border:1px solid var(--control);background:var(--panel);color:var(--ink);font-weight:500;text-decoration:none}
-#go:hover{background:var(--panel2)}
+#go:hover,#wipe:hover{background:var(--panel2)}
+#wipe{border:1px solid var(--control);background:var(--panel);color:var(--ink);font-weight:500}
+#wiped{margin-top:20px;font-weight:500}
 a{color:var(--ink)}
 :focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 @media (max-width:480px){header{padding:0 16px}main{padding:28px 16px 48px}#moved>p:first-child{font-size:18px}.actions>*{flex:1 1 100%}}
@@ -74,6 +77,18 @@ a{color:var(--ink)}
       a.click();
       a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 4000);
+      // after the download, and only then: «מחיקה מהדפדפן הזה» (the owner's decision of 12.10, the approved words of the
+      // sign-out note and of «ניקוי התיקים מהמחשב»), so nobody deletes the cases before they have taken them along
+      document.getElementById("wipe-row").hidden = false;
+    });
+    document.getElementById("wipe").addEventListener("click", () => {
+      if (!confirm("למחוק מהמחשב הזה את כל התיקים השמורים? אי אפשר לבטל את זה.")) return;
+      try { for (const k of Object.keys(localStorage)) if (/^redact-(cases|profile-last|alias-key)(:|$)/.test(k)) localStorage.removeItem(k); } catch (_) {}
+      document.querySelector(".actions").hidden = true;
+      document.getElementById("wipe-row").hidden = true;
+      const done = document.getElementById("wiped");
+      done.hidden = false;
+      done.focus();
     });
   });
 })();
@@ -87,6 +102,8 @@ a{color:var(--ink)}
 <p>התיקים ששמרתם בדפדפן הזה לא עוברים לבד. כדי להעביר אותם, מורידים אותם כאן לקובץ, ואחרי ההרשמה בוחרים «ייבוא תיקים מקובץ».</p>
 <p>הקובץ מכיל את שמות הלקוחות שבתיקים: שמרו אותו כמו כל מסמך של תיק.</p>
 <div class="actions"><button type="button" id="download">הורדת התיקים לקובץ</button><a id="go" href="https://inkognito.co.il/login?mode=signup">מעבר לאינקוגניטו</a></div>
+<div class="actions" id="wipe-row" hidden><button type="button" id="wipe">מחיקה מהדפדפן הזה</button></div>
+<div id="wiped" role="status" tabindex="-1" hidden>התיקים נמחקו מהדפדפן הזה.</div>
 </div>
 <noscript><p><a href="https://inkognito.co.il/">inkognito.co.il</a></p></noscript>
 </main>

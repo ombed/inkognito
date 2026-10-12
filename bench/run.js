@@ -43,7 +43,9 @@ function report(title, docs, rows, unlisted, perDoc, meta) {
   if (pipe) console.log(`model loaded in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
 
   // the corpus: committed outputs, the gate's input
-  const { rows, unlisted, perDoc } = await B.runAll(pipe);
+  const { rows, unlisted, perDoc, outs } = await B.runAll(pipe);
+  // the deterministic layers' output for every document, which bench/golden.js holds to bench/golden/ (12.10)
+  if (NO_MODEL) fs.writeFileSync(path.join(__dirname, "outputs-no-model.json"), JSON.stringify(outs, null, 1));
   const md = report("Benchmark results", KEY.docs, rows, unlisted, perDoc, KEY);
   fs.writeFileSync(path.join(__dirname, NO_MODEL ? "results-no-model.md" : "results.md"), md);
   fs.writeFileSync(path.join(__dirname, NO_MODEL ? "results-no-model.json" : "results.json"), JSON.stringify({ rows, unlisted, perDoc }, null, 1));

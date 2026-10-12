@@ -159,7 +159,8 @@ function makeBench(E, opt) {
     const r2 = await E.redactDocx(buf, rules2, [], OD);
     const out = norm(await fileText(r2.blob));
     const applied = new Set([...r1.applied, ...r2.applied].map((a) => norm(a.base || a.value)));
-    return { surfaced, applied, near, out, rules: rules2.length, why, model, text: blocks.map((b) => b.text).join("\n") };
+    // second: the scan of the result itself, without the list (secondScan, 12.10)
+    return { surfaced, applied, near, out, rules: rules2.length, why, model, text: blocks.map((b) => b.text).join("\n"), second: r2.second || [] };
   }
 
   function scoreDoc(doc, res) {
@@ -238,7 +239,7 @@ function makeBench(E, opt) {
 
   // the whole corpus in one call: totals plus the rows, for sweeps
   async function runAll(pipe, rawOut, docs) {
-    const rows = [], unlisted = [], perDoc = [];
+    const rows = [], unlisted = [], perDoc = [], outs = {};
     for (const doc of docs || KEY.docs) {
       const t1 = Date.now();
       const res = await runDoc(pipe, doc, rawOut);
@@ -246,11 +247,13 @@ function makeBench(E, opt) {
       rows.push(...s.rows);
       unlisted.push(...s.unlisted.map((u) => ({ doc: doc.id, genre: doc.genre, ...u })));
       perDoc.push({ id: doc.id, genre: doc.genre, ms: Date.now() - t1, rules: res.rules, unlisted: s.unlisted.length });
+      // what the tool would hand over, for bench/golden.js (12.10)
+      outs[doc.id] = typeof res.out === "string" ? res.out : (res.out && res.out.text) || "";
     }
     const scored = rows.filter((r) => r.found !== null);
     const totals = { leaked: scored.filter((r) => r.leaked).length, missed: scored.filter((r) => !r.found).length,
       fp: rows.reduce((n, r) => n + r.fp, 0), junk: unlisted.length, ms: perDoc.reduce((n, d) => n + d.ms, 0) };
-    return { rows, unlisted, perDoc, totals };
+    return { rows, unlisted, perDoc, totals, outs };
   }
 
   return { runDoc, scoreDoc, table, runAll, blocksOf, modelSuggest, norm, hit, wordIn, KEY, OPT: O };
