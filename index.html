@@ -3660,6 +3660,35 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     for(const [real,arr] of Object.entries(rvP?(rvP.sent||{}):this.sentAll())) for(const fake of arr) if(!pairs.some(p=>p[1]===fake)) pairs.push([surface(real),fake]);
     // שמות בדויים של מסמכים קודמים בסשן (docReset), שאינם של המפה הזו: מסומנים כמה שנשאר, לא מוחזרים
     const mine=new Set(pairs.map(p=>p[1])), earlier=[...(this._earlierFakes||[])].filter(f=>!mine.has(f));
+    /* שם בדוי של מסמך אחר — תיק ששמור במחשב הזה, או מסמך קודם בסשן — שחולק מילה עם שם בדוי של המסמך הזה (השמות
+       הבדויים באים ממאגרים משותפים): ההחזרה הייתה מכניסה את האדם של המסמך הזה לתשובה של לקוח אחר, «מרים הרשקוביץ»
+       ← «מרים ליה», ומציגה הצלחה (הציד של 11.10, ux.md). כלום לא מוחזר, וזה מה שנאמר (הנוסח שאושר, 12.10). מילית של
+       שם («בן», «בר») אינה מילה משותפת, וגם לא תאריך או מספר */
+    const PART=new Set(["בן","בת","בר","אבו","אל","דה","ואן","לה"]);
+    const words=f=>E.norm(String(f||"")).trim().split(/\s+/).filter(w=>w.length>1&&/[א-ת]/.test(w)&&!PART.has(w));
+    const mineW=new Set([...mine].flatMap(words)), here=rvP?(rvP.name||""):(S.caseName||""), others=new Set(earlier);
+    for(const p of this.readCases()) if(p.name!==here){
+      for(const f of Object.values(p.map||{})) others.add(f);
+      for(const a of Object.values(p.sent||{})) for(const f of a||[]) others.add(f);
+    }
+    if(rvP) for(const f of Object.values(this.currentMap())) others.add(f);
+    // כל שם בדוי שבתשובה, של המסמך הזה ושל אחרים; מופע ארוך גובר על מופע שבתוכו: «הרשקוביץ» שבתוך «מרים הרשקוביץ»
+    // שייך למי ש«מרים הרשקוביץ» שלו (התיק שנטען כאן להחזרה בלבד, e2e/case-open-doc.spec.js)
+    const ans=E.norm(S.rvIn), spans=[];
+    for(const [f,own] of [...[...mine].map(f=>[f,true]), ...[...others].filter(f=>f&&!mine.has(f)).map(f=>[f,false])]){
+      const n=E.norm(f).trim(); if(!n) continue;
+      const rx=new RegExp("(^|[^א-ת])([ובהלמכש]?"+n.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+")(?![א-ת])","gu");
+      for(const m of ans.matchAll(rx)){ const s=m.index+m[1].length; spans.push({s, e:s+m[2].length, f, own}); }
+    }
+    spans.sort((a,b)=>(b.e-b.s)-(a.e-a.s));
+    const taken=[];
+    for(const x of spans) if(!taken.some(t=>x.s<t.e&&t.s<x.e)) taken.push(x);
+    const cross=taken.filter(x=>!x.own&&words(x.f).some(w=>mineW.has(w))).map(x=>x.f);
+    if(cross.length){
+      if(!S.tour) this.log.add("restore-other-doc",{n:cross.length});
+      this.setState({rvOut:"", rvCount:0, rvLeft:[], err:"בתשובה יש שמות בדויים של מסמך אחר, ולכן היא לא הוחזרה. פותחים את המסמך או התיק שלה."});
+      return;
+    }
     const r=E.restoreNames(S.rvIn, pairs, earlier);
     // ההחזרה בסיור היא של המסמך לדוגמה: ביומן נרשם הסיור עצמו
     if(!S.tour) this.log.add("restore",{count:r.count, left:(r.left||[]).length});
