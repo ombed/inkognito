@@ -1020,7 +1020,7 @@ function fakePlace(value,used,forbidden,kind){
     }
     return true;
   };
-  const start=hash32(norm(String(value||"")).trim())%pool.length;
+  const start=(typeof aliasSeed==="function"?aliasSeed:hash32)(norm(String(value||"")).trim())%pool.length;
   for(let k=0;k<pool.length;k++){
     const cand=pool[(start+k)%pool.length];
     if(free(cand))return cand;

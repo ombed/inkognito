@@ -169,6 +169,9 @@ class Engine{
   constructor(subs,allow,opt,docText){
     subs=subs.map(x=>({...x}));
     this.opt=opt; this.subs=subs;
+    // המפתח הסודי של השמות הבדויים, מהדפדפן של החשבון (setAliasKey). רק אפשרויות שמציינות אותו משנות אותו
+    // (null מנקה): מנוע שנבנה בלי השדה לא יחזיר בשקט את הגזירה הציבורית, שכל אחד יכול לחשב
+    if(typeof setAliasKey==="function"&&opt&&Object.prototype.hasOwnProperty.call(opt,"aliasKey")) setAliasKey(opt.aliasKey);
     // שם בדוי שכבר מופיע במסמך האמיתי הוא מלכודת: אי אפשר יהיה להחזיר
     // אותו, והוא ייראה כאילו הוא שייך למישהו. אוספים את כל מילות המסמך
     // ואוסרים עליהן.

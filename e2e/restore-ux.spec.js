@@ -241,20 +241,27 @@ test("«ניקוי התיקים מהמחשב» asks first, then clears every sav
   const keys = () => page.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith("redact-")).sort());
   const clear = page.getByRole("button", { name: "ניקוי התיקים מהמחשב" });
   await expect(page.locator(`[data-case="${p.name}"]`)).toBeVisible();
+  // the key of the invented names (12.10), made when the engine loads, goes with the cases
+  const aliasKey = () => page.evaluate(() => localStorage.getItem("redact-alias-key"));
+  await expect.poll(aliasKey).toMatch(/^[0-9a-f]{64}$/);
+  const key0 = await aliasKey();
 
   // «no» keeps everything
   let said = "";
   page.once("dialog", (dl) => { said = dl.message(); dl.dismiss(); });
   await clear.click();
   await expect.poll(() => said).toBe("למחוק מהמחשב הזה את כל התיקים השמורים? אי אפשר לבטל את זה.");
-  expect(await keys()).toEqual(["redact-cases", "redact-intro-seen", "redact-profile-last:acct-2", "redact-theme", "redact-tour-seen"]);
+  expect(await keys()).toEqual(["redact-alias-key", "redact-cases", "redact-intro-seen", "redact-profile-last:acct-2", "redact-theme", "redact-tour-seen"]);
   await expect(page.locator(`[data-case="${p.name}"]`)).toBeVisible();
 
   // «yes» clears the cases of every account, and only them
   page.once("dialog", (dl) => dl.accept());
   await clear.click();
   await expect(page.locator("[data-notice]")).toContainText("התיקים השמורים נמחקו מהמחשב.");
-  expect(await keys()).toEqual(["redact-intro-seen", "redact-theme", "redact-tour-seen"]);
+  expect(await keys()).toEqual(["redact-alias-key", "redact-intro-seen", "redact-theme", "redact-tour-seen"]);
+  // a new key: what she sends from now on does not link to the invented names of the cases she cleared
+  expect(await aliasKey()).toMatch(/^[0-9a-f]{64}$/);
+  expect(await aliasKey()).not.toBe(key0);
   await expect(page.locator("[data-case]")).toHaveCount(0);
   await expect(clear, "nothing is left to clear").toHaveCount(0);
 });

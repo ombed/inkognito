@@ -6,12 +6,22 @@ const CRC=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;
   for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
 function crc32(u8){let c=0xFFFFFFFF;for(let i=0;i<u8.length;i++)c=CRC[(c^u8[i])&255]^(c>>>8);
   return (c^0xFFFFFFFF)>>>0}
-async function pipe(u8,S,fmt){const s=new Blob([u8]).stream().pipeThrough(new S(fmt));
-  return new Uint8Array(await new Response(s).arrayBuffer())}
-const inflate=u8=>pipe(u8,DecompressionStream,"deflate-raw");
+/* פריסה עם תקרה (הביקורת ההנדסית, 12.10): קובץ שנבנה לתקוף — כמה קילובייט שנפרסים לג'יגה — הקפיא את הלשונית.
+   רכיב שנפרס מעבר ל-ZIP_CAP.part, או קובץ שכל רכיביו יחד עוברים את ZIP_CAP.total, נעצר ונדחה כפגום */
+const ZIP_CAP={part:256*1024*1024, total:512*1024*1024};
+async function pipe(u8,S,fmt,cap){const s=new Blob([u8]).stream().pipeThrough(new S(fmt));
+  if(!cap) return new Uint8Array(await new Response(s).arrayBuffer());
+  const r=s.getReader(), parts=[]; let n=0;
+  for(;;){ const {done,value}=await r.read(); if(done)break; n+=value.length;
+    if(n>cap){ try{ await r.cancel(); }catch(_){} throw new Error("מבנה הקובץ פגום"); }
+    parts.push(value); }
+  const out=new Uint8Array(n); let o=0; for(const p of parts){ out.set(p,o); o+=p.length; }
+  return out}
+const inflate=(u8,cap)=>pipe(u8,DecompressionStream,"deflate-raw",cap||ZIP_CAP.part);
 const deflate=u8=>pipe(u8,CompressionStream,"deflate-raw");
 
-async function unzip(buf){
+async function unzip(buf,caps){
+  const cap={...ZIP_CAP,...(caps||{})};
   const dv=new DataView(buf),N=buf.byteLength;let e=-1;
   for(let i=N-22;i>=Math.max(0,N-66000);i--) if(dv.getUint32(i,true)===0x06054b50){e=i;break}
   if(e<0) throw new Error("הקובץ לא נראה כמו ‎.docx תקין");
@@ -22,11 +32,18 @@ async function unzip(buf){
       nl=dv.getUint16(p+28,true),el=dv.getUint16(p+30,true),cl=dv.getUint16(p+32,true),
       lo=dv.getUint32(p+42,true);
     const name=new TextDecoder().decode(new Uint8Array(buf,p+46,nl));
+    // שני רכיבים באותו שם: הכלי היה מנקה אחד, ו-Word עלול להציג את השני (הביקורת ההנדסית, 12.10). Word משווה
+    // שמות רכיבים בלי הבדל בין אותיות גדולות לקטנות, ולכן גם word/Document.xml ליד word/document.xml
+    if(out.some(f=>f.name.toLowerCase()===name.toLowerCase())) throw new Error("מבנה הקובץ פגום");
     const lnl=dv.getUint16(lo+26,true),lel=dv.getUint16(lo+28,true);
     const raw=new Uint8Array(buf,lo+30+lnl+lel,cs);
     out.push({name,meth,raw});p+=46+nl+el+cl;
   }
-  for(const f of out) f.data = f.meth===0 ? raw2(f.raw) : await inflate(f.raw);
+  let left=cap.total;
+  for(const f of out){
+    f.data = f.meth===0 ? raw2(f.raw) : await inflate(f.raw, Math.min(cap.part,left));
+    left-=f.data.length; if(left<0) throw new Error("מבנה הקובץ פגום");
+  }
   return out;
 }
 const raw2=u=>new Uint8Array(u);

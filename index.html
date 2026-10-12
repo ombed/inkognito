@@ -289,7 +289,7 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
 </div></div>
 <script>
 (function(){
-  console.log("אינקוגניטו — גרסה v73.12");
+  console.log("אינקוגניטו — גרסה v73.13");
   /* הכלי באתר צריך חיבור כדי להיפתח: בכל פתיחה נבדקת הכניסה לחשבון (דף האבטחה). עד 12.10 ההודעה כאן הבטיחה שבלי
      אינטרנט הכלי עובד, וכשלא היה חיבור היא הוצגה בדיוק אז (הנוסח שאושר, 12.10). בלי חיבור היא מוצגת מיד, ולא אחרי
      תשע שניות של «נטען…» */
@@ -342,8 +342,8 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
         console.log("עובד שירות: "+served);
         var el=document.getElementById("ver"); if(!el) return;
         if(chip===null) chip=el.innerHTML; else el.innerHTML=chip;
-        if(served==="v73.12") return;
-        el.innerHTML='גרסה v73.12 · <b style="color:var(--warn)">יש גרסה חדשה: רעננו עם Ctrl+Shift+R</b>';
+        if(served==="v73.13") return;
+        el.innerHTML='גרסה v73.13 · <b style="color:var(--warn)">יש גרסה חדשה: רעננו עם Ctrl+Shift+R</b>';
       });
       var ask=function(){ if(sw.controller) sw.controller.postMessage("version") };
       sw.ready.then(ask);
@@ -1378,7 +1378,7 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
 
 </div>
 </x-dc>
-<footer><nav data-foot aria-label="מידע ומסמכים משפטיים"><a href="https://inkognito.co.il/" target="_blank" rel="noopener">עמוד הבית</a><a href="https://inkognito.co.il/terms" target="_blank" rel="noopener">תנאי שימוש</a><a href="https://inkognito.co.il/privacy" target="_blank" rel="noopener">מדיניות פרטיות</a><a href="https://inkognito.co.il/accessibility" target="_blank" rel="noopener">הצהרת נגישות</a><a href="mailto:contact@inkognito.co.il">יצירת קשר</a></nav><div id="ver">גרסה v73.12</div></footer>
+<footer><nav data-foot aria-label="מידע ומסמכים משפטיים"><a href="https://inkognito.co.il/" target="_blank" rel="noopener">עמוד הבית</a><a href="https://inkognito.co.il/terms" target="_blank" rel="noopener">תנאי שימוש</a><a href="https://inkognito.co.il/privacy" target="_blank" rel="noopener">מדיניות פרטיות</a><a href="https://inkognito.co.il/accessibility" target="_blank" rel="noopener">הצהרת נגישות</a><a href="mailto:contact@inkognito.co.il">יצירת קשר</a></nav><div id="ver">גרסה v73.13</div></footer>
 <script type="text/x-dc" data-dc-script data-props="{&quot;docFont&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;serif&quot;,&quot;sans&quot;],&quot;default&quot;:&quot;serif&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;עיצוב&quot;},
 &quot;railWidth&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:340,&quot;max&quot;:500,&quot;step&quot;:4,&quot;default&quot;:404,&quot;unit&quot;:&quot;px&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;עיצוב&quot;}}">
 class Component extends DCLogic {
@@ -1640,6 +1640,8 @@ class Component extends DCLogic {
           }, 2000);
         } else this.setState({nerMsg:t||"", nerPct:p, nerStall:false});
       });
+      // המפתח נכנס למנוע מיד, גם לשמות שנבחרים לפני ריצה (מסך היישובים)
+      if(typeof E.setAliasKey==="function") E.setAliasKey(this.aliasKey());
       this.setState({E, ready:true}, ()=>{ const q=this._early||[]; this._early=null; if(q.length&&this.log) this.log.add("file-early",{n:q.length}); for(const fn of q) fn(); });
       this.nerStatus(E);
     }catch(e){
@@ -2534,6 +2536,22 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
   };
 
   /* ── עיבוד ── */
+  /* המפתח הסודי של השמות הבדויים (החלטת הבעלים, 12.10; הביקורת ההנדסית): נוצר פעם אחת בדפדפן הזה, לכל חשבון לחוד
+     (caseKey), ולא יוצא ממנו. בלעדיו כל אחד יכול היה לחשב מהקוד הציבורי את השם הבדוי של כל שם אמיתי, ולאשר מי במסמך.
+     «ניקוי התיקים מהמחשב» מוחק גם אותו (GONE_WITH_CASES). אם האחסון חסום, מפתח לביקור הזה בלבד */
+  aliasKey(){
+    if(this._aliasKey) return this._aliasKey;
+    const k=this.caseKey("redact-alias-key"), good=v=>/^[0-9a-f]{64}$/.test(String(v||""));
+    // בהדגמה שבלי חשבון (window.__inkDemo) שום דבר לא נשמר: גם המפתח הוא לביקור הזה בלבד
+    const keep=!window.__inkDemo;
+    let v=null; if(keep) try{ v=localStorage.getItem(k); }catch(_){}
+    if(!good(v)){
+      const b=new Uint8Array(32); crypto.getRandomValues(b);
+      v=Array.from(b, x=>x.toString(16).padStart(2,"0")).join("");
+      if(keep) try{ localStorage.setItem(k,v); }catch(_){}
+    }
+    return this._aliasKey=v;
+  }
   opts(){
     const E=this.state.E;
     const on=new Set(E.PAT.filter(p=>p.on).map(p=>p.n));
@@ -2544,7 +2562,7 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     // מפספס (שם רוסי, «משפחת X», שם שמופיע רק בפרוזה) תמורת ארבע הצעות עודפות.
     // סגנון לפי סוג: שמות, גופים ומקומות לפי המצב הגלובלי; כל השאר — מספרים,
     // תאריכים, כתובות — לפי בחירתה, ומחיקה כברירת מחדל. כרטיס יכול לעקוף.
-    return {on, flag, mode:this.state.mode, near:this.state.o.near, body:true, prefixes:"normal",
+    return {on, flag, mode:this.state.mode, near:this.state.o.near, body:true, prefixes:"normal", aliasKey:this.aliasKey(),
       // תאריך מלא מוזז כברירת מחדל (Q5 בגרסה 3), בלי קשר לבחירה על שאר המספרים; כרטיס יכול לעקוף
       // תאריך: מוזז כברירת מחדל (Q5 בגרסה 3); בחירה אחרת (Q1 בגרסה 5) נשמרת בפרופיל התיק
       styles:{"*":this.state.o.numStyle||"blank", DATE:this.state.o.dateStyle||"name"}};
@@ -3217,12 +3235,17 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
      התיקים, בלי שאלה ובמילים שמדברות רק על המודל (הביקורת העצמאית, 6.10); עכשיו היא של «ניקוי התיקים מהמחשב»
      בלבד (clearCases), במילים שאושרו ואחרי שאלה. tests/casekey_t.js */
   static CASE_KEYS=["redact-cases","redact-profile-last"];
+  // מפתח השמות הבדויים (aliasKey, 12.10) נמחק עם התיקים, אבל הוא לא תיק: casesHere לא סופר אותו
+  static GONE_WITH_CASES=["redact-alias-key"];
   forgetCases(){
     try{
-      const K=this.constructor.CASE_KEYS, gone=[];
+      const K=[...this.constructor.CASE_KEYS, ...this.constructor.GONE_WITH_CASES], gone=[];
       for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(K.some(c=>k===c||k.startsWith(c+":"))) gone.push(k); }
       for(const k of gone) localStorage.removeItem(k);
     }catch(_){}
+    // המפתח של השמות הבדויים נמחק עם התיקים: מה שייבחר מעכשיו נגזר ממפתח חדש
+    this._aliasKey=null;
+    const E=this.state&&this.state.E; if(E&&typeof E.setAliasKey==="function") E.setAliasKey(this.aliasKey());
   }
   /* מה שהמסך קורא מפרופיל של תיק, בסוג שהכלי עצמו כותב (הביקורת העצמאית, 6.10). ייבוא התיקים בדק רק את
      המעטפת של הקובץ, ובכל רשומה רק v:1 ושם, ושמר את הרשומה כמו שהיא: רשומה שבה rules היה אובייקט, מספר או
