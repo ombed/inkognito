@@ -3688,6 +3688,55 @@ async function readBlocks(buf,depth){
    העיצוב שלו אינו נשמר. חלק שאי אפשר לקרוא יוצא בלי הטקסט שלו — עדיף על פרק שנשלח כמו שהוא.
    מחזיר את שמות החלקים שהוצאו. */
 const R_NS="http://schemas.openxmlformats.org/officeDocument/2006/relationships";
+/* קובץ מוטמע (החלטת הבעלים, 12.10, «A», הנוסח אושר; הביקורת ההנדסית): גיליון או מסמך שהודבק כאובייקט נשאר עד כאן בקובץ
+   שיצא כמו שהוא, עם השמות שבו, וגם תמונת התצוגה שלו (EMF) מראה אותם. עכשיו כל אובייקט מוטמע (w:object, או w:pict שיש
+   בו o:OLEObject) מוחלף במקומו בשורה «[כאן היה קובץ מוטמע, והוא הוסר]», וכל מה שתחת word/embeddings יוצא מהקובץ, עם תמונת
+   התצוגה שלו כשאין לה שימוש אחר. גרף שהנתונים שלו בגיליון מוטמע שומר את מה שהוא מציג, בלי הקישור לגיליון (c:externalData),
+   אחרת Word היה מתלונן על קישור לחלק שאיננו. מחזיר את החלקים שיוצאים ואת מספר הקבצים המוטמעים. tests/embedded_t.js */
+const OBJ_NOTE="[כאן היה קובץ מוטמע, והוא הוסר]";
+function dropObjects(files){
+  const gone=new Set(), media=new Map();
+  for(const f of files){
+    if(!TEXTPART.test(f.name))continue;
+    const s=TXT.decode(f.data); if(!/<w:object\b|OLEObject/.test(s))continue;
+    const d=parseXML(s);
+    const els=[...Array.from(d.getElementsByTagNameNS(W,"object")),
+      ...Array.from(d.getElementsByTagNameNS(W,"pict")).filter(p=>p.getElementsByTagNameNS(O_NS,"OLEObject").length)];
+    if(!els.length)continue;
+    const rf=files.find(x=>x.name===f.name.replace(/[^/]+$/,m=>"_rels/"+m+".rels")), rels=rf?[...TXT.decode(rf.data).matchAll(/<Relationship\b[^>]*>/g)].map(m=>m[0]):[];
+    for(const el of els){
+      if(!el.parentNode)continue;
+      // כל מזהה קישור בתוך האובייקט: הקובץ עצמו (o:OLEObject) ותמונת התצוגה (v:imagedata)
+      const ids=new Set();
+      for(const x of [el,...Array.from(el.getElementsByTagName("*"))]) for(const a of Array.from(x.attributes||[])) if(a.namespaceURI===R_NS||/^r:/.test(a.name)) ids.add(a.value);
+      for(const id of ids){
+        const rel=rels.find(x=>(/\bId="([^"]*)"/.exec(x)||[])[1]===id);
+        let tg=rel&&!/TargetMode="External"/.test(rel)&&(/\bTarget="([^"]*)"/.exec(rel)||[])[1];
+        if(!tg)continue; try{tg=decodeURIComponent(tg)}catch(_){/* כמו שהוא */}
+        const name=partPath(f.name,tg);
+        if(/^word\/embeddings\//.test(name))gone.add(name); else if(/^word\/media\//.test(name))media.set(name,(media.get(name)||0)+1);
+      }
+      const wt=d.createElementNS(W,"w:t"); wt.setAttributeNS(XMLNS,"xml:space","preserve"); wt.textContent=OBJ_NOTE;
+      if(el.parentNode.localName==="r"&&el.parentNode.namespaceURI===W) el.parentNode.replaceChild(wt,el);
+      else { const r=d.createElementNS(W,"w:r"); r.appendChild(wt); el.parentNode.replaceChild(r,el); }
+    }
+    f.data=ENC.encode(serXML(d,s));
+  }
+  // מה שתחת word/embeddings יוצא כולו, גם בלי אובייקט שמצביע עליו (גיליון של גרף)
+  for(const f of files) if(/^word\/embeddings\//.test(f.name))gone.add(f.name);
+  // תמונת תצוגה יוצאת רק כשאין לה קישור נוסף מחוץ לאובייקטים שהוסרו
+  for(const [name,n] of media){
+    const b=name.split("/").pop(), refs=files.filter(x=>x.name.endsWith(".rels")).reduce((k,x)=>k+(TXT.decode(x.data).split('/'+b+'"').length-1)+(TXT.decode(x.data).split('"'+b+'"').length-1),0);
+    if(refs<=n)gone.add(name);
+  }
+  // גרף שהגיליון שלו יוצא: בלי הקישור אליו
+  if([...gone].some(n=>/^word\/embeddings\//.test(n)))
+    for(const f of files) if(/^word\/charts\/[^/]+\.xml$/.test(f.name)){
+      const s=TXT.decode(f.data), t=s.replace(/<c:externalData\b[^>]*\/>|<c:externalData\b[\s\S]*?<\/c:externalData>/g,"");
+      if(t!==s)f.data=ENC.encode(t);
+    }
+  return {gone:[...gone], files:[...gone].filter(n=>/^word\/embeddings\//.test(n)).length};
+}
 async function inlineChunks(files,depth){
   const gone=[];
   for(const f of files){
@@ -4032,12 +4081,14 @@ function stripImageMeta(name,u){
 }
 async function redactDocx(buf,subs,allow,opt){
   const files=await unzip(buf);
-  const rep={ins:0,del:0,cm:0,rsid:0,hidden:0,img:0,dropped:[],meta:[],rels:[],sweep:0};
+  const rep={ins:0,del:0,cm:0,rsid:0,hidden:0,img:0,embedded:0,dropped:[],meta:[],rels:[],sweep:0};
   // קטע מיובא נכתב כפסקאות לפני הכול, והחלק שלו יוצא מהקובץ כמו כל חלק שהוסר
   const chunks=await inlineChunks(files,0);
+  // קובץ מוטמע יוצא, ושורה במקומו (dropObjects)
+  const objs=dropObjects(files); rep.embedded=objs.files;
   let keep=files.filter(f=>{
     // התמונה הממוזערת היא צילום של העמוד הראשון, עם כל מה שכתוב בו (ביקורת H10)
-    if(DROP.includes(f.name)||/(?:^|\/)customxml\//i.test(f.name)||f.name.startsWith("docProps/thumbnail.")||chunks.includes(f.name)){rep.dropped.push(f.name);return false}
+    if(DROP.includes(f.name)||/(?:^|\/)customxml\//i.test(f.name)||f.name.startsWith("docProps/thumbnail.")||chunks.includes(f.name)||objs.gone.includes(f.name)){rep.dropped.push(f.name);return false}
     return true});
   // הקישורים של חלק שהוסר (ההערות) הולכים איתו: בלעדיו נשארו בקובץ, יתומים (הציד של 11.10)
   {const gone=new Set(rep.dropped.map(n=>n.replace(/([^/]*)$/,"_rels/$1.rels")));keep=keep.filter(f=>!gone.has(f.name))}
@@ -5831,4 +5882,4 @@ export {nerLast, hiddenPart, nerForget, VRB, COMMON, KNOWN_FIRST, NW, NWE, crc32
   resolve, Engine, flatten, acceptTracked, stripComments, redactDocx, partName, ctxHTML, verify,
   discover, PLACES, PLACE_BY, geoMap, geoNames, placesFound, examplesOf, findPlaces, fakePlace,
   atlasTags, atlasDiff, atlasPenalty, placeKind, nerEnv, nerCached, nerPersist, nerLoad, nerRun,
-  TITLE_RX, ORG_RX, likelyOrg, cleanEntry, trimEdges, pseudoRX, restoreNames, restorePairs, STOP, gender, origin, readBlocks, isTextPart, setAliasKey, hmac32, stripImageMeta, secondScan};
+  TITLE_RX, ORG_RX, likelyOrg, cleanEntry, trimEdges, pseudoRX, restoreNames, restorePairs, STOP, gender, origin, readBlocks, isTextPart, setAliasKey, hmac32, stripImageMeta, secondScan, OBJ_NOTE};

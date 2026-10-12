@@ -1896,7 +1896,7 @@ td{border-bottom:1px solid #f0f0f0;padding:6px 4px;vertical-align:top}
 <div class="warn">הדוח מכיל את הפרטים המקוריים לצד התחליפים. הוא נועד לתיק הפנימי — אין לשלוח אותו לכלי AI או לצד שלישי.</div>
 <h2>סטטוס אימות</h2>
 <p class="sub">${v.passed?"לא נשאר בקובץ אף שם או מספר שהוחלף":"האימות נכשל: נשארו בקובץ שמות או מספרים שהיה צריך להחליף"} ·
-נסרקו ${v.parts} חלקים · ${(v.near||[]).length} מילים בכתיב דומה · ${(v.suggest||[]).length} שמות שלא ברשימה · ${v.embedded.length} קבצים מוטמעים שלא נסרקו</p>
+נסרקו ${v.parts} חלקים · ${(v.near||[]).length} מילים בכתיב דומה · ${(v.suggest||[]).length} שמות שלא ברשימה · ${v.embedded.length} תמונות שלא נסרקו</p>
 <h2>הוחלף (${rows.size})</h2>
 <table><tr><th>ערך במקור</th><th>הוחלף ב</th><th>סוג</th><th>מופעים</th><th>היכן</th></tr>
 ${[...rows.values()].sort((a,b)=>b.n-a.n).map(r=>`<tr><td>${esc(r.value)}</td><td>${esc(r.rep)}</td><td>${esc(r.label)}</td><td>${r.n}</td><td>${esc([...r.parts].join(", "))}</td></tr>`).join("")}</table>
@@ -3068,7 +3068,7 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
   cleanStats(st){
     return [["טקסט שנמחק במעקב שינויים",st.del],["שינויים שהתקבלו",st.ins],["סימוני הערות",st.cm],
       ["חלקים שהוסרו",(st.dropped||[]).length],["שדות מטא-דאטה",(st.meta||[]).length],["קישורים שנוטרלו",(st.rels||[]).length],
-      ["מזהי עריכה",st.rsid],["נתונים נסתרים שהוסרו",st.hidden],["החלפות אחידות",st.sweep],
+      ["מזהי עריכה",st.rsid],["קבצים מוטמעים שהוסרו",st.embedded],["נתונים נסתרים שהוסרו",st.hidden],["החלפות אחידות",st.sweep],
       ["חלקים שהכלי אינו קורא, שנוקו מערכים מהרשימה",(st.residue||[]).length]].filter(x=>x[1]);
   }
   verifyFailed(){ const v=this.state.res&&this.state.res.verification; return !!(v&&v.passed===false&&(v.leaks||[]).length); }
@@ -4806,9 +4806,10 @@ const KIND_NAME={NAME:"אדם", ORG:"גוף", PLACE:"מקום"};
       const bits=[], np=this.nearPartial();
       if(np) bits.push(`הבדיקה של כתיב דומה עברה רק על ${np.read} מתוך ${np.of} השמות ברשימה`);
       if(PR.soft.length) bits.push((PR.soft.length===1?"מקום או גוף אחד ממתין":PR.soft.length+" מקומות או גופים ממתינים")+" בפאנל «לבדיקה» — ההחלטה שלכם");
-      if(ver.embedded.length) bits.push(ver.embedded.length+" תמונות או קבצים מוטמעים שלא נסרקו");
+      // קבצים מוטמעים יוצאים מהקובץ (dropObjects, 12.10): מה שנשאר בלי סריקה הוא תמונות
+      if(ver.embedded.length) bits.push(ver.embedded.length+" תמונות שלא נסרקו");
       title="השמות והמספרים הוחלפו. נשארו פריטים שכדאי לבדוק";
-      text=bits.join(" · ")+(ver.embedded.length?". טקסט בתוך תמונה או קובץ מוטמע אינו נסרק.":".");
+      text=bits.join(" · ")+(ver.embedded.length?". טקסט בתוך תמונה אינו נסרק.":".");
     } else {
       // בלי מונחי מנוע (UX #15)
       title="לא נשארו בטקסט שמות או מספרים מהרשימה";
