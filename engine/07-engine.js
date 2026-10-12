@@ -124,8 +124,13 @@ const ADDR_PAT=new Set(["EMAIL","PHONE_MOBILE","PHONE_LAND","ISRAELI_ID","ISRAEL
    לרשימה של 96 חודשים, וכל גיל ומועד שה-AI מחשב יצא שגוי בשנים; והחיפוש בנה מחרוזות לכל היסט, 15 שניות על 1,000
    תאריכים. בתוך הטווח נבחר הראשון, מההיסט של המסמך והלאה, שאין בו התנגשות, ואם אין כזה, זה עם הכי מעט. מה שנשאר
    אינו דליפה: הבדיקה האחרונה סופרת כמה פעמים כל תאריך נכתב כבדוי (verify). nd: הטקסט המנורמל */
+/* בשבועות שלמים (החלטת הבעלים, 12.10): «ביום שני, 12.3» נשאר יום שני גם אחרי ההזזה. היסט של ימים בודדים שם את
+   התאריך ביום אחר בשבוע, הטקסט עוד אמר «יום שני», וה־AI חישב לפי יום שגוי (הביקורת מבחוץ, 12.10). 35 עד 399
+   יום, בתוך הטווח של 30 עד 400; עדיין מסמך מסמך, לא תיק שלם. tests/dateforms_t.js */
+const WEEKS0=5, WEEKS=53;
+function dateOffBase(nd){ return 7*(WEEKS0+(typeof hash32==="function"?hash32(nd):0)%WEEKS); }
 function dateOffFor(nd){
-  const base=30+(typeof hash32==="function"?hash32(nd):0)%371;
+  const base=dateOffBase(nd);
   const P=nd&&PAT.find(p=>p.n==="DATE"); if(!P)return base;
   // מה שהזיהוי רואה: בלי התווים הבלתי נראים (detect/squeeze)
   const DAY=864e5, full=new Set(), dm=new Set(), my=new Set(), dms=new Map();
@@ -148,8 +153,8 @@ function dateOffFor(nd){
     return c;
   };
   let best=base, bc=Infinity;
-  for(let i=0;i<371;i++){
-    const off=30+(base-30+i)%371, c=clash(off,bc);
+  for(let i=0;i<WEEKS;i++){
+    const off=7*(WEEKS0+(base/7-WEEKS0+i)%WEEKS), c=clash(off,bc);
     if(!c)return off;
     if(c<bc){bc=c;best=off}
   }
