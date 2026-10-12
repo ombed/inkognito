@@ -465,7 +465,8 @@ test("a file chosen before the engine has loaded is read once it has", async ({ 
   await page.addInitScript(() => {
     try { localStorage.setItem("redact-intro-seen", "1"); localStorage.setItem("redact-tour-seen", "*"); } catch (_) {}
   });
-  await page.goto("/index.html");
+  // the engine is held: Firefox holds the page's load event for it, so wait only for the navigation (12.10)
+  await page.goto("/index.html", { waitUntil: "commit" });
   await expect(page.locator("#dc-root")).toBeAttached({ timeout: 60000 });
   expect(await page.evaluate(() => !!(window.__pib && window.__pib.state().E))).toBe(false);
   await page.locator('input[type="file"][accept*=".docx"]').setInputFiles("e2e/fixtures/case-empty.docx");

@@ -190,7 +190,8 @@ test("on a phone the first screen is the phone's, by night the night's, while th
   const held = new Promise((r) => { release = r; });
   await page.route("**/redact-engine.js", async (route) => { await held; await route.continue(); });
   await page.addInitScript(() => { try { localStorage.setItem("redact-intro-seen", "1"); localStorage.setItem("redact-tour-seen", "*"); } catch (_) {} });
-  await page.goto("/index.html");
+  // the engine is held: Firefox holds the page's load event for it, so wait only for the navigation (12.10)
+  await page.goto("/index.html", { waitUntil: "commit" });
   await expect(page.locator("#dc-root")).toBeAttached({ timeout: 60000 });
   await expect(page.locator("#boot")).toHaveCount(0);
   await expect(page.locator("[data-settings-toggle]")).toHaveAttribute("aria-expanded", "false");
