@@ -289,7 +289,7 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
 </div></div>
 <script>
 (function(){
-  console.log("אינקוגניטו — גרסה v73.11");
+  console.log("אינקוגניטו — גרסה v73.12");
   /* הכלי באתר צריך חיבור כדי להיפתח: בכל פתיחה נבדקת הכניסה לחשבון (דף האבטחה). עד 12.10 ההודעה כאן הבטיחה שבלי
      אינטרנט הכלי עובד, וכשלא היה חיבור היא הוצגה בדיוק אז (הנוסח שאושר, 12.10). בלי חיבור היא מוצגת מיד, ולא אחרי
      תשע שניות של «נטען…» */
@@ -342,8 +342,8 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
         console.log("עובד שירות: "+served);
         var el=document.getElementById("ver"); if(!el) return;
         if(chip===null) chip=el.innerHTML; else el.innerHTML=chip;
-        if(served==="v73.11") return;
-        el.innerHTML='גרסה v73.11 · <b style="color:var(--warn)">יש גרסה חדשה: רעננו עם Ctrl+Shift+R</b>';
+        if(served==="v73.12") return;
+        el.innerHTML='גרסה v73.12 · <b style="color:var(--warn)">יש גרסה חדשה: רעננו עם Ctrl+Shift+R</b>';
       });
       var ask=function(){ if(sw.controller) sw.controller.postMessage("version") };
       sw.ready.then(ask);
@@ -1378,7 +1378,7 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
 
 </div>
 </x-dc>
-<footer><nav data-foot aria-label="מידע ומסמכים משפטיים"><a href="https://inkognito.co.il/" target="_blank" rel="noopener">עמוד הבית</a><a href="https://inkognito.co.il/terms" target="_blank" rel="noopener">תנאי שימוש</a><a href="https://inkognito.co.il/privacy" target="_blank" rel="noopener">מדיניות פרטיות</a><a href="https://inkognito.co.il/accessibility" target="_blank" rel="noopener">הצהרת נגישות</a><a href="mailto:contact@inkognito.co.il">יצירת קשר</a></nav><div id="ver">גרסה v73.11</div></footer>
+<footer><nav data-foot aria-label="מידע ומסמכים משפטיים"><a href="https://inkognito.co.il/" target="_blank" rel="noopener">עמוד הבית</a><a href="https://inkognito.co.il/terms" target="_blank" rel="noopener">תנאי שימוש</a><a href="https://inkognito.co.il/privacy" target="_blank" rel="noopener">מדיניות פרטיות</a><a href="https://inkognito.co.il/accessibility" target="_blank" rel="noopener">הצהרת נגישות</a><a href="mailto:contact@inkognito.co.il">יצירת קשר</a></nav><div id="ver">גרסה v73.12</div></footer>
 <script type="text/x-dc" data-dc-script data-props="{&quot;docFont&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;serif&quot;,&quot;sans&quot;],&quot;default&quot;:&quot;serif&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;עיצוב&quot;},
 &quot;railWidth&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:340,&quot;max&quot;:500,&quot;step&quot;:4,&quot;default&quot;:404,&quot;unit&quot;:&quot;px&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;עיצוב&quot;}}">
 class Component extends DCLogic {
@@ -3660,6 +3660,35 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     for(const [real,arr] of Object.entries(rvP?(rvP.sent||{}):this.sentAll())) for(const fake of arr) if(!pairs.some(p=>p[1]===fake)) pairs.push([surface(real),fake]);
     // שמות בדויים של מסמכים קודמים בסשן (docReset), שאינם של המפה הזו: מסומנים כמה שנשאר, לא מוחזרים
     const mine=new Set(pairs.map(p=>p[1])), earlier=[...(this._earlierFakes||[])].filter(f=>!mine.has(f));
+    /* שם בדוי של מסמך אחר — תיק ששמור במחשב הזה, או מסמך קודם בסשן — שחולק מילה עם שם בדוי של המסמך הזה (השמות
+       הבדויים באים ממאגרים משותפים): ההחזרה הייתה מכניסה את האדם של המסמך הזה לתשובה של לקוח אחר, «מרים הרשקוביץ»
+       ← «מרים ליה», ומציגה הצלחה (הציד של 11.10, ux.md). כלום לא מוחזר, וזה מה שנאמר (הנוסח שאושר, 12.10). מילית של
+       שם («בן», «בר») אינה מילה משותפת, וגם לא תאריך או מספר */
+    const PART=new Set(["בן","בת","בר","אבו","אל","דה","ואן","לה"]);
+    const words=f=>E.norm(String(f||"")).trim().split(/\s+/).filter(w=>w.length>1&&/[א-ת]/.test(w)&&!PART.has(w));
+    const mineW=new Set([...mine].flatMap(words)), here=rvP?(rvP.name||""):(S.caseName||""), others=new Set(earlier);
+    for(const p of this.readCases()) if(p.name!==here){
+      for(const f of Object.values(p.map||{})) others.add(f);
+      for(const a of Object.values(p.sent||{})) for(const f of a||[]) others.add(f);
+    }
+    if(rvP) for(const f of Object.values(this.currentMap())) others.add(f);
+    // כל שם בדוי שבתשובה, של המסמך הזה ושל אחרים; מופע ארוך גובר על מופע שבתוכו: «הרשקוביץ» שבתוך «מרים הרשקוביץ»
+    // שייך למי ש«מרים הרשקוביץ» שלו (התיק שנטען כאן להחזרה בלבד, e2e/case-open-doc.spec.js)
+    const ans=E.norm(S.rvIn), spans=[];
+    for(const [f,own] of [...[...mine].map(f=>[f,true]), ...[...others].filter(f=>f&&!mine.has(f)).map(f=>[f,false])]){
+      const n=E.norm(f).trim(); if(!n) continue;
+      const rx=new RegExp("(^|[^א-ת])([ובהלמכש]?"+n.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+")(?![א-ת])","gu");
+      for(const m of ans.matchAll(rx)){ const s=m.index+m[1].length; spans.push({s, e:s+m[2].length, f, own}); }
+    }
+    spans.sort((a,b)=>(b.e-b.s)-(a.e-a.s));
+    const taken=[];
+    for(const x of spans) if(!taken.some(t=>x.s<t.e&&t.s<x.e)) taken.push(x);
+    const cross=taken.filter(x=>!x.own&&words(x.f).some(w=>mineW.has(w))).map(x=>x.f);
+    if(cross.length){
+      if(!S.tour) this.log.add("restore-other-doc",{n:cross.length});
+      this.setState({rvOut:"", rvCount:0, rvLeft:[], err:"בתשובה יש שמות בדויים של מסמך אחר, ולכן היא לא הוחזרה. פותחים את המסמך או התיק שלה."});
+      return;
+    }
     const r=E.restoreNames(S.rvIn, pairs, earlier);
     // ההחזרה בסיור היא של המסמך לדוגמה: ביומן נרשם הסיור עצמו
     if(!S.tour) this.log.add("restore",{count:r.count, left:(r.left||[]).length});

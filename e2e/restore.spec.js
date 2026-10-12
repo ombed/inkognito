@@ -205,6 +205,47 @@ for (const how of ["pasted text", "a file"]) {
   });
 }
 
+/* Another client's invented name in the answer (the hunt of 11.10, ux.md ADDED high; the owner's wording of 12.10).
+   Invented names come from shared pools, so client A's «מרים הרשקוביץ» can share «הרשקוביץ» with what client B's
+   «ליה» became; restoring A's answer with B's letter open put «ליה» into A's answer, under a success heading. When the
+   answer holds an invented name of another document (a case saved on this computer, or an earlier document of this
+   session) that shares a word with this document's invented names, nothing is restored, and the screen says why.
+   Which words the pools give is a hash of the real name, so the other case is written from the letter's own. */
+test("an answer with another document's invented name that shares a word with this one's is not restored", async ({ page }) => {
+  await H.serveEngineWithStub(page);
+  await H.boot(page);
+  await modelOff(page);
+  await page.getByPlaceholder("הדבקת טקסט לבדיקה…").fill("מכתב: מרשתי, ליה, מבקשת לקבוע מועד לדיון בבית המשפט. נכחו גם בני משפחת טננבאום.");
+  await page.getByRole("button", { name: "שימוש בטקסט הזה" }).click();
+  await H.startScan(page);
+  await expect(H.goButton(page)).toBeVisible({ timeout: 10000 });
+  const input = page.getByPlaceholder(/שם מלא/), add = page.getByRole("button", { name: "הוספה", exact: true });
+  for (const n of ["ליה", "טננבאום"]) { await input.fill(n); await add.click(); }
+  await H.goOn(page);
+  const run = page.getByRole("button", { name: /החלת הקבוצה|המשך לבדיקה/ }).first();
+  await expect(run.or(page.locator("[data-bar]")).first()).toBeVisible({ timeout: 20000 });
+  await H.throughPlaces(page, run);
+  await expect(page.locator("[data-bar]")).toBeVisible({ timeout: 20000 });
+  const mine = await fakeOf(page, "ליה");
+  // client A's case on this computer: its invented name shares the last word of the letter's
+  const theirs = "מרים " + mine.split(/\s+/).pop();
+  await page.evaluate((fake) => {
+    const cases = JSON.parse(localStorage.getItem("redact-cases") || "{}");
+    cases["כרמי נ׳ שגיא"] = { v: 1, name: "כרמי נ׳ שגיא", created: "2026-10-01T09:00:00.000Z", updated: "2026-10-01T09:00:00.000Z", mode: "real",
+      rules: [{ value: "דנה כרמי", kind: "NAME", replacement: fake, auto: false, g: null }], allow: [], map: { "דנה כרמי": fake }, removed: [], sent: {},
+      styles: { num: "blank", date: "name" } };
+    localStorage.setItem("redact-cases", JSON.stringify(cases));
+  }, theirs);
+  await openRestore(page);
+  await page.getByPlaceholder("הדבקת תשובת ה-AI…").fill(`לדעתי ${theirs} זכאית למזונות, והיא תגיש תביעה.`);
+  await page.getByRole("button", { name: "החזרת שמות", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("בתשובה יש שמות בדויים של מסמך אחר, ולכן היא לא הוחזרה. פותחים את המסמך או התיק שלה.");
+  await expect(page.locator("[data-rv-out]")).toHaveCount(0);
+  // the letter's own answer still comes back
+  await restore(page, `${mine} ביקשה מועד לדיון.`);
+  await expect(page.locator("[data-rv-out]")).toContainText("ליה ביקשה מועד לדיון.");
+});
+
 /* Live check, 6.10: after «החזרת שמות» a screen reader heard nothing, whether it worked or failed: neither
    the error nor the result's heading sat in a live region, and the focus stayed on the button. The error
    is an alert now, as on the other screens, and the heading sits in a status region that is on the screen
