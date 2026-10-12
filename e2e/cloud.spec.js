@@ -918,7 +918,7 @@ test.describe("offline", () => {
     await expect(page.locator("#dc-root")).toBeAttached({ timeout: 60000 });
     // the computer reports it is offline, as with Wi-Fi off; Playwright cuts the network but leaves navigator.onLine
     // true (seen 12.10), and then the page shows, after nine seconds, only that the tool did not load
-    await page.addInitScript(() => Object.defineProperty(Navigator.prototype, "onLine", { get: () => false, configurable: true }));
+    await page.addInitScript(() => Object.defineProperty(window.Navigator.prototype, "onLine", { get: () => false, configurable: true }));
     await context.setOffline(true);
     await page.reload().catch(() => {});
     await expect(page.locator("#boot-msg")).toHaveText("אין חיבור לאינטרנט. כדי לפתוח את הכלי צריך חיבור, כי בכל פתיחה נבדקת הכניסה לחשבון.", { timeout: 5000 });
