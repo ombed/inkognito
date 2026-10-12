@@ -1294,7 +1294,8 @@ async function redactDocx(buf,subs,allow,opt){
   ver.complete=ver.passed&&!remaining.length&&!ver.embedded.length&&
     !near.length&&!suggest.length&&!incomplete.length;
   // dateOff: ההזזה של התאריכים במסמך הזה, בימים; ההחזרה מזיזה בה אחורה תאריך שה-AI חישב (backDates)
-  return {blob,applied,flagged,preview,structural:rep,verification:ver,map:eng.map,dateOff:eng.dateOff};
+  // second: הבדיקה השנייה של התוצאה, בלי הרשימה (secondScan)
+  return {blob,applied,flagged,preview,structural:rep,verification:ver,map:eng.map,dateOff:eng.dateOff,second:secondScan(preview,allow,subs)};
 }
 const PARTN={"document.xml":"גוף המסמך","footnotes.xml":"הערות שוליים","endnotes.xml":"הערות סיום"};
 function partName(p){
@@ -1359,6 +1360,55 @@ function secretTest(nv){
    כשהשכבה הייתה מחליפה אותו בעצמה בטקסט הקריא (placeSure, אותו מבחן של findPlaces); המופע שנשאל ("נקודת מבט
    רעננה", "פותח פתח תקווה") אינו דליפה */
 const XUN=s=>s.replace(/&(quot|apos|lt|gt|amp);/g,(m,k)=>({quot:'"',apos:"'",lt:"<",gt:">",amp:"&"})[k]);
+/* בדיקה שנייה (החלטת הבעלים, 12.10, «A»; הביקורת ההנדסית: «הירוק בודק רק את הרשימה»). הבדיקה האחרונה (verify) מוודאת
+   שמה שברשימה איננו בקובץ, ואינה יכולה לדעת על מה שהכלי לא מצא. זו קוראת את התוצאה עצמה, בלי הרשימה: מספר שנראה מזהה
+   (ת"ז תקינה, טלפון, מייל, חשבון, כרטיס, דרכון, רכב), ושם פרטי מוכר שנשאר — לא מילה רגילה (wordish, poolWordy), לא בתוך
+   מה שהכלי כתב (marks), ולא מה שהיא השאירה (allow). מה שנמצא אינו חוסם: הפס כתום, והיא מחליטה על כל אחד.
+   preview: [{text, marks:[{s,e}]}], התוצאה. tests/secondscan_t.js */
+const SECOND_NUM=new Set(["EMAIL","PHONE_MOBILE","PHONE_LAND","PHONE_INTL","FAX","ISRAELI_ID","ISRAELI_ID_SEP","ISRAELI_ID_LABELED",
+  "CREDIT_CARD","IBAN","PASSPORT","PLATE","PLATE_LABELED","BANK_ACCOUNT"]);
+function secondScan(preview,allow,subs){
+  const keep=new Set((allow||[]).map(a=>norm(String(a)).trim())), out=[], seen=new Set();
+  const ctxOf=(t,s,e)=>({pre:(s>40?"…":"")+t.slice(Math.max(0,s-40),s), hit:t.slice(s,e), post:t.slice(e,e+40)+(e+40<t.length?"…":"")});
+  const plain=x=>!poolWordy(x)&&!wordish(x);
+  /* מילה של שם מהרשימה שנשארה לבדה («הורוביץ» ששם המשפחה שלו הוחלף רק בתוך השם המלא), או שונה ממנה באות אחת
+     («בושקילה» של «בוסקילה»): הבדיקה האחרונה מחפשת את הערך כולו, ולא אותן */
+  const listed=new Set(), particle=new Set(PART.split("|"));
+  for(const r of subs||[]) if((r.kind||"NAME")==="NAME") for(const w of norm(String(r.value||"")).split(/\s+/)) if(w.length>=3&&plain(w)&&!particle.has(w)) listed.add(w);
+  // שונה באות אחת: רק במילה של חמש אותיות לפחות. במילה קצרה יותר כמעט כל מילה רגילה רחוקה אות אחת משם («מוכן»)
+  const near=w=>{ if(w.length<5)return false; for(const x of listed) if(x.length>=5&&Math.abs(x.length-w.length)<=1&&lev(w,x)<=1)return true; return false; };
+  // סיומת של שם משפחה, בלי ‎-ייב ו־‎-סקה, שהן גם סיומות של מילים רגילות («התחייב», «הפסקה», «עסקה»)
+  const SUR_END=/(?:וביץ|ביץ|סקי|ברג|בורג|שטיין|שטין|צקי)$/;
+  const nameOk=x=>!!x&&plain(x)&&(KNOWN_FIRST.has(x)||listed.has(x)||near(x)||(x.length>=5&&SUR_END.test(x)));
+  for(const b of preview||[]){
+    const t=String(b.text||""), nt=norm(t), marks=b.marks||[];
+    const inMark=(s,e)=>marks.some(m=>m.s<e&&s<m.e);
+    // label: התווית של סוג הפרט, כמו בממצא רגיל, כדי ש«להחליף» יוסיף לרשימה את הסוג הנכון
+    const push=(kind,pat,label,s,e)=>{
+      const v=t.slice(s,e), k=norm(v).trim();
+      if(!k||seen.has(kind+"|"+k)||keep.has(k))return;
+      seen.add(kind+"|"+k); out.push({kind,pat,label,value:v,ctx:ctxOf(t,s,e)});
+    };
+    for(const p of PAT){
+      if(!SECOND_NUM.has(p.n))continue;
+      for(const m of nt.matchAll(new RegExp(p.rx.source,"gu"))){
+        const v=m[p.g||0]; if(!v||(p.v&&!p.v(v)))continue;
+        const s=m.index+(p.g?m[0].indexOf(v):0), e=s+v.length;
+        if(!inMark(s,e))push("number",p.n,p.l,s,e);
+      }
+    }
+    for(const m of nt.matchAll(/(?<![א-ת'"׳״])[א-ת]{2,}(?![א-ת'"׳״])/gu)){
+      const w=m[0], s=m.index, e=s+w.length;
+      if(inMark(s,e))continue;
+      // מילה שהיא עצמה שם מוכר או מהרשימה נלקחת כולה («הורוביץ», שה' שלו אינה אות שימוש); אחרת קודם בלי אות השימוש
+      const whole=plain(w)&&(KNOWN_FIRST.has(w)||listed.has(w)), stem=w.length>3&&PFX.has(w[0])?w.slice(1):null;
+      if(whole)push("name","NAME","שם",s,e);
+      else if(stem&&nameOk(stem)&&!wordish(w))push("name","NAME","שם",s+1,e);
+      else if(nameOk(w))push("name","NAME","שם",s,e);
+    }
+  }
+  return out;
+}
 async function verify(buf,secrets,dates,fakes,placeSecrets){
   const files=await unzip(buf);
   const uniq2=a=>[...new Set((a||[]).filter(s=>s&&s.trim().length>=2))].map(s=>[s,norm(s)]);
@@ -2566,4 +2616,4 @@ export {nerLast, hiddenPart, nerForget, VRB, COMMON, KNOWN_FIRST, NW, NWE, crc32
   resolve, Engine, flatten, acceptTracked, stripComments, redactDocx, partName, ctxHTML, verify,
   discover, PLACES, PLACE_BY, geoMap, geoNames, placesFound, examplesOf, findPlaces, fakePlace,
   atlasTags, atlasDiff, atlasPenalty, placeKind, nerEnv, nerCached, nerPersist, nerLoad, nerRun,
-  TITLE_RX, ORG_RX, likelyOrg, cleanEntry, trimEdges, pseudoRX, restoreNames, restorePairs, STOP, gender, origin, readBlocks, isTextPart, setAliasKey, hmac32, stripImageMeta};
+  TITLE_RX, ORG_RX, likelyOrg, cleanEntry, trimEdges, pseudoRX, restoreNames, restorePairs, STOP, gender, origin, readBlocks, isTextPart, setAliasKey, hmac32, stripImageMeta, secondScan};

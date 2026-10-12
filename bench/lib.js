@@ -159,7 +159,8 @@ function makeBench(E, opt) {
     const r2 = await E.redactDocx(buf, rules2, [], OD);
     const out = norm(await fileText(r2.blob));
     const applied = new Set([...r1.applied, ...r2.applied].map((a) => norm(a.base || a.value)));
-    return { surfaced, applied, near, out, rules: rules2.length, why, model, text: blocks.map((b) => b.text).join("\n") };
+    // second: the scan of the result itself, without the list (secondScan, 12.10)
+    return { surfaced, applied, near, out, rules: rules2.length, why, model, text: blocks.map((b) => b.text).join("\n"), second: r2.second || [] };
   }
 
   function scoreDoc(doc, res) {

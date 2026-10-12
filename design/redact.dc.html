@@ -2731,9 +2731,23 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
      בתוך "מה נמצא והוחלף". עכשיו רשימה אחת: אנשים שמחכים (אחרי תואר, לפי הקשר)
      קודם, אחריהם שמות מגוף הטקסט, שיבושי כתיב, מספרים, ובסוף מקומות וגופים. */
   static BLOCK_LBL=/^(?:שם|אדם|ת"ז|ת״ז|תעודת זהות|טלפון|טלפון נייד|טלפון קווי|פקס|דוא"ל|כתובת דוא"ל|כתובת|חשבון בנק|מספר רכב|תאריך לידה|כרטיס אשראי|IBAN|דרכון|התנגשות פרופיל|התנגשות תחליף)/;
+  /* השורה של הבדיקה השנייה בפס, בנוסח שאושר (12.10): «2 מילים שנראות כמו שמות ומספר אחד שנראה כמו ת״ז. כדאי לבדוק
+     אותם לפני שליחה.» אותה תבנית לכל מספר ולכל סוג */
+  secondLine(items){
+    const names=items.filter(x=>x.kind==="name").length, ids=items.filter(x=>/^ISRAELI_ID/.test(x.pat||"")).length,
+      mails=items.filter(x=>x.pat==="EMAIL").length, other=items.length-names-ids-mails, parts=[];
+    if(names) parts.push(names===1?"מילה אחת שנראית כמו שם":names+" מילים שנראות כמו שמות");
+    if(ids) parts.push(ids===1?"מספר אחד שנראה כמו ת״ז":ids+" מספרים שנראים כמו ת״ז");
+    if(other) parts.push(other===1?"מספר אחד שנראה כמו מספר מזהה":other+" מספרים שנראים כמו מספרים מזהים");
+    if(mails) parts.push(mails===1?"כתובת מייל אחת":mails+" כתובות מייל");
+    const and=p=>/^\d/.test(p)?"ו-"+p:"ו"+p;
+    const said=parts.length>1?parts.slice(0,-1).join(", ")+" "+and(parts[parts.length-1]):parts[0];
+    const one=items.length===1, fem=one&&(names===1||mails===1);
+    return said+". כדאי לבדוק "+(one?(fem?"אותה":"אותו"):"אותם")+" לפני שליחה.";
+  }
   pendingReview(){
     const S=this.state, E=S.E, RES=S.res;
-    const out={people:[], numbers:[], soft:[], sug:[], near:[], count:0, blocking:0};
+    const out={people:[], numbers:[], soft:[], sug:[], near:[], second:[], count:0, blocking:0};
     if(!RES||!E) return out;
     const n=v=>E.norm(E.trimEdges(String(v||""))).trim();
     const decided=v=>S.allow.some(a=>n(a)===n(v))||S.rules.some(r=>n(r.value)===n(v));
@@ -2750,7 +2764,11 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     out.sug=this.sugList().filter(x=>!seen.has(n(x.value)));
     out.near=this.nearList().filter(x=>!seen.has(n(x.value)));
     out.blocking=out.people.length+out.numbers.length+out.sug.length+out.near.length;
-    out.count=out.blocking+out.soft.length;
+    /* הבדיקה השנייה של התוצאה (secondScan; החלטת הבעלים, 12.10, «A»): מה שנמצא בה מחכה כאן, אבל אינו חוסם: הפס כתום,
+       וההעתקה וההורדה פתוחות. מה שכבר מחכה כאן בקבוצה אחרת, או שכבר הוחלט, לא חוזר */
+    const waiting=new Set([...seen, ...out.sug.map(x=>n(x.value)), ...out.near.map(x=>n(x.value))]);
+    out.second=(RES.second||[]).filter(x=>!waiting.has(n(x.value))&&!decided(x.value));
+    out.count=out.blocking+out.soft.length+out.second.length;
     return out;
   }
   // "שם" הוא מפתח פנימי; על המסך אותו סוג נקרא "אדם" בכל מקום (UX #11)
@@ -4481,7 +4499,11 @@ const KIND_NAME={NAME:"אדם", ORG:"גוף", PLACE:"מקום"};
     v.pendItems=[...PRv.people, ...PRv.numbers, ...PRv.soft].map(x=>({
       value:x.value, tag:this.kindLabel(x.label)+(x.why?" · "+x.why:""), ctx:x.ctx||{pre:"",hit:"",post:""},
       onAdd:()=>{ this.log.add("review-act",{act:"replace", kind:this.kindOfLabel(x.label)}); this.addRule(E.trimEdges(x.value), this.kindOfLabel(x.label), "", "review"); },
-      onKeep:()=>{ this.log.add("review-act",{act:"keep"}); this.addAllow(E.trimEdges(x.value)); }}));
+      onKeep:()=>{ this.log.add("review-act",{act:"keep"}); this.addAllow(E.trimEdges(x.value)); }}))
+      .concat(PRv.second.map(x=>({
+        value:x.value, tag:"בבדיקה שנייה · "+this.kindLabel(x.label), ctx:x.ctx||{pre:"",hit:"",post:""},
+        onAdd:()=>{ this.log.add("review-act",{act:"replace", kind:this.engineKindOf(x.label), src:"second"}); this.addRule(E.trimEdges(x.value), this.engineKindOf(x.label), "", "review"); },
+        onKeep:()=>{ this.log.add("review-act",{act:"keep", src:"second"}); this.addAllow(E.trimEdges(x.value)); }})));
 
     // המסנן הזה מראה מה שלא הוחלף; "לבדיקה" הוא הפאנל, עם מספר משלו (UX #13)
     v.tabs=[["all","הכל",RES.applied.length+RES.flagged.length],["rep","הוחלף",RES.applied.length],
@@ -4601,6 +4623,9 @@ const KIND_NAME={NAME:"אדם", ORG:"גוף", PLACE:"מקום"};
       // אנשים קודם, ספקות ברמת המילה בסוף
       const ordered=[...PR.people.map(x=>x.value), ...PR.numbers.map(x=>x.value), ...PR.sug.map(x=>x.value), ...PR.near.map(x=>x.value), ...PR.soft.map(x=>x.value)];
       text=listNames(ordered)+". מה שלא הוחלט יגיע ל-AI כמו שהוא.";
+    } else if(PR.second.length){ kind="warn";
+      title="בבדיקה שנייה נמצאו פרטים שאינם ברשימה";
+      text=this.secondLine(PR.second);
     } else if(PR.soft.length||ver.embedded.length||this.nearPartial()){ kind="warn";
       const bits=[], np=this.nearPartial();
       if(np) bits.push(`הבדיקה של כתיב דומה עברה רק על ${np.read} מתוך ${np.of} השמות ברשימה`);
