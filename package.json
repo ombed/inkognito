@@ -22,7 +22,7 @@
     "bench:protocol": "node bench/protocol.js",
     "check:types": "npx --yes -p typescript@5.6.3 tsc -p tsconfig.check.json",
     "gate": "node bench/gate.js",
-    "bump": "node scripts/bump.js && node scripts/page-parts.js",
+    "bump": "node scripts/bump.js",
     "shapes": "node scripts/harvest-shapes.js",
     "log-report": "node scripts/log-report.js",
     "mutants": "node scripts/mutants.js",

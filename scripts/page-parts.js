@@ -8,8 +8,9 @@
      - the page's own inline scripts are named in the policy by their SHA-256, so it needs no 'unsafe-inline':
        an injected <script> or <img onerror=…> does not run.
 
-     node scripts/page-parts.js    writes the hashes into index.html's policy (npm run build:page; build:design and
-                                   bump run it too). tests/csp_t.js fails when they are stale.
+     node scripts/page-parts.js    writes the hashes into index.html's policy (npm run build:page; build:design runs it
+                                   first, and scripts/bump.js writes them itself after the versions it moves).
+                                   tests/csp_t.js fails when they are stale.
 
    The design canvas and the tests that read the logic's words take the page with its logic back in its place
    (pageWithLogic): the same text index.html was before the move. */
