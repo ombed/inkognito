@@ -19,7 +19,7 @@ The interface is in Hebrew; the Hebrew documentation follows this section.
 - It scores **the whole pipeline**, not the model alone: it runs the same chain as the page and checks the output file a user would send, so a leak in any layer counts.
 - A **blocking CI gate** ([bench/gate.js](bench/gate.js)) runs the deterministic layers on every change and compares each entity with itself in the baseline on main, so a change cannot pass by rewriting its own; any entity that gets worse fails the build, and a regression is accepted only by naming it with a reason. The model-on run is in CI too, reporting only for now.
 - **Model choice** ([docs/model-eval/](docs/model-eval/README.md)): 16 configurations of 9 local Hebrew models, with the decision rule written and committed before any run. Only one passed: DictaBERT-parse's NER head with a corrected tokenizer, which now ships.
-- **A real document:** a public Knesset committee transcript ([tests/protocol.txt](tests/protocol.txt), 1,431 words), keyed blind in two independent passes. With every suggestion accepted (measured on 12 October 2026), 1 of its 71 mentions of people is left in the text, 0 of 11 places and 3 of 27 private bodies. It also shows what's next: 9 of its 18 public bodies are replaced too.
+- **A real document:** a public Knesset committee transcript ([tests/protocol.txt](tests/protocol.txt), 1,431 words), keyed blind in two independent passes. With every suggestion accepted (measured on 12 October 2026), 1 of its 71 mentions of people is left in the text, 0 of 11 places and 3 of 27 private bodies. It also shows what's next: 9 of its 18 public bodies are replaced too (`npm run bench:protocol`).
 
 ## How it's built
 
