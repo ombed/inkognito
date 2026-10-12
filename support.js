@@ -2,8 +2,9 @@
 // Vendored copy of dc-runtime for InKognito. No upstream version string exists; scripts/diff-runtime.js
 // prints this file's size and hash and diffs a newer copy against it. First vendored 2026-09-04 (commit cf934f4).
 // Rules that this page relies on: #dc-root height (overridden in index.html), the x-dc/helmet layout, data-props.
-// One local change (13.10.2026): evalDcLogic takes the logic page-component.js registered (window.__dcLogic) when the
-// page holds no text for it, so the page runs with a policy that has no 'unsafe-eval' (scripts/page-parts.js).
+// One local change (13.10.2026): when the page holds no text for its logic, adoptParsed still asks for it and
+// evalDcLogic takes the logic page-component.js registered (window.__dcLogic), so the page runs with a policy that
+// has no 'unsafe-eval' (scripts/page-parts.js).
 "use strict";
 (() => {
   var __defProp = Object.defineProperty;
@@ -1775,6 +1776,8 @@
       if (parsed.preview) r.preview = parsed.preview;
       if (parsed.template) updateHtml(name, parsed.template);
       if (parsed.js) updateJs(name, parsed.js);
+      // InKognito: the page holds no text for its logic; it takes the one page-component.js registered (evalDcLogic)
+      else if (name === rootName && typeof window !== "undefined" && window.__dcLogic) updateJs(name, "");
     }
     return {
       registry,

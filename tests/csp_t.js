@@ -44,6 +44,10 @@ ok(read("sw.js").includes('"./page-component.js"'), "the service worker keeps it
 }
 ok(/function evalDcLogic\(src\) \{[\s\S]{0,700}window\.__dcLogic[\s\S]{0,300}pre\.make\.call\(/.test(read("support.js")),
   "the runtime takes it when the page holds no text (support.js, evalDcLogic)");
+// and asks for it: the runtime passed the logic on only when the page had text for it, and the first browser run
+// of this change drew the header alone (13.10)
+ok(/function adoptParsed\(name, parsed\) \{[\s\S]{0,400}if \(parsed\.js\) updateJs\(name, parsed\.js\);[\s\S]{0,200}else if \(name === rootName[^\n]{0,80}window\.__dcLogic\) updateJs\(name, ""\);/.test(read("support.js")),
+  "the runtime asks for the root page's logic when the page holds no text (support.js, adoptParsed)");
 ok(P.logicOf(js).includes("class Component extends DCLogic"), "the logic sits between page-component.js's two lines");
 {
   // as text, less the two test hooks scripts/build-design.js leaves out

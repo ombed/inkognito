@@ -7,7 +7,9 @@ const H = require("./helpers");
 test("an injected handler does not run, and code is not built from text", async ({ page }) => {
   await H.serveEngineWithStub(page);
   await H.boot(page);
-  expect(await page.evaluate(() => typeof (window.__dcLogic && window.__dcLogic.make)), "the logic came from page-component.js").toBe("function");
+  expect(await page.evaluate(() => typeof (window.__dcLogic && window.__dcLogic.make)), "page-component.js registered the logic").toBe("function");
+  // and the page runs it: the entry screen is the logic's (a template with no logic draws the header alone)
+  await expect(page.getByPlaceholder("הדבקת טקסט לבדיקה…"), "the page runs the logic page-component.js registered").toBeVisible();
   expect(await page.evaluate(() => window.__csp.slice()), "opening the tool breaks no rule of the policy").toEqual([]);
 
   const r = await page.evaluate(async () => {
