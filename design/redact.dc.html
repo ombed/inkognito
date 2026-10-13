@@ -1898,8 +1898,10 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     const inList=v=>peo.some(p=>E.norm(p.value)===E.norm(v));
     // מי שהוסר בתיק ומופיע שוב עולה ראשון, עם ההסבר שלו, גם אם לא היה עובר את סף ההצעות
     const REMOVED_WHY="הוסר מהרשימה במסמך קודם בתיק — להחליף גם כאן?";
+    // הצעה שכל המילים בה נפוצות («עונש מאסר», «יושב מאחוריו») אינה מוצגת (worthAsking); מי שהוסר בתיק עולה בכל מקרה
+    const ask=v=>!E.worthAsking||E.worthAsking(v);
     const peoSug=cands.filter(c=>!inList(c.value)&&!cite(c.value)).filter(c=>{const w=c.value.split(/\s+/);
-      return this.wasRemoved(c.value)||(w.length<=3&&w.every(x=>x.length>=2)&&(w.length>=2||c.speaker||c.count>=2));})
+      return this.wasRemoved(c.value)||(w.length<=3&&w.every(x=>x.length>=2)&&(w.length>=2||c.speaker||c.count>=2)&&ask(c.value));})
       .sort((a,b)=>(this.wasRemoved(b.value)?1:0)-(this.wasRemoved(a.value)?1:0))
       .slice(0,8).map(c=>({value:c.value, why:this.wasRemoved(c.value)?REMOVED_WHY:c.why, count:c.count, kind:"NAME"}));
     this._lastScan={blocks,cands};

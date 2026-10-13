@@ -107,6 +107,26 @@ function nameish(w,docTok){
     if(r.length<4)return false}
   if(docTok.has("ה"+w))return false;
   return true}
+/* מילה שאינה שם: מילה נפוצה בעברית (COMMON_WORDS, 05-common.js) בדיוק בצורה שבה נכתבה, ראשי תיבות (ע"א, בע"מ, יו"ש —
+   אף פעם לא שם של אדם) או אות לבדה. בלי קילוף אותיות שימוש: «לבנה» אינה ל+«בנה», «שמעוני» אינו ש+«מעוני» (בבדיקה, קילוף
+   הוסיף שש מילים מוסתרות מתוך 98 והסתיר שמות). שם פרטי מוכר, שם שהוא גם מילה ושם ממאגר השמות הבדויים — אף פעם לא.
+   worthAsking: הצעה לבדיקה מוצגת רק כשיש בה מילה אחת לפחות שאינה כזאת (הבדיקה העיוורת השנייה, 13.10: בפסקי דין הוצעו
+   כשמות «מאסר», «נקבע», «במסגרתה», «עליו»). רק להצעות: מה שברשימה, מה שהמודל מצא ומה שהיא הקלידה אינו עובר כאן */
+const POOL_NAMES=new Set(Object.values(POOL).flat().map(x=>norm(x)));
+function commonWord(w){
+  w=norm(String(w||"")).replace(/[֑-ׇ]/g,"").trim();
+  if(!w)return true;
+  const name=x=>KNOWN_FIRST.has(x)||WORDLIKE.has(x)||POOL_NAMES.has(x);
+  if(name(w))return false;
+  if(/^[א-ת]['׳]?$/u.test(w))return true;
+  if(/^[א-ת]+["״][א-ת]+$/u.test(w))return true;
+  // רק הרשימה שנבנתה מהנתונים: ב-STOP וב-COMMON הידניים יש גם שמות פרטיים («ישראל»)
+  return COMMON_WORDS.has(w)}
+function worthAsking(value){
+  // סיומת של חברה או מילת סוג של מוסד הן עדות לשם, גם כשהמילים נפוצות: «שקד בע"מ», «עמותת הרימון»
+  const nv=norm(String(value||"")).trim();
+  if(ORG_TAIL.test(nv)||ORG_HEADS.test(nv))return true;
+  return nv.split(/[\s\-־]+/).filter(Boolean).some(w=>/[א-תA-Za-z]/.test(w)&&!commonWord(w))}
 /* "אסתר להידחות" (דוגמה בדויה, v35): כששם המשפחה אינו מופיע במשפט, המילה שאחרי
    השם הפרטי — שם פועל — נדבקה אליו כשם משפחה. אי אפשר היה להשאיר את "אסתר"
    ולוותר על "להידחות", ובהחלפה מילה חשובה משפטית נבלעה בכינוי.
