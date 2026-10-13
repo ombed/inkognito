@@ -32,7 +32,7 @@ function sources(root) {
     { file: "redact-engine.js", code: read("redact-engine.js"), sourceType: "module" },
     { file: "page-logic.js", code: read("page-logic.js"), sourceType: "script" },
     { file: "scripts/harvest-shapes.js", code: read("scripts/harvest-shapes.js"), sourceType: "commonjs" },
-    { file: "index.html.app.js", code: appScript(read("index.html")), sourceType: "script" },
+    { file: "page-component.js", code: read("page-component.js"), sourceType: "script" },
   ];
 }
 

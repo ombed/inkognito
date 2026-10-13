@@ -188,8 +188,14 @@ test("a tooltip opened while the screen rises ends on its word", async ({ page }
   // the moment the places rows exist, while the screen still rises: hover the first town
   const town = page.locator('div:has(> button:text-is("לא להחליף")) span[data-tip="1"]').first();
   await town.waitFor({ state: "attached", timeout: 15000 });
-  const b = await town.boundingBox();
-  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
-  await expect(page.locator('[data-tip="panel"]')).toBeVisible();
+  // the town's place is taken at the moment of each hover, not once before it: on GitHub's runner the mouse went to
+  // where the town had been measured while the screen rose, and no tooltip opened (13.10). Each try comes from
+  // elsewhere: Firefox fires no mouseover for a word that moves under a pointer at rest, nor for a pointer sent to
+  // where it already is. The first try is still inside the rise; force, so it does not wait for the screen to settle
+  await expect(async () => {
+    await page.mouse.move(0, 0);
+    await town.hover({ force: true });
+    await expect(page.locator('[data-tip="panel"]')).toBeVisible({ timeout: 1000 });
+  }).toPass({ timeout: 15000 });
   // the automatic self-check at the end measures the tooltip against its word
 });

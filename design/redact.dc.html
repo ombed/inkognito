@@ -195,27 +195,27 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
     </div>
     <sc-if value="{{ showSteps }}" hint-placeholder-val="{{ true }}">
       <nav style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink3)">
-        <button onClick="{{ goStep1 }}" aria-current="{{ step1Cur }}" style="{{ step1 }}">קובץ</button><span><svg class="ic" data-icon="chevron-left" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></span>
-        <button onClick="{{ goStep2 }}" aria-current="{{ step2Cur }}" disabled="{{ step2Off }}" style="{{ step2 }}">מי בתיק</button><span><svg class="ic" data-icon="chevron-left" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></span>
-        <button onClick="{{ goStep3 }}" aria-current="{{ step3Cur }}" disabled="{{ step3Off }}" style="{{ step3 }}">יישובים</button><span><svg class="ic" data-icon="chevron-left" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></span>
+        <button sc-camel-on-click="{{ goStep1 }}" aria-current="{{ step1Cur }}" style="{{ step1 }}">קובץ</button><span><svg class="ic" data-icon="chevron-left" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></span>
+        <button sc-camel-on-click="{{ goStep2 }}" aria-current="{{ step2Cur }}" disabled="{{ step2Off }}" style="{{ step2 }}">מי בתיק</button><span><svg class="ic" data-icon="chevron-left" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></span>
+        <button sc-camel-on-click="{{ goStep3 }}" aria-current="{{ step3Cur }}" disabled="{{ step3Off }}" style="{{ step3 }}">יישובים</button><span><svg class="ic" data-icon="chevron-left" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></span>
         <span aria-current="{{ step4Cur }}" style="{{ step4 }}">בדיקה</span>
       </nav>
     </sc-if>
-    <button onClick="{{ onReverse }}" style="{{ reverseBtnStyle }}" style-hover="background:var(--panel2);color:var(--ink)">החזרת שמות מתשובת AI</button>
-    <sc-if value="{{ isWork }}"><button onClick="{{ onBackHome }}" style="font-size:13px;color:var(--ink2);padding:7px 11px;border-radius:8px;white-space:nowrap" style-hover="background:var(--panel2);color:var(--ink)">מסמך חדש</button></sc-if>
+    <button sc-camel-on-click="{{ onReverse }}" style="{{ reverseBtnStyle }}" style-hover="background:var(--panel2);color:var(--ink)">החזרת שמות מתשובת AI</button>
+    <sc-if value="{{ isWork }}"><button sc-camel-on-click="{{ onBackHome }}" style="font-size:13px;color:var(--ink2);padding:7px 11px;border-radius:8px;white-space:nowrap" style-hover="background:var(--panel2);color:var(--ink)">מסמך חדש</button></sc-if>
     <!-- «עזרה» (הנוסח שאושר, 7.10.2026): הסיור, חלון «לפני שמתחילים» והשאלות הנפוצות באתר. נסגר בלחיצה בחוץ, ב-Escape ובמעבר מיקוד -->
     <div data-help style="position:relative">
-      <button data-help-btn onClick="{{ onHelp }}" aria-expanded="{{ helpExpanded }}" aria-controls="help-menu" style="font-size:13px;color:var(--ink2);padding:7px 11px;border-radius:8px;white-space:nowrap" style-hover="background:var(--panel2);color:var(--ink)">עזרה</button>
+      <button data-help-btn sc-camel-on-click="{{ onHelp }}" aria-expanded="{{ helpExpanded }}" aria-controls="help-menu" style="font-size:13px;color:var(--ink2);padding:7px 11px;border-radius:8px;white-space:nowrap" style-hover="background:var(--panel2);color:var(--ink)">עזרה</button>
       <sc-if value="{{ helpOpen }}">
         <ul id="help-menu" style="position:absolute;top:calc(100% + 6px);inset-inline-end:0;z-index:40;min-width:210px;list-style:none;margin:0;padding:6px;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);font-size:13.5px">
-          <li><button onClick="{{ onHelpTour }}" style="display:block;width:100%;text-align:start;padding:8px 10px;border-radius:8px;color:var(--ink)" style-hover="background:var(--panel2)">סיור על מסמך לדוגמה</button></li>
-          <li><button onClick="{{ onHelpIntro }}" style="display:block;width:100%;text-align:start;padding:8px 10px;border-radius:8px;color:var(--ink)" style-hover="background:var(--panel2)">איך זה עובד</button></li>
-          <li><a href="https://inkognito.co.il/#faq" target="_blank" rel="noopener" onClick="{{ onHelpClose }}" style="display:block;padding:8px 10px;border-radius:8px;color:var(--ink);text-decoration:underline;text-underline-offset:2px" style-hover="background:var(--panel2)">שאלות נפוצות</a></li>
-          <li><a href="https://inkognito.co.il/help" target="_blank" rel="noopener" onClick="{{ onHelpClose }}" style="display:block;padding:8px 10px;border-radius:8px;color:var(--ink);text-decoration:underline;text-underline-offset:2px" style-hover="background:var(--panel2)">מדריך שימוש</a></li>
+          <li><button sc-camel-on-click="{{ onHelpTour }}" style="display:block;width:100%;text-align:start;padding:8px 10px;border-radius:8px;color:var(--ink)" style-hover="background:var(--panel2)">סיור על מסמך לדוגמה</button></li>
+          <li><button sc-camel-on-click="{{ onHelpIntro }}" style="display:block;width:100%;text-align:start;padding:8px 10px;border-radius:8px;color:var(--ink)" style-hover="background:var(--panel2)">איך זה עובד</button></li>
+          <li><a href="https://inkognito.co.il/#faq" target="_blank" rel="noopener" sc-camel-on-click="{{ onHelpClose }}" style="display:block;padding:8px 10px;border-radius:8px;color:var(--ink);text-decoration:underline;text-underline-offset:2px" style-hover="background:var(--panel2)">שאלות נפוצות</a></li>
+          <li><a href="https://inkognito.co.il/help" target="_blank" rel="noopener" sc-camel-on-click="{{ onHelpClose }}" style="display:block;padding:8px 10px;border-radius:8px;color:var(--ink);text-decoration:underline;text-underline-offset:2px" style-hover="background:var(--panel2)">מדריך שימוש</a></li>
         </ul>
       </sc-if>
     </div>
-    <button onClick="{{ onTheme }}" data-night aria-label="מצב יום או לילה" style="width:34px;height:34px;border-radius:9px;display:grid;place-items:center;border:1px solid var(--line);color:var(--ink2)" style-hover="background:var(--panel2);color:var(--ink)"><sc-if value="{{ isDark }}"><svg class="ic" data-icon="sun" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2" fill="currentColor" stroke="none"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg></sc-if><sc-if value="{{ isLight }}"><svg class="ic" data-icon="moon" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.4 14.6A8.5 8.5 0 0 1 9.4 3.6a8.5 8.5 0 1 0 11 11Z" fill="currentColor" stroke="none"/><path d="M17 3.5v3M15.5 5h3" stroke-width="1.6"/></svg></sc-if></button>
+    <button sc-camel-on-click="{{ onTheme }}" data-night aria-label="מצב יום או לילה" style="width:34px;height:34px;border-radius:9px;display:grid;place-items:center;border:1px solid var(--line);color:var(--ink2)" style-hover="background:var(--panel2);color:var(--ink)"><sc-if value="{{ isDark }}"><svg class="ic" data-icon="sun" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2" fill="currentColor" stroke="none"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg></sc-if><sc-if value="{{ isLight }}"><svg class="ic" data-icon="moon" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.4 14.6A8.5 8.5 0 0 1 9.4 3.6a8.5 8.5 0 1 0 11 11Z" fill="currentColor" stroke="none"/><path d="M17 3.5v3M15.5 5h3" stroke-width="1.6"/></svg></sc-if></button>
   </header>
 
   <!-- ההדגמה שבלי חשבון: שורה אחת למעלה, וכרטיס בסוף הסיור (הנוסח שאושר, החלטה 29 ו־nf-demo-end). מעל החוסמים של הסיור, כדי שהכפתור יילחץ -->
@@ -229,11 +229,11 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
     <div data-pw-layer style="position:fixed;inset:0;z-index:95;background:rgba(10,14,12,.5);display:grid;place-items:center;padding:16px">
       <div data-pw role="dialog" aria-modal="true" aria-labelledby="pw-t" style="width:min(420px,100%);background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:0 24px 60px rgba(0,0,0,.35)">
         <label id="pw-t" for="pw-in" style="display:block;margin:0 0 10px;font-size:15px;font-weight:500;line-height:1.5">{{ pwLabel }}</label>
-        <input id="pw-in" data-pw-in type="password" autocomplete="new-password" dir="ltr" value="{{ pwValue }}" onChange="{{ onPwIn }}" onKeyDown="{{ onPwKey }}" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:15px;background:var(--paper);color:var(--ink)">
+        <input id="pw-in" data-pw-in type="password" autocomplete="new-password" dir="ltr" value="{{ pwValue }}" sc-camel-on-change="{{ onPwIn }}" sc-camel-on-key-down="{{ onPwKey }}" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:15px;background:var(--paper);color:var(--ink)">
         <sc-if value="{{ pwErr }}"><p data-pw-err role="alert" style="margin:10px 0 0;font-size:13px;color:var(--bad)">{{ pwErr }}</p></sc-if>
         <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">
-          <button type="button" onClick="{{ onPwCancel }}" style="padding:9px 16px;border-radius:10px;border:1px solid var(--line);font-size:13.5px;color:var(--ink2)">ביטול</button>
-          <button type="button" data-pw-ok onClick="{{ onPwOk }}" disabled="{{ pwOkOff }}" style="padding:9px 16px;border-radius:10px;background:var(--accent);color:var(--panel);font-size:13.5px;font-weight:600">{{ pwOk }}</button>
+          <button type="button" sc-camel-on-click="{{ onPwCancel }}" style="padding:9px 16px;border-radius:10px;border:1px solid var(--line);font-size:13.5px;color:var(--ink2)">ביטול</button>
+          <button type="button" data-pw-ok sc-camel-on-click="{{ onPwOk }}" disabled="{{ pwOkOff }}" style="padding:9px 16px;border-radius:10px;background:var(--accent);color:var(--panel);font-size:13.5px;font-weight:600">{{ pwOk }}</button>
         </div>
       </div>
     </div>
@@ -248,41 +248,41 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
   </sc-if>
   <sc-if value="{{ showBack }}">
     <div style="display:flex;padding:14px 22px 0">
-      <button data-back onClick="{{ onBack }}" style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink2);padding:7px 13px 7px 11px;border-radius:9px;border:1px solid var(--line);background:var(--panel);white-space:nowrap" style-hover="background:var(--panel2);color:var(--ink)"><span style="font-size:15px;line-height:1;margin-top:-1px"><svg class="ic" data-icon="chevron-right" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>{{ backLabel }}</button>
+      <button data-back sc-camel-on-click="{{ onBack }}" style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink2);padding:7px 13px 7px 11px;border-radius:9px;border:1px solid var(--line);background:var(--panel);white-space:nowrap" style-hover="background:var(--panel2);color:var(--ink)"><span style="font-size:15px;line-height:1;margin-top:-1px"><svg class="ic" data-icon="chevron-right" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>{{ backLabel }}</button>
     </div>
   </sc-if>
 
-  <input type="file" accept=".docx,.pdf" ref="{{ fileRef }}" onChange="{{ onFile }}" style="display:none">
-  <input type="file" accept=".json,.txt" ref="{{ profRef }}" onChange="{{ onProfFile }}" style="display:none">
+  <input type="file" accept=".docx,.pdf" ref="{{ fileRef }}" sc-camel-on-change="{{ onFile }}" style="display:none">
+  <input type="file" accept=".json,.txt" ref="{{ profRef }}" sc-camel-on-change="{{ onProfFile }}" style="display:none">
 
   <sc-if value="{{ tourOn }}">
     <sc-if value="{{ tourSpot }}">
       <div data-spot style="{{ tourSpotStyle }}"></div>
-      <div data-tour-block="t" onClick="{{ onTourBlocked }}" style="{{ tourBlockT }}"></div>
-      <div data-tour-block="b" onClick="{{ onTourBlocked }}" style="{{ tourBlockB }}"></div>
-      <div data-tour-block="l" onClick="{{ onTourBlocked }}" style="{{ tourBlockL }}"></div>
-      <div data-tour-block="r" onClick="{{ onTourBlocked }}" style="{{ tourBlockR }}"></div>
+      <div data-tour-block="t" sc-camel-on-click="{{ onTourBlocked }}" style="{{ tourBlockT }}"></div>
+      <div data-tour-block="b" sc-camel-on-click="{{ onTourBlocked }}" style="{{ tourBlockB }}"></div>
+      <div data-tour-block="l" sc-camel-on-click="{{ onTourBlocked }}" style="{{ tourBlockL }}"></div>
+      <div data-tour-block="r" sc-camel-on-click="{{ onTourBlocked }}" style="{{ tourBlockR }}"></div>
     </sc-if>
     <div data-tour role="dialog" aria-label="סיור בכלי" tabindex="-1" style="{{ tourCardStyle }}">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
         <span style="font-size:11.5px;font-weight:500;color:var(--ink3)">סיור · מסמך לדוגמה</span>
         <span style="font-size:11.5px;color:var(--ink3)">{{ tourPos }}</span>
-        <button onClick="{{ onTourClose }}" aria-label="סגירת הסיור" style="margin-inline-start:auto;width:24px;height:24px;border-radius:50%;color:var(--ink3);display:grid;place-items:center"><svg class="ic" data-icon="x" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17"/><path d="m7 7 10 10"/></svg></button>
+        <button sc-camel-on-click="{{ onTourClose }}" aria-label="סגירת הסיור" style="margin-inline-start:auto;width:24px;height:24px;border-radius:50%;color:var(--ink3);display:grid;place-items:center"><svg class="ic" data-icon="x" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17"/><path d="m7 7 10 10"/></svg></button>
       </div>
       <div aria-live="polite"><b style="display:block;font-weight:500;font-size:17px;margin-bottom:6px">{{ tourTitle }}</b>
       <p style="margin:0 0 12px;font-size:13px;color:var(--ink2);line-height:1.6">{{ tourText }}</p>
       <sc-if value="{{ tourNudge }}"><p data-tour-nudge style="margin:-4px 0 12px;font-size:12.5px;color:var(--warn);line-height:1.5">בסיור אפשר ללחוץ רק באזור המואר. כדי לצאת מהסיור — ✕ למעלה.</p></sc-if></div><!-- ההערה נאמרת בתוך אזור החי של הכרטיס, שכבר במסך כשהיא מגיעה (הביקורת של 6.10) -->
       <div style="display:flex;gap:7px;align-items:center">
-        <button onClick="{{ onTourNext }}" style="padding:8px 16px;border-radius:9px;background:var(--accent);color:var(--panel);font-size:13px;font-weight:600;letter-spacing:.01em">{{ tourNextLabel }}</button>
-        <sc-if value="{{ tourHasBack }}"><button onClick="{{ onTourBack }}" style="padding:8px 12px;border-radius:9px;border:1px solid var(--line);font-size:13px">חזרה</button></sc-if>
-        <button onClick="{{ onTourClose }}" style="margin-inline-start:auto;font-size:12.5px;color:var(--ink3);padding:8px 6px">דילוג</button>
+        <button sc-camel-on-click="{{ onTourNext }}" style="padding:8px 16px;border-radius:9px;background:var(--accent);color:var(--panel);font-size:13px;font-weight:600;letter-spacing:.01em">{{ tourNextLabel }}</button>
+        <sc-if value="{{ tourHasBack }}"><button sc-camel-on-click="{{ onTourBack }}" style="padding:8px 12px;border-radius:9px;border:1px solid var(--line);font-size:13px">חזרה</button></sc-if>
+        <button sc-camel-on-click="{{ onTourClose }}" style="margin-inline-start:auto;font-size:12.5px;color:var(--ink3);padding:8px 6px">דילוג</button>
       </div>
     </div>
   </sc-if>
 
   <sc-if value="{{ showIntro }}">
-    <div data-intro-backdrop onClick="{{ onIntroBackdrop }}" style="position:fixed;inset:0;z-index:70;background:rgba(10,14,12,.5);display:grid;place-items:center;padding:16px;overflow:auto">
-      <div data-intro role="dialog" aria-modal="true" aria-labelledby="intro-title" onClick="{{ introStop }}" style="max-width:560px;max-height:calc(100vh - 32px);overflow:auto;box-sizing:border-box;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px 24px;box-shadow:0 24px 60px rgba(0,0,0,.35)">
+    <div data-intro-backdrop sc-camel-on-click="{{ onIntroBackdrop }}" style="position:fixed;inset:0;z-index:70;background:rgba(10,14,12,.5);display:grid;place-items:center;padding:16px;overflow:auto">
+      <div data-intro role="dialog" aria-modal="true" aria-labelledby="intro-title" sc-camel-on-click="{{ introStop }}" style="max-width:560px;max-height:calc(100vh - 32px);overflow:auto;box-sizing:border-box;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px 24px;box-shadow:0 24px 60px rgba(0,0,0,.35)">
         <h2 id="intro-title" style="margin:0 0 6px;font-size:21px;font-weight:500;letter-spacing:-.02em">לפני שמתחילים</h2>
         <p style="margin:0 0 18px;color:var(--ink2);font-size:14px;line-height:1.6">אינקוגניטו מכין מסמך משפטי לשליחה ל־AI: הוא מחליף שמות בשמות בדויים, מוחק מספרים מזהים ובודק שלא נשאר בטקסט אף שם מהרשימה, ואחר כך מחזיר את השמות האמיתיים לתשובה של ה־AI. הכול קורה בדפדפן, והמסמך לא נשלח לשום שרת.</p>
         <sc-for list="{{ introSteps }}" as="s" hint-placeholder-count="3">
@@ -293,8 +293,8 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
           </div>
         </sc-for>
         <div style="display:flex;gap:9px;flex-wrap:wrap;align-items:center">
-          <button onClick="{{ onTourStart }}" style="{{ primaryBtn }}">סיור קצר על מסמך לדוגמה</button>
-          <button onClick="{{ onCloseIntro }}" style="padding:12px 18px;border-radius:10px;border:1px solid var(--line);background:var(--panel);font-weight:500;font-size:14px">להתחיל ישר</button>
+          <button sc-camel-on-click="{{ onTourStart }}" style="{{ primaryBtn }}">סיור קצר על מסמך לדוגמה</button>
+          <button sc-camel-on-click="{{ onCloseIntro }}" style="padding:12px 18px;border-radius:10px;border:1px solid var(--line);background:var(--panel);font-weight:500;font-size:14px">להתחיל ישר</button>
         </div>
         <p style="margin:10px 0 0;font-size:12px;color:var(--ink3);line-height:1.55">הסיור משתמש במסמך בדוי שמובנה בכלי. שום דבר ממנו לא נשמר, לא מועתק ולא יורד.</p>
       </div>
@@ -304,7 +304,7 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
   <sc-if value="{{ errTop }}">
     <div role="alert" style="margin:14px 22px 0;padding:11px 14px;border-radius:10px;background:var(--bad-soft);color:var(--bad);font-size:13.5px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
       <span style="flex:1 1 240px">{{ err }}</span>
-      <sc-if value="{{ engineFailed }}"><button data-engine-retry onClick="{{ onEngineRetry }}" style="padding:6px 12px;border-radius:9px;background:var(--bad);color:var(--panel);font-size:12.5px;font-weight:500">טעינה מחדש</button></sc-if>
+      <sc-if value="{{ engineFailed }}"><button data-engine-retry sc-camel-on-click="{{ onEngineRetry }}" style="padding:6px 12px;border-radius:9px;background:var(--bad);color:var(--panel);font-size:12.5px;font-weight:500">טעינה מחדש</button></sc-if>
     </div>
   </sc-if>
   <!-- אזור מצב שתמיד בדף (הציד של 11.10): «מאתר שמות…» בזמן עבודה, וההכרעה של מסך הבדיקה פעם אחת כשמגיעים אליו. אזור שעולה
@@ -313,8 +313,8 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
   <div role="status" aria-live="polite"><!-- ההודעה נאמרת: אזור המצב כבר בדף כשהיא מגיעה, ולא עולה איתה (הביקורת של 6.10) --><sc-if value="{{ notice }}">
     <div data-notice style="position:fixed;bottom:calc(var(--bar-h, 64px) + 14px);left:50%;transform:translateX(-50%);z-index:60;display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:12px;background:var(--panel);border:1px solid var(--line);box-shadow:var(--shadow);font-size:13px;color:var(--ink)">
       <span>{{ notice }}<sc-if value="{{ noticeNew }}"><a data-whats-new href="https://inkognito.co.il/changes" target="_blank" rel="noopener" style="margin-inline-start:5px;color:var(--accent-ink);font-weight:500;text-underline-offset:2px">מה חדש</a></sc-if></span>
-      <sc-if value="{{ noticeUndo }}"><button onClick="{{ onNoticeUndo }}" style="padding:4px 10px;border-radius:9px;border:1px solid var(--line);font-size:12.5px;font-weight:500">ביטול <svg class="ic" data-icon="undo" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/></svg></button></sc-if>
-      <button onClick="{{ onNoticeClose }}" aria-label="סגירה" style="width:22px;height:22px;border-radius:50%;color:var(--ink3);display:grid;place-items:center"><svg class="ic" data-icon="x" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17"/><path d="m7 7 10 10"/></svg></button>
+      <sc-if value="{{ noticeUndo }}"><button sc-camel-on-click="{{ onNoticeUndo }}" style="padding:4px 10px;border-radius:9px;border:1px solid var(--line);font-size:12.5px;font-weight:500">ביטול <svg class="ic" data-icon="undo" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/></svg></button></sc-if>
+      <button sc-camel-on-click="{{ onNoticeClose }}" aria-label="סגירה" style="width:22px;height:22px;border-radius:50%;color:var(--ink3);display:grid;place-items:center"><svg class="ic" data-icon="x" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17"/><path d="m7 7 10 10"/></svg></button>
     </div>
   </sc-if></div>
 
@@ -323,7 +323,7 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
   <main style="max-width:1120px;margin:0 auto;padding:38px 22px 70px;animation:rise .3s ease">
     <div style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap">
       <h1 data-screen-h tabindex="-1" style="font-size:29px;font-weight:500;letter-spacing:-.02em;margin:0 0 6px;flex:1;min-width:0">להיעזר ב־AI בלי לחשוף את הלקוח</h1>
-      <button data-tour-start onClick="{{ onTourStart }}" title="סיור קצר על מסמך בדוי שמובנה בכלי — שום דבר ממנו לא נשמר" style="font-size:13px;color:var(--ink2);padding:8px 13px;border-radius:9px;border:1px solid var(--line);background:var(--panel);white-space:nowrap;margin-top:6px" style-hover="background:var(--panel2);color:var(--ink)">סיור על מסמך לדוגמה</button>
+      <button data-tour-start sc-camel-on-click="{{ onTourStart }}" title="סיור קצר על מסמך בדוי שמובנה בכלי — שום דבר ממנו לא נשמר" style="font-size:13px;color:var(--ink2);padding:8px 13px;border-radius:9px;border:1px solid var(--line);background:var(--panel);white-space:nowrap;margin-top:6px" style-hover="background:var(--panel2);color:var(--ink)">סיור על מסמך לדוגמה</button>
     </div>
     <p style="margin:0 0 14px;color:var(--ink2);font-size:14.5px;max-width:62ch">אינקוגניטו מחליף במסמך שמות ופרטים מזהים בשמות ובפרטים בדויים לפני שמדביקים אותו ב־ChatGPT או בכלי AI אחר, ומחזיר את השמות האמיתיים לתשובה.</p>
     <!-- שלושת השלבים, באותן מילים כמו בסרגל התחתון ובעמוד הבית (הנוסח שאושר, 7.10.2026); בטלפון זה מעל זה -->
@@ -334,7 +334,7 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
     </ol>
 
     <div data-stack style="display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:stretch">
-      <button data-tour-target="upload" aria-describedby="{{ fileErrRef }}" onClick="{{ onPick }}" onDragOver="{{ onDragOver }}" onDragLeave="{{ onDragLeave }}" onDrop="{{ onDropFile }}" style="{{ dropStyle }}">
+      <button data-tour-target="upload" aria-describedby="{{ fileErrRef }}" sc-camel-on-click="{{ onPick }}" sc-camel-on-drag-over="{{ onDragOver }}" sc-camel-on-drag-leave="{{ onDragLeave }}" sc-camel-on-drop="{{ onDropFile }}" style="{{ dropStyle }}">
         <span style="width:38px;height:38px;border-radius:10px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;flex:none;font-size:17px"><svg class="ic" data-icon="arrow-up" aria-hidden="true" focusable="false" style="width:20px;height:20px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></span>
         <span style="text-align:start">
           <b style="display:block;font-weight:500;font-size:15px">בחירת קובץ</b>
@@ -350,10 +350,10 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
             <small style="color:var(--ink2);font-size:12.5px">תמלול, מייל או קטע מתוך מסמך — עובר את אותו תהליך</small>
           </span>
           <sc-if value="{{ hasPaste }}">
-            <button onClick="{{ onPasteGo }}" style="margin-inline-start:auto;padding:9px 16px;border-radius:9px;background:var(--accent);color:var(--panel);font-size:13px;font-weight:600;letter-spacing:.01em;white-space:nowrap">{{ pasteLabel }}</button>
+            <button sc-camel-on-click="{{ onPasteGo }}" style="margin-inline-start:auto;padding:9px 16px;border-radius:9px;background:var(--accent);color:var(--panel);font-size:13px;font-weight:600;letter-spacing:.01em;white-space:nowrap">{{ pasteLabel }}</button>
           </sc-if>
         </div>
-        <textarea dir="auto" value="{{ pasteText }}" onChange="{{ onPasteText }}" placeholder="הדבקת טקסט לבדיקה…" style="width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:10px 12px;font:13.5px/1.6 Rubik,sans-serif;min-height:64px;resize:vertical"></textarea>
+        <textarea dir="auto" value="{{ pasteText }}" sc-camel-on-change="{{ onPasteText }}" placeholder="הדבקת טקסט לבדיקה…" style="width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:10px 12px;font:13.5px/1.6 Rubik,sans-serif;min-height:64px;resize:vertical"></textarea>
       </div>
       <sc-if value="{{ fileErr }}">
         <div data-file-err id="file-err" role="alert" key="{{ fileErrKey }}" style="grid-column:1/-1;padding:11px 14px;border-radius:12px;background:var(--bad-soft);color:var(--bad);font-size:13.5px;line-height:1.5">{{ fileErr }}</div>
@@ -366,15 +366,15 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
             <b style="display:block;font-weight:500;font-size:14px">{{ pendName }}</b>
             <small style="color:var(--ink2);font-size:12.5px">{{ pendMeta }}</small>
           </div>
-          <button onClick="{{ onPick }}" style="margin-inline-start:auto;font-size:13px;color:var(--ink2);padding:9px 12px;border-radius:9px;border:1px solid var(--line);white-space:nowrap" style-hover="background:var(--panel)">החלפת קובץ</button>
-          <button onClick="{{ onStart }}" style="{{ primaryBtn }}">{{ startLabel }}</button>
+          <button sc-camel-on-click="{{ onPick }}" style="margin-inline-start:auto;font-size:13px;color:var(--ink2);padding:9px 12px;border-radius:9px;border:1px solid var(--line);white-space:nowrap" style-hover="background:var(--panel)">החלפת קובץ</button>
+          <button sc-camel-on-click="{{ onStart }}" style="{{ primaryBtn }}">{{ startLabel }}</button>
         </div>
       </sc-if>
       <sc-if value="{{ nerAsk }}">
         <div data-ner-ask role="group" aria-label="הורדת מודל הזיהוי" style="margin-top:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 14px;border-radius:12px;background:var(--panel);border:1px solid var(--line);font-size:13.5px;line-height:1.5">
           <span style="flex:1 1 240px">להוריד את מודל הזיהוי? הוא מוצא יותר שמות. מורידים אותו פעם אחת (כ־185MB), ואחר כך הוא נשמר בטלפון. כדאי להוריד ב־Wi-Fi ולא בחבילת הגלישה.</span>
-          <button onClick="{{ onNerAskYes }}" style="padding:9px 14px;border-radius:9px;background:var(--accent);color:var(--panel);font-size:13px;font-weight:600;letter-spacing:.01em">להוריד את המודל</button>
-          <button onClick="{{ onNerAskNo }}" style="padding:9px 14px;border-radius:9px;border:1px solid var(--line);font-size:13px">בלי המודל</button>
+          <button sc-camel-on-click="{{ onNerAskYes }}" style="padding:9px 14px;border-radius:9px;background:var(--accent);color:var(--panel);font-size:13px;font-weight:600;letter-spacing:.01em">להוריד את המודל</button>
+          <button sc-camel-on-click="{{ onNerAskNo }}" style="padding:9px 14px;border-radius:9px;border:1px solid var(--line);font-size:13px">בלי המודל</button>
         </div>
       </sc-if></div>
 
@@ -383,7 +383,7 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
           <div style="font-size:12px;font-weight:500;color:var(--ink3);letter-spacing:.05em">תיקים אחרונים: אותם שמות בדויים בכל מסמך של התיק</div>
           <!-- ✕ כאן סוגר את הרצועה, כמו בכל מקום אחר בכלי (ביקורת QA 012); מחיקת תיק היא כפתור במילים בשורה שלו -->
-          <button onClick="{{ onHideCases }}" aria-label="הסתרת התיקים האחרונים" title="הסתרה — שום תיק לא נמחק" style="margin-inline-start:auto;width:24px;height:24px;border-radius:50%;color:var(--ink3);display:grid;place-items:center" style-hover="background:var(--panel2)"><svg class="ic" data-icon="x" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17"/><path d="m7 7 10 10"/></svg></button>
+          <button sc-camel-on-click="{{ onHideCases }}" aria-label="הסתרת התיקים האחרונים" title="הסתרה — שום תיק לא נמחק" style="margin-inline-start:auto;width:24px;height:24px;border-radius:50%;color:var(--ink3);display:grid;place-items:center" style-hover="background:var(--panel2)"><svg class="ic" data-icon="x" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17"/><path d="m7 7 10 10"/></svg></button>
         </div>
         <sc-for list="{{ caseItems }}" as="c" hint-placeholder-count="3">
           <div data-case="{{ c.name }}" style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line2);flex-wrap:wrap">
@@ -397,8 +397,8 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
                 <sc-if value="{{ c.morePairs }}"><small style="color:var(--ink3);font-size:12px">{{ c.morePairs }}</small></sc-if>
               </div>
             </div>
-            <button onClick="{{ c.onResume }}" style="padding:7px 14px;border-radius:9px;background:var(--accent);color:var(--panel);font-size:13px;font-weight:600;letter-spacing:.01em;white-space:nowrap">שימוש בתיק הזה</button>
-            <button onClick="{{ c.onDelete }}" title="מחיקה מרשימת התיקים בדפדפן. קובץ תיק ששמרתם במחשב לא נמחק." style="font-size:12px;color:var(--ink3);padding:6px 8px;border-radius:8px" style-hover="color:var(--bad)">מחיקה</button>
+            <button sc-camel-on-click="{{ c.onResume }}" style="padding:7px 14px;border-radius:9px;background:var(--accent);color:var(--panel);font-size:13px;font-weight:600;letter-spacing:.01em;white-space:nowrap">שימוש בתיק הזה</button>
+            <button sc-camel-on-click="{{ c.onDelete }}" title="מחיקה מרשימת התיקים בדפדפן. קובץ תיק ששמרתם במחשב לא נמחק." style="font-size:12px;color:var(--ink3);padding:6px 8px;border-radius:8px" style-hover="color:var(--bad)">מחיקה</button>
           </div>
         </sc-for>
       </div>
@@ -416,17 +416,17 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
             <sc-if value="{{ lastMorePairs }}"><small style="color:var(--ink3);font-size:12px">{{ lastMorePairs }}</small></sc-if>
           </div>
         </div>
-        <button onClick="{{ onDismissLast }}" style="font-size:13px;color:var(--ink2);padding:9px 12px;border-radius:9px;border:1px solid var(--line);white-space:nowrap" style-hover="background:var(--panel2)">תיק אחר</button>
-        <button onClick="{{ onResumeLast }}" style="padding:9px 16px;border-radius:9px;background:var(--accent);color:var(--panel);font-size:13px;font-weight:600;letter-spacing:.01em;white-space:nowrap">המשך עם הרשימה</button>
+        <button sc-camel-on-click="{{ onDismissLast }}" style="font-size:13px;color:var(--ink2);padding:9px 12px;border-radius:9px;border:1px solid var(--line);white-space:nowrap" style-hover="background:var(--panel2)">תיק אחר</button>
+        <button sc-camel-on-click="{{ onResumeLast }}" style="padding:9px 16px;border-radius:9px;background:var(--accent);color:var(--panel);font-size:13px;font-weight:600;letter-spacing:.01em;white-space:nowrap">המשך עם הרשימה</button>
       </div>
     </sc-if>
     <!-- כל התיקים מקובץ אחד (importCases): הקובץ שירד בכתובת הישנה, גם כשאין עדיין אף תיק שמור -->
-    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"><button data-import-cases onClick="{{ onImportCases }}" style="padding:7px 12px;border-radius:9px;border:1px solid var(--line);background:var(--panel);font-size:12.5px;font-weight:500;color:var(--ink)" style-hover="background:var(--panel2)">ייבוא תיקים מקובץ</button>
-      <sc-if value="{{ casesHere }}"><button data-clear-cases onClick="{{ onClearCases }}" style="padding:7px 12px;border-radius:9px;font-size:12.5px;color:var(--ink2)" style-hover="background:var(--panel2);color:var(--bad)">ניקוי התיקים מהמחשב</button></sc-if></div>
+    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"><button data-import-cases sc-camel-on-click="{{ onImportCases }}" style="padding:7px 12px;border-radius:9px;border:1px solid var(--line);background:var(--panel);font-size:12.5px;font-weight:500;color:var(--ink)" style-hover="background:var(--panel2)">ייבוא תיקים מקובץ</button>
+      <sc-if value="{{ casesHere }}"><button data-clear-cases sc-camel-on-click="{{ onClearCases }}" style="padding:7px 12px;border-radius:9px;font-size:12.5px;color:var(--ink2)" style-hover="background:var(--panel2);color:var(--bad)">ניקוי התיקים מהמחשב</button></sc-if></div>
 
     <!-- ההגדרות מאחורי כותרת שנפתחת (UX #3): ברירות המחדל טובות, והמסך נקרא כמו "להגדיר קודם".
          במחשב פתוח — יש מקום; בטלפון סגור, שם העמוד היה באורך 1,744 פיקסלים. -->
-    <button data-settings-toggle onClick="{{ onToggleSettings }}" aria-expanded="{{ settingsShown }}" style="display:flex;align-items:center;gap:8px;margin-top:26px;font-size:13px;font-weight:500;color:var(--ink2);padding:6px 2px">
+    <button data-settings-toggle sc-camel-on-click="{{ onToggleSettings }}" aria-expanded="{{ settingsShown }}" style="display:flex;align-items:center;gap:8px;margin-top:26px;font-size:13px;font-weight:500;color:var(--ink2);padding:6px 2px">
       <span>הגדרות זיהוי והחלפה</span><small style="color:var(--ink3);font-weight:400;font-size:11.5px">{{ settingsHint }}</small><span style="color:var(--ink3);font-size:11.5px"><svg class="ic" data-icon="chevron-down" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span>
     </button>
     <sc-if value="{{ settingsShown }}">
@@ -435,24 +435,24 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
         <div style="font-size:12px;font-weight:500;color:var(--ink3);letter-spacing:.06em;margin-bottom:9px">זיהוי</div>
         <div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);overflow:hidden">
           <label style="display:flex;gap:13px;align-items:flex-start;padding:14px 16px;cursor:pointer;border-bottom:1px solid var(--line2)">
-            <input type="checkbox" checked="{{ oNer }}" onChange="{{ tNer }}" disabled="{{ nerOff }}" style="width:17px;height:17px;margin:2px 0 0;accent-color:var(--accent);flex:none">
+            <input type="checkbox" checked="{{ oNer }}" sc-camel-on-change="{{ tNer }}" disabled="{{ nerOff }}" style="width:17px;height:17px;margin:2px 0 0;accent-color:var(--accent);flex:none">
             <span><b style="display:block;font-weight:500">מודל זיהוי עברי מקומי</b>
             <small style="color:var(--ink2);font-size:12.5px;line-height:1.45">ממלא את רשימת השמות מראש. רץ על המחשב הזה; המסמך לא נשלח לשום מקום.</small>
             <sc-if value="{{ nerHint }}"><small style="display:block;margin-top:6px;padding:8px 10px;border-radius:8px;background:var(--panel2);color:var(--ink2);font-size:12px;line-height:1.5">{{ nerHint }}</small></sc-if></span>
           </label>
-          <sc-if value="{{ nerHave }}"><div style="padding:0 16px 12px 46px;margin-top:-6px;border-bottom:1px solid var(--line2)"><button data-model-forget onClick="{{ onModelForget }}" style="font-size:12px;color:var(--ink2);text-decoration:underline;padding:2px 0">מחיקת המודל והקבצים השמורים מהמחשב</button></div></sc-if>
+          <sc-if value="{{ nerHave }}"><div style="padding:0 16px 12px 46px;margin-top:-6px;border-bottom:1px solid var(--line2)"><button data-model-forget sc-camel-on-click="{{ onModelForget }}" style="font-size:12px;color:var(--ink2);text-decoration:underline;padding:2px 0">מחיקת המודל והקבצים השמורים מהמחשב</button></div></sc-if>
           <label style="display:flex;gap:13px;align-items:flex-start;padding:14px 16px;cursor:pointer;border-bottom:1px solid var(--line2)">
-            <input type="checkbox" checked="{{ oAuto }}" onChange="{{ tAuto }}" style="width:17px;height:17px;margin:2px 0 0;accent-color:var(--accent);flex:none">
+            <input type="checkbox" checked="{{ oAuto }}" sc-camel-on-change="{{ tAuto }}" style="width:17px;height:17px;margin:2px 0 0;accent-color:var(--accent);flex:none">
             <span><b style="display:block;font-weight:500">איתור שמות אוטומטי</b>
             <small style="color:var(--ink2);font-size:12.5px;line-height:1.45">מזהה שמות לפי ההקשר שסביבם. הרשימה מוצגת לאישור לפני ההחלפה.</small></span>
           </label>
           <label style="display:flex;gap:13px;align-items:flex-start;padding:14px 16px;cursor:pointer;border-bottom:1px solid var(--line2)">
-            <input type="checkbox" checked="{{ oPlaces }}" onChange="{{ tPlaces }}" style="width:17px;height:17px;margin:2px 0 0;accent-color:var(--accent);flex:none">
+            <input type="checkbox" checked="{{ oPlaces }}" sc-camel-on-change="{{ tPlaces }}" style="width:17px;height:17px;margin:2px 0 0;accent-color:var(--accent);flex:none">
             <span><b style="display:block;font-weight:500">החלפת מקומות</b>
             <small style="color:var(--ink2);font-size:12.5px;line-height:1.45">יישובים, בתי ספר, מוסדות ועסקים. במסך נפרד היישובים מוחלפים ביישובים אחרים שהמרחקים ביניהם דומים.</small></span>
           </label>
           <label style="display:flex;gap:13px;align-items:flex-start;padding:14px 16px;cursor:pointer">
-            <input type="checkbox" checked="{{ oNear }}" onChange="{{ tNear }}" style="width:17px;height:17px;margin:2px 0 0;accent-color:var(--accent);flex:none">
+            <input type="checkbox" checked="{{ oNear }}" sc-camel-on-change="{{ tNear }}" style="width:17px;height:17px;margin:2px 0 0;accent-color:var(--accent);flex:none">
             <span><b style="display:block;font-weight:500">סורק שיבושי תמלול</b>
             <small style="color:var(--ink2);font-size:12.5px;line-height:1.45">מסמן מילים שנכתבו כמעט כמו שם שהוחלף, למשל «שראבי» במקום «שרעבי».</small></span>
           </label>
@@ -463,14 +463,14 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
         <div style="font-size:12px;font-weight:500;color:var(--ink3);letter-spacing:.06em;margin-bottom:9px">מה נכנס במקום</div>
         <div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:14px 16px">
           <div style="display:flex;gap:6px;background:var(--panel2);border-radius:9px;padding:3px">
-            <button onClick="{{ mReal }}" aria-pressed="{{ segRealOn }}" style="{{ segReal }}">שם בדוי</button>
-            <button onClick="{{ mLabel }}" aria-pressed="{{ segLabelOn }}" style="{{ segLabel }}">פלוני א׳</button>
-            <button onClick="{{ mBlock }}" aria-pressed="{{ segBlockOn }}" style="{{ segBlock }}">███</button>
+            <button sc-camel-on-click="{{ mReal }}" aria-pressed="{{ segRealOn }}" style="{{ segReal }}">שם בדוי</button>
+            <button sc-camel-on-click="{{ mLabel }}" aria-pressed="{{ segLabelOn }}" style="{{ segLabel }}">פלוני א׳</button>
+            <button sc-camel-on-click="{{ mBlock }}" aria-pressed="{{ segBlockOn }}" style="{{ segBlock }}">███</button>
           </div>
           <p style="margin:12px 0 0;font-size:12.5px;line-height:1.55;color:var(--ink2)">{{ modeNote }}</p>
           <label style="display:flex;align-items:center;gap:10px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line2);font-size:13px">
             <span style="flex:1"><b style="font-weight:500">מספרים וכתובות</b><br><small style="color:var(--ink2);font-size:12px">ת״ז, טלפון, חשבון, רכב, כתובת. גיל נשאר תמיד.</small></span>
-            <select value="{{ numStyle }}" onChange="{{ onNumStyle }}" style="background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:7px 10px;font-size:13px">
+            <select value="{{ numStyle }}" sc-camel-on-change="{{ onNumStyle }}" style="background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:7px 10px;font-size:13px">
               <option value="blank" selected="{{ numBlank }}">נמחקים מהטקסט</option>
               <option value="label" selected="{{ numLabel }}">תווית: [ת״ז א׳]</option>
               <option value="black" selected="{{ numBlack }}">███</option>
@@ -478,7 +478,7 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
           </label>
           <label data-date-style style="display:flex;align-items:center;gap:10px;margin-top:10px;font-size:13px">
             <span style="flex:1"><b style="font-weight:500">תאריכים</b><br><small style="color:var(--ink2);font-size:12px">תאריך מלא. במצב «מוזזים» כל התאריכים זזים באותו מספר ימים והמרווחים ביניהם נשמרים; בהחזרת השמות חוזרים התאריכים המקוריים. הבחירה נשמרת בתיק.</small></span>
-            <select value="{{ dateStyle }}" onChange="{{ onDateStyle }}" aria-label="תאריכים" style="background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:7px 10px;font-size:13px">
+            <select value="{{ dateStyle }}" sc-camel-on-change="{{ onDateStyle }}" aria-label="תאריכים" style="background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:7px 10px;font-size:13px">
               <option value="name" selected="{{ dateName }}">מוזזים</option>
               <option value="blank" selected="{{ dateBlank }}">נמחקים מהטקסט</option>
               <option value="black" selected="{{ dateBlack }}">███</option>
@@ -489,7 +489,7 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
           <b style="display:block;color:var(--ink);font-weight:500;margin-bottom:3px">תיקים</b>
           אותו אדם מקבל את אותו שם בדוי בכל מסמכי התיק. תיקים שנשמרו בדפדפן מופיעים למעלה, ב«תיקים אחרונים»; תיק ששמרתם בקובץ אפשר לייבא מכאן.
           <!-- הכרטיס היה בלי שום פעולה (UX #3) -->
-          <button onClick="{{ onLoadProf }}" style="display:block;margin-top:9px;padding:7px 12px;border-radius:9px;border:1px solid var(--line);background:var(--panel);font-size:12.5px;font-weight:500;color:var(--ink)" style-hover="background:var(--panel2)">ייבוא תיק מקובץ</button>
+          <button sc-camel-on-click="{{ onLoadProf }}" style="display:block;margin-top:9px;padding:7px 12px;border-radius:9px;border:1px solid var(--line);background:var(--panel);font-size:12.5px;font-weight:500;color:var(--ink)" style-hover="background:var(--panel2)">ייבוא תיק מקובץ</button>
         </div>
       </section>
     </div>
@@ -501,7 +501,7 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
     <div data-case-chip style="max-width:1120px;margin:14px auto 0;padding:0 22px">
       <span style="display:inline-flex;align-items:center;gap:8px;padding:6px 8px 6px 12px;border-radius:16px;background:var(--accent-soft);color:var(--accent-ink);font-size:13px;font-weight:500">
         תיק: {{ caseChipName }} <svg class="ic" data-icon="check" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-        <button onClick="{{ onCaseChipDrop }}" title="עבודה בלי התיק הזה" style="font-size:12px;font-weight:400;color:var(--ink2);padding:2px 8px;border-radius:10px;border:1px solid var(--line);background:var(--panel)">בלי התיק הזה</button>
+        <button sc-camel-on-click="{{ onCaseChipDrop }}" title="עבודה בלי התיק הזה" style="font-size:12px;font-weight:400;color:var(--ink2);padding:2px 8px;border-radius:10px;border:1px solid var(--line);background:var(--panel)">בלי התיק הזה</button>
       </span>
     </div>
   </sc-if>
@@ -521,7 +521,7 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
         <sc-if value="{{ nerStall }}">
           <div data-ner-stall role="alert" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;color:var(--warn)">
             <span style="flex:1 1 220px">ההורדה נעצרה. אפשר לנסות שוב, או ללחוץ «לא לחכות למודל» ולהמשיך עם הרשימה שכאן.</span>
-            <button onClick="{{ onRetryDownload }}" style="padding:6px 12px;border-radius:9px;background:var(--warn);color:var(--panel);font-size:12.5px;font-weight:500">לנסות שוב</button>
+            <button sc-camel-on-click="{{ onRetryDownload }}" style="padding:6px 12px;border-radius:9px;background:var(--warn);color:var(--panel);font-size:12.5px;font-weight:500">לנסות שוב</button>
           </div>
         </sc-if>
       </div>
@@ -530,29 +530,29 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
     <div data-tour-target="people" style="display:flex;flex-wrap:wrap;gap:8px">
       <sc-for list="{{ peoItems }}" as="p" hint-placeholder-count="4">
         <div style="{{ p.style }}">
-          <select onChange="{{ p.onKindSel }}" aria-label="סוג" title="סוג: אדם · גוף · מקום" style="font-size:11.5px;font-weight:500;color:var(--ink2);background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:2px 4px">
+          <select sc-camel-on-change="{{ p.onKindSel }}" aria-label="סוג" title="סוג: אדם · גוף · מקום" style="font-size:11.5px;font-weight:500;color:var(--ink2);background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:2px 4px">
             <sc-for list="{{ p.kindOpts }}" as="o" hint-placeholder-count="3"><option value="{{ o.value }}" selected="{{ o.sel }}">{{ o.label }}</option></sc-for>
           </select>
-          <span data-tip="1" data-kbd tabindex="0" role="button" onMouseEnter="{{ p.onTipIn }}" onMouseLeave="{{ p.onTipOut }}" onClick="{{ p.onTipTap }}" title="{{ p.tipHint }}" style="font-weight:500;cursor:default;text-decoration:underline dotted var(--line);text-underline-offset:3px">{{ p.value }}</span>
+          <span data-tip="1" data-kbd tabindex="0" role="button" sc-camel-on-mouse-enter="{{ p.onTipIn }}" sc-camel-on-mouse-leave="{{ p.onTipOut }}" sc-camel-on-click="{{ p.onTipTap }}" title="{{ p.tipHint }}" style="font-weight:500;cursor:default;text-decoration:underline dotted var(--line);text-underline-offset:3px">{{ p.value }}</span>
           <sc-if value="{{ p.note }}"><small style="color:var(--ink2);font-size:11.5px">{{ p.note }}</small></sc-if>
-          <sc-if value="{{ p.canTrim }}"><button onClick="{{ p.onTrim }}" aria-label="קיצור השם" title="נכנסה לשם מילה מיותרת? כאן מסירים אותה" style="width:22px;height:22px;border-radius:50%;color:var(--ink3);display:grid;place-items:center;font-size:12px" style-hover="background:var(--panel2);color:var(--ink)"><svg class="ic" data-icon="scissors" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><path d="M8.12 8.12 12 12"/><path d="M20 4 8.12 15.88"/><circle cx="6" cy="18" r="3"/><path d="M14.8 14.8 20 20"/></svg></button></sc-if>
-          <button onClick="{{ p.onDel }}" aria-label="הסרה" style="width:22px;height:22px;border-radius:50%;color:var(--ink3);display:grid;place-items:center;font-size:13px;background:var(--panel2)" style-hover="background:var(--bad-soft);color:var(--bad)"><svg class="ic" data-icon="x" aria-hidden="true" focusable="false" style="width:12px;height:12px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17"/><path d="m7 7 10 10"/></svg></button>
+          <sc-if value="{{ p.canTrim }}"><button sc-camel-on-click="{{ p.onTrim }}" aria-label="קיצור השם" title="נכנסה לשם מילה מיותרת? כאן מסירים אותה" style="width:22px;height:22px;border-radius:50%;color:var(--ink3);display:grid;place-items:center;font-size:12px" style-hover="background:var(--panel2);color:var(--ink)"><svg class="ic" data-icon="scissors" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><path d="M8.12 8.12 12 12"/><path d="M20 4 8.12 15.88"/><circle cx="6" cy="18" r="3"/><path d="M14.8 14.8 20 20"/></svg></button></sc-if>
+          <button sc-camel-on-click="{{ p.onDel }}" aria-label="הסרה" style="width:22px;height:22px;border-radius:50%;color:var(--ink3);display:grid;place-items:center;font-size:13px;background:var(--panel2)" style-hover="background:var(--bad-soft);color:var(--bad)"><svg class="ic" data-icon="x" aria-hidden="true" focusable="false" style="width:12px;height:12px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17"/><path d="m7 7 10 10"/></svg></button>
         </div>
       </sc-for>
       <sc-if value="{{ trimRow }}">
         <div data-trim-row style="flex-basis:100%;display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:6px 0 2px;font-size:12.5px;color:var(--ink2)">
           <span>«{{ trimValue }}» — מילה שאינה חלק מהשם:</span>
           <sc-for list="{{ trimWords }}" as="w" hint-placeholder-count="3">
-            <button data-word onClick="{{ w.onDrop }}" title="{{ w.title }}" style="padding:2px 9px;border-radius:12px;border:1px solid var(--line);font-size:12.5px" style-hover="background:var(--bad-soft);color:var(--bad)">{{ w.w }} <svg class="ic" data-icon="x" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17"/><path d="m7 7 10 10"/></svg></button>
+            <button data-word sc-camel-on-click="{{ w.onDrop }}" title="{{ w.title }}" style="padding:2px 9px;border-radius:12px;border:1px solid var(--line);font-size:12.5px" style-hover="background:var(--bad-soft);color:var(--bad)">{{ w.w }} <svg class="ic" data-icon="x" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17"/><path d="m7 7 10 10"/></svg></button>
           </sc-for>
-          <button onClick="{{ onTrimClose }}" aria-label="סגירה" style="width:20px;height:20px;border-radius:50%;color:var(--ink3);display:grid;place-items:center"><svg class="ic" data-icon="x" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17"/><path d="m7 7 10 10"/></svg></button>
+          <button sc-camel-on-click="{{ onTrimClose }}" aria-label="סגירה" style="width:20px;height:20px;border-radius:50%;color:var(--ink3);display:grid;place-items:center"><svg class="ic" data-icon="x" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17"/><path d="m7 7 10 10"/></svg></button>
         </div>
       </sc-if>
       <sc-if value="{{ hasKept }}">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0 2px;font-size:12.5px;color:var(--ink2)">
           <span>נשארים כמו שהם:</span>
           <sc-for list="{{ keptItems }}" as="x" hint-placeholder-count="2">
-            <button onClick="{{ x.onUndo }}" title="להחזיר לרשימה" style="display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:14px;background:var(--panel2);border:1px solid var(--line);font-size:12.5px;max-width:100%;min-width:0;overflow-wrap:anywhere;text-align:start">{{ x.name }} <span style="color:var(--ink3)">↩</span></button>
+            <button sc-camel-on-click="{{ x.onUndo }}" title="להחזיר לרשימה" style="display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:14px;background:var(--panel2);border:1px solid var(--line);font-size:12.5px;max-width:100%;min-width:0;overflow-wrap:anywhere;text-align:start">{{ x.name }} <span style="color:var(--ink3)">↩</span></button>
           </sc-for>
         </div>
       </sc-if>
@@ -562,8 +562,8 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
       <sc-for list="{{ mergeSugs }}" as="m" hint-placeholder-count="2">
         <div data-merge-sug style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 10px;margin-top:6px;border-radius:12px;border:1px dashed var(--line);background:var(--panel2);font-size:12.5px;color:var(--ink2)">
           <span>אותו אדם? <b style="font-weight:500;color:var(--ink)">{{ m.from }}</b> ו<b style="font-weight:500;color:var(--ink)">{{ m.to }}</b> <small style="color:var(--ink3);font-size:11.5px">({{ m.why }})</small></span>
-          <button onClick="{{ m.onSame }}" style="padding:4px 11px;border-radius:14px;background:var(--accent-soft);color:var(--accent-ink);font-size:12.5px;font-weight:500">כן, אותו אדם</button>
-          <button onClick="{{ m.onNotSame }}" style="padding:4px 11px;border-radius:14px;border:1px solid var(--line);font-size:12.5px">לא, שני אנשים</button>
+          <button sc-camel-on-click="{{ m.onSame }}" style="padding:4px 11px;border-radius:14px;background:var(--accent-soft);color:var(--accent-ink);font-size:12.5px;font-weight:500">כן, אותו אדם</button>
+          <button sc-camel-on-click="{{ m.onNotSame }}" style="padding:4px 11px;border-radius:14px;border:1px solid var(--line);font-size:12.5px">לא, שני אנשים</button>
         </div>
       </sc-for>
     </div>
@@ -572,14 +572,14 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
       <div style="margin-top:12px;padding:10px 12px;border-radius:12px;border:1px dashed var(--line);background:var(--panel2)">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
           <div style="font-size:12px;color:var(--ink2)">נמצאו גם השמות האלה, ולא בטוח שהם של אנשים. הקשה על שם מוסיפה אותו לרשימה, והקשה על ✕ מסירה אותו:</div>
-          <button data-add-all onClick="{{ onPeoAddAll }}" style="margin-inline-start:auto;padding:5px 12px;border-radius:14px;background:var(--accent-soft);color:var(--accent-ink);font-size:12.5px;font-weight:500">הוספת כולם</button>
+          <button data-add-all sc-camel-on-click="{{ onPeoAddAll }}" style="margin-inline-start:auto;padding:5px 12px;border-radius:14px;background:var(--accent-soft);color:var(--accent-ink);font-size:12.5px;font-weight:500">הוספת כולם</button>
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:6px">
           <sc-for list="{{ peoSugItems }}" as="x" hint-placeholder-count="3">
             <span style="display:inline-flex;align-items:center;gap:6px;padding:5px 8px 5px 10px;border-radius:16px;border:1px solid var(--line);background:var(--panel);font-size:13px">
-              <button onClick="{{ x.onAdd }}" title="{{ x.why }}" style="font-weight:500;color:var(--accent-ink)">+ {{ x.value }}</button>
+              <button sc-camel-on-click="{{ x.onAdd }}" title="{{ x.why }}" style="font-weight:500;color:var(--accent-ink)">+ {{ x.value }}</button>
               <sc-if value="{{ x.removed }}"><span data-removed-note style="font-size:11.5px;color:var(--ink2)">הוסר במסמך קודם בתיק</span></sc-if>
-              <button onClick="{{ x.onDrop }}" aria-label="לא אדם" style="width:18px;height:18px;border-radius:50%;color:var(--ink3);display:grid;place-items:center;font-size:12px"><svg class="ic" data-icon="x" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17"/><path d="m7 7 10 10"/></svg></button>
+              <button sc-camel-on-click="{{ x.onDrop }}" aria-label="לא אדם" style="width:18px;height:18px;border-radius:50%;color:var(--ink3);display:grid;place-items:center;font-size:12px"><svg class="ic" data-icon="x" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17"/><path d="m7 7 10 10"/></svg></button>
             </span>
           </sc-for>
         </div>
@@ -587,19 +587,19 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
     </sc-if>
 
     <div style="display:flex;gap:8px;margin-top:16px">
-      <input value="{{ peoIn }}" onChange="{{ onPeoIn }}" onKeyDown="{{ onPeoKey }}" onPaste="{{ onPeoPaste }}" placeholder="שם מלא — למשל רונית לוי. אפשר להדביק כמה שמות, שורה לכל אחד" style="flex:1;min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:11px 13px;font-size:14px">
-      <button onClick="{{ onPeoAdd }}" style="padding:0 20px;border-radius:10px;border:1px solid var(--line);background:var(--panel);font-size:14px;font-weight:500" style-hover="background:var(--panel2)">הוספה</button>
+      <input value="{{ peoIn }}" sc-camel-on-change="{{ onPeoIn }}" sc-camel-on-key-down="{{ onPeoKey }}" sc-camel-on-paste="{{ onPeoPaste }}" placeholder="שם מלא — למשל רונית לוי. אפשר להדביק כמה שמות, שורה לכל אחד" style="flex:1;min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:11px 13px;font-size:14px">
+      <button sc-camel-on-click="{{ onPeoAdd }}" style="padding:0 20px;border-radius:10px;border:1px solid var(--line);background:var(--panel);font-size:14px;font-weight:500" style-hover="background:var(--panel2)">הוספה</button>
     </div>
     <sc-if value="{{ hasCaseField }}">
       <label data-case-field style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px;font-size:13px;color:var(--ink2)">
         <span>שם התיק <small style="color:var(--ink3);font-size:11.5px">(כדי שאותו אדם יקבל אותו שם בדוי גם במסמך הבא)</small></span>
-        <input value="{{ caseName }}" onChange="{{ onCaseName }}" onBlur="{{ onCaseNameDone }}" placeholder="למשל: לוי נ׳ לוי" style="flex:1 1 180px;min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:8px 11px;font-size:13.5px">
+        <input value="{{ caseName }}" sc-camel-on-change="{{ onCaseName }}" sc-camel-on-blur="{{ onCaseNameDone }}" placeholder="למשל: לוי נ׳ לוי" style="flex:1 1 180px;min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:8px 11px;font-size:13.5px">
       </label>
     </sc-if>
     <sc-if value="{{ nerFailed }}">
       <div role="alert" style="margin-top:12px;padding:10px 12px;border-radius:10px;background:var(--warn-soft);color:var(--warn);font-size:13px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         <span style="flex:1;min-width:200px">{{ peoNote }}</span>
-        <button onClick="{{ onRetryScan }}" style="padding:7px 12px;border-radius:9px;border:1px solid var(--warn);font-size:12.5px;font-weight:500;color:var(--warn)">ניסיון נוסף</button>
+        <button sc-camel-on-click="{{ onRetryScan }}" style="padding:7px 12px;border-radius:9px;border:1px solid var(--warn);font-size:12.5px;font-weight:500;color:var(--warn)">ניסיון נוסף</button>
       </div>
     </sc-if>
     <div role="status"><sc-if value="{{ nerOk }}"><p style="margin:11px 0 0;font-size:13px;color:var(--ink2);line-height:1.55">{{ peoNote }}</p></sc-if></div><!-- מה שהסריקה מצאה, ומה שלא נוסף, נאמרים: אזור המצב נשאר במסך גם כשהמודל נכשל ושב (הביקורת של 6.10) -->
@@ -607,17 +607,17 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
     <sc-if value="{{ sugPrompt }}">
       <div data-sug-prompt role="alert" style="margin-top:18px;padding:10px 12px;border-radius:10px;background:var(--warn-soft);color:var(--warn);font-size:13px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <span style="flex:1 1 220px">{{ sugPromptText }}</span>
-        <button onClick="{{ onPeoAddAllGo }}" style="padding:6px 12px;border-radius:9px;background:var(--warn);color:var(--panel);font-size:12.5px;font-weight:500">הוספת כולם והמשך</button>
-        <button onClick="{{ onPeoGoAnyway }}" style="padding:6px 12px;border-radius:9px;border:1px solid var(--warn);color:var(--warn);font-size:12.5px">להמשיך בלעדיהם</button>
+        <button sc-camel-on-click="{{ onPeoAddAllGo }}" style="padding:6px 12px;border-radius:9px;background:var(--warn);color:var(--panel);font-size:12.5px;font-weight:500">הוספת כולם והמשך</button>
+        <button sc-camel-on-click="{{ onPeoGoAnyway }}" style="padding:6px 12px;border-radius:9px;border:1px solid var(--warn);color:var(--warn);font-size:12.5px">להמשיך בלעדיהם</button>
       </div>
     </sc-if>
     <div style="display:flex;gap:10px;margin-top:24px;align-items:center;flex-wrap:wrap">
-      <button onClick="{{ onPeoGo }}" disabled="{{ scanning }}" style="{{ primaryBtn }}">{{ peoGoLabel }}</button>
-      <button onClick="{{ onLoadProf }}" style="padding:12px 18px;border-radius:10px;border:1px solid var(--line);background:var(--panel);font-weight:500;font-size:14px;white-space:nowrap" style-hover="background:var(--panel2)">ייבוא תיק מקובץ</button>
+      <button sc-camel-on-click="{{ onPeoGo }}" disabled="{{ scanning }}" style="{{ primaryBtn }}">{{ peoGoLabel }}</button>
+      <button sc-camel-on-click="{{ onLoadProf }}" style="padding:12px 18px;border-radius:10px;border:1px solid var(--line);background:var(--panel);font-weight:500;font-size:14px;white-space:nowrap" style-hover="background:var(--panel2)">ייבוא תיק מקובץ</button>
       <sc-if value="{{ scanning }}">
-        <button onClick="{{ onGoNow }}" title="הרשימה נשארת כאן לבדיקה; המודל ממשיך לרדת ברקע, ושמות שימצא יוצעו במסך הבדיקה" style="font-size:13px;color:var(--ink2);padding:12px 12px;border-radius:9px;border:1px solid var(--line);background:var(--panel)" style-hover="background:var(--panel2)">לא לחכות למודל</button>
+        <button sc-camel-on-click="{{ onGoNow }}" title="הרשימה נשארת כאן לבדיקה; המודל ממשיך לרדת ברקע, ושמות שימצא יוצעו במסך הבדיקה" style="font-size:13px;color:var(--ink2);padding:12px 12px;border-radius:9px;border:1px solid var(--line);background:var(--panel)" style-hover="background:var(--panel2)">לא לחכות למודל</button>
       </sc-if>
-      <button onClick="{{ onSkipNames }}" disabled="{{ scanning }}" style="font-size:13px;color:var(--ink2);padding:12px 8px" style-hover="color:var(--ink)">המשך בלי שמות — רק ת״ז, טלפונים וכתובות</button>
+      <button sc-camel-on-click="{{ onSkipNames }}" disabled="{{ scanning }}" style="font-size:13px;color:var(--ink2);padding:12px 8px" style-hover="color:var(--ink)">המשך בלי שמות — רק ת״ז, טלפונים וכתובות</button>
     </div>
   </main>
   </sc-if>
@@ -639,8 +639,8 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
         <div data-geo-head style="display:flex;align-items:baseline;gap:10px;padding:15px 18px;border-bottom:1px solid var(--line2)">
           <b style="font-weight:500">{{ geoCount }} יישובים במסמך</b>
           <span style="font-size:12.5px;color:var(--ink2)">סטיית מרחק {{ geoErr }} ק״מ · {{ geoQuality }}</span>
-          <button onClick="{{ onToggleMap }}" style="margin-inline-start:auto;font-size:13px;color:var(--ink2);padding:6px 10px;border-radius:8px;border:1px solid var(--line);white-space:nowrap" style-hover="background:var(--panel2)">{{ mapLabel }}</button>
-          <button onClick="{{ onGeoAlt }}" style="font-size:13px;color:var(--accent);padding:6px 10px;border-radius:8px;border:1px solid var(--line);white-space:nowrap" style-hover="background:var(--accent-soft)">קבוצה אחרת</button>
+          <button sc-camel-on-click="{{ onToggleMap }}" style="margin-inline-start:auto;font-size:13px;color:var(--ink2);padding:6px 10px;border-radius:8px;border:1px solid var(--line);white-space:nowrap" style-hover="background:var(--panel2)">{{ mapLabel }}</button>
+          <button sc-camel-on-click="{{ onGeoAlt }}" style="font-size:13px;color:var(--accent);padding:6px 10px;border-radius:8px;border:1px solid var(--line);white-space:nowrap" style-hover="background:var(--accent-soft)">קבוצה אחרת</button>
         </div>
         <sc-if value="{{ showMap }}">
         <div data-stack style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line2);border-bottom:1px solid var(--line2)">
@@ -675,10 +675,10 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
         </sc-if>
         <sc-for list="{{ geoRows }}" as="g" hint-placeholder-count="3">
           <div data-wrap style="{{ g.rowStyle }}">
-            <span data-tip="1" data-kbd tabindex="0" role="button" onMouseEnter="{{ g.onTipIn }}" onMouseLeave="{{ g.onTipOut }}" onClick="{{ g.onTipTap }}" title="{{ g.tipHint }}" style="min-width:130px;font-weight:500;cursor:default;text-decoration:underline dotted var(--line);text-underline-offset:3px">{{ g.from }}</span>
+            <span data-tip="1" data-kbd tabindex="0" role="button" sc-camel-on-mouse-enter="{{ g.onTipIn }}" sc-camel-on-mouse-leave="{{ g.onTipOut }}" sc-camel-on-click="{{ g.onTipTap }}" title="{{ g.tipHint }}" style="min-width:130px;font-weight:500;cursor:default;text-decoration:underline dotted var(--line);text-underline-offset:3px">{{ g.from }}</span>
             <span style="color:var(--ink3)"><svg class="ic" data-icon="arrow-left" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg><span class="vh">←</span></span>
-            <input value="{{ g.to }}" aria-label="היישוב שיבוא במקום {{ g.from }}" onChange="{{ g.onChange }}" style="flex:1;min-width:0;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px 12px;font-size:14px;color:var(--accent-ink);font-weight:500">
-            <button onClick="{{ g.onRemove }}" title="להשאיר את שם היישוב כמו שהוא" style="font-size:12.5px;color:var(--ink2);padding:7px 11px;border-radius:8px;border:1px solid var(--line);white-space:nowrap" style-hover="background:var(--panel2);color:var(--ink)">לא להחליף</button>
+            <input value="{{ g.to }}" aria-label="היישוב שיבוא במקום {{ g.from }}" sc-camel-on-change="{{ g.onChange }}" style="flex:1;min-width:0;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px 12px;font-size:14px;color:var(--accent-ink);font-weight:500">
+            <button sc-camel-on-click="{{ g.onRemove }}" title="להשאיר את שם היישוב כמו שהוא" style="font-size:12.5px;color:var(--ink2);padding:7px 11px;border-radius:8px;border:1px solid var(--line);white-space:nowrap" style-hover="background:var(--panel2);color:var(--ink)">לא להחליף</button>
           </div>
           <sc-if value="{{ g.tagNote }}"><div data-tags style="padding:0 18px 12px 160px;font-size:11.5px;color:var(--ink3);border-bottom:1px solid var(--line2)">{{ g.tagNote }}</div></sc-if>
         </sc-for>
@@ -686,13 +686,13 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 18px;border-bottom:1px solid var(--line2);font-size:12.5px;color:var(--ink2)">
             <span>נשארים כמו שהם:</span>
             <sc-for list="{{ excluded }}" as="x" hint-placeholder-count="2">
-              <button onClick="{{ x.onUndo }}" title="להחזיר להחלפה" style="display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:14px;background:var(--panel2);border:1px solid var(--line);font-size:12.5px;max-width:100%;min-width:0;overflow-wrap:anywhere;text-align:start">{{ x.name }} <span style="color:var(--ink3)">↩</span></button>
+              <button sc-camel-on-click="{{ x.onUndo }}" title="להחזיר להחלפה" style="display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:14px;background:var(--panel2);border:1px solid var(--line);font-size:12.5px;max-width:100%;min-width:0;overflow-wrap:anywhere;text-align:start">{{ x.name }} <span style="color:var(--ink3)">↩</span></button>
             </sc-for>
           </div>
         </sc-if>
         <div data-geo-foot style="display:flex;gap:9px;padding:15px 18px">
-          <button onClick="{{ onGeoApply }}" style="{{ primaryBtn }}">החלת הקבוצה והמשך</button>
-          <button onClick="{{ onGeoSkip }}" style="padding:12px 18px;border-radius:10px;border:1px solid var(--line);background:var(--panel);font-weight:500;font-size:14px;white-space:nowrap" style-hover="background:var(--panel2)">בלי שמירת מרחקים — שמות אקראיים</button>
+          <button sc-camel-on-click="{{ onGeoApply }}" style="{{ primaryBtn }}">החלת הקבוצה והמשך</button>
+          <button sc-camel-on-click="{{ onGeoSkip }}" style="padding:12px 18px;border-radius:10px;border:1px solid var(--line);background:var(--panel);font-weight:500;font-size:14px;white-space:nowrap" style-hover="background:var(--panel2)">בלי שמירת מרחקים — שמות אקראיים</button>
         </div>
       </div>
     </sc-if>
@@ -704,13 +704,13 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
         </div>
         <sc-for list="{{ extraRows }}" as="x" hint-placeholder-count="3">
           <div data-wrap style="{{ x.rowStyle }}">
-            <span data-tip="1" data-kbd tabindex="0" role="button" onMouseEnter="{{ x.onTipIn }}" onMouseLeave="{{ x.onTipOut }}" onClick="{{ x.onTipTap }}" title="{{ x.tipHint }}" style="min-width:130px;font-weight:500;cursor:default;text-decoration:underline dotted var(--line);text-underline-offset:3px">{{ x.name }}</span>
+            <span data-tip="1" data-kbd tabindex="0" role="button" sc-camel-on-mouse-enter="{{ x.onTipIn }}" sc-camel-on-mouse-leave="{{ x.onTipOut }}" sc-camel-on-click="{{ x.onTipTap }}" title="{{ x.tipHint }}" style="min-width:130px;font-weight:500;cursor:default;text-decoration:underline dotted var(--line);text-underline-offset:3px">{{ x.name }}</span>
             <sc-if value="{{ x.note }}"><small style="color:var(--warn);font-size:11.5px;white-space:nowrap">{{ x.note }}</small></sc-if>
             <span style="color:var(--ink3)"><svg class="ic" data-icon="arrow-left" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg><span class="vh">←</span></span>
-            <input value="{{ x.to }}" aria-label="היישוב שיבוא במקום {{ x.name }}" onChange="{{ x.onChange }}" style="flex:1;min-width:0;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px 12px;font-size:14px;color:var(--accent-ink);font-weight:500">
+            <input value="{{ x.to }}" aria-label="היישוב שיבוא במקום {{ x.name }}" sc-camel-on-change="{{ x.onChange }}" style="flex:1;min-width:0;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px 12px;font-size:14px;color:var(--accent-ink);font-weight:500">
             <!-- מצב אמיתי, בפקד אחד (UX #10): מסומן = יוחלף. "אושר ברשימה" כשהמקום כבר אושר במסך השמות -->
             <label data-extra-toggle style="display:flex;align-items:center;gap:6px;font-size:12.5px;white-space:nowrap;cursor:pointer">
-              <input type="checkbox" checked="{{ x.isOn }}" onChange="{{ x.onToggle }}" style="width:16px;height:16px;accent-color:var(--accent)">
+              <input type="checkbox" checked="{{ x.isOn }}" sc-camel-on-change="{{ x.onToggle }}" style="width:16px;height:16px;accent-color:var(--accent)">
               להחליף
             </label>
             <sc-if value="{{ x.listed }}"><small style="color:var(--accent-ink);font-size:11.5px;white-space:nowrap">אושר ברשימה</small></sc-if>
@@ -725,11 +725,11 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:14px;font-size:12.5px">
             <span>נשארים כמו שהם:</span>
             <sc-for list="{{ excluded }}" as="x" hint-placeholder-count="2">
-              <button onClick="{{ x.onUndo }}" style="display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:14px;background:var(--panel2);border:1px solid var(--line);font-size:12.5px;max-width:100%;min-width:0;overflow-wrap:anywhere;text-align:start">{{ x.name }} <span style="color:var(--ink3)">↩</span></button>
+              <button sc-camel-on-click="{{ x.onUndo }}" style="display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:14px;background:var(--panel2);border:1px solid var(--line);font-size:12.5px;max-width:100%;min-width:0;overflow-wrap:anywhere;text-align:start">{{ x.name }} <span style="color:var(--ink3)">↩</span></button>
             </sc-for>
           </div>
         </sc-if>
-        <div style="margin-top:16px"><button onClick="{{ onGeoApply }}" style="{{ primaryBtn }}">המשך לבדיקה</button></div>
+        <div style="margin-top:16px"><button sc-camel-on-click="{{ onGeoApply }}" style="{{ primaryBtn }}">המשך לבדיקה</button></div>
       </div>
     </sc-if>
   </main>
@@ -755,8 +755,8 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
           <b id="rv-last-q" style="display:block;font-weight:500;margin-bottom:2px">{{ rvLastTitle }}</b>
           <span style="color:var(--ink2)">{{ rvLastMeta }}</span>
         </div>
-        <button onClick="{{ onRvLastOther }}" style="font-size:13px;color:var(--ink2);padding:8px 12px;border-radius:9px;border:1px solid var(--line);background:var(--panel);white-space:nowrap" style-hover="background:var(--panel2)">תיק אחר</button>
-        <button onClick="{{ onRvLastUse }}" style="padding:8px 14px;border-radius:9px;background:var(--accent);color:var(--panel);font-size:13px;font-weight:600;letter-spacing:.01em;white-space:nowrap">{{ rvLastUseLabel }}</button>
+        <button sc-camel-on-click="{{ onRvLastOther }}" style="font-size:13px;color:var(--ink2);padding:8px 12px;border-radius:9px;border:1px solid var(--line);background:var(--panel);white-space:nowrap" style-hover="background:var(--panel2)">תיק אחר</button>
+        <button sc-camel-on-click="{{ onRvLastUse }}" style="padding:8px 14px;border-radius:9px;background:var(--accent);color:var(--panel);font-size:13px;font-weight:600;letter-spacing:.01em;white-space:nowrap">{{ rvLastUseLabel }}</button>
       </div>
     </sc-if>
     <sc-if value="{{ rvCtxOn }}">
@@ -767,11 +767,11 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
     </sc-if>
     <sc-if value="{{ rvTour }}"><p data-rv-tour style="margin:0 0 8px;font-size:13px;color:var(--ink2)">תשובה לדוגמה, כאילו חזרה מ־AI. בעבודה רגילה מדביקים כאן את התשובה שקיבלתם.</p></sc-if>
     <div data-tour-target="restore">
-      <textarea dir="auto" value="{{ rvIn }}" onChange="{{ onRvIn }}" rows="8" aria-label="תשובת ה-AI" placeholder="הדבקת תשובת ה-AI…" aria-describedby="rv-help" style="width:100%;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;font:14px/1.7 Rubik,sans-serif;resize:vertical"></textarea>
+      <textarea dir="auto" value="{{ rvIn }}" sc-camel-on-change="{{ onRvIn }}" rows="8" aria-label="תשובת ה-AI" placeholder="הדבקת תשובת ה-AI…" aria-describedby="rv-help" style="width:100%;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;font:14px/1.7 Rubik,sans-serif;resize:vertical"></textarea>
       <small id="rv-help" style="display:block;margin-top:5px;font-size:12px;color:var(--ink3)">מדביקים כאן את מה שה-AI החזיר (Ctrl+V), ולוחצים «החזרת שמות».</small>
       <div style="display:flex;gap:9px;margin-top:12px;flex-wrap:wrap">
-        <button data-rv-go onClick="{{ onRvGo }}" disabled="{{ rvEmpty }}" style="{{ rvGoStyle }}">החזרת שמות</button>
-        <sc-if value="{{ rvImportOn }}"><button onClick="{{ onLoadProf }}" style="padding:12px 18px;border-radius:10px;border:1px solid var(--line);background:var(--panel);font-weight:500;font-size:14px;white-space:nowrap" style-hover="background:var(--panel2)">ייבוא תיק מקובץ</button></sc-if>
+        <button data-rv-go sc-camel-on-click="{{ onRvGo }}" disabled="{{ rvEmpty }}" style="{{ rvGoStyle }}">החזרת שמות</button>
+        <sc-if value="{{ rvImportOn }}"><button sc-camel-on-click="{{ onLoadProf }}" style="padding:12px 18px;border-radius:10px;border:1px solid var(--line);background:var(--panel);font-weight:500;font-size:14px;white-space:nowrap" style-hover="background:var(--panel2)">ייבוא תיק מקובץ</button></sc-if>
       </div>
     </div>
     <sc-if value="{{ rvErr }}"><div role="alert" key="{{ rvKey }}" style="margin-top:10px;padding:10px 13px;border-radius:10px;background:var(--bad-soft);color:var(--bad);font-size:13.5px">{{ rvErr }}</div></sc-if>
@@ -789,8 +789,8 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
     <sc-if value="{{ rvOut }}">
       <div data-rv-out dir="rtl" style="background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:18px;font:15px/1.9 'Noto Serif Hebrew',serif;white-space:pre-wrap"><sc-for list="{{ rvParas }}" as="pg" hint-placeholder-count="3"><div dir="auto" style="min-height:1.9em;text-align:start"><sc-for list="{{ pg.segs }}" as="sg" hint-placeholder-count="3"><sc-if value="{{ sg.plain }}"><span>{{ sg.t }}</span></sc-if><sc-if value="{{ sg.mark }}"><mark data-left title="{{ sg.title }}" style="background:var(--warn-soft);color:inherit;border-bottom:2px dashed var(--warn);border-radius:3px;padding:0 1px">{{ sg.t }}</mark></sc-if><sc-if value="{{ sg.date }}"><mark data-rv-date title="{{ sg.title }}" style="background:var(--accent-soft);color:inherit;border-bottom:2px dotted var(--accent);border-radius:3px;padding:0 1px">{{ sg.t }}</mark></sc-if></sc-for></div></sc-for></div><!-- כל פסקה בכיוון של האות הראשונה שלה, בבלוק משלה כמו המסמך במסך הבדיקה: dir="auto" על התשובה כולה נתן לה כיוון אחד (בדיקה חיה, 6.10), ובבלוק אחד עם unicode-bidi:plaintext יישר Firefox את כל הפסקאות לפי הראשונה (בדיקה ב-Firefox, 10.10) -->
       <div style="display:flex;gap:9px;margin-top:11px;flex-wrap:wrap">
-        <button onClick="{{ onRvCopy }}" style="{{ rvCopyStyle }}">{{ rvCopyLabel }}</button>
-        <sc-if value="{{ rvBackOn }}"><button data-rv-back onClick="{{ onBack }}" style="padding:12px 18px;border-radius:10px;border:1px solid var(--line);background:var(--panel);font-weight:500;font-size:14px;white-space:nowrap" style-hover="background:var(--panel2)">חזרה למסמך</button></sc-if>
+        <button sc-camel-on-click="{{ onRvCopy }}" style="{{ rvCopyStyle }}">{{ rvCopyLabel }}</button>
+        <sc-if value="{{ rvBackOn }}"><button data-rv-back sc-camel-on-click="{{ onBack }}" style="padding:12px 18px;border-radius:10px;border:1px solid var(--line);background:var(--panel);font-weight:500;font-size:14px;white-space:nowrap" style-hover="background:var(--panel2)">חזרה למסמך</button></sc-if>
       </div>
     </sc-if>
   </main>
@@ -802,8 +802,8 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
 
     <sc-if value="{{ narrow }}">
       <div style="display:flex;gap:6px;background:var(--panel2);border-radius:9px;padding:3px;margin-bottom:12px">
-        <button onClick="{{ onPaneFind }}" aria-pressed="{{ paneFindOn }}" style="{{ paneFindStyle }}">ממצאים ובדיקה</button>
-        <button onClick="{{ onPaneDoc }}" aria-pressed="{{ paneDocOn }}" style="{{ paneDocStyle }}">המסמך</button>
+        <button sc-camel-on-click="{{ onPaneFind }}" aria-pressed="{{ paneFindOn }}" style="{{ paneFindStyle }}">ממצאים ובדיקה</button>
+        <button sc-camel-on-click="{{ onPaneDoc }}" aria-pressed="{{ paneDocOn }}" style="{{ paneDocStyle }}">המסמך</button>
       </div>
     </sc-if>
 
@@ -814,19 +814,19 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
         <span style="font-size:12px;color:var(--ink3);display:inline-flex;align-items:center;gap:5px;white-space:nowrap"><b style="color:var(--ink);font-weight:500;border-radius:4px;padding:0 1px;border-bottom:2.5px solid var(--accent)">הוחלף</b><sc-if value="{{ hasFlagMarks }}"><b style="color:var(--ink);font-weight:500;border-radius:4px;padding:0 1px;border-bottom:2.5px dashed var(--warn)">לא הוחלף</b></sc-if></span>
         <div style="margin-inline-start:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
           <div style="display:flex;align-items:center;gap:2px">
-            <button onClick="{{ onHistUndo }}" disabled="{{ undoOff }}" aria-label="ביטול הפעולה האחרונה" title="ביטול — Ctrl+Z" style="{{ undoStyle }}" style-hover="background:var(--panel2)"><svg class="ic" data-icon="undo" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/></svg></button>
-            <button onClick="{{ onHistRedo }}" disabled="{{ redoOff }}" aria-label="ביצוע חוזר" title="ביצוע חוזר — Ctrl+Shift+Z" style="{{ redoStyle }}" style-hover="background:var(--panel2)"><svg class="ic" data-icon="redo" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5A5.5 5.5 0 0 0 9.5 20H13"/></svg></button>
+            <button sc-camel-on-click="{{ onHistUndo }}" disabled="{{ undoOff }}" aria-label="ביטול הפעולה האחרונה" title="ביטול — Ctrl+Z" style="{{ undoStyle }}" style-hover="background:var(--panel2)"><svg class="ic" data-icon="undo" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/></svg></button>
+            <button sc-camel-on-click="{{ onHistRedo }}" disabled="{{ redoOff }}" aria-label="ביצוע חוזר" title="ביצוע חוזר — Ctrl+Shift+Z" style="{{ redoStyle }}" style-hover="background:var(--panel2)"><svg class="ic" data-icon="redo" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5A5.5 5.5 0 0 0 9.5 20H13"/></svg></button>
           </div>
           <sc-if value="{{ hasMarks }}">
             <div style="display:flex;align-items:center;gap:2px">
-              <button onClick="{{ onPrevMark }}" aria-label="החלפה קודמת" title="ההחלפה הקודמת במסמך" style="width:26px;height:26px;border-radius:7px;color:var(--ink2);font-size:11.5px" style-hover="background:var(--panel2)"><svg class="ic" data-icon="chevron-up" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg></button>
+              <button sc-camel-on-click="{{ onPrevMark }}" aria-label="החלפה קודמת" title="ההחלפה הקודמת במסמך" style="width:26px;height:26px;border-radius:7px;color:var(--ink2);font-size:11.5px" style-hover="background:var(--panel2)"><svg class="ic" data-icon="chevron-up" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg></button>
               <span aria-live="polite" aria-atomic="true" style="font-size:12px;color:var(--ink3);min-width:52px;text-align:center">{{ markNav }}</span>
-              <button onClick="{{ onNextMark }}" aria-label="החלפה הבאה" title="ההחלפה הבאה במסמך" style="width:26px;height:26px;border-radius:7px;color:var(--ink2);font-size:11.5px" style-hover="background:var(--panel2)"><svg class="ic" data-icon="chevron-down" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
+              <button sc-camel-on-click="{{ onNextMark }}" aria-label="החלפה הבאה" title="ההחלפה הבאה במסמך" style="width:26px;height:26px;border-radius:7px;color:var(--ink2);font-size:11.5px" style-hover="background:var(--panel2)"><svg class="ic" data-icon="chevron-down" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
             </div>
           </sc-if>
           <div style="display:flex;gap:4px;background:var(--panel2);border-radius:8px;padding:3px">
-            <button onClick="{{ onViewRed }}" aria-pressed="{{ viewRedOn }}" style="{{ viewRedStyle }}">אחרי ההחלפה</button>
-            <button onClick="{{ onViewOrig }}" aria-pressed="{{ viewOrigOn }}" style="{{ viewOrigStyle }}">מקור</button>
+            <button sc-camel-on-click="{{ onViewRed }}" aria-pressed="{{ viewRedOn }}" style="{{ viewRedStyle }}">אחרי ההחלפה</button>
+            <button sc-camel-on-click="{{ onViewOrig }}" aria-pressed="{{ viewOrigOn }}" style="{{ viewOrigStyle }}">מקור</button>
           </div>
         </div>
       </div>
@@ -837,7 +837,7 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
         <sc-if value="{{ legendDate }}"><span data-legend-date><span style="color:var(--ink);font-weight:500;border-bottom:2.5px dotted var(--accent);padding:0 1px;border-radius:4px">12.3.26</span> תאריך שהוזז; בהחזרת השמות חוזר התאריך המקורי</span></sc-if>
         <span style="color:var(--ink3)">לחיצה על סימון מאפשרת לערוך אותו</span>
       </div>
-      <div ref="{{ sheetRef }}" onMouseUp="{{ onSheetSelect }}" style="background:var(--panel2);max-height:max(300px, calc(100vh - var(--bar-h, 64px) - 186px));overflow:auto;scroll-padding:8px;padding:22px 0 40px;scrollbar-width:thin">
+      <div ref="{{ sheetRef }}" sc-camel-on-mouse-up="{{ onSheetSelect }}" style="background:var(--panel2);max-height:max(300px, calc(100vh - var(--bar-h, 64px) - 186px));overflow:auto;scroll-padding:8px;padding:22px 0 40px;scrollbar-width:thin">
         <div data-paper style="width:min(720px,calc(100% - 44px));margin:0 auto;background:var(--paper);border:1px solid var(--line);border-radius:3px;box-shadow:0 1px 2px rgba(0,0,0,.06),0 18px 40px -30px rgba(0,0,0,.5);padding:56px 60px;font-size:16px;line-height:1.95;font-family:var(--doc-font)">
           <sc-for list="{{ sheet }}" as="blk" hint-placeholder-count="8">
             <sc-if value="{{ blk.head }}">
@@ -845,7 +845,7 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
             </sc-if>
             <div style="display:grid;grid-template-columns:22px minmax(0,1fr);gap:14px;margin-bottom:11px;align-items:baseline">
               <span style="font:400 11.5px/2 Rubik,sans-serif;color:var(--ink3);text-align:end">{{ blk.n }}</span>
-              <p dir="auto" style="margin:0;text-wrap:pretty"><sc-for list="{{ blk.segs }}" as="sg" hint-placeholder-count="3"><sc-if value="{{ sg.plain }}"><span>{{ sg.t }}</span></sc-if><sc-if value="{{ sg.mark }}"><span data-mark="{{ sg.id }}" data-val="{{ sg.val }}" data-badge="{{ sg.badge }}" data-kind="{{ sg.kind }}" tabindex="0" role="button" aria-label="{{ sg.aria }}" onClick="{{ sg.onClick }}" title="{{ sg.title }}" style="{{ sg.style }}"><span data-pre style="font-weight:400">{{ sg.pre }}</span>{{ sg.t }}<sc-if value="{{ sg.del }}"><svg class="ic" data-icon="eraser" aria-hidden="true" focusable="false" style="width:13px;height:13px;display:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg></sc-if></span></sc-if></sc-for></p>
+              <p dir="auto" style="margin:0;text-wrap:pretty"><sc-for list="{{ blk.segs }}" as="sg" hint-placeholder-count="3"><sc-if value="{{ sg.plain }}"><span>{{ sg.t }}</span></sc-if><sc-if value="{{ sg.mark }}"><span data-mark="{{ sg.id }}" data-val="{{ sg.val }}" data-badge="{{ sg.badge }}" data-kind="{{ sg.kind }}" tabindex="0" role="button" aria-label="{{ sg.aria }}" sc-camel-on-click="{{ sg.onClick }}" title="{{ sg.title }}" style="{{ sg.style }}"><span data-pre style="font-weight:400">{{ sg.pre }}</span>{{ sg.t }}<sc-if value="{{ sg.del }}"><svg class="ic" data-icon="eraser" aria-hidden="true" focusable="false" style="width:13px;height:13px;display:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg></sc-if></span></sc-if></sc-for></p>
             </div>
           </sc-for>
         </div>
@@ -857,21 +857,21 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
       <div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:13px 15px">
       <div style="font-size:12px;font-weight:500;color:var(--ink3);letter-spacing:.05em;margin-bottom:9px">הוספה ידנית</div>
       <div style="display:flex;gap:7px">
-      <input value="{{ addV }}" onChange="{{ onAddV }}" onKeyDown="{{ onAddKey }}" placeholder="שם או פרט שפוספס" style="flex:1;min-width:0;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:13.5px">
-      <input value="{{ addR }}" onChange="{{ onAddR }}" onKeyDown="{{ onAddKey }}" placeholder="תחליף" style="flex:0 0 106px;min-width:0;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:13.5px">
+      <input value="{{ addV }}" sc-camel-on-change="{{ onAddV }}" sc-camel-on-key-down="{{ onAddKey }}" placeholder="שם או פרט שפוספס" style="flex:1;min-width:0;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:13.5px">
+      <input value="{{ addR }}" sc-camel-on-change="{{ onAddR }}" sc-camel-on-key-down="{{ onAddKey }}" placeholder="תחליף" style="flex:0 0 106px;min-width:0;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:13.5px">
       </div>
       <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:9px">
       <sc-for list="{{ kindChips }}" as="k" hint-placeholder-count="7">
-      <button onClick="{{ k.onClick }}" aria-pressed="{{ k.on }}" style="{{ k.style }}">{{ k.label }}</button>
+      <button sc-camel-on-click="{{ k.onClick }}" aria-pressed="{{ k.on }}" style="{{ k.style }}">{{ k.label }}</button>
       </sc-for>
-      <button onClick="{{ onAdd }}" style="margin-inline-start:auto;padding:6px 14px;border-radius:16px;background:var(--accent);color:var(--panel);font-size:12.5px;font-weight:600;letter-spacing:.01em">הוספה והחלפה</button>
+      <button sc-camel-on-click="{{ onAdd }}" style="margin-inline-start:auto;padding:6px 14px;border-radius:16px;background:var(--accent);color:var(--panel);font-size:12.5px;font-weight:600;letter-spacing:.01em">הוספה והחלפה</button>
       </div>
       </div>
 
 
       <sc-for list="{{ sections }}" as="s" hint-placeholder-count="5">
         <div style="{{ s.wrapStyle }}">
-          <button data-section="{{ s.key }}" onClick="{{ s.onToggle }}" aria-expanded="{{ s.expanded }}" style="display:flex;align-items:center;gap:10px;width:100%;padding:13px 15px;text-align:start">
+          <button data-section="{{ s.key }}" sc-camel-on-click="{{ s.onToggle }}" aria-expanded="{{ s.expanded }}" style="display:flex;align-items:center;gap:10px;width:100%;padding:13px 15px;text-align:start">
             <span style="{{ s.dotStyle }}"></span>
             <b style="font-weight:500;font-size:13.5px">{{ s.title }}</b>
             <span style="font-size:12px;color:var(--ink3)">{{ s.count }}</span>
@@ -884,7 +884,7 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 0 8px;font-size:12.5px;color:var(--ink2);border-bottom:1px solid var(--line2);margin-bottom:8px">
                   <span title="שמות שביקשתם להשאיר כמו שהם. הם יגיעו ל-AI כפי שהם כתובים.">נשארים כמו שהם:</span>
                   <sc-for list="{{ allowedItems }}" as="x" hint-placeholder-count="2">
-                    <button onClick="{{ x.onUndo }}" title="לחזור ולהחליף" style="display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:14px;background:var(--panel2);border:1px solid var(--line);font-size:12.5px;max-width:100%;min-width:0;overflow-wrap:anywhere;text-align:start">{{ x.name }} <span style="color:var(--ink3)">↩</span></button>
+                    <button sc-camel-on-click="{{ x.onUndo }}" title="לחזור ולהחליף" style="display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:14px;background:var(--panel2);border:1px solid var(--line);font-size:12.5px;max-width:100%;min-width:0;overflow-wrap:anywhere;text-align:start">{{ x.name }} <span style="color:var(--ink3)">↩</span></button>
                   </sc-for>
                 </div>
               </sc-if>
@@ -896,8 +896,8 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
                   </div>
                   <div style="font:13px/1.7 var(--doc-font);color:var(--ink2);margin-top:5px;padding-inline-start:9px;border-inline-start:2px solid var(--line)">{{ x.ctx.pre }}<b style="background:var(--warn-soft);color:var(--warn);font-weight:500">{{ x.ctx.hit }}</b>{{ x.ctx.post }}</div>
                   <div style="display:flex;gap:6px;margin-top:8px">
-                    <button onClick="{{ x.onAdd }}" style="padding:6px 12px;border-radius:15px;background:var(--accent);color:var(--panel);font-size:12.5px;font-weight:600;letter-spacing:.01em">להחליף</button>
-                    <button onClick="{{ x.onKeep }}" style="padding:6px 12px;border-radius:15px;border:1px solid var(--line);font-size:12.5px;color:var(--ink2)">להשאיר</button>
+                    <button sc-camel-on-click="{{ x.onAdd }}" style="padding:6px 12px;border-radius:15px;background:var(--accent);color:var(--panel);font-size:12.5px;font-weight:600;letter-spacing:.01em">להחליף</button>
+                    <button sc-camel-on-click="{{ x.onKeep }}" style="padding:6px 12px;border-radius:15px;border:1px solid var(--line);font-size:12.5px;color:var(--ink2)">להשאיר</button>
                   </div>
                 </div>
               </sc-for>
@@ -909,8 +909,8 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
                   </div>
                   <div style="font:13px/1.7 var(--doc-font);color:var(--ink2);margin-top:5px;padding-inline-start:9px;border-inline-start:2px solid var(--line)">{{ x.ctx.pre }}<b style="background:var(--warn-soft);color:var(--warn);font-weight:500">{{ x.ctx.hit }}</b>{{ x.ctx.post }}</div>
                   <div style="display:flex;gap:6px;margin-top:8px">
-                    <button onClick="{{ x.onFix }}" style="padding:6px 12px;border-radius:15px;background:var(--warn);color:var(--panel);font-size:12.5px;font-weight:500">{{ x.fixLabel }}</button>
-                    <button onClick="{{ x.onSkip }}" style="padding:6px 12px;border-radius:15px;border:1px solid var(--line);font-size:12.5px;color:var(--ink2)">מילה אחרת</button>
+                    <button sc-camel-on-click="{{ x.onFix }}" style="padding:6px 12px;border-radius:15px;background:var(--warn);color:var(--panel);font-size:12.5px;font-weight:500">{{ x.fixLabel }}</button>
+                    <button sc-camel-on-click="{{ x.onSkip }}" style="padding:6px 12px;border-radius:15px;border:1px solid var(--line);font-size:12.5px;color:var(--ink2)">מילה אחרת</button>
                   </div>
                 </div>
               </sc-for>
@@ -922,8 +922,8 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
                   </div>
                   <div style="font:13px/1.7 var(--doc-font);color:var(--ink2);margin-top:5px;padding-inline-start:9px;border-inline-start:2px solid var(--line)">{{ x.ctx.pre }}<b style="background:var(--accent-soft);font-weight:500">{{ x.ctx.hit }}</b>{{ x.ctx.post }}</div>
                   <div style="display:flex;gap:6px;margin-top:8px">
-                    <button onClick="{{ x.onAdd }}" style="padding:6px 12px;border-radius:15px;background:var(--accent);color:var(--panel);font-size:12.5px;font-weight:600;letter-spacing:.01em">כן, זה שם</button>
-                    <button onClick="{{ x.onNo }}" style="padding:6px 12px;border-radius:15px;border:1px solid var(--line);font-size:12.5px;color:var(--ink2)">לא</button>
+                    <button sc-camel-on-click="{{ x.onAdd }}" style="padding:6px 12px;border-radius:15px;background:var(--accent);color:var(--panel);font-size:12.5px;font-weight:600;letter-spacing:.01em">כן, זה שם</button>
+                    <button sc-camel-on-click="{{ x.onNo }}" style="padding:6px 12px;border-radius:15px;border:1px solid var(--line);font-size:12.5px;color:var(--ink2)">לא</button>
                   </div>
                 </div>
               </sc-for>
@@ -937,21 +937,21 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
             <div style="padding:0 0 8px">
               <div style="display:flex;gap:5px;padding:0 15px 10px;flex-wrap:wrap">
                 <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3">
-                  <button onClick="{{ t.onClick }}" aria-pressed="{{ t.on }}" style="{{ t.style }}">{{ t.label }}</button>
+                  <button sc-camel-on-click="{{ t.onClick }}" aria-pressed="{{ t.on }}" style="{{ t.style }}">{{ t.label }}</button>
                 </sc-for>
               </div>
               <div style="padding:0 15px 10px">
-                <input value="{{ query }}" onChange="{{ onQuery }}" placeholder="חיפוש בממצאים" style="width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:8px 11px;font-size:13px">
+                <input value="{{ query }}" sc-camel-on-change="{{ onQuery }}" placeholder="חיפוש בממצאים" style="width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:8px 11px;font-size:13px">
               </div>
               <!-- השבבים עוטפים לשורות, במקום לגלול הצידה בלי שום סימן (ביקורת QA 008) -->
               <div data-cats style="display:flex;gap:5px;padding:0 15px 10px;flex-wrap:wrap">
                 <sc-for list="{{ cats }}" as="c" hint-placeholder-count="4">
-                  <button onClick="{{ c.onClick }}" aria-pressed="{{ c.on }}" style="{{ c.style }}">{{ c.label }}</button>
+                  <button sc-camel-on-click="{{ c.onClick }}" aria-pressed="{{ c.on }}" style="{{ c.style }}">{{ c.label }}</button>
                 </sc-for>
               </div>
               <div ref="{{ listRef }}" style="max-height:52vh;overflow:auto;scroll-padding:8px;scrollbar-width:thin;border-top:1px solid var(--line2)">
                 <sc-for list="{{ groups }}" as="g" hint-placeholder-count="6">
-                  <div data-group="{{ g.key }}" onClick="{{ g.onClick }}" onMouseEnter="{{ g.onEnter }}" onMouseLeave="{{ g.onLeave }}" style="{{ g.style }}">
+                  <div data-group="{{ g.key }}" sc-camel-on-click="{{ g.onClick }}" sc-camel-on-mouse-enter="{{ g.onEnter }}" sc-camel-on-mouse-leave="{{ g.onLeave }}" style="{{ g.style }}">
                     <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
                       <span data-kbd tabindex="0" role="button" style="font-weight:500;font-size:14px">{{ g.value }}</span>
                       <span style="color:var(--ink3);font-size:13px"><sc-if value="{{ g.isApplied }}"><svg class="ic" data-icon="arrow-left" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg><span class="vh">←</span></sc-if></span>
@@ -962,13 +962,13 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
                     <sc-if value="{{ g.hasForms }}">
                       <div data-forms style="display:flex;gap:4px;flex-wrap:wrap;margin-top:5px;align-items:center">
                         <sc-for list="{{ g.forms }}" as="f" hint-placeholder-count="3">
-                          <button data-form onClick="{{ f.onClick }}" title="{{ f.title }}" style="{{ f.style }}"><span style="font-weight:300">{{ f.pre }}</span>{{ f.rest }}<small style="font-weight:300;font-size:11.5px"> ×{{ f.n }}</small></button>
+                          <button data-form sc-camel-on-click="{{ f.onClick }}" title="{{ f.title }}" style="{{ f.style }}"><span style="font-weight:300">{{ f.pre }}</span>{{ f.rest }}<small style="font-weight:300;font-size:11.5px"> ×{{ f.n }}</small></button>
                         </sc-for>
                       </div>
                       <sc-if value="{{ g.formSel }}">
                         <div data-form-act style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:6px;font-size:12px;color:var(--ink2)">
                           <span>הצורה «{{ g.formSelText }}» בלבד:</span>
-                          <button onClick="{{ g.onFormAllow }}" style="padding:4px 10px;border-radius:12px;border:1px solid var(--line);font-size:12px">לא להחליף</button>
+                          <button sc-camel-on-click="{{ g.onFormAllow }}" style="padding:4px 10px;border-radius:12px;border:1px solid var(--line);font-size:12px">לא להחליף</button>
                         </div>
                       </sc-if>
                     </sc-if>
@@ -976,7 +976,7 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
                       <div data-words style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-top:5px;font-size:11.5px;color:var(--ink3)">
                         <span>מילה שאינה חלק מהשם:</span>
                         <sc-for list="{{ g.words }}" as="w" hint-placeholder-count="3">
-                          <button data-word onClick="{{ w.onDrop }}" title="{{ w.title }}" style="padding:1px 7px;border-radius:10px;border:1px solid var(--line);font-size:11.5px;color:var(--ink2)" style-hover="background:var(--bad-soft);color:var(--bad)">{{ w.w }} <svg class="ic" data-icon="x" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17"/><path d="m7 7 10 10"/></svg></button>
+                          <button data-word sc-camel-on-click="{{ w.onDrop }}" title="{{ w.title }}" style="padding:1px 7px;border-radius:10px;border:1px solid var(--line);font-size:11.5px;color:var(--ink2)" style-hover="background:var(--bad-soft);color:var(--bad)">{{ w.w }} <svg class="ic" data-icon="x" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17"/><path d="m7 7 10 10"/></svg></button>
                         </sc-for>
                       </div>
                     </sc-if>
@@ -985,16 +985,16 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
                     <div style="font-size:11.5px;color:var(--ink3);margin-top:2px">{{ g.meta }}</div>
                     <sc-if value="{{ g.isFlagged }}">
                       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;align-items:center">
-                        <button onClick="{{ g.onReplaceFlag }}" title="להחליף בכל המסמך, בתור {{ g.kindShown }}" style="padding:4px 12px;border-radius:12px;background:var(--accent);color:var(--panel);font-size:12px;font-weight:600;letter-spacing:.01em">להחליף</button>
-                        <button onClick="{{ g.onQuickAllow }}" title="לא פרט מזהה — להסיר מהרשימה הזאת" style="padding:4px 10px;border-radius:12px;border:1px solid var(--line);font-size:12px;color:var(--ink2)" style-hover="background:var(--panel2)">לא רלוונטי — הסרה</button>
+                        <button sc-camel-on-click="{{ g.onReplaceFlag }}" title="להחליף בכל המסמך, בתור {{ g.kindShown }}" style="padding:4px 12px;border-radius:12px;background:var(--accent);color:var(--panel);font-size:12px;font-weight:600;letter-spacing:.01em">להחליף</button>
+                        <button sc-camel-on-click="{{ g.onQuickAllow }}" title="לא פרט מזהה — להסיר מהרשימה הזאת" style="padding:4px 10px;border-radius:12px;border:1px solid var(--line);font-size:12px;color:var(--ink2)" style-hover="background:var(--panel2)">לא רלוונטי — הסרה</button>
                         <span style="font-size:11.5px;color:var(--ink3)">לחיצה על הכרטיס: סוג אחר</span>
                       </div>
                     </sc-if>
                     <sc-if value="{{ g.isApplied }}">
                       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;align-items:center">
-                        <sc-if value="{{ g.review }}"><button onClick="{{ g.onApprove }}" title="ההחלפה נכונה — להסיר את התג «לאישור»" style="padding:4px 12px;border-radius:12px;background:var(--accent-soft);color:var(--accent-ink);font-size:12px;font-weight:500">אישור</button></sc-if>
-                        <button onClick="{{ g.onQuickAllow }}" title="להשאיר את הטקסט המקורי" style="padding:4px 10px;border-radius:12px;border:1px solid var(--line);font-size:12px;color:var(--ink2)" style-hover="background:var(--panel2)">לא להחליף</button>
-                        <sc-if value="{{ g.fromList }}"><button onClick="{{ g.onDropRule }}" title="זה לא שם — להסיר מהרשימה ולהחזיר את הטקסט" style="padding:4px 10px;border-radius:12px;border:1px solid var(--line);font-size:12px;color:var(--bad)" style-hover="background:var(--bad-soft)">לא שם — הסרה מהרשימה</button></sc-if>
+                        <sc-if value="{{ g.review }}"><button sc-camel-on-click="{{ g.onApprove }}" title="ההחלפה נכונה — להסיר את התג «לאישור»" style="padding:4px 12px;border-radius:12px;background:var(--accent-soft);color:var(--accent-ink);font-size:12px;font-weight:500">אישור</button></sc-if>
+                        <button sc-camel-on-click="{{ g.onQuickAllow }}" title="להשאיר את הטקסט המקורי" style="padding:4px 10px;border-radius:12px;border:1px solid var(--line);font-size:12px;color:var(--ink2)" style-hover="background:var(--panel2)">לא להחליף</button>
+                        <sc-if value="{{ g.fromList }}"><button sc-camel-on-click="{{ g.onDropRule }}" title="זה לא שם — להסיר מהרשימה ולהחזיר את הטקסט" style="padding:4px 10px;border-radius:12px;border:1px solid var(--line);font-size:12px;color:var(--bad)" style-hover="background:var(--bad-soft)">לא שם — הסרה מהרשימה</button></sc-if>
                         <span style="font-size:11.5px;color:var(--ink3)">לחיצה על הכרטיס: תחליף אחר</span>
                       </div>
                     </sc-if>
@@ -1002,16 +1002,16 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
                     <sc-if value="{{ g.selected }}">
                       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid var(--line2)">
                         <sc-if value="{{ g.applied }}">
-                          <div onClick="{{ g.stop }}" title="מה ייכנס במקומו" style="display:flex;gap:2px;background:var(--panel2);border-radius:14px;padding:2px;flex:0 0 auto">
-                            <button onClick="{{ g.onStyleName }}" style="{{ g.styleNameBtn }}">{{ g.styleNameLabel }}</button>
-                            <button onClick="{{ g.onStyleBlank }}" style="{{ g.styleBlankBtn }}">ריק</button>
-                            <button onClick="{{ g.onStyleBlack }}" style="{{ g.styleBlackBtn }}">███</button>
+                          <div sc-camel-on-click="{{ g.stop }}" title="מה ייכנס במקומו" style="display:flex;gap:2px;background:var(--panel2);border-radius:14px;padding:2px;flex:0 0 auto">
+                            <button sc-camel-on-click="{{ g.onStyleName }}" style="{{ g.styleNameBtn }}">{{ g.styleNameLabel }}</button>
+                            <button sc-camel-on-click="{{ g.onStyleBlank }}" style="{{ g.styleBlankBtn }}">ריק</button>
+                            <button sc-camel-on-click="{{ g.onStyleBlack }}" style="{{ g.styleBlackBtn }}">███</button>
                           </div>
                           <sc-if value="{{ g.blankWarn }}"><div style="flex-basis:100%;font-size:12px;color:var(--warn);line-height:1.5">את השם הזה אי אפשר יהיה להחזיר לתשובה: הוא נמחק ולא הוחלף.</div></sc-if>
-                          <input value="{{ g.repDraft }}" onChange="{{ g.onRepChange }}" onClick="{{ g.stop }}" onKeyDown="{{ g.onRepKey }}" placeholder="תחליף" style="width:120px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px 9px;font-size:12.5px">
-                          <button onClick="{{ g.onSave }}" style="padding:6px 11px;border-radius:14px;background:var(--accent);color:var(--panel);font-size:12px;font-weight:600;letter-spacing:.01em">שמירת תחליף</button>
+                          <input value="{{ g.repDraft }}" sc-camel-on-change="{{ g.onRepChange }}" sc-camel-on-click="{{ g.stop }}" sc-camel-on-key-down="{{ g.onRepKey }}" placeholder="תחליף" style="width:120px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px 9px;font-size:12.5px">
+                          <button sc-camel-on-click="{{ g.onSave }}" style="padding:6px 11px;border-radius:14px;background:var(--accent);color:var(--panel);font-size:12px;font-weight:600;letter-spacing:.01em">שמירת תחליף</button>
                           <sc-if value="{{ g.showSame }}">
-                            <select onChange="{{ g.onSame }}" onClick="{{ g.stop }}" aria-label="זה אותו אדם כמו" style="background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:6px 10px;font-size:12px;max-width:150px;color:var(--ink2)">
+                            <select sc-camel-on-change="{{ g.onSame }}" sc-camel-on-click="{{ g.stop }}" aria-label="זה אותו אדם כמו" style="background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:6px 10px;font-size:12px;max-width:150px;color:var(--ink2)">
                               <option value="">זה אותו אחד כמו…</option>
                               <sc-for list="{{ g.sameOpts }}" as="o" hint-placeholder-count="2">
                                 <option value="{{ o.value }}">{{ o.label }}</option>
@@ -1022,7 +1022,7 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
                         <sc-if value="{{ g.flagged }}">
                           <span style="font-size:12px;color:var(--ink2);align-self:center">מה זה?</span>
                           <sc-for list="{{ g.kinds }}" as="k" hint-placeholder-count="4">
-                            <button onClick="{{ k.onClick }}" style="padding:6px 11px;border-radius:14px;border:1px solid var(--line);font-size:12px" style-hover="background:var(--accent-soft);color:var(--accent)">{{ k.label }}</button>
+                            <button sc-camel-on-click="{{ k.onClick }}" style="padding:6px 11px;border-radius:14px;border:1px solid var(--line);font-size:12px" style-hover="background:var(--accent-soft);color:var(--accent)">{{ k.label }}</button>
                           </sc-for>
                         </sc-if>
                       </div>
@@ -1042,15 +1042,15 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
                 <b style="font-weight:500">שליחה לבדיקה</b>
                 <p style="margin:4px 0 8px;color:var(--ink2)">יומן השימוש רושם זמנים ולחיצות, בלי טקסט מהמסמך, כדי שנבין איפה העבודה נתקעת. «הורדת חבילת בדיקה» שומרת במחשב קובץ אחד עם היומן ועם פירוט השמות שסימנתם, בלי המסמך. שום דבר לא נשלח מעצמו; את המסמך שולחים בנפרד, רק אם רוצים.</p>
                 <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-                  <button onClick="{{ onCopyLog }}" style="padding:7px 12px;border-radius:9px;border:1px solid var(--line);font-size:12.5px;font-weight:500">{{ logCopyLabel }}</button>
-                  <button onClick="{{ onPackage }}" style="padding:7px 12px;border-radius:9px;border:1px solid var(--line);font-size:12.5px;font-weight:500">הורדת חבילת בדיקה</button>
+                  <button sc-camel-on-click="{{ onCopyLog }}" style="padding:7px 12px;border-radius:9px;border:1px solid var(--line);font-size:12.5px;font-weight:500">{{ logCopyLabel }}</button>
+                  <button sc-camel-on-click="{{ onPackage }}" style="padding:7px 12px;border-radius:9px;border:1px solid var(--line);font-size:12.5px;font-weight:500">הורדת חבילת בדיקה</button>
                 </div>
               </div>
               <sc-if value="{{ hasLeaks }}">
                 <div style="margin-top:12px;padding:10px 12px;border-radius:10px;background:var(--warn-soft);font-size:12.5px;line-height:1.55">
                   <b style="font-weight:500;color:var(--warn)">שמות שסימנתם בעצמכם: {{ leakCount }}</b>
                   <p style="margin:4px 0 8px;color:var(--ink2)">כל סימון כזה הוא שם שהכלי פספס. פירוט השמות שסימנתם מתאר כל שם כזה באופן כללי בלבד (כמה מילים ואותיות יש בו, איזה סוג מילים עמד לידו ואיך סיווג אותו כל שלב בזיהוי), בלי השם ובלי טקסט מהמסמך. אפשר להדביק אותו ב-issue.</p>
-                  <button onClick="{{ onCopyLeaks }}" style="padding:7px 12px;border-radius:9px;border:1px solid var(--warn);font-size:12.5px;font-weight:500;color:var(--warn)">{{ leakCopyLabel }}</button>
+                  <button sc-camel-on-click="{{ onCopyLeaks }}" style="padding:7px 12px;border-radius:9px;border:1px solid var(--warn);font-size:12.5px;font-weight:500;color:var(--warn)">{{ leakCopyLabel }}</button>
                 </div>
               </sc-if>
             </div>
@@ -1060,10 +1060,10 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
           <sc-if value="{{ s.openProfile }}">
             <div style="padding:0 15px 15px">
               <p style="margin:0 0 10px;font-size:12.5px;color:var(--ink2);line-height:1.55">שמירת רשימת הצדדים והשמות הבדויים שלהם, כדי שאותו אדם יקבל את אותו שם בכל מסמכי התיק.</p>
-              <input data-tour-target="case" value="{{ caseName }}" onChange="{{ onCaseName }}" onBlur="{{ onCaseNameDone }}" placeholder="שם התיק (למשל: לוי נ׳ לוי)" style="width:100%;margin-bottom:8px;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:13.5px">
+              <input data-tour-target="case" value="{{ caseName }}" sc-camel-on-change="{{ onCaseName }}" sc-camel-on-blur="{{ onCaseNameDone }}" placeholder="שם התיק (למשל: לוי נ׳ לוי)" style="width:100%;margin-bottom:8px;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:13.5px">
               <div style="display:flex;gap:7px">
-                <button onClick="{{ onSaveProf }}" style="flex:1;padding:10px;border-radius:10px;border:1px solid var(--line);font-size:13px;font-weight:500" style-hover="background:var(--panel2)">ייצוא לקובץ</button>
-                <button onClick="{{ onLoadProf }}" style="flex:1;padding:10px;border-radius:10px;border:1px solid var(--line);font-size:13px;font-weight:500" style-hover="background:var(--panel2)">ייבוא מקובץ</button>
+                <button sc-camel-on-click="{{ onSaveProf }}" style="flex:1;padding:10px;border-radius:10px;border:1px solid var(--line);font-size:13px;font-weight:500" style-hover="background:var(--panel2)">ייצוא לקובץ</button>
+                <button sc-camel-on-click="{{ onLoadProf }}" style="flex:1;padding:10px;border-radius:10px;border:1px solid var(--line);font-size:13px;font-weight:500" style-hover="background:var(--panel2)">ייבוא מקובץ</button>
               </div>
               <p style="margin:8px 0 0;font-size:12px;color:var(--ink3);line-height:1.6">{{ profileNote }}</p>
               <sc-if value="{{ hasMine }}">
@@ -1073,7 +1073,7 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
                       <span style="font-size:11.5px;font-weight:500;color:var(--ink2);background:var(--panel2);border-radius:10px;padding:2px 8px">{{ m.kind }}</span>
                       <span>{{ m.value }}</span>
                       <sc-if value="{{ m.rep }}"><span style="color:var(--accent-ink);font-size:12.5px"><svg class="ic" data-icon="arrow-left" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg><span class="vh">←</span> {{ m.rep }}</span></sc-if>
-                      <button onClick="{{ m.onDel }}" aria-label="הסרה מהרשימה" title="הסרה מהרשימה — הטקסט המקורי חוזר; אפשר לבטל" style="margin-inline-start:auto;color:var(--ink3);width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:var(--panel2)" style-hover="background:var(--bad-soft);color:var(--bad)"><svg class="ic" data-icon="x" aria-hidden="true" focusable="false" style="width:12px;height:12px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17"/><path d="m7 7 10 10"/></svg></button>
+                      <button sc-camel-on-click="{{ m.onDel }}" aria-label="הסרה מהרשימה" title="הסרה מהרשימה — הטקסט המקורי חוזר; אפשר לבטל" style="margin-inline-start:auto;color:var(--ink3);width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:var(--panel2)" style-hover="background:var(--bad-soft);color:var(--bad)"><svg class="ic" data-icon="x" aria-hidden="true" focusable="false" style="width:12px;height:12px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17"/><path d="m7 7 10 10"/></svg></button>
                     </div>
                   </sc-for>
                 </div>
@@ -1088,7 +1088,7 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
                   <span style="color:var(--ink2)">{{ st.label }}</span><b style="font-weight:500">{{ st.value }}</b>
                 </div>
               </sc-for>
-              <button onClick="{{ onReport }}" style="margin-top:12px;width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);font-size:13px;font-weight:500" style-hover="background:var(--panel2)">הורדת דוח החלפות</button>
+              <button sc-camel-on-click="{{ onReport }}" style="margin-top:12px;width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);font-size:13px;font-weight:500" style-hover="background:var(--panel2)">הורדת דוח החלפות</button>
               <p style="margin:8px 0 0;font-size:12px;color:var(--ink3);line-height:1.6">הדוח מפרט מה הוחלף במה, מה סומן לבדיקה ומה נוקה מהקובץ — לתיק הפנימי, לא לשליחה.</p>
               <p style="margin:12px 0 0;font-size:12px;color:var(--ink3);line-height:1.6">האימות בודק שהשמות והפרטים שזוהו לא נשארו באף חלק של הקובץ, ומחפש גם כתיב ששונה מהם באות אחת. שיבוש של שתי אותיות או יותר, טקסט בתוך תמונה או בקובץ מוטמע, ושם שלא זוהה מעולם לא נבדקים.</p>
             </div>
@@ -1103,16 +1103,16 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
     <sc-if value="{{ exportAsk }}">
       <div data-export-ask role="alert" style="max-width:1520px;margin:0 auto 7px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 12px;border-radius:10px;background:var(--bad-soft);color:var(--bad);font-size:13px">
         <span style="flex:1 1 240px">{{ exportAskText }}</span>
-        <button onClick="{{ onExportShow }}" style="padding:6px 12px;border-radius:9px;background:var(--bad);color:var(--panel);font-size:12.5px;font-weight:500">להציג אותם</button>
-        <button onClick="{{ onExportAnyway }}" style="padding:6px 12px;border-radius:9px;border:1px solid var(--bad);color:var(--bad);font-size:12.5px">{{ exportAnyLabel }}</button>
-        <button onClick="{{ onExportCancel }}" aria-label="ביטול" style="width:24px;height:24px;border-radius:50%;color:var(--bad);display:grid;place-items:center"><svg class="ic" data-icon="x" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17"/><path d="m7 7 10 10"/></svg></button>
+        <button sc-camel-on-click="{{ onExportShow }}" style="padding:6px 12px;border-radius:9px;background:var(--bad);color:var(--panel);font-size:12.5px;font-weight:500">להציג אותם</button>
+        <button sc-camel-on-click="{{ onExportAnyway }}" style="padding:6px 12px;border-radius:9px;border:1px solid var(--bad);color:var(--bad);font-size:12.5px">{{ exportAnyLabel }}</button>
+        <button sc-camel-on-click="{{ onExportCancel }}" aria-label="ביטול" style="width:24px;height:24px;border-radius:50%;color:var(--bad);display:grid;place-items:center"><svg class="ic" data-icon="x" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17"/><path d="m7 7 10 10"/></svg></button>
       </div>
     </sc-if>
     <div style="max-width:1520px;margin:0 auto;display:flex;align-items:center;gap:12px">
       <sc-if value="{{ barErr }}">
         <span style="width:22px;height:22px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:12px;font-weight:600;color:var(--bad);background:var(--bad-soft)">!</span>
         <div data-bar-text role="alert" style="flex:1;min-width:0;font-size:13px;color:var(--bad);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ barErr }}">{{ barErr }}</div>
-        <button onClick="{{ onClearErr }}" aria-label="סגירה" style="width:26px;height:26px;border-radius:50%;color:var(--ink3);display:grid;place-items:center" style-hover="background:var(--panel2);color:var(--ink)"><svg class="ic" data-icon="x" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17"/><path d="m7 7 10 10"/></svg></button>
+        <button sc-camel-on-click="{{ onClearErr }}" aria-label="סגירה" style="width:26px;height:26px;border-radius:50%;color:var(--ink3);display:grid;place-items:center" style-hover="background:var(--panel2);color:var(--ink)"><svg class="ic" data-icon="x" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17"/><path d="m7 7 10 10"/></svg></button>
       </sc-if>
       <sc-if value="{{ barOk }}">
         <span style="{{ statusDot }}"><sc-if value="{{ statusOk }}"><svg class="ic" data-icon="check" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></sc-if>{{ statusIcon }}</span>
@@ -1121,10 +1121,10 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
       <div data-steps style="display:flex;gap:6px;align-items:center;font-size:11.5px;white-space:nowrap" title="שלושת השלבים: החלפת שמות, העתקה או הורדה, והחזרת השמות לתשובה">
         <span data-step="1" style="{{ step1Style }}">1 החלפת שמות <svg class="ic" data-icon="check" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span class="vh">✓</span></span><span style="color:var(--ink3)"><svg class="ic" data-icon="chevron-left" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></span>
         <span data-step="2" style="{{ step2Style }}">2 העתקה או הורדה<sc-if value="{{ step2Done }}"> <svg class="ic" data-icon="check" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span class="vh">✓</span></sc-if></span><span style="color:var(--ink3)"><svg class="ic" data-icon="chevron-left" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></span>
-        <sc-if value="{{ step3Btn }}"><button data-step="3" onClick="{{ onReverse }}" title="מעבר למסך שבו מדביקים את תשובת ה־AI" style="{{ step3Style }}" style-hover="background:var(--accent);color:var(--panel)">3 החזרת שמות</button></sc-if><sc-if value="{{ step3Plain }}"><span data-step="3" style="{{ step3Style }}">3 החזרת שמות</span></sc-if>
+        <sc-if value="{{ step3Btn }}"><button data-step="3" sc-camel-on-click="{{ onReverse }}" title="מעבר למסך שבו מדביקים את תשובת ה־AI" style="{{ step3Style }}" style-hover="background:var(--accent);color:var(--panel)">3 החזרת שמות</button></sc-if><sc-if value="{{ step3Plain }}"><span data-step="3" style="{{ step3Style }}">3 החזרת שמות</span></sc-if>
       </div>
-      <button data-tour-target="copy" onClick="{{ onCopyAi }}" disabled="{{ rerunning }}" title="מעתיק את הטקסט עם השמות הבדויים. מדביקים אותו בכלי ה־AI, ואת התשובה מדביקים ב«החזרת שמות מתשובת AI» למעלה, והשמות האמיתיים חוזרים." style="{{ copyBtnStyle }}">{{ copyLabel }}</button>
-      <button onClick="{{ onDownload }}" disabled="{{ rerunning }}" title="קובץ Word עם השמות הבדויים, בשם כללי עם תאריך ולא בשם הקובץ המקורי" style="padding:11px 20px;border-radius:10px;border:1px solid var(--line);background:var(--panel);font-weight:500;font-size:14px;white-space:nowrap" style-hover="background:var(--panel2)">הורדת Word</button>
+      <button data-tour-target="copy" sc-camel-on-click="{{ onCopyAi }}" disabled="{{ rerunning }}" title="מעתיק את הטקסט עם השמות הבדויים. מדביקים אותו בכלי ה־AI, ואת התשובה מדביקים ב«החזרת שמות מתשובת AI» למעלה, והשמות האמיתיים חוזרים." style="{{ copyBtnStyle }}">{{ copyLabel }}</button>
+      <button sc-camel-on-click="{{ onDownload }}" disabled="{{ rerunning }}" title="קובץ Word עם השמות הבדויים, בשם כללי עם תאריך ולא בשם הקובץ המקורי" style="padding:11px 20px;border-radius:10px;border:1px solid var(--line);background:var(--panel);font-weight:500;font-size:14px;white-space:nowrap" style-hover="background:var(--panel2)">הורדת Word</button>
     </div>
     <!-- כלי ה־AI המוכרים בלשונית חדשה, בלי טקסט ממולא, ושורת זהירות אחת לידם (הנוסח שאושר, 7.10.2026) -->
     <div data-ai data-ai-later="{{ aiLater }}" style="max-width:1520px;margin:6px auto 0;display:flex;align-items:baseline;justify-content:flex-end;gap:3px 14px;flex-wrap:wrap;font-size:12px;color:var(--ink3)">
@@ -1138,7 +1138,7 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
       <div style="font-size:12.5px;color:var(--ink2);margin-bottom:8px">הוספת <b style="color:var(--ink)">{{ popupText }}</b> בתור:</div>
       <div style="display:flex;gap:5px;flex-wrap:wrap">
         <sc-for list="{{ popupKinds }}" as="k" hint-placeholder-count="4">
-          <button onClick="{{ k.onClick }}" style="padding:6px 11px;border-radius:14px;border:1px solid var(--line);font-size:12.5px;{{ k.wide }}" style-hover="background:var(--accent-soft);color:var(--accent)">{{ k.label }}</button>
+          <button sc-camel-on-click="{{ k.onClick }}" style="padding:6px 11px;border-radius:14px;border:1px solid var(--line);font-size:12.5px;{{ k.wide }}" style-hover="background:var(--accent-soft);color:var(--accent)">{{ k.label }}</button>
         </sc-for>
       </div>
     </div>
@@ -1146,63 +1146,63 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
   </sc-if>
 
   <sc-if value="{{ inline }}">
-    <div data-inline onClick="{{ inlineStop }}" style="{{ inlineStyle }}">
+    <div data-inline sc-camel-on-click="{{ inlineStop }}" style="{{ inlineStyle }}">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
         <b style="font-weight:500;font-size:14px"><span data-inline-pre style="font-weight:300">{{ inlinePre }}</span>{{ inlineValue }}</b>
         <sc-if value="{{ inlineRep }}"><span style="color:var(--ink3)"><svg class="ic" data-icon="arrow-left" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg><span class="vh">←</span></span><span style="font-weight:500;color:var(--accent-ink)"><span style="font-weight:300">{{ inlinePre }}</span>{{ inlineRep }}</span></sc-if>
         <span style="font-size:11.5px;color:var(--ink3)">{{ inlineKind }}</span>
-        <button onClick="{{ onInlineClose }}" aria-label="סגירה" style="margin-inline-start:auto;width:22px;height:22px;border-radius:50%;color:var(--ink3);display:grid;place-items:center"><svg class="ic" data-icon="x" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17"/><path d="m7 7 10 10"/></svg></button>
+        <button sc-camel-on-click="{{ onInlineClose }}" aria-label="סגירה" style="margin-inline-start:auto;width:22px;height:22px;border-radius:50%;color:var(--ink3);display:grid;place-items:center"><svg class="ic" data-icon="x" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17"/><path d="m7 7 10 10"/></svg></button>
       </div>
       <sc-if value="{{ inlineHasWords }}">
         <div data-inline-words style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin:-2px 0 8px;font-size:11.5px;color:var(--ink3)">
           <span>מילה שאינה חלק מהשם:</span>
           <sc-for list="{{ inlineWords }}" as="w" hint-placeholder-count="3">
-            <button data-word onClick="{{ w.onDrop }}" title="{{ w.title }}" style="padding:1px 7px;border-radius:10px;border:1px solid var(--line);font-size:11.5px;color:var(--ink2)" style-hover="background:var(--bad-soft);color:var(--bad)">{{ w.w }} <svg class="ic" data-icon="x" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17"/><path d="m7 7 10 10"/></svg></button>
+            <button data-word sc-camel-on-click="{{ w.onDrop }}" title="{{ w.title }}" style="padding:1px 7px;border-radius:10px;border:1px solid var(--line);font-size:11.5px;color:var(--ink2)" style-hover="background:var(--bad-soft);color:var(--bad)">{{ w.w }} <svg class="ic" data-icon="x" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17"/><path d="m7 7 10 10"/></svg></button>
           </sc-for>
         </div>
       </sc-if>
       <sc-if value="{{ inlineApplied }}">
         <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
           <sc-if value="{{ inlinePre }}"><span data-pre-chip title="אות השימוש נשארת מהמסמך; בתיבה כותבים רק את השם" style="font-size:13px;color:var(--ink3);background:var(--panel2);border:1px dashed var(--line);border-radius:8px;padding:6px 8px">{{ inlinePre }}</span></sc-if>
-          <input value="{{ inlineDraft }}" onChange="{{ onInlineDraft }}" onKeyDown="{{ onInlineKey }}" placeholder="תחליף אחר" style="flex:1;min-width:120px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:7px 9px;font-size:13px">
-          <button onClick="{{ onInlineSave }}" style="padding:7px 12px;border-radius:9px;background:var(--accent);color:var(--panel);font-size:12.5px;font-weight:600;letter-spacing:.01em">שמירה</button>
+          <input value="{{ inlineDraft }}" sc-camel-on-change="{{ onInlineDraft }}" sc-camel-on-key-down="{{ onInlineKey }}" placeholder="תחליף אחר" style="flex:1;min-width:120px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:7px 9px;font-size:13px">
+          <button sc-camel-on-click="{{ onInlineSave }}" style="padding:7px 12px;border-radius:9px;background:var(--accent);color:var(--panel);font-size:12.5px;font-weight:600;letter-spacing:.01em">שמירה</button>
         </div>
         <div data-inline-preview style="margin-top:6px;font:13px/1.6 var(--doc-font);color:var(--ink2);padding:6px 9px;background:var(--panel2);border-radius:8px;white-space:pre-wrap">{{ inlinePreview }}</div>
         <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px;align-items:center">
           <span style="font-size:11.5px;color:var(--ink3)">במקומו:</span>
-          <button onClick="{{ onInlineName }}" style="{{ inlineNameBtn }}">{{ inlineNameLabel }}</button>
-          <button onClick="{{ onInlineBlank }}" style="{{ inlineBlankBtn }}">ריק</button>
-          <button onClick="{{ onInlineBlack }}" style="{{ inlineBlackBtn }}">███</button>
+          <button sc-camel-on-click="{{ onInlineName }}" style="{{ inlineNameBtn }}">{{ inlineNameLabel }}</button>
+          <button sc-camel-on-click="{{ onInlineBlank }}" style="{{ inlineBlankBtn }}">ריק</button>
+          <button sc-camel-on-click="{{ onInlineBlack }}" style="{{ inlineBlackBtn }}">███</button>
         </div>
         <sc-if value="{{ inlineIsName }}">
           <div style="display:flex;gap:6px;align-items:center;margin-top:8px">
             <span style="font-size:11.5px;color:var(--ink3)">אותו אדם כמו</span>
-            <select onChange="{{ onInlineSame }}" aria-label="אותו אדם כמו" style="flex:1;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:5px 8px;font-size:12.5px">
+            <select sc-camel-on-change="{{ onInlineSame }}" aria-label="אותו אדם כמו" style="flex:1;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:5px 8px;font-size:12.5px">
               <option value="">— בחירה —</option>
               <sc-for list="{{ inlineSameOpts }}" as="o" hint-placeholder-count="2"><option value="{{ o.value }}">{{ o.label }}</option></sc-for>
             </select>
           </div>
         </sc-if>
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;padding-top:8px;border-top:1px solid var(--line2)">
-          <button onClick="{{ onInlineAllow }}" style="padding:6px 10px;border-radius:12px;border:1px solid var(--line);font-size:12px">לא להחליף</button>
-          <sc-if value="{{ inlineFromList }}"><button onClick="{{ onInlineNotName }}" style="padding:6px 10px;border-radius:12px;border:1px solid var(--line);font-size:12px;color:var(--bad)">לא שם — הסרה מהרשימה</button></sc-if>
+          <button sc-camel-on-click="{{ onInlineAllow }}" style="padding:6px 10px;border-radius:12px;border:1px solid var(--line);font-size:12px">לא להחליף</button>
+          <sc-if value="{{ inlineFromList }}"><button sc-camel-on-click="{{ onInlineNotName }}" style="padding:6px 10px;border-radius:12px;border:1px solid var(--line);font-size:12px;color:var(--bad)">לא שם — הסרה מהרשימה</button></sc-if>
         </div>
       </sc-if>
       <sc-if value="{{ inlineFlag }}">
         <div style="font-size:12.5px;color:var(--ink2);margin-bottom:8px">נמצא ומחכה להחלטה שלכם. להחליף בתור:</div>
         <div style="display:flex;gap:5px;flex-wrap:wrap">
           <sc-for list="{{ inlineKinds }}" as="k" hint-placeholder-count="4">
-            <button onClick="{{ k.onClick }}" style="padding:6px 11px;border-radius:14px;border:1px solid var(--line);font-size:12.5px" style-hover="background:var(--accent-soft);color:var(--accent)">{{ k.label }}</button>
+            <button sc-camel-on-click="{{ k.onClick }}" style="padding:6px 11px;border-radius:14px;border:1px solid var(--line);font-size:12.5px" style-hover="background:var(--accent-soft);color:var(--accent)">{{ k.label }}</button>
           </sc-for>
-          <button onClick="{{ onInlineAllow }}" style="padding:6px 11px;border-radius:14px;border:1px solid var(--line);font-size:12.5px;color:var(--ink2)">מילה רגילה — לא להחליף</button>
+          <button sc-camel-on-click="{{ onInlineAllow }}" style="padding:6px 11px;border-radius:14px;border:1px solid var(--line);font-size:12.5px;color:var(--ink2)">מילה רגילה — לא להחליף</button>
         </div>
       </sc-if>
       <sc-if value="{{ inlineDel }}">
         <div style="font-size:12.5px;color:var(--ink2);margin-bottom:8px">נמחק מהטקסט. אפשר להחזיר אותו בצורה אחרת:</div>
         <div style="display:flex;gap:5px;flex-wrap:wrap">
-          <button onClick="{{ onInlineName }}" style="{{ inlineNameBtn }}">{{ inlineNameLabel }}</button>
-          <button onClick="{{ onInlineBlack }}" style="{{ inlineBlackBtn }}">███</button>
-          <button onClick="{{ onInlineAllow }}" style="padding:6px 10px;border-radius:12px;border:1px solid var(--line);font-size:12px">להחזיר את הטקסט המקורי</button>
+          <button sc-camel-on-click="{{ onInlineName }}" style="{{ inlineNameBtn }}">{{ inlineNameLabel }}</button>
+          <button sc-camel-on-click="{{ onInlineBlack }}" style="{{ inlineBlackBtn }}">███</button>
+          <button sc-camel-on-click="{{ onInlineAllow }}" style="padding:6px 10px;border-radius:12px;border:1px solid var(--line);font-size:12px">להחזיר את הטקסט המקורי</button>
         </div>
       </sc-if>
     </div>

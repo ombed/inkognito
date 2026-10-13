@@ -1,6 +1,7 @@
 /* Derives the design-canvas file from index.html:  node scripts/build-design.js
 
-   index.html is the source of truth; design/redact.dc.html is a view of it
+   index.html is the source of truth, with page-component.js for the component's logic
+   (scripts/page-parts.js); design/redact.dc.html is a view of them
    for the Claude Design canvas. The two used to be edited in step by hand,
    1,700 lines each. Now one is generated from the other, and
    tests/design_t.js fails when the generated file is stale.
@@ -51,7 +52,8 @@ function build(html) {
     helmetInner, theme, ""].join(NL) + body;
 }
 
-const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+// the logic is page-component.js since 13.10.2026; the canvas carries it as text, as the page once did
+const html = require("./page-parts.js").pageWithLogic();
 const out = build(html);
 if (require.main === module) {
   fs.writeFileSync(OUT, out);

@@ -1,7 +1,7 @@
 /* scripts/complexity.js, the committed command behind the brief's complexity numbers
    (outside review, H15). The first list was typed from a run that skipped a file it
    could not parse and so left out redactDocx. Here: the function that builds the
-   download is measured, the app script inside index.html is measured, and a file
+   download is measured, the page's component logic (page-component.js) is measured, and a file
    that does not parse is an error rather than a silent skip. */
 const path = require("path");
 const { measure, sources, appScript } = require("../scripts/complexity.js");
@@ -15,7 +15,7 @@ console.log("\n— the repository as it is —");
   const names = fns.map((x) => x.name);
   ok(names.some((n) => /'redactDocx'/.test(n)), "redactDocx is in the list");
   ok(names.some((n) => /'bodyNames'/.test(n)), "bodyNames is in the list");
-  ok(fns.some((x) => x.file.startsWith("index.html")), "the app script inside index.html is measured");
+  ok(fns.some((x) => x.file === "page-component.js"), "the page's component logic, page-component.js, is measured");
   ok(fns.every((x, i) => i === 0 || fns[i - 1].value >= x.value), "sorted by value, highest first");
 }
 

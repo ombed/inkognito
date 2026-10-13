@@ -20,7 +20,7 @@ const path = require("path");
 let pass = 0, fail = 0;
 const ok = (c, m) => { c ? pass++ : (fail++, console.log("  ✗ " + m)); };
 
-const src = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+const src = require("../scripts/page-parts.js").pageWithLogic();
 const cls = src.slice(src.indexOf("class Component extends DCLogic"));
 
 // the bracketed span that starts at the first `{` at or after `from` (in `text`), without its brackets

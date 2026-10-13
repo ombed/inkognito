@@ -31,7 +31,7 @@ function blocks(html) {
   return out;
 }
 
-async function lintPage(html) {
+async function lintPage(html, component) {
   const eslint = new ESLint({
     overrideConfigFile: true,
     overrideConfig: [{
@@ -46,13 +46,18 @@ async function lintPage(html) {
     const [res] = await eslint.lintText(code, { filePath: "index.html.js" });
     for (const msg of res.messages) problems.push({ line: msg.line, rule: msg.ruleId, message: msg.message, severity: msg.severity });
   }
+  // the component's logic, its own file since 13.10.2026: a plain script, the function the runtime calls
+  if (component != null) {
+    const [res] = await eslint.lintText(component, { filePath: "page-component.js" });
+    for (const msg of res.messages) problems.push({ file: "page-component.js", line: msg.line, rule: msg.ruleId, message: msg.message, severity: msg.severity });
+  }
   return problems;
 }
 
 if (require.main === module) {
-  lintPage(fs.readFileSync(path.join(ROOT, "index.html"), "utf8")).then((p) => {
+  lintPage(fs.readFileSync(path.join(ROOT, "index.html"), "utf8"), fs.readFileSync(path.join(ROOT, "page-component.js"), "utf8")).then((p) => {
     const errors = p.filter((x) => x.severity === 2);
-    for (const x of p) console.log(`index.html:${x.line}  ${x.severity === 2 ? "error" : "warn"}  ${x.message}  ${x.rule || ""}`);
+    for (const x of p) console.log(`${x.file || "index.html"}:${x.line}  ${x.severity === 2 ? "error" : "warn"}  ${x.message}  ${x.rule || ""}`);
     console.log(`lint-page: ${errors.length} error(s), ${p.length - errors.length} warning(s)`);
     process.exitCode = errors.length ? 1 : 0;
   }).catch((e) => { console.error(e); process.exitCode = 1; });

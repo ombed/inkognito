@@ -96,7 +96,7 @@ const stripComments = (s) => s.replace(/<!--[\s\S]*?-->/g, " ").replace(/\/\*[\s
   ok(code.includes('a.download = "inkognito-cases-" + exported.slice(0, 10) + ".json";'), "named inkognito-cases-<YYYY-MM-DD>.json");
   ok(/new Blob\(\[JSON\.stringify\(file, null, 1\)\], \{ type: "application\/json" \}\)/.test(code), "built in the page, as JSON text (a Blob of a string is UTF-8)");
   // the tool reads the same format (index.html, importCases)
-  const tool = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+  const tool = require("../scripts/page-parts.js").pageWithLogic();
   ok(tool.includes('prof.inkognito==="cases"') && /importCases\(file\)\{[\s\S]*?file\.v!==1\|\|!obj\(file\.cases\)/.test(tool), "the tool's «ייבוא תיקים מקובץ» reads that format");
 
   console.log("\n— the worker that replaces the tool's —");

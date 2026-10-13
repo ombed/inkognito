@@ -15,7 +15,7 @@ const path = require("path");
 
 const ROOT = path.resolve(__dirname, "..");
 const SITE_FILES = [
-  "index.html", "support.js", "page-logic.js", "redact-engine.js", "pdf-text.js",
+  "index.html", "support.js", "page-component.js", "page-logic.js", "redact-engine.js", "pdf-text.js",
   "text-to-docx.js", "sw.js", "manifest.webmanifest", "icon.svg", "icon-192.png", "icon-512.png",
   // the fonts, from the site itself rather than Google Fonts: Rubik and Noto Serif Hebrew (@fontsource 5.3.0,
   // the subsets Google served: Hebrew, Latin and Latin Extended) and Frank Ruhl Libre for the wordmark (Hebrew

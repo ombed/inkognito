@@ -7,7 +7,7 @@ const path = require("path");
 let pass = 0, fail = 0;
 const ok = (c, m) => { c ? pass++ : (fail++, console.log("  ✗ " + m)); };
 
-const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+const html = require("../scripts/page-parts.js").pageWithLogic();
 const app = html.slice(html.indexOf('type="text/x-dc"'));
 const template = html.slice(0, html.indexOf('type="text/x-dc"'));
 const assigned = new Set([...app.matchAll(/\bv\.([A-Za-z_]\w*)\s*=(?!=)/g)].map((m) => m[1]));

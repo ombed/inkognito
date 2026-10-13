@@ -619,7 +619,7 @@ const leaksOf = (res) => JSON.stringify((res.verification.leaks || []).map((l) =
     // The case map saved «שלומי» → its substitute from «תושבת שלומי», and the next document turned the pair into a
     // rule for every mention: «אני חוששת לשלומי» went out with the town (the review of the first round). The page's
     // own methods, cut out of index.html as tests/profile_t.js does: the map and kinds it saves, the rules it builds.
-    const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+    const html = require("../scripts/page-parts.js").pageWithLogic();
     const code = html.replace(/<!--[\s\S]*?-->/g, " ").replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:\\])\/\/[^\n]*/g, "$1");
     const member = (head) => { const m = code.match(new RegExp("\\n {2}" + head.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "[\\s\\S]*?\\n {2}\\}")); return m ? m[0].trim() : null; };
     const method = (head, name) => new Function("return ({" + member(head) + "})." + name + ";")();
