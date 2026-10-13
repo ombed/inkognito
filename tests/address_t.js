@@ -21,8 +21,10 @@ const H = "\\u0590-\\u05FF";
 // user fills in to report a leak (it said «אם לחצת» until 6.10)
 const FILES = ["index.html", "redact-engine.js", "page-logic.js", "pdf-text.js", "text-to-docx.js", "support.js", "sw.js", "manifest.webmanifest",
   ".github/ISSUE_TEMPLATE/leak.yml"];
-// comments are for developers and may quote the old words; "//" after ":" is a URL, not a comment
-const strip = (t) => t.replace(/<!--[\s\S]*?-->/g, " ").replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:\\])\/\/[^\n]*/g, "$1");
+// comments are for developers and may quote the old words; "//" after ":" is a URL, not a comment. The list of common
+// Hebrew words (engine/05-common.js) is data, not a sentence: it holds «שלך» and «עליך» as words, said to no one
+const strip = (t) => t.replace(/<!--[\s\S]*?-->/g, " ").replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:\\])\/\/[^\n]*/g, "$1")
+  .replace(/const COMMON_WORDS=new Set\("[^"]*"\.split\(" "\)\);/, " ");
 const SINGULAR = [
   "לחצי", "הוסיפי", "הקלידי", "העלי", "בדקי", "ראי", "בחרי", "סמני", "השאירי", "הדביקי", "גררי", "פתחי", "שמרי",
   "העתיקי", "המשיכי", "אשרי", "מחקי", "סגרי", "הורידי",
