@@ -22,7 +22,7 @@ const path = require("path");
 const crypto = require("crypto");
 const { SITE_FILES } = require("./build-site.js");
 const { seo, llms } = require("./seo.js");
-const { hostedApp, demoApp, hostedManifest, hostedWorker, resourcesScript, LIBS, ORT_FILES, ortFrom, ortPin, ORT_DIR } = require("./hosted.js");
+const { hostedComponent, hostedApp, demoApp, hostedManifest, hostedWorker, resourcesScript, LIBS, ORT_FILES, ortFrom, ortPin, ORT_DIR } = require("./hosted.js");
 
 const ROOT = path.resolve(__dirname, "..");
 const LIMIT = 25 * 1024 * 1024; // Cloudflare Pages: no file over 25 MiB
@@ -115,6 +115,9 @@ function build(out) {
     fs.copyFileSync(path.join(ROOT, f), to);
   }
   fs.writeFileSync(path.join(out, "app", "index.html"), hostedApp(fs.readFileSync(path.join(ROOT, "index.html"), "utf8")));
+  // the component's logic names the map's libraries and data: the site's own copies (hosted.js, hostedComponent)
+  const component = hostedComponent(fs.readFileSync(path.join(ROOT, "page-component.js"), "utf8"));
+  fs.writeFileSync(path.join(out, "app", "page-component.js"), component);
   fs.writeFileSync(path.join(out, "app", "manifest.webmanifest"), hostedManifest(fs.readFileSync(path.join(ROOT, "manifest.webmanifest"), "utf8")));
   fs.writeFileSync(path.join(out, "app", "sw.js"), hostedWorker(fs.readFileSync(path.join(ROOT, "sw.js"), "utf8")));
 
@@ -169,6 +172,7 @@ function build(out) {
     fs.copyFileSync(path.join(ROOT, f), to);
   }
   fs.writeFileSync(path.join(out, "demo", "index.html"), demoApp(fs.readFileSync(path.join(ROOT, "index.html"), "utf8")));
+  fs.writeFileSync(path.join(out, "demo", "page-component.js"), component);
   for (const l of LIBS) {
     const to = path.join(out, "demo", l.to);
     fs.mkdirSync(path.dirname(to), { recursive: true });

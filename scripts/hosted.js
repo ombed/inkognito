@@ -22,6 +22,7 @@
    e2e/cloud.spec.js and e2e/hosted-build.spec.js run the page this produces. */
 const fs = require("fs");
 const path = require("path");
+const { withHashes } = require("./page-parts.js");
 
 const ROOT = path.join(__dirname, "..");
 const read = (f) => fs.readFileSync(path.join(ROOT, f), "utf8");
@@ -41,9 +42,9 @@ const LIBS = [
   { url: "https://unpkg.com/@babel/standalone@7.29.0/babel.min.js", from: "node_modules/@babel/standalone/babel.min.js", to: "vendor/babel-standalone-7.29.0.min.js", via: "resources",
     pin: () => (read("support.js").match(/BABEL_SRI = "(sha384-[^"]+)"/) || [])[1] },
   { url: "https://unpkg.com/d3@7.9.0/dist/d3.min.js", from: "node_modules/d3/dist/d3.min.js", to: "vendor/d3-7.9.0.min.js", via: "page",
-    pin: () => (read("index.html").match(/d3@7\.9\.0\/dist\/d3\.min\.js","(sha384-[^"]+)"/) || [])[1] },
+    pin: () => (read("page-component.js").match(/d3@7\.9\.0\/dist\/d3\.min\.js","(sha384-[^"]+)"/) || [])[1] },
   { url: "https://unpkg.com/topojson-client@3.1.0/dist/topojson-client.min.js", from: "node_modules/topojson-client/dist/topojson-client.min.js", to: "vendor/topojson-client-3.1.0.min.js", via: "page",
-    pin: () => (read("index.html").match(/topojson-client@3\.1\.0\/dist\/topojson-client\.min\.js","(sha384-[^"]+)"/) || [])[1] },
+    pin: () => (read("page-component.js").match(/topojson-client@3\.1\.0\/dist\/topojson-client\.min\.js","(sha384-[^"]+)"/) || [])[1] },
   // data, not code: the page fetches it without a pinned hash, as from the CDN
   { url: "https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json", from: "node_modules/world-atlas/countries-110m.json", to: "vendor/world-atlas-2.0.2/countries-110m.json", via: "atlas", pin: () => null },
 ];
@@ -113,6 +114,19 @@ const ACCOUNT_BTN = '<button type="button" data-ink-account style="flex:none;wid
    page's own styles, and as specific as the rule that sends its text buttons below, so it wins. */
 const SLOT_CSS = "<style>html:not(.ink-account) header>[data-ink-account]{visibility:hidden}@media (max-width:1119px){header>button[data-ink-account]{order:1}header>div:first-child{flex-basis:calc(100% - 134px)!important}}</style>";
 
+/* The tool's component logic is page-component.js since v74.1 (the strict policy, scripts/page-parts.js), and it is
+   what names the map's libraries and data: here they are the site's own copies, as they were in the page */
+function hostedComponent(js) {
+  let out = js;
+  for (const l of LIBS.filter((x) => x.via === "page" || x.via === "atlas")) {
+    if (!out.includes(l.url)) throw new Error("hosted: page-component.js no longer loads " + l.url);
+    out = out.split(l.url).join("./" + l.to);
+  }
+  const left = out.match(new RegExp(THIRD.source + "[^\"'\\s)]*"));
+  if (left) throw new Error("hosted: page-component.js still names another site: " + left[0]);
+  return out;
+}
+
 function hostedApp(html) {
   if (!PROJECT) throw new Error("hosted: no project URL in site/config.js");
   const anchor = '<script src="./page-logic.js"></script>';
@@ -124,12 +138,7 @@ function hostedApp(html) {
   // the policy: no other site, and the project for connections
   out = out.replace(cspRe, (_, a, csp, z) => a + csp.split(";").map((d) => d.trim().split(/\s+/).filter((t) => !THIRD.test(t)).join(" "))
     .map((d) => (/^connect-src\b/.test(d) ? d + " " + PROJECT : d)).join("; ") + z);
-  // the map's libraries and data, by address in the page (the data also through __resources);
-  // the libraries' integrity attributes stay and still apply
-  for (const l of LIBS.filter((x) => x.via === "page" || x.via === "atlas")) {
-    if (!out.includes(l.url)) throw new Error("hosted: the page no longer loads " + l.url);
-    out = out.split(l.url).join("./" + l.to);
-  }
+  // the map's libraries and data are named by the component's logic, page-component.js (hostedComponent)
   // the account button in the top bar, right after the day/night button (site/cloud.js opens its panel)
   const themeBtn = /(<button onClick="\{\{ onTheme \}\}"[^\n]*?<\/button>)(\s*<\/header>)/;
   if ((out.match(new RegExp(themeBtn.source, "g")) || []).length !== 1) throw new Error("hosted: the top bar's day/night button is no longer where it was");
@@ -145,7 +154,8 @@ function hostedApp(html) {
   out = out.replace(anchor, SLOT_CSS + "\n" + STORE_SUFFIX + `\n<script src="./hosted-resources.js"></script>\n<script src="../vendor/supabase-${supabaseVersion()}.js"></script>\n<script src="../config.js"></script>\n<script src="../cloud.js"></script>\n` + anchor);
   const left = out.match(new RegExp(THIRD.source + "[^\"'\\s)]*"));
   if (left) throw new Error("hosted: app/index.html still names another site: " + left[0]);
-  return out;
+  // the inline scripts it added (the account's storage key) are named in the policy by their hash, as the page's own
+  return withHashes(out);
 }
 
 /* The no-account demo at /demo/ (the owner's decisions 18 and 29, 6.10): the same page, without the sign-in, the
@@ -167,15 +177,12 @@ function demoApp(html) {
   if (html.split(anchor).length !== 2 || (html.match(new RegExp(cspRe.source, "g")) || []).length !== 1)
     throw new Error("hosted: index.html no longer has the places the demo inserts into, each once");
   let out = html.replace(cspRe, (_, a, csp, z) => a + csp.split(";").map((d) => d.trim().split(/\s+/).filter((t) => !THIRD.test(t)).join(" ")).join("; ") + z);
-  for (const l of LIBS.filter((x) => x.via === "page" || x.via === "atlas")) {
-    if (!out.includes(l.url)) throw new Error("hosted: the page no longer loads " + l.url);
-    out = out.split(l.url).join("./" + l.to);
-  }
   if (out.split("<title>" + NAME + "</title>").length !== 3) throw new Error("hosted: the tool's name is no longer where it was");
   out = out.replace(anchor, DEMO_FLAG + '\n<script src="./hosted-resources.js"></script>\n' + anchor);
   const left = out.match(new RegExp(THIRD.source + "[^\"'\\s)]*"));
   if (left) throw new Error("hosted: demo/index.html still names another site: " + left[0]);
-  return out;
+  // the demo's flag is an inline script too: named in the policy by its hash
+  return withHashes(out);
 }
 
-module.exports = { hostedApp, demoApp, DEMO_FLAG, hostedManifest, hostedWorker, NAME, STORE_KEY, STORE_SUFFIX, resourcesScript, PROJECT, LIBS, ORT_FILES, ORT_V, ortFrom, ortPin, ORT_DIR, SLOT_CSS };
+module.exports = { hostedComponent, hostedApp, demoApp, DEMO_FLAG, hostedManifest, hostedWorker, NAME, STORE_KEY, STORE_SUFFIX, resourcesScript, PROJECT, LIBS, ORT_FILES, ORT_V, ortFrom, ortPin, ORT_DIR, SLOT_CSS };

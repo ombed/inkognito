@@ -130,6 +130,21 @@ try {
   const W_RX = /weights:\{file:"[^"]+",bytes:\d+,\s*sha256:"[0-9a-f]{64}",\s*parts:\[[^\]]*\]/;
   ok(eng.replace(W_RX, "") === origEng.replace(W_RX, ""), "nothing else in the engine changed");
 
+  console.log("\n— the hosted tool and the demo run only the scripts their policy names (v74.1) —");
+  {
+    const P = require("../scripts/page-parts.js");
+    for (const [name, page] of [["the tool", app], ["the demo", demo]]) {
+      const src = (((page.match(P.CSP) || [])[2] || "").split(";").find((d) => d.trim().startsWith("script-src")) || "").trim().split(/\s+/);
+      ok(src.length > 1 && !src.includes("'unsafe-inline'") && !src.includes("'unsafe-eval'"), name + ": no 'unsafe-inline', no 'unsafe-eval': " + src.filter((t) => !t.startsWith("'sha256")).join(" "));
+      const inline = P.inlineScripts(page);
+      // the page's two, and the one the hosted build adds (the account's storage key; the demo's flag)
+      ok(inline.length === 3 && inline.every((c) => src.includes(P.hashOf(c))), name + ": each of its " + inline.length + " inline scripts is named by its hash");
+    }
+    for (const f of ["app/page-component.js", "demo/page-component.js"]) {
+      ok(files.includes(f) && !/https:\/\/(?:unpkg\.com|cdn\.jsdelivr\.net)/.test(read(f)), f + " is served, and names no CDN");
+    }
+  }
+
   console.log("\n— the hosted tool asks no other site for anything —");
   const H = require("../scripts/hosted.js");
   const csp = (app.match(/http-equiv="Content-Security-Policy" content="([^"]+)"/) || [])[1] || "";
@@ -165,7 +180,8 @@ try {
     const at = "app/" + l.to;
     ok(files.includes(at), "the site serves its own " + path.basename(l.to));
     if (l.via === "resources") ok(map[l.url] === "./" + l.to, "the tool is told to load " + path.basename(l.to) + " from the site");
-    if (l.via === "page") ok(app.includes('"./' + l.to + '","sha384-'), "the page loads " + path.basename(l.to) + " from the site, its integrity check kept");
+    // the component's logic names them since v74.1 (page-component.js; hosted.js, hostedComponent)
+    if (l.via === "page") ok(read("app/page-component.js").includes('"./' + l.to + '","sha384-'), "the tool's logic loads " + path.basename(l.to) + " from the site, its integrity check kept");
     if (l.via === "atlas") ok(map.atlas === "./" + l.to, "the map's data comes from the site");
     if (l.pin()) ok("sha384-" + crypto.createHash("sha384").update(fs.readFileSync(path.join(dist, at))).digest("base64") === l.pin(), path.basename(l.to) + " is byte for byte the file the tool pins");
   }
