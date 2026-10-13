@@ -26,7 +26,7 @@ The interface is in Hebrew; the Hebrew documentation follows this section.
 - No build step for the page: plain JavaScript, with the interface drawn by React 18 through a small template runtime (`support.js`). The engine is plain files concatenated into one script. On inkognito.co.il every library, font and the model are served from the site itself.
 - Name recognition: the NER head of DictaBERT-parse, exported to ONNX, quantized to 8 bits and run in the browser with transformers.js. It is served from this site and checked against a pinned SHA-256 before use.
 - Rules, Hebrew prefix handling and a gazetteer run alongside the model; the model only adds suggestions.
-- Tests: about 7,500 Node checks and 338 Playwright browser tests in CI, WebKit and Firefox before each release that changes the page, plus the benchmark gates above.
+- Tests: about 7,800 Node checks and 348 Playwright browser tests in CI, WebKit and Firefox before each release that changes the page, plus the benchmark gates above.
 - Developed with Claude Code as the coding agent. Each decision is recorded with its reasons: the model choice in [docs/model-eval/](docs/model-eval/README.md), the rest in the changelog and the code. Who does what, and what the owner catches that the agent and the tests miss: [docs/HOW-IT-WAS-BUILT.md](docs/HOW-IT-WAS-BUILT.md).
 
 **Licence:** source-available under [PolyForm Shield 1.0.0](LICENSE). Read it before using the code in a product of your own.
@@ -56,7 +56,8 @@ https://ombed.github.io/inkognito/, מגישה מ-main את דף ההעברה ש
 
 | קובץ | תפקיד |
 |---|---|
-| `index.html` | הכלי — מבנה, עיצוב, ולוגיקת הממשק |
+| `index.html` | הכלי — מבנה ועיצוב |
+| `page-component.js` | לוגיקת הממשק, כקובץ שמדיניות האבטחה של הדף מתירה (ולא כטקסט שהופך לקוד) |
 | `support.js` | שכבת ההרצה שמרנדרת את הממשק |
 | `page-logic.js` | לוגיקת דף שאינה תלויה ב-DOM (דוח הדליפה); נבדקת גם ב-Node |
 | `redact-engine.js` | המנוע: זיהוי, החלפה, אימות, DOCX |
@@ -124,13 +125,13 @@ GitHub Pages או כל אירוח סטטי מספיק. **כתובת `https` הי
 
 | קובץ | שורה | המחרוזת | תפקיד |
 |---|---|---|---|
-| `index.html` | 1397 | `<div id="ver">גרסה v74</div>` | השבב התחתון — מה שנראה על המסך |
-| `index.html` | 292 | `console.log("… גרסה v74")` | שורת הפתיחה בקונסול |
-| `index.html` | 345 | `if(served==="v74") return;` | **בדיקת ההשוואה** מול מה שהעובד מגיש |
-| `index.html` | 346 | `el.innerHTML='גרסה v74 · …'` | תווית האזהרה שמוצגת כשיש פער |
-| `sw.js` | 8 | `const V="hedact-v74";` | מפתח המטמון |
+| `index.html` | 1401 | `<div id="ver">גרסה v74.1</div>` | השבב התחתון — מה שנראה על המסך |
+| `index.html` | 296 | `console.log("… גרסה v74.1")` | שורת הפתיחה בקונסול |
+| `index.html` | 349 | `if(served==="v74.1") return;` | **בדיקת ההשוואה** מול מה שהעובד מגיש |
+| `index.html` | 350 | `el.innerHTML='גרסה v74.1 · …'` | תווית האזהרה שמוצגת כשיש פער |
+| `sw.js` | 8 | `const V="hedact-v74.1";` | מפתח המטמון |
 
-מספרי השורות נכונים לגרסה v74 והם עזר בלבד — לחפש את המחרוזת, לא לסמוך
+מספרי השורות נכונים לגרסה v74.1 והם עזר בלבד — לחפש את המחרוזת, לא לסמוך
 על המספר.
 
 **בדיקת ההשוואה (`if(served===…)`, השורה השלישית בטבלה) היא הכי קלה לפספוס, והפספוס שקט-למחצה.** אם השבב והקונסול

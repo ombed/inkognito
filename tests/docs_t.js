@@ -20,11 +20,12 @@ const read = (f) => fs.readFileSync(path.join(ROOT, f), "utf8");
 let pass = 0, fail = 0;
 const ok = (c, m) => { c ? pass++ : (fail++, console.log("  ✗ " + m)); };
 // comments are for developers and may tell the mark's history; "//" after ":" is a URL, not a comment
+const { pageWithLogic } = require("../scripts/page-parts.js"); // the page with its logic (page-component.js) in its place
 const strip = (t) => t.replace(/<!--[\s\S]*?-->/g, " ").replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:\\])\/\/[^\n]*/g, "$1");
 
 console.log("\n— the texts name the deletion mark the review screen draws —");
 {
-  const html = read("index.html");
+  const html = pageWithLogic();
   ok(/<sc-if value="\{\{ sg\.del \}\}"><svg [^>]*data-icon="eraser"/.test(html), "a deleted value is drawn with the eraser");
   for (const [f, text] of [["index.html", strip(html)], ["docs/trial-guide-he.md", read("docs/trial-guide-he.md")], ["docs/answer-sheet-he.md", read("docs/answer-sheet-he.md")]]) {
     const left = (text.match(/∅/g) || []).length;
@@ -51,7 +52,7 @@ console.log("\n— the network section describes the site users run —");
 console.log("\n— nothing promises the tool works offline —");
 {
   const offline = /(?:עובד|ייפתח|נפתח)[^.\n]{0,40}בלי (?:רשת|אינטרנט|חיבור)|בלי (?:רשת|אינטרנט|חיבור)[^.\n]{0,20}(?:עובד|ייפתח)|גם בלעדיו/;
-  for (const [f, text] of [["README.md", read("README.md")], ["index.html", strip(read("index.html"))]]) {
+  for (const [f, text] of [["README.md", read("README.md")], ["index.html", strip(pageWithLogic())]]) {
     const m = text.match(offline);
     ok(!m, `${f} promises no offline use${m ? ": «" + m[0] + "»" : ""}`);
   }
@@ -78,7 +79,7 @@ for (const f of ["docs/trial-guide-he.md", "docs/answer-sheet-he.md"]) {
 
 console.log("\n— the issue form names buttons the tool has —");
 {
-  const html = read("index.html");
+  const html = pageWithLogic();
   const dir = ".github/ISSUE_TEMPLATE";
   for (const f of fs.readdirSync(path.join(ROOT, dir)).filter((x) => /\.ya?ml$/.test(x))) {
     // a button is named in straight quotes or in «», after «הכפתור», «בכפתור» or «לחצתם (בכלי) (על)»

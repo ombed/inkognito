@@ -1,0 +1,3559 @@
+/* The tool's page component: the logic of its one component, a class Component extends DCLogic, in the form the
+   page runtime (support.js) takes: DCLogic and React are given to it, and it returns the class.
+
+   Until 13.10.2026 this was the text of index.html's <script type="text/x-dc" data-dc-script>, and the runtime turned
+   that text into code (new Function), so the page's policy had to allow 'unsafe-eval' (the engineering audit of 12.10,
+   item 4). Here it is a plain script the policy names ('self'): it only registers itself, and the runtime takes it
+   when the page holds no text for it (support.js, evalDcLogic). The design canvas (scripts/build-design.js) puts the
+   text back into its own <script type="text/x-dc">; scripts/page-parts.js reads it between the two lines around it. */
+window.__dcLogic = { make: function (DCLogic, StreamableLogic, React) {
+class Component extends DCLogic {
+  state = {
+    screen:"entry", theme:"light", ready:false, E:null,
+    // numStyle: מה נכנס במקום מספר, תאריך או כתובת — blank (נמחק), label, black
+    mode:"real", o:{auto:true, places:true, ner:true, near:true, numStyle:"blank"},
+    nerOff:false, nerHint:"", nerMsg:"", nerPct:null, nerBox:false, nerUsed:false,
+    buf:null, name:"", cands:[], peo:[], peoSug:[], peoIn:"", peoNote:"", scanning:false,
+    rules:[], allow:[], res:null, profile:null, pw:null,
+    sel:null, filter:"all", cat:"", open:null, pane:"doc", hot:null,
+    addV:"", addR:"", addK:"NAME",
+
+    rvIn:"", rvOut:"", rvLeft:[], rvDates:[], rvLast:null, rvProfile:null, rvCopyLabel:"העתקת הטקסט המשוחזר",
+    copyLabel:"העתקה ל־AI", busyT:"מעבד…", err:"",
+    geo:null, geoV:0, geoNames:[], geoExtra:[], geoEdits:{}, popup:null, tip:null, repDraft:"", sent:{}, peoKept:[], peoNotSame:[], inline:null, inlineDraft:"",
+    // הפרופיל של התיק נשמר בדפדפן אחרי כל שינוי; lastProfile הוא מה שנמצא בכניסה
+    caseName:"", lastProfile:null, profileDirty:false, removed:[], leaks:[], cases:[], copied:false, logCopyLabel:"", helpOpen:false, demoEnd:false
+  };
+
+  async componentDidMount(){
+    /* המנוע (redact-engine.js, כ-270KB) מתחיל לרדת ראשון, אבל הדף מחכה לו רק בסוף: הפריסה (טלפון או
+       מחשב), ערכת הצבעים, התיקים השמורים, המקלדת ויומן השגיאות לא צריכים אותו. עד v60 כל אלה חיכו
+       למנוע: טלפון הראה בינתיים את פריסת המחשב (שורת התיאור בכותרת והגדרות הזיהוי פתוחות), והלילה
+       את סמל הירח — עד שתי שניות ברשת איטית (e2e/look.spec.js) */
+    const engine = import((window.__resources && window.__resources.engine) || "./redact-engine.js");
+    engine.catch(()=>{}); // נתפס למטה, ב-await; כאן רק כדי שדחייה מוקדמת לא תיחשב "לא מטופלת"
+    let th="light";
+    let chosen=null;
+    try{ chosen = localStorage.getItem("redact-theme"); th = chosen || (matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light"); }catch(_){}
+    this.applyTheme(th);
+    if(!chosen){ try{ const mq=matchMedia("(prefers-color-scheme:dark)"); mq.addEventListener("change", e=>{ let c=null; try{ c=localStorage.getItem("redact-theme"); }catch(_){}
+      if(!c){ const t=e.matches?"dark":"light"; this.applyTheme(t); this.setState({theme:t}); } }); }catch(_){} }
+    /* «לפני שמתחילים» נפתח פעם אחת (Q33, 6.10.2026); עד כאן הוא חזר אחרי כל עדכון. אחרי עדכון באה במקומו שורה
+       אחת, «אינקוגניטו עודכן. מה חדש», פעם אחת לכל גרסה, עם קישור לעמוד השינויים באתר. המפתח נושא את מספר הגרסה
+       האחרונה שנראתה, ו-"*" (מהבדיקות) מכסה את כולן. e2e/restore-ux.spec.js
+       תיקון קטן (v73 ← v73.1) אינו גרסה חדשה בשביל מי שעובד בכלי, ולכן השורה באה רק כשמספר הגרסה עצמו
+       זז (החלטת הבעלים, 9.10.2026; e2e/tour.spec.js). המפתח בכל זאת מתעדכן לגרסה המלאה. */
+    let seen=false, updated=false;
+    const release=v=>String(v).replace(/\.\d+$/,"");
+    try{ const t=localStorage.getItem("redact-tour-seen"); seen=localStorage.getItem("redact-intro-seen")==="1";
+      updated=seen&&t!=="*"&&release(t)!==release(this.ver());
+      if(seen&&t!=="*"&&t!==this.ver()) localStorage.setItem("redact-tour-seen", this.ver()); }catch(_){}
+    const lastProfile=this.readLast();
+    /* ההדגמה שבלי חשבון באתר (window.__inkDemo, scripts/build-hosted.js; החלטות 18 ו־29 של הבעלים, 6.10): רק המסמך הבדוי,
+       בלי קובץ, הדבקה או ייבוא, בלי מודל ובלי שום דבר שנשמר. הסיור מתחיל מעצמו, וסופו כרטיס שמזמין לפתוח חשבון. e2e/demo.spec.js */
+    const demo=!!window.__inkDemo;
+    this.setState({theme:th, intro:!seen&&!demo, lastProfile:demo?null:lastProfile, cases:demo?[]:this.readCases(), ...(updated&&!demo?{notice:this.constructor.WHATS_NEW, noticeUndo:false}:{}),
+      ...(demo?{o:{...this.state.o, ner:false}}:{})});
+    if(demo) this.tourStart();
+    // יומן הסשן (PLAN-v18 Q16): זמנים ואירועים בלי טקסט, בדפדפן בלבד, מיוצא בכפתור ליד דוח הדליפה
+    const ver=this.verText();
+    this.log=window.PL?window.PL.sessionLog(ver):{add(){},export(){return "{}"}};
+    // עד v56 החבילה פתחה מייל לכתובת ששמורה כאן; החבילה כבר לא נשלחת, והכתובת לא נשארת במחשב
+    try{ localStorage.removeItem("redact-feedback-mail"); }catch(_){}
+    this.applyProps();
+    this._resize = () => { const n = innerWidth < 1120; if(n!==this.state.narrow) this.setState({narrow:n}); };
+    this._resize();
+    addEventListener("resize", this._resize);
+    this._barSize = () => {
+      const el=document.querySelector("[data-bar]"), hd=document.querySelector("header");
+      const r=document.documentElement.style;
+      /* מיקוד במקלדת: הדפדפן גולל אל החלון את הפקד שבמיקוד, אבל לא יודע שהכותרת הדביקה למעלה והבר הקבוע
+         למטה מכסים את קצות החלון. Tab הביא כפתורים וסימונים אל מתחת לבר, ו-Shift+Tab אל מתחת לכותרת,
+         מוסתרים לגמרי יחד עם הטבעת (כבר ב-v59). ריפוד הגלילה של הדף שומר מהם מרחק, ועוד 8px לטבעת עצמה */
+      r.scrollPaddingTop = hd ? (Math.round(hd.offsetHeight)+8)+"px" : "";
+      r.scrollPaddingBottom = ((el ? Math.round(el.offsetHeight) : 0)+8)+"px";
+      if(this._headObs && this._headEl!==hd){ this._headObs.disconnect(); if(hd) this._headObs.observe(hd); this._headEl=hd; }
+      if(!el){ r.removeProperty("--bar-h"); this._barEl=null; return; }
+      r.setProperty("--bar-h", Math.round(el.offsetHeight)+"px");
+      if(this._barObs && this._barEl!==el){ this._barObs.disconnect(); this._barObs.observe(el); this._barEl=el; }
+    };
+    if(typeof ResizeObserver!=="undefined"){ this._barObs=new ResizeObserver(()=>this._barSize()); this._headObs=new ResizeObserver(()=>this._barSize()); }
+    this._barSize();
+    /* ריפוד הגלילה מספיק ל-Chrome בלבד (בדיקה בשלושת המנועים, 10.10): Safari מתעלם ממנו כשהוא גולל אל
+       הפקד שבמיקוד, ו-Shift+Tab השאיר שדות מתחת לכותרת; Firefox גלל רק את רשימת הממצאים, ו-Tab השאיר
+       כרטיס ממנה מחוץ לחלון. אחרי שהדפדפן גלל, הדף מודד את הפקד עם הטבעת שלו ומשלים את הגלילה: קודם
+       באזורי הגלילה שהוא בתוכם, ואז בחלון, בין הכותרת לבר. פקד בשכבה קבועה (כרטיס הסיור) זז עם החלון,
+       וגלילה לא תעזור לו. רק מיקוד שהמקלדת הזיזה: הקשה או לחיצה על שדה נגללים כמו קודם, בלי תיקון */
+    this._keyAt = 0;
+    this._keyMark = () => { this._keyAt = performance.now(); };
+    document.addEventListener("keydown", this._keyMark, true);
+    this._focusKeep = e => {
+      const el=e.target;
+      if(performance.now()-this._keyAt>1000||!el||!el.matches||!el.matches(":focus-visible")) return;
+      requestAnimationFrame(()=>{
+        if(document.activeElement!==el) return;
+        for(let a=el; a; a=a.parentElement) if(getComputedStyle(a).position==="fixed") return;
+        const cs=getComputedStyle(el), ext=(cs.outlineStyle==="none"?0:parseFloat(cs.outlineWidth)||0)+Math.max(0,parseFloat(cs.outlineOffset)||0)+2;
+        for(let a=el.parentElement; a&&a!==document.body; a=a.parentElement){
+          const s=getComputedStyle(a); if(s.overflowY!=="auto"&&s.overflowY!=="scroll") continue;
+          const b=a.getBoundingClientRect(), r=el.getBoundingClientRect();
+          if(r.top-ext<b.top) a.scrollTop-=b.top-(r.top-ext);
+          else if(r.bottom+ext>b.bottom) a.scrollTop+=Math.min(r.bottom+ext-b.bottom, r.top-ext-b.top);
+        }
+        const hd=document.querySelector("header"), bar=document.querySelector("[data-bar]"), r=el.getBoundingClientRect();
+        const top=hd&&!hd.contains(el)?Math.max(0,hd.getBoundingClientRect().bottom):0;
+        const bottom=bar&&!bar.contains(el)?Math.min(innerHeight,bar.getBoundingClientRect().top):innerHeight;
+        if(r.top-ext<top) scrollBy(0,(r.top-ext)-top);
+        else if(r.bottom+ext>bottom) scrollBy(0,Math.min(r.bottom+ext-bottom, r.top-ext-top));
+      });
+    };
+    document.addEventListener("focusin", this._focusKeep);
+    this._docClick = e => {
+      if(this.state.popup && !e.target.closest("[data-popup]")) this.setState({popup:null});
+      // תפריט «עזרה» נסגר בלחיצה מחוץ לו, כמו תפריט
+      if(this.state.helpOpen && !e.target.closest("[data-help]")) this.setState({helpOpen:false});
+      // דוגמה שננעצה בהקשה נסגרת בהקשה בחוץ. בלי זה אין דרך לסגור אותה במגע.
+      if(this.state.tip && this.state.tip.pin && !e.target.closest("[data-tip]")) this.setState({tip:null});
+    };
+    document.addEventListener("mousedown", this._docClick);
+    // Ctrl+Z, Ctrl+Shift+Z ו-Ctrl+Y, ורק כשלא מקלידים בשדה
+    this._keys = e => {
+      const S=this.state;
+      /* מקלדת (ביקורת QA 003, 004): Escape סוגר את מה שפתוח מעל המסך — "לפני שמתחילים",
+         עריכה במקום, חלונית הסימון, רמז — בסדר הזה. Tab לא יוצא מ"לפני שמתחילים".
+         Enter או רווח על סימון במסמך פותחים אותו כמו לחיצה. */
+      if(e.key==="Escape"){
+        if(S.helpOpen){ e.preventDefault(); this.setState({helpOpen:false}, ()=>{ const b=document.querySelector("[data-help-btn]"); if(b) b.focus(); }); return; }
+        if(S.intro&&!S.tour){ e.preventDefault(); this.tourMarkSeen(); this.setState({intro:false}); return; }
+        if(S.inline){ e.preventDefault(); this.setState({inline:null}); return; }
+        if(S.popup){ e.preventDefault(); this.setState({popup:null}); return; }
+        if(S.tip){ this.setState({tip:null}); return; }
+        if(S.exportAsk){ this.setState({exportAsk:""}); return; }
+        /* Escape אינו סוגר את הסיור (ביקורת M32 ביקשה שכן): e2e/unruly.spec.js נועל שמקש תועה
+           אינו מחליף לה מסך, והכרטיס אינו מודאלי. היציאה מהמקלדת היא כפתור ✕ שבכרטיס */
+      }
+      if(e.key==="Tab"&&S.intro&&!S.tour){
+        const box=document.querySelector("[data-intro]");
+        const f=box?[...box.querySelectorAll("button,[href],input,select,textarea,[tabindex]:not([tabindex='-1'])")].filter(x=>!x.disabled):[];
+        if(f.length){
+          const i=f.indexOf(document.activeElement);
+          if(e.shiftKey&&(i<=0)){ e.preventDefault(); f[f.length-1].focus(); }
+          else if(!e.shiftKey&&(i===-1||i===f.length-1)){ e.preventDefault(); f[0].focus(); }
+        }
+        return;
+      }
+      // ביקורת M29, M30: "איפה זה מופיע" ושם הכרטיס פועלים גם מהמקלדת, כמו סימון במסמך
+      if((e.key==="Enter"||e.key===" ")&&e.target&&e.target.matches&&e.target.matches("[data-kbd]")){ e.preventDefault(); e.target.click(); return; }
+      if((e.key==="Enter"||e.key===" ")&&e.target&&e.target.matches&&e.target.matches("[data-mark]")){
+        // פתיחה מהמקלדת (M5): הפוקוס עובר לחלונית, ו-Escape מחזיר אותו לסימון
+        this._inlineByKey=e.target; this._inlineFocused=false;
+        e.preventDefault(); e.target.click(); return;
+      }
+      if(!(e.ctrlKey||e.metaKey)) return;
+      const t=e.target, tag=t&&t.tagName;
+      if(tag==="INPUT"||tag==="TEXTAREA"||(t&&t.isContentEditable)) return;
+      const k=String(e.key||"").toLowerCase();
+      // ביטול וחזרה שייכים למסך הבדיקה: במסכים אחרים הם הריצו את המסמך מחדש מעל מצב שלא נראה
+      if((k==="z"||k==="y")&&this.state.screen!=="work") return;
+      if(k==="z"&&!e.shiftKey){ e.preventDefault(); this.undo(); }
+      else if((k==="z"&&e.shiftKey)||k==="y"){ e.preventDefault(); this.redo(); }
+    };
+    document.addEventListener("keydown", this._keys);
+    /* ביקורת L29: בחירה ב-Shift וחיצים פותחת את אותה חלונית כמו בחירה בעכבר. הפוקוס בדרך כלל על
+       הדף ולא בתוך המסמך, ולכן ההאזנה כאן ולא על המסמך עצמו */
+    this._selKeys = e => { if(!(e.shiftKey||e.key==="Shift")||!this.sheetEl) return;
+      const s=getSelection(); if(s&&s.anchorNode&&this.sheetEl.contains(s.anchorNode)) this.onSheetSelect({target:this.sheetEl}); };
+    document.addEventListener("keyup", this._selKeys);
+    /* בטלפון אין mouseup אחרי בחירה בלחיצה ארוכה, ולכן «הוספת … בתור:» לא נפתחה בכלל, אף שעמוד העזרה אומר «מסמנים אותו
+       במסמך ומוסיפים אותו» (הציד של 11.10). גם שינוי בבחירה פותח אותה, כשנרגע (300ms), כשהבחירה בתוך המסמך ואינה ריקה.
+       בזמן גרירה בעכבר מחכים ל-mouseup, ובחירה שהחלונית כבר מציגה לא נפתחת שוב */
+    this._ptr = e => { if(e.pointerType==="mouse") this._mouseDown = e.type==="pointerdown"; };
+    document.addEventListener("pointerdown", this._ptr, true); document.addEventListener("pointerup", this._ptr, true);
+    this._selChange = () => { clearTimeout(this._selT); this._selT=setTimeout(()=>{
+      if(!this.sheetEl||this._mouseDown) return;
+      const s=getSelection(); if(!s||s.isCollapsed||!s.anchorNode||!this.sheetEl.contains(s.anchorNode)) return;
+      const E=this.state.E, p=this.state.popup; if(E&&p&&p.text===E.trimEdges(s.toString())) return;
+      this.onSheetSelect({target:this.sheetEl}); }, 300); };
+    document.addEventListener("selectionchange", this._selChange);
+    /* H5 בביקורת השנייה: רענון, "אחורה" בדפדפן וסגירת הלשונית מחקו את המסמך, את
+       ההחלטות ואת היומן בלי מילה, בזמן ש"מסמך חדש" לבדו שאל. כשיש מסמך (ולא
+       הסיור): הדפדפן שואל לפני רענון או סגירה, ו"אחורה" נתפס — בטעינת המסמך
+       נדחפת רשומת היסטוריה, כך ש"אחורה" חוזר אליה במקום לצאת מהאתר, ושאלה אחת
+       מכריעה. ביטול משאיר הכול; אישור יוצא באמת, ובלי שאלה שנייה. */
+    this._unload = e => {
+      if(!this.state.buf || this.state.tour || this._leaving) return;
+      e.preventDefault(); e.returnValue = "המסמך וההחלטות שנעשו עליו יאבדו.";
+      return e.returnValue;
+    };
+    this._pop = () => {
+      // מסך ההחזרה (componentDidUpdate): "אחורה" חוזר ממנו למסך שממנו הגיעו, בלי שאלה; ורשומה שהכפתור שבדף הוציא אינה יציאה
+      if(this._rvSkip){ this._rvSkip=false; return; }
+      if(this._tourSkip){ this._tourSkip=false; return; }
+      if(this._tourHist&&this.state.tour){ this._tourPopped=true; this.tourClose(); return; }
+      if(this._rvHist&&this.state.screen==="reverse"){ this._rvPopped=true; this.goBack(); return; }
+      if(!(this._hist && this.state.buf && !this.state.tour)) return;
+      if(confirm("לצאת מהמסמך? המסמך וההחלטות שקיבלתם לגביו יאבדו. התיק נשאר שמור בדפדפן.")){
+        this._hist=false; this._leaving=true; this.log.add("leave",{how:"back"});
+        try{ history.back(); }catch(_){}
+      } else {
+        try{ history.pushState({pib:1}, ""); }catch(_){}
+      }
+    };
+    addEventListener("beforeunload", this._unload);
+    // דף שנסגר או נטען מחדש באמצע הקלדת שם התיק: רשימת התיקים נשמרת לפניו (persistProfile), לפני שהמסמך מסתיים
+    this._caseOnHide = () => { clearTimeout(this._caseT); this.persistProfile(); };
+    addEventListener("pagehide", this._caseOnHide);
+    // closing or leaving the page ends the document too (pagehide: also fires where unload does not)
+    this._hide=()=>this.docEnd("leave");
+    addEventListener("pagehide", this._hide);
+    addEventListener("popstate", this._pop);
+    // the document's history entry waits for a click or a key (canPush): it is pushed by the first one
+    this._histNow = () => {
+      if(!this._histWait||!this.canPush()) return;
+      this._histWait=false;
+      if(this.state.buf&&!this.state.tour&&!this._hist){ this._hist=true; this._leaving=false; try{ history.pushState({pib:1}, ""); }catch(_){} }
+    };
+    document.addEventListener("click", this._histNow, true);
+    document.addEventListener("keydown", this._histNow, true);
+    this._follow=()=>{ if(this.state.inline||this.state.tip) this.followAnchors(); };
+    /* שתי לשוניות (L15 בביקורת השנייה): תיק שנמחק בלשונית אחת נוצר מחדש מהשינוי הבא בשנייה,
+       והרצועות לא התעדכנו. שינוי ברשימת התיקים מלשונית אחרת מרענן את הרצועה; ואם התיק של
+       הלשונית הזאת נמחק שם, הלשונית הזאת מפסיקה לשמור אליו ואומרת את זה. */
+    this._storage=e=>{
+      if(e.key!==this.caseKey("redact-cases")) return;
+      const cases=this.readCases(), cn=this.state.caseName;
+      let had=false; try{ had=!!(cn&&JSON.parse(e.oldValue||"{}")[cn]); }catch(_){}
+      if(had&&!cases.some(c=>c.name===cn)) this.setState({cases, caseName:"", profile:null, notice:`התיק «${cn}» נמחק בלשונית אחרת. המסמך הזה כבר לא נשמר אליו.`, noticeUndo:false});
+      else this.setState({cases});
+    };
+    addEventListener("storage", this._storage);
+    // ותפריט «עזרה» נסגר כשהמיקוד עובר הלאה ממנו, כמו ב-Tab אחרי הפריט האחרון
+    this._helpFocus=e=>{ if(this.state.helpOpen&&!(e.target&&e.target.closest&&e.target.closest("[data-help]"))) this.setState({helpOpen:false}); };
+    document.addEventListener("focusin", this._helpFocus);
+    // יומן: שגיאה בדף אצלה הייתה נעלמת בלי עקבות. נרשם רק סוג השגיאה והמסך — ההודעה עלולה
+    // להכיל טקסט מהמסמך, ולכן היא לא נרשמת. עד 20 בסשן.
+    this._pageErr=e=>{ try{ if((this._errN=(this._errN||0)+1)>20) return;
+      const x=e&&(e.error||e.reason), name=(x&&x.name)||(e&&e.type==="unhandledrejection"?"rejection":"error");
+      this.log.add("page-error",{name:String(name).replace(/[^A-Za-z]/g,"").slice(0,24)||"error", screen:this.state.screen, tour:!!this.state.tour}); }catch(_){} };
+    addEventListener("error", this._pageErr); addEventListener("unhandledrejection", this._pageErr);
+    addEventListener("scroll", this._follow, true); addEventListener("resize", this._follow);
+    // מסך שעולה (אנימציית rise) מזיז את המילה בלי גלילה ובלי שינוי גודל: רמז שנפתח באמצע
+    // העלייה נשאר כמה פיקסלים מתחת למילה. סוף אנימציה או מעבר מיישר אותו (שכבה 3 בתוכנית האיכות)
+    addEventListener("animationend", this._follow, true); addEventListener("transitionend", this._follow, true);
+    // שכבה 5: גלילה ושינוי גודל עלולים להזיז שכבה מהמילה שלה או לגרום לגלישה — בדיקה עצמית כשנרגע
+    this._scNudge=()=>this.scheduleSelfCheck();
+    addEventListener("scroll", this._scNudge, {capture:true, passive:true}); addEventListener("resize", this._scNudge);
+    try{
+      const E = await engine;
+      window.__RE = E;
+      // בדיקות הדפדפן קוראות לבדיקה העצמית אחרי כל בדיקה (docs/QUALITY-PLAN.md, שכבה 2)
+      if(window.__PIB_TEST) window.__pib={check:v=>this.selfCheck(v), state:()=>this.state,
+        runCheck:()=>{ this._scOff=false; this._scWait=0; this.runSelfCheck(); }, seen:()=>this._scSeen||(this._scSeen=new Set()), log:()=>JSON.parse(this.log.export())};
+      /* הורדת המודל (UX #6): זמן משוער לפי הקצב, והודעה כשהמונה לא זז 20 שניות —
+         "סטלה" נראתה כמו תקיעה, והדרך החוצה לא הוצעה. */
+      E.setNerSay((t,p)=>{
+        const now=Date.now(), dl=/^מוריד/.test(t||"");
+        if(dl){
+          if(this._dlT0==null||p<(this._dlLastP||0)){ this._dlT0=now; this._dlP0=p||0; }
+          if(p!==this._dlLastP){ this._dlLastP=p; this._dlLastAt=now; }
+          const done=(p||0)-(this._dlP0||0), el=(now-this._dlT0)/1000;
+          let eta="";
+          if(done>3&&el>3){ const left=el*(100-p)/done; eta=left<45?" · פחות מדקה":left<90?" · כדקה נוספת":" · כ-"+Math.round(left/60)+" דקות נוספות"; }
+          this.setState({nerMsg:(t||"")+eta, nerPct:p, nerStall:false});
+          if(!this._dlTick) this._dlTick=setInterval(()=>{
+            if(!this.state.scanning){ clearInterval(this._dlTick); this._dlTick=null; this._dlT0=null; this._dlLastP=null; if(this.state.nerStall) this.setState({nerStall:false}); return; }
+            if(this._dlLastAt&&Date.now()-this._dlLastAt>20000&&!this.state.nerStall){ this.log.add("model-stall",{pct:Math.round(this._dlLastP||0)}); this.setState({nerStall:true}); }
+          }, 2000);
+        } else this.setState({nerMsg:t||"", nerPct:p, nerStall:false});
+      });
+      // המפתח נכנס למנוע מיד, גם לשמות שנבחרים לפני ריצה (מסך היישובים)
+      if(typeof E.setAliasKey==="function") E.setAliasKey(this.aliasKey());
+      this.setState({E, ready:true}, ()=>{ const q=this._early||[]; this._early=null; if(q.length&&this.log) this.log.add("file-early",{n:q.length}); for(const fn of q) fn(); });
+      this.nerStatus(E);
+    }catch(e){
+      // L16 בביקורת השנייה: הודעה טכנית באנגלית, בלי דרך לנסות שוב, ובחירת קובץ שלא עשתה דבר
+      console.warn("engine load failed", e);
+      this.setState({engineFailed:true, err:"הכלי לא נטען עד הסוף — כנראה החיבור לאינטרנט נקטע באמצע. טעינה מחדש של הדף בדרך כלל פותרת את זה; שום מסמך לא נשלח לשום מקום."});
+    }
+  }
+  componentWillUnmount(){ document.removeEventListener("mousedown", this._docClick); document.removeEventListener("keydown", this._keys); document.removeEventListener("keyup", this._selKeys); removeEventListener("resize", this._resize);
+    document.removeEventListener("selectionchange", this._selChange); clearTimeout(this._selT); document.removeEventListener("pointerdown", this._ptr, true); document.removeEventListener("pointerup", this._ptr, true);
+    removeEventListener("beforeunload", this._unload); removeEventListener("pagehide", this._hide); removeEventListener("pagehide", this._caseOnHide); clearTimeout(this._caseT); removeEventListener("popstate", this._pop); document.removeEventListener("click", this._histNow, true); document.removeEventListener("keydown", this._histNow, true);
+    removeEventListener("scroll", this._follow, true); removeEventListener("resize", this._follow); removeEventListener("animationend", this._follow, true); removeEventListener("transitionend", this._follow, true);
+    removeEventListener("scroll", this._scNudge, {capture:true}); removeEventListener("resize", this._scNudge); if(this._scT) clearTimeout(this._scT); removeEventListener("storage", this._storage); document.removeEventListener("focusin", this._helpFocus); removeEventListener("error", this._pageErr); removeEventListener("unhandledrejection", this._pageErr);
+    if(this._barObs) this._barObs.disconnect(); if(this._headObs) this._headObs.disconnect(); document.removeEventListener("focusin", this._focusKeep); document.removeEventListener("keydown", this._keyMark, true); }
+  /* ביומן רוב האירועים היו "screen" — אותו מסך, שוב ושוב,
+     בכל רינדור. הארגומנט הראשון של ההוק הוא ה-props הקודמים, לא ה-state הקודם, ולכן
+     prev.screen היה undefined תמיד, ההשוואה תמיד "השתנה", ושדה from נעלם מהיומן.
+     המסך האחרון נשמר על המופע ולא נלקח מההוק. */
+  componentDidUpdate(){ this.applyProps(); if(this._barSize) this._barSize();
+    /* «מי בתיק»: הכללים הולכים עם הרשימה שעל המסך, בכל שינוי בה. עד כאן הם נבנו ממנה רק ב«המשך», וכל דרך אחרת
+       קדימה — «יישובים» בכותרת, «קובץ» ואז «יישובים», «בלי שמירת מרחקים» — המשיכה עם הכללים של הריצה הקודמת (ובפעם
+       הראשונה בלי כללים בכלל): שם שהוקלד כאן נשאר גלוי, מתחת לפס ירוק. ו«קובץ» ואז «מי בתיק» הוציאו שם כזה מהרשימה,
+       כי showList חשבה שהוא הוסר במסך הבדיקה (הציד של 11.10) */
+    if(this.state.screen==="people"&&this.state.peo!==this._peoSynced){ this._peoSynced=this.state.peo; this.setState({rules:this.rulesFromPeo(this.state.peo||[])}); }
+    // שכבה 5: מסך, צעד בסיור, שכבה שנפתחה, תוצאה או רשימה חדשות — בדיקה עצמית כשהמסך נרגע
+    { const S=this.state, sig=[S.screen, S.tour?S.tour.i:-1, S.inline, S.tip, S.res, S.rules, S.allow, S.E];
+      if(!this._scSig||sig.some((x,i)=>x!==this._scSig[i])){ this._scSig=sig; this.scheduleSelfCheck(); } }
+    // חלונית המופעים אינה שורדת מעבר מסך: העכבר נשאר במקומו והחלונית של המסך הקודם כיסתה את הבא
+    if(this.state.screen!==this._tipScreen){ this._tipScreen=this.state.screen; if(this.state.tip) this.setState({tip:null}); }
+    // רשומת היסטוריה אחת לכל מסמך (H5): "אחורה" חוזר אליה ולא יוצא מהאתר
+    if(this.state.buf&&!this.state.tour&&!this._hist){
+      if(this.canPush()){ this._hist=true; this._histWait=false; this._leaving=false; try{ history.pushState({pib:1}, ""); }catch(_){} }
+      else this._histWait=true;
+    }
+    else if(!this.state.buf){ this._hist=false; this._histWait=false; }
+    /* ומסך ההחזרה רשומה משלו (החזרת שמות, 7.10.2026): "אחורה" בדפדפן חזר עד כאן אל השאלה "לצאת מהמסמך?",
+       כשמה שרצו היה לחזור מהתשובה אל המסמך. כניסה למסך דוחפת רשומה, "אחורה" חוזר ממנו (_pop), ויציאה בכפתור
+       שבדף מוציאה את הרשומה, כך ש"אחורה" הבא לא חוזר למסך שנסגר. לא בסיור. e2e/restore-ux.spec.js */
+    const rv=this.state.screen==="reverse"&&!this.state.tour;
+    if(rv&&!this._rvHist&&this.canPush()){ this._rvHist=true; try{ history.pushState({pib:"rv"}, ""); }catch(_){} }
+    else if(!rv&&this._rvHist){ this._rvHist=false; if(!this._rvPopped){ this._rvSkip=true; try{ history.back(); }catch(_){ this._rvSkip=false; } } this._rvPopped=false; }
+    // "לפני שמתחילים" מקבל פוקוס כשהוא נפתח, כך שהמקלדת מתחילה בתוכו (ביקורת QA 003)
+    if(this.state.intro&&!this.state.tour&&!this._introFocused){
+      const b=document.querySelector("[data-intro] button"); if(b){ b.focus(); this._introFocused=true; }
+    }
+    if(!this.state.intro) this._introFocused=false;
+    // the demo's end card takes the focus, on its one action
+    if(this.state.demoEnd&&!this._demoFocused){ const b=document.querySelector("[data-demo-end] a"); if(b){ b.focus(); this._demoFocused=true; } }
+    // עריכה במקום שנפתחה מהמקלדת: הפוקוס נכנס אליה; כשהיא נסגרת הוא חוזר לסימון שפתח אותה (M5)
+    if(this.state.inline&&this._inlineByKey&&!this._inlineFocused){
+      const f=document.querySelector("[data-inline] input, [data-inline] button, [data-inline] select"); if(f){ f.focus(); this._inlineFocused=true; }
+    } else if(!this.state.inline&&this._inlineByKey){
+      const m=this._inlineByKey; this._inlineByKey=null; this._inlineFocused=false;
+      if(m&&document.contains(m)) m.focus();
+    }
+    // הזרקור של הסיור נמדד אחרי שהמסך צויר, פעם אחת לכל צעד+מסך+מקטע פתוח
+    if(this.state.tour){
+      const key=this.state.tour.i+"|"+this.state.screen+"|"+(this.state.open||[]).join(",");
+      if(this._spotKey!==key){ this._spotKey=key; requestAnimationFrame(()=>this.tourMeasure(true)); }
+      // והזרקור נמדד שוב בכל עדכון (L1 בביקורת השנייה): פריסה שזזה אחרי המדידה — גופנים, מפה
+      // שנפתחה — השאירה אותו במקום הישן. המדידה זולה ומעדכנת רק כשמשהו השתנה.
+      else if(!this._spotRaf) this._spotRaf=requestAnimationFrame(()=>{ this._spotRaf=null; this.tourMeasure(); });
+    }
+    const cur=this.state.screen;
+    if(this._lastScreen!==undefined&&this._lastScreen!==cur&&this.log) this.log.add("screen",{to:cur, from:this._lastScreen});
+    // מסך חדש נפתח בראשו (L8): הגלילה של המסך הקודם השאירה את הכותרת והכפתורים מתחת לכותרת העליונה
+    if(this._lastScreen!==undefined&&this._lastScreen!==cur&&cur!=="busy"){ try{ scrollTo(0,0); }catch(_){} }
+    /* הכפתור שנלחץ נעלם עם המסך שלו, והפוקוס נפל לגוף הדף: מי שעובדת במקלדת או בקורא מסך התחילה כל מסך מההתחלה, בלי
+       לשמוע לאן הגיעה, אף שעמוד הנגישות מבטיח ניווט מלא במקלדת (הציד של 11.10). הכותרת של המסך החדש מקבלת את הפוקוס,
+       כמו בעמוד הכניסה של האתר — רק כשהוא נפל, ולא כש«לפני שמתחילים» או הסיור מנהלים אותו */
+    if(this._lastScreen!==undefined&&this._lastScreen!==cur&&cur!=="busy"&&!this.state.intro&&!this.state.tour)
+      requestAnimationFrame(()=>{ const a=document.activeElement;
+        if(a&&a!==document.body&&a.isConnected) return;
+        const h=document.querySelector("h1[data-screen-h]"); if(h) h.focus({preventScroll:true}); });
+    // הדף שמאחורי "לפני שמתחילים" אינו נגלל (L10)
+    { const lock=!!(this.state.intro&&!this.state.tour); if(this._scrollLock!==lock){ this._scrollLock=lock; document.documentElement.style.overflow=lock?"hidden":""; } }
+    this._lastScreen=cur; }
+  applyProps(){
+    const r=document.documentElement.style;
+    // the accent is the stylesheet's own (:root and html.dark): one per theme, bookcloth by day and gilt at
+    // night. The canvas-only choice of three accents written here inline overrode the night palette.
+    r.setProperty("--doc-font", this.props.docFont==="sans"?"Rubik,sans-serif":"'Noto Serif Hebrew',serif");
+    r.setProperty("--rail-w", (this.props.railWidth ?? 404)+"px");
+    // The map geometry travels in data-d and is copied to d here, after
+    // render. Binding d directly in the template hands the unresolved
+    // placeholder to the HTML parser, which logs an SVG path error on every
+    // load before the runtime ever runs. data-d is never validated.
+    for(const p of document.querySelectorAll("path[data-d]")){
+      const d=p.getAttribute("data-d")||"";
+      if(p.getAttribute("d")!==d) p.setAttribute("d", d);
+    }
+  }
+
+  /* ערכת הצבעים נשמרת רק כשהיא בוחרת (L6 בביקורת השנייה): בביקור הראשון היא נכתבה לפי
+     מערכת ההפעלה, ומאז החלפה של מצב המערכת כבר לא השפיעה, אף שהיא מעולם לא בחרה. */
+  applyTheme(t, save){
+    document.documentElement.classList.toggle("dark", t==="dark");
+    if(save){ try{ localStorage.setItem("redact-theme", t); }catch(_){} }
+  }
+  toggleTheme = () => { const t = this.state.theme==="dark"?"light":"dark"; this.applyTheme(t, true); this.setState({theme:t}); };
+
+  /* מחיקת המודל מהמחשב (ביקורת M2): 185MB שנשארו לתמיד, ומטמון פגום שרק כלי המפתחים ניקו.
+     המודל יירד שוב בשימוש הבא; הכלי עצמו נטען מחדש מהרשת. */
+  modelForget = async () => {
+    const E=this.state.E; if(!E) return;
+    this.log.add("model-forget",{});
+    try{ await E.nerForget(); }catch(_){}
+    try{ const c=navigator.serviceWorker&&navigator.serviceWorker.controller; if(c) c.postMessage("refresh"); }catch(_){}
+    this.setState({nerHave:false, nerHint:"המודל נמחק מהמחשב. בהפעלה הבאה יורדים כ-185MB.", notice:"המודל והקבצים השמורים נמחקו מהמחשב.", noticeUndo:false});
+  };
+  async nerStatus(E){
+    const env = E.nerEnv();
+    if(env.local){
+      this.setState({nerOff:true, o:{...this.state.o, ner:false},
+        nerHint:"מקובץ מקומי המודל לא נטען — דפדפנים חוסמים טעינת מודלים בקבצים שנפתחים ישירות מהמחשב. שאר הזיהוי עובד כרגיל."});
+      return;
+    }
+    const has = await E.nerCached();
+    this.setState({nerOff:false, nerHave:!!has, nerHint: has
+      ? "המודל שמור במחשב, ואין הורדה נוספת."
+      : "בהפעלה הראשונה יורדים כ-185MB. אחר כך המודל נשאר במחשב."});
+  }
+
+  /* ── קליטת קובץ ── */
+  pickFile = () => { if(window.__inkDemo) return; if(this.state.engineFailed){ this.setState({err:this.state.err}); return; } if(this.fileEl) this.fileEl.click(); };
+  onDragOver = e => { e.preventDefault(); this.setState({drag:true}); };
+  onDragLeave = () => this.setState({drag:false});
+  onDropFile = e => { e.preventDefault(); this.setState({drag:false}); if(window.__inkDemo) return;
+    const f = e.dataTransfer && e.dataTransfer.files[0]; if(f) this.load(f); };
+  onFile = e => { const f=e.target.files[0]; e.target.value=""; if(f&&!window.__inkDemo) this.load(f); };
+
+  /* מה ששייך למסמך מתאפס כאן, ברשימה אחת, בכל דרך שבה מסמך אחד נגמר והבא מתחיל: «מסמך חדש», קובץ Word
+     או PDF, טקסט מודבק, המסמך לדוגמה, ופתיחת הסיור וסגירתו. מסמך שנטען הוא המסמך הבא גם כשהגיעו אליו
+     בכפתורי החזרה (בדיקה חיה, 6.10). עד כאן לכל דרך הייתה רשימה משלה: «מסמך חדש» איפס כחמישים מפתחות
+     והטעינה שמונה, והמסמך הבא מצא את האנשים, ההצעות, היישובים, ההחלטות והסריקה של הקודם — «מי בתיק»
+     הראה את אנשי המסמך הקודם, ו«המשך» החיל אותם על הבא (הביקורת של 6.10). tests/state_t.js קורא את
+     הרשימה הזאת ואת מה שכל דרך מוסיפה עליה, ונכשל על מפתח של מסמך שנשאר מחוצה לה.
+     keepCase: תיק שנשאר מחובר שומר את מה שהתיק עצמו שומר (profileObj) — הכללים, רשימת ההיתר, מי
+     שהוסר והכינויים שנשלחו — כך שאותו אדם מקבל אותו כינוי במסמך הבא בתיק. «מסמך חדש» מנתק את התיק (C3). */
+  docReset(keepCase){
+    const S=this.state;
+    /* המסמך שהיה פתוח נגמר כאן, פעם אחת, לפני שמה שלו נמחק: השירות המתארח מגדיר docEnd ושולח בה את יומן
+       השימוש ואת דוח השמות שפוספסו של המסמך שנגמר, ויומן הסשן מסמן "new-doc", שלפיו scripts/log-report.js
+       מפריד בין מסמכים. עד כאן רק «מסמך חדש» סיים מסמך, ומסמך שנטען אחרי כפתורי החזרה, או סיור שנפתח מעל
+       מסמך, איבד את הדוח ואיחד שני מסמכים ביומן (הביקורת של 6.10). המסמך לדוגמה של הסיור אינו מסמך שלה */
+    if((S.buf||S.res)&&!S.tour){
+      if(typeof this.docEnd==="function") this.docEnd("new-doc");
+      this.log.add("new-doc",{});
+    }
+    /* השמות הבדויים של המסמך שנגמר — רק הם, בלי האמיתיים, ובזיכרון בלבד — כדי שמסך ההחזרה יסמן אותם בתשובה שמכסה גם
+       אותו, ולא יאמר «לא נמצא בתשובה פרט בדוי שלא הוחזר» כשהם בה (הציד של 11.10). השמות האמיתיים שלהם אינם נשמרים */
+    if(S.res&&!S.tour){
+      const keep=this._earlierFakes||(this._earlierFakes=new Set());
+      for(const [v,f] of Object.entries(this.currentMap())) if(f&&f!=="███"&&f!==v) keep.add(f);
+      for(const [v,arr] of Object.entries(this.sentAll())) for(const f of arr||[]) if(f&&f!==v) keep.add(f);
+    }
+    this._undo=[]; this._redo=[]; this._modelFound=null; this._lastScan=null; this._scannedBuf=null;
+    // סריקה של המסמך הקודם שעוד רצה ברקע (אחרי «לא לחכות למודל») נגמרת איתו: התשובה שלה נכתבה לכללים של הבא
+    this._scan=(this._scan||0)+1; this._goneAhead=null; this._caseSaved=null;
+    const reset={screen:"entry", err:"", fileErr:"", name:"", buf:null, origBlocks:[], pending:false, pendMeta:"", nerAsk:false, pasteText:"",
+      // מי בתיק
+      cands:[], peo:[], peoSug:[], peoKept:[], peoNotSame:[], peoIn:"", peoNote:"", nerUsed:false, sugAsk:false, trimPeo:null,
+      scanning:false, nerBox:false, nerFailed:false, nerStall:false,
+      // מקומות
+      geo:null, geoV:0, geoNames:[], geoExtra:[], geoEdits:{}, geoExcluded:[],
+      // מסך הבדיקה
+      res:null, sel:null, hot:null, query:"", cat:"", filter:"all", addV:"", addR:"", addK:"NAME", inline:null, inlineDraft:"", popup:null, tip:null,
+      repDraft:"", approved:[], formSel:null, markIdx:0, docView:"red", exportAsk:"", notice:"", leaks:[], copied:false, copyLabel:"העתקה ל־AI", undoN:0, redoN:0, rerunning:false,
+      // החזרת שמות
+      rvIn:"", rvOut:"", rvCount:0, rvLeft:[], rvDates:[], rvLast:null, rvProfile:null,
+      // מה שהתיק שומר (profileObj)
+      rules:[], allow:[], removed:[], sent:{}};
+    if(keepCase&&(S.profile||S.caseName)) for(const k of ["rules","allow","removed","sent"]) delete reset[k];
+    return reset;
+  }
+
+  async load(f){
+    /* קובץ שנבחר לפני שהמנוע סיים להיטען נשמר ונקרא כשהוא מגיע. עד כאן load חזר בשקט, ובקו
+       איטי קובץ שנבחר מיד אחרי פתיחת הדף פשוט לא עשה דבר (נמצא ב-CI של אצוות הביקורת) */
+    const E=this.state.E;
+    if(!E) return this.afterEngine(()=>this.load(f));
+    /* שגיאות קובץ ליד כרטיס הקובץ, עם מה לעשות (UX #4), ובזמן הבחירה ולא אחרי
+       "המשך" (ביקורת QA 010): קובץ שאינו docx תקין, או docx בלי טקסט, לא מקבל ✓. */
+    const bad=(m,code)=>{ this.log.add("file-reject",{why:code||"other"}); this._fileErrN=(this._fileErrN||0)+1; this.setState({fileErr:m, err:"", pending:false, name:"", buf:null}); };
+    if(!/\.(docx|pdf)$/i.test(f.name)) return bad("נדרש קובץ Word (docx) או PDF. קובץ doc ישן — לשמור מחדש ב-Word בתור docx.", "type");
+    // כמו בטקסט מודבק (usePastedText): המסמך הקודם יורד מהמסך כבר עכשיו, לפני שהקובץ החדש נקרא ונבדק
+    this.setState({...this.docReset(true)});
+    let buf; try{ buf = await f.arrayBuffer(); }catch(_){ return bad("לא הצלחנו לפתוח את הקובץ. אם הוא שמור בענן (OneDrive, Dropbox) — להוריד עותק למחשב; אם הוא פתוח ב-Word — לסגור אותו, ולבחור אותו שוב.", "read"); }
+    if(/\.pdf$/i.test(f.name)) return this.loadPdf(buf, f);
+    let blocks;
+    try{ blocks=await this.blocksOf(buf); }
+    catch(_){ return bad("הקובץ לא נראה כמו מסמך Word תקין. אפשר לפתוח אותו ב-Word, לשמור בשם בתור docx, ולבחור שוב.", "not-docx"); }
+    const chars=blocks.reduce((a,b)=>a+b.text.trim().length,0);
+    if(!chars) return bad("במסמך אין טקסט לקריאה. אם זה סריקה או תמונה, צריך קודם להמיר אותו לטקסט.", "empty");
+    const size = chars>=1000 ? `כ-${(chars/1000).toFixed(1)} אלף תווים` : `${chars} תווים`;
+    const meta=`${blocks.length===1?"פסקה אחת":blocks.length+" פסקאות"} · ${size} · ${Math.round(f.size/1024)} KB`;
+    this.setState({...this.docReset(true), origBlocks:blocks.map(b=>({part:b.part, text:b.text})), err:"", fileErr:"", nerAsk:false, name:f.name, buf, pending:true, pendMeta:meta});
+  }
+
+  async loadPdf(raw, f){
+    this.setState({err:"", screen:"busy", busyT:"קורא את ה-PDF…"});
+    try{
+      const {pdfToText} = await import((window.__resources && window.__resources.pdftext) || "./pdf-text.js");
+      const {text, pages, scanned, imagePages} = await pdfToText(raw);
+      if(scanned || !text){
+        this.setState({screen:"entry", err:"ב־PDF הזה כמעט אין טקסט: כנראה זה מסמך סרוק או צילום. הכלי עובד על טקסט בלבד, ולכן אין בו מה להחליף. אפשר להמיר אותו ל־Word עם זיהוי תווים (OCR) ולבחור את הקובץ החדש."});
+        return;
+      }
+      const {textToDocx} = await import((window.__resources && window.__resources.todocx) || "./text-to-docx.js");
+      const buf = await textToDocx(text);
+      const blocks = await this.blocksOf(buf);
+      this.setState({...this.docReset(true), screen:"entry", buf, name:f.name, pending:true, nerAsk:false, fileErr:"", err:"",
+        origBlocks:blocks.map(b=>({part:b.part, text:b.text})),
+        pendMeta:`${pages===1?"עמוד אחד":pages+" עמודים"} · ${blocks.length} פסקאות · טקסט חולץ מ-PDF`});
+      // עמוד שהוא תמונה בתוך PDF של טקסט (עמוד חתום שנסרק): מה שכתוב בו לא נקרא ולא יוחלף
+      const img=imagePages||[];
+      if(img.length){ this.log.add("pdf-image-pages",{n:img.length, of:pages});
+        this.setState({notice:img.length===1?`עמוד ${img[0]} ב־PDF הוא תמונה: מה שכתוב בו לא נקרא ולא יוחלף. כדאי לעבור עליו בעין.`:`עמודים ${img.join(", ")} ב־PDF הם תמונות: מה שכתוב בהם לא נקרא ולא יוחלף. כדאי לעבור עליהם בעין.`, noticeUndo:false}); }
+    }catch(e){
+      this.setState({screen:"entry", err:"קריאת ה־PDF נכשלה. אפשר לפתוח אותו ב־Word, לשמור כקובץ docx ולבחור אותו שוב. (פרטים טכניים: "+String(e.message||e).slice(0,60)+")"});
+    }
+  }
+
+  buildReport(){
+    const S=this.state, RES=S.res, E=S.E;
+    const esc=s=>String(s==null?"":s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+    const rows=new Map();
+    for(const r of RES.applied){
+      const k=E.norm(r.value).trim()+"|"+(r.rep||"");
+      const g=rows.get(k)||{value:r.value, rep:r.rep, label:r.label, parts:new Set(), n:0};
+      g.n++; g.parts.add(r.part); rows.set(k,g);
+    }
+    const flagged=new Map();
+    for(const r of RES.flagged){
+      const k=E.norm(r.value).trim();
+      const g=flagged.get(k)||{value:r.value, label:r.label, why:r.why, n:0};
+      g.n++; flagged.set(k,g);
+    }
+    const v=RES.verification;
+    const st=RES.structural;
+    const clean=this.cleanStats(st);
+    const modeName={real:"שם בדוי",label:"פלוני א׳",block:"███"}[S.mode];
+    return `<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8">
+<title>דוח החלפות — ${esc(S.name)}</title>
+<style>body{font:14px/1.6 "Rubik",system-ui,sans-serif;color:#16211C;max-width:820px;margin:40px auto;padding:0 24px}
+h1{font-size:22px;font-weight:500;margin:0 0 4px}h2{font-size:15px;font-weight:500;margin:28px 0 8px}
+.sub{color:#5D6A63;font-size:13px;margin:0 0 6px}
+table{width:100%;border-collapse:collapse;font-size:13px}th{text-align:start;font-weight:500;color:#5D6A63;border-bottom:1px solid #ddd;padding:6px 4px}
+td{border-bottom:1px solid #f0f0f0;padding:6px 4px;vertical-align:top}
+.warn{background:#FAF0E2;padding:10px 12px;border-radius:8px;font-size:13px;margin:14px 0}
+@media print{body{margin:0}}</style></head><body>
+<h1>דוח החלפות</h1>
+<p class="sub">${esc(S.name)} · ${new Date().toLocaleString("he-IL")} · מצב החלפה: ${esc(modeName)}</p>
+<div class="warn">הדוח מכיל את הפרטים המקוריים לצד התחליפים. הוא נועד לתיק הפנימי — אין לשלוח אותו לכלי AI או לצד שלישי.</div>
+<h2>סטטוס אימות</h2>
+<p class="sub">${v.passed?"לא נשאר בקובץ אף שם או מספר שהוחלף":"האימות נכשל: נשארו בקובץ שמות או מספרים שהיה צריך להחליף"} ·
+נסרקו ${v.parts} חלקים · ${(v.near||[]).length} מילים בכתיב דומה · ${(v.suggest||[]).length} שמות שלא ברשימה · ${v.embedded.length} תמונות שלא נסרקו</p>
+<h2>הוחלף (${rows.size})</h2>
+<table><tr><th>ערך במקור</th><th>הוחלף ב</th><th>סוג</th><th>מופעים</th><th>היכן</th></tr>
+${[...rows.values()].sort((a,b)=>b.n-a.n).map(r=>`<tr><td>${esc(r.value)}</td><td>${esc(r.rep)}</td><td>${esc(r.label)}</td><td>${r.n}</td><td>${esc([...r.parts].join(", "))}</td></tr>`).join("")}</table>
+${flagged.size?`<h2>סומן לבדיקה ולא הוחלף (${flagged.size})</h2>
+<table><tr><th>ערך</th><th>סוג</th><th>סיבה</th><th>מופעים</th></tr>
+${[...flagged.values()].map(r=>`<tr><td>${esc(r.value)}</td><td>${esc(r.label)}</td><td>${esc(r.why)}</td><td>${r.n}</td></tr>`).join("")}</table>`:""}
+${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><td>${esc(l)}</td><td>${n}</td></tr>`).join("")}</table>`:""}
+<h2>מגבלות</h2>
+<p class="sub">האימות בודק שהשמות והפרטים שזוהו לא נשארו באף חלק של הקובץ שיש בו טקסט, ומחפש גם כתיב ששונה מהם באות אחת. גם תוויות של גרפים ושל תרשימי SmartArt נבדקות. טקסט בתוך תמונה, קובץ מוטמע וגיליון הנתונים שמאחורי גרף לא נבדקים, וגם שם שלא זוהה מעולם לא ייתפס.</p>
+</body></html>`;
+  }
+  downloadReport = () => {
+    if(!this.state.res||this._reruns>0) return; if(this.tourBlocks("report")) return;
+    const blob=new Blob([this.buildReport()],{type:"text/html;charset=utf-8"});
+    const u=URL.createObjectURL(blob), a=document.createElement("a");
+    a.href=u; a.download=this.safeBase()+"_דוח-החלפות.html";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(u), 4000);
+  };
+
+  /* פעולה שהתחילה לפני שהמנוע סיים להיטען — קובץ שנבחר או נגרר, טקסט שהודבק, הסיור — נשמרת
+     ורצה כשהוא מגיע. עד כאן קובץ כזה לא עשה דבר, הדבקה נכשלה בהודעה טכנית והסיור זרק שגיאה
+     (נמצא ב-CI של אצוות הביקורת). אם המנוע לא נטען בכלל, ההודעה על כך כבר במסך. */
+  afterEngine(fn){
+    if(this.state.E) return fn();
+    if(!this.state.engineFailed) (this._early=this._early||[]).push(fn);
+  }
+  usePastedText = async () => {
+    if(window.__inkDemo) return;
+    if(!this.state.E) return this.afterEngine(()=>this.usePastedText());
+    const txt=(this.state.pasteText||"").trim();
+    if(txt.length<20){ this.setState({err:"צריך קצת יותר טקסט כדי שהזיהוי יעבוד."}); return; }
+    /* המסמך הקודם יורד מהמסך עכשיו, ולא אחרי שהטקסט מוכן (12.10): הכנת הטקסט לוקחת רגע, ועד כאן כרטיס המסמך הקודם
+       ו«המשך — איתור שמות במסמך» שלו נשארו בו, ולחיצה ברגע הזה המשיכה עם המסמך של הלקוח הקודם (נמצא בבדיקת WebKit
+       תחת עומס). הטקסט שבתיבה נשאר. e2e/load-now.spec.js */
+    const raw=this.state.pasteText;
+    this.setState({...this.docReset(true), pasteText:raw, err:""});
+    try{
+      const {textToDocx} = await import((window.__resources && window.__resources.todocx) || "./text-to-docx.js");
+      const buf = await textToDocx(txt);
+      const blocks = await this.blocksOf(buf);
+      const chars = txt.length;
+      // הטקסט שבתיבה הוא המסמך הזה, ונשאר בה; טקסט של מסמך קודם נמחק עם כל השאר
+      this.setState({...this.docReset(true), pasteText:raw, err:"", buf, name:"טקסט שהודבק", pending:true, nerAsk:false,
+        origBlocks:blocks.map(b=>({part:b.part, text:b.text})),
+        pendMeta:`${blocks.length===1?"פסקה אחת":blocks.length+" פסקאות"} · ${chars>=1000?`כ-${(chars/1000).toFixed(1)} אלף תווים`:chars+" תווים"} · טקסט מודבק`});
+    }catch(e){ this.setState({err:"הכנת הטקסט נכשלה. אפשר לנסות שוב. (פרטים טכניים: "+(e.message||e)+")"}); }
+  };
+
+  /* UX #2: טלפון או "חיסכון בנתונים" — לא מורידים 185MB בלי שאלה.
+     במחשב נשאר כמו שהיה: העבודה נעשית במחשב, והבעיה העיקרית היא שמות
+     שלא נמצאו, והמודל הוא מה שמוצא אותם. לכן גם בטלפון אין ברירת מחדל שקטה
+     של "בלי מודל" — שואלים, עם שתי תשובות שוות. */
+  phoneLike(){
+    try{
+      const c=navigator.connection;
+      if(c && c.saveData) return true;
+      return !!(window.matchMedia && matchMedia("(pointer:coarse)").matches) && innerWidth<768;
+    }catch(_){ return false; }
+  }
+  onNerAskYes = () => { this._nerOk=true; this.log.add("model-ask",{yes:1}); this.setState({nerAsk:false}); this.start(); };
+  onNerAskNo = () => { this._nerOk=true; this.log.add("model-ask",{yes:0}); this.setState({nerAsk:false, o:{...this.state.o, ner:false}}, () => this.start()); };
+
+  start = async () => {
+    if(!this.state.buf) return;
+    const S=this.state;
+    if(S.o.auto && S.o.ner && !S.nerOff && S.nerHave===false && !this._nerOk && this.phoneLike()){
+      this.setState({nerAsk:true}); return;
+    }
+    this.setState({pending:false, nerAsk:false});
+    if(!this.state.o.auto){ this.setState({peo:[], cands:[]}); this.toPlaces([]); return; }
+    /* אותו מסמך, אותן הגדרות, והרשימה כבר קיימת (H2 בביקורת השנייה): "‹ קובץ" ואז
+       הכפתור הראשי בנו את הרשימה מחדש ומחקו בשקט שמות שהוקלדו, הצעה שנוספה
+       ו"לא אדם" שנדחה, בזמן שפירור הלחם "מי בתיק" שמר עליה. הכפתור חוזר לרשימה
+       הקיימת; סריקה חדשה רק למסמך אחר, או כשהמודל הודלק אחרי הסריקה. */
+    if(this._scannedBuf===S.buf && (S.peo||[]).length && this._scanNer===!!S.o.ner){ this.log.add("list-again",{}); this.showList(); return; }
+    return this.scanNames();
+  };
+
+  async scanNames(){
+    const E=this.state.E, buf=this.state.buf;
+    this._scannedBuf=buf; this._scanNer=!!this.state.o.ner;
+    // מה שהמודל מצא שייך למסמך שנסרק (M2 בביקורת השנייה): מסמך חדש מתחיל בלי זיכרון
+    // מהקודם, אחרת שם של לקוח אחר הופיע ב"לבדיקה" וחסם את הייצוא
+    this._modelFound=null;
+    this.setState({screen:"busy", busyT:"מאתר שמות…", peoKept:[]});
+    try{
+      const blocks = (await this.blocksOf(buf)).concat(this.nameBlock());
+      const cands = E.discover(blocks);
+      this.setState({cands, nerUsed:false});
+      this.showPeople(blocks, cands);
+    }catch(e){ this.setState({err:e.message||"שגיאה בקריאת הקובץ", screen:"entry"}); }
+  }
+
+  /* שם הקובץ כטקסט לסריקה. "תסקיר-רונית-לוי.docx" נושא שם של אדם, והוא לא נסרק
+     מעולם — לא על ידי discover ולא על ידי המודל — ולכן השם הזה לא הופיע ברשימה,
+     לא קיבל תחליף, ויצא כמו שהוא על ההורדה. המפרידים הופכים לרווחים כדי שהעוגנים
+     והמודל יראו מילים, ולא מחרוזת אחת ארוכה. */
+  nameBlock(){
+    const raw=String(this.state.name||"").replace(/\.(docx|pdf|txt)$/i,"").replace(/[-_.]+/g," ").trim();
+    return raw.length>=2 ? [{part:"__name", text:raw}] : [];
+  }
+
+  // הקריאה של המסמך נעשית במנוע, באותו קורא שמשמש את ההחלפה (ביקורת C2): שכבות ההצעה
+  // רואות בדיוק את החלקים שההחלפה מנקה — כולל הגדרות, SmartArt וגרפים
+  blocksOf(buf){ return this.state.E.readBlocks(buf.slice(0)); }
+
+  /* ── מי בתיק ── */
+  async showPeople(blocks, cands){
+    const E=this.state.E;
+    const dt=new Set();
+    for(const c of cands) for(const w of c.value.split(/\s+/)) dt.add(w);
+    const peo=[];
+    for(const c of cands){
+      // דובר שחוזר בתמלול הוא אדם גם בשם אחד: "ענבר:" בראש כמה פסקאות.
+      if(c.conf!=="high" || (!c.value.includes(" ") && !c.speaker)) continue;
+      const w=c.value.split(/\s+/);
+      // תור דיבור הוא עדות חזקה יותר ממבחני המילים של הכותרת: "דליה לב שדה"
+      // ו"הלל שר" הם דוברים גם כש"לב" היא מילה ו"הלל" מתחיל ב-ה.
+      if(w.length>3 || !w.every(x=>x.length>=2)) continue;
+      if(!c.speaker && (!w.every(x=>E.nameish(x,dt)) || w[0][0]==="ו" || w.some(x=>x[0]==="ה"))) continue;
+      // מי שהוסר בתיק הזה אינו חוזר לרשימה מעצמו; הוא מוצע לה לאישור למטה (H11)
+      if(this.wasRemoved(c.value)) continue;
+      peo.push({value:c.value, note:c.speaker?"דובר בתמלול":"מהכותרת", auto:true, g:c.g, kind:"NAME"});
+    }
+    // תיק שנבחר לפני המסמך (C2 בביקורת השנייה): האנשים שלו נכנסים לרשימה כאן,
+    // כמו שקורה כשהתיק נבחר כשהרשימה כבר על המסך — אחרת אדם מהתיק הופיע רק
+    // כהצעה, והכינוי שלו מהמסמך הקודם לא הגיע לכללים.
+    for(const r of this.profileRules()) if((r.kind==="NAME"||r.kind==="ORG")&&!peo.some(p=>E.norm(p.value)===E.norm(r.value)))
+      peo.push({value:r.value, kind:r.kind, note:"מהתיק", auto:true, g:null});
+    /* אותו מסמך שנסרק שוב («ניסיון נוסף», «לנסות שוב», או סריקה אחרי שהמודל הופעל) שומר את הרשימה שעל המסך:
+       שמות שהוקלדו, הצעות שאושרו, סוג שתוקן, בסדר שלהם (הציד של 11.10: ניסיון חוזר בנה את הרשימה מהסריקה מחדש,
+       והשמות שהוקלדו יצאו ל-AI גלויים). מסמך חדש מתחיל ברשימה ריקה (docReset), ולכן כל מה שכבר ברשימה שייך לו. */
+    const onScreen=this.state.peo||[];
+    for(let i=onScreen.length-1;i>=0;i--){ const p=onScreen[i], at=peo.findIndex(q=>E.norm(q.value)===E.norm(p.value)); if(at>=0) peo.splice(at,1); peo.unshift(p); }
+    // מה ש-discover מצא ולא מילא מעצמו לא נעלם: הוא מוצג לאישור בהקשה אחת.
+    // ניחוש בינוני עולה הקשה; שם שהיא לא נשאלה עליו הוא הכשל שהכלי נועד למנוע.
+    const inList=v=>peo.some(p=>E.norm(p.value)===E.norm(v));
+    // מי שהוסר בתיק ומופיע שוב עולה ראשון, עם ההסבר שלו, גם אם לא היה עובר את סף ההצעות
+    const REMOVED_WHY="הוסר מהרשימה במסמך קודם בתיק — להחליף גם כאן?";
+    const peoSug=cands.filter(c=>!inList(c.value)).filter(c=>{const w=c.value.split(/\s+/);
+      return this.wasRemoved(c.value)||(w.length<=3&&w.every(x=>x.length>=2)&&(w.length>=2||c.speaker||c.count>=2));})
+      .sort((a,b)=>(this.wasRemoved(b.value)?1:0)-(this.wasRemoved(a.value)?1:0))
+      .slice(0,8).map(c=>({value:c.value, why:this.wasRemoved(c.value)?REMOVED_WHY:c.why, count:c.count, kind:"NAME"}));
+    this._lastScan={blocks,cands};
+    this.setState({peo, peoSug, peoIn:"", screen:"people", nerBox:false, nerFailed:false});
+    if(!(this.state.o.ner && blocks && blocks.length)){
+      this.setState({nerUsed:false, peoNote: peo.length
+        ? `${peo.length===1?"זוהה שם אחד":"זוהו "+peo.length+" שמות"} בכותרת המסמך. כדאי להוסיף כל מי שמוזכר בגוף הטקסט — עדים, אנשי מקצוע, בני משפחה.`
+        : "לא זוהו שמות בכותרת. אפשר להקליד את מי שמוזכר במסמך."});
+      return;
+    }
+    // מונה סריקות: מסמך שני שנטען בזמן סריקה מבטל את הראשונה, כך שתוצאה
+    // של מסמך נטוש לא נכנסת לרשימה של המסמך החדש.
+    const my = this._scan = (this._scan||0) + 1;
+    this.setState({nerBox:true, peoNote:"", scanning:true, nerMsg:"טוען את המודל…", nerPct:0});
+    try{
+      const t0=Date.now();
+      this.log.add("model-start",{blocks:blocks.length, words:blocks.reduce((n,b)=>n+(b.text||"").split(/\s+/).length,0)});
+      const found = await E.nerRun(blocks, pct=>{
+        if(my!==this._scan) return;
+        const el=Math.round((Date.now()-t0)/1000);
+        const left = pct>4 ? Math.round(el*(100-pct)/pct) : 0;
+        this.setState({nerMsg:`סורק את המסמך… ${Math.round(pct)}%`+(left>4?`  ·  נותרו כ-${left} שניות`:""), nerPct:pct});
+      });
+      if(my!==this._scan) return;
+      // מה שהמודל מצא נשמר בנפרד מהרשימה: זה מה שמאפשר לוודא, בכל ריצה, ששם
+      // שנמצא פעמיים ומעלה לא יוצא בלי שהיא החליטה עליו (guardModel)
+      this._modelFound=found;
+      // קטע שהמודל לא הצליח לקרוא (ביקורת M25): חלק מהמסמך לא נסרק בידי המודל, והיא צריכה לדעת
+      if(found.failedChunks){ this.log.add("model-partial",{failed:found.failedChunks, of:found.chunks||0});
+        this.setState({notice:`המודל לא הצליח לקרוא ${found.failedChunks} מתוך ${found.chunks} קטעים של המסמך. ייתכנו שמות שלא נמצאו שם — כדאי לעבור על הטקסט בעין.`, noticeUndo:false}); }
+      // יומן: כמה זמן, כמה נמצא מכל סוג, ואיך הוודאות של כל המקטעים הגולמיים מתפלגת — כדי לדעת
+      // אם סף אחר היה מוצא את מה שהיא הוסיפה בעצמה, או חוסך את מה שהיא הסירה
+      try{
+        const raw=(E.nerLast&&E.nerLast())||[], by={}, bands={high:0, mid:0, low:0, below:0};
+        for(const f of found) by[f.kind||"NAME"]=(by[f.kind||"NAME"]||0)+1;
+        for(const r of raw){ const x=+r.score||0; bands[x>=0.95?"high":x>=0.8?"mid":x>=0.6?"low":"below"]++; }
+        this.log.add("model-done",{ms:Date.now()-t0, cached:!!this.state.nerHave, found:found.length, names:by.NAME||0, orgs:by.ORG||0, places:by.PLACE||0,
+          review:found.filter(f=>f.review).length, spans:raw.length, high:bands.high, mid:bands.mid, low:bands.low, below:bands.below});
+      }catch(_){}
+      // עדיין במסך הרשימה (UX #7): התוצאה נכנסת לרשימה כמו תמיד, לא לכללים — "המשך" בונה את הכללים מהרשימה
+      if(this._goneAhead===my&&this.state.screen==="people"){ this._goneAhead=null; this.log.add("model-late",{found:found.length, added:0, screen:"people"}); }
+      if(this._goneAhead===my){
+        // היא כבר המשיכה. הרשימה שבמסך השמות היא היסטוריה; מה שקובע הוא הכללים.
+        const E2=this.state.E, rules=[...this.state.rules]; let late=0;
+        const allowN=new Set((this.state.allow||[]).map(a=>E2.norm(a).trim()));
+        for(const f of found){
+          const k=E2.norm(f.value).trim();
+          if(rules.some(r=>E2.norm(r.value).trim()===k)||allowN.has(k)) continue;
+          if(f.prefixOf&&f.fold==="yes") continue;
+          // הוסר בתיק: לא חוזר ככלל מאחורי גבה; guardModel מעלה אותו כהצעה במסך הבדיקה (H11)
+          if(this.wasRemoved(f.value)) continue;
+          rules.push(this.mkRule({value:f.value, kind:f.kind, auto:true, review:!!f.review}));
+          late++;
+        }
+        this.log.add("model-late",{found:found.length, added:late, screen:this.state.screen});
+        this.setState({rules, nerUsed:found.length>0, nerBox:false, nerMsg:""}, ()=>{
+          if(late&&this.state.res) this.rerun();
+        });
+        return;
+      }
+      const list=[...this.state.peo]; let added=0; const sug=[...this.state.peoSug];
+      for(const f of found){
+        if(list.some(p=>E.norm(p.value)===E.norm(f.value))) continue;
+        // גוף בלי מילת סוג ("נורבין", "שביל הלב" לבדו) אינו נכנס לרשימה מעצמו:
+        // הוא מוצע לאישור, כי בלי הראש אין לדעת אם זה מזהה או מילה מהעולם.
+        if(f.review){ if(!sug.some(x=>E.norm(x.value)===E.norm(f.value))) sug.push({value:f.value, why:"אולי שם של חברה או מוסד, אבל אין לפניו מילה כמו «חברת» או «עמותת»", count:f.n, kind:f.kind}); continue; }
+        // הוסר בתיק ונמצא שוב: מוצע לה ראשון, לא נכנס מעצמו ולא מדולג בשקט (H11)
+        if(this.wasRemoved(f.value)){ if(!sug.some(x=>E.norm(x.value)===E.norm(f.value))) sug.unshift({value:f.value, why:"הוסר מהרשימה במסמך קודם בתיק — להחליף גם כאן?", count:f.n, kind:f.kind}); continue; }
+        // "שגורגן" ליד "גורגן": כשהמודל עצמו אומר שהאות אינה חלק מהשם (Q4 בגרסה 3) הצורה
+        // מתקפלת לשם הבסיס ואינה שבב; בספק היא שבב, והצעת המיזוג עולה עם "אות שימוש?"
+        if(f.prefixOf&&f.fold==="yes"){ { const w=f.foldWhy||""; this.log.add("fold",{cut:/cut/.test(w), listed:/listed/.test(w), position:/position/.test(w), tok:(w.match(/tokenizer:([a-z]+)/)||[])[1]||"-"}); } continue; }
+        list.push({value:f.value, kind:f.kind, g:null, auto:true, note:f.n>1?`נמצא ${f.n}×`:"נמצא במסמך"});
+        added++;
+      }
+      this.setState({peo:list, peoSug:sug, nerBox:false, nerUsed:added>0, peoNote: added
+        ? `נמצאו ${list.length} שמות, והם כבר ברשימה. כדאי לעבור עליהם: להסיר מה שאינו פרט מזהה, ולתקן את הסוג בלחיצה על התג.`
+        : "המודל רץ ולא מצא שמות מעבר למה שברשימה. אפשר להקליד שמות נוספים למטה."});
+    }catch(e){
+      if(my!==this._scan) return;
+      /* היא כבר המשיכה (ביקורת M3): ההודעה על הכישלון חיה רק במסך השמות, ובמסך הבדיקה לא הופיעה
+         המילה "מודל" בכלל — הענף של הצלחה טיפל במי שהמשיכה, והענף של כישלון לא. */
+      if(this._goneAhead===my&&this.state.screen!=="people"){ this._goneAhead=null; this.log.add("model-late",{failed:true, screen:this.state.screen});
+        this.setState({notice:"מודל הזיהוי לא נטען, והמסמך נבדק בלעדיו. ייתכנו שמות שלא נמצאו — כדאי לעבור על הטקסט בעין.", noticeUndo:false}); }
+      this.setState({nerBox:false, nerFailed:true, peoNote:"מודל הזיהוי לא נטען, ולכן ממשיכים בלעדיו: הזיהוי הרגיל פועל, ובסוף תוצג בדיקה של שמות שלא נרשמו. (פרטים טכניים: "+String(e.message||e).slice(0,70)+")"});
+    }finally{ if(my===this._scan) this.setState({scanning:false}); }
+  }
+
+  // הצעות "נמצאו גם" שעדיין לא נוספו ולא נדחו
+  openSugs(){
+    const S=this.state, E=S.E; if(!E) return [];
+    return (S.peoSug||[]).filter(x=>!S.peo.some(p=>E.norm(p.value)===E.norm(x.value))&&!(S.peoKept||[]).some(k=>E.norm(k.value)===E.norm(x.value)));
+  }
+  peoGo(){
+    this.setState({sugAsk:false});
+    this.toPlaces(this.rulesFromPeo(this.state.peo));
+  }
+  // «המשך» של «מי בתיק», וגם «יישובים» בכותרת כשעומדים בו: השם שהוקלד ולא נוסף, השאלה על ההצעות הפתוחות, ואז הרשימה
+  peoForward(){
+    const S=this.state; if(S.scanning) return;
+    this.peoAdd(S.peoIn); this.setState({peoIn:""});
+    if(this.openSugs().length&&!S.sugAsk){ this.log.add("sug-prompt",{open:this.openSugs().length}); this.setState({sugAsk:true}); return; }
+    this.peoGo();
+  }
+  profileRules(){ const p=this.state.profile; return (p&&Array.isArray(p.rules)?p.rules:[]).filter(r=>r&&r.value&&!this.wasRemoved(r.value)); }
+  /* הרשימה הופכת לכללים. עד כאן כל כלל נולד ריק (replacement:""), גם כשהתיק
+     כבר ידע מה הכינוי של האדם הזה: "יוני כהן" שהוקלד במסמך הקודם נזרק, והוא קיבל
+     שם בדוי חדש (C2). עכשיו כלל של ערך שכבר הוחלט עליו — בכללים הנוכחיים או
+     בפרופיל התיק — יורש את התחליף, הסגנון וההצמדה. */
+  rulesFromPeo(list){
+    const E=this.state.E, n=v=>E.norm(String(v||"")).trim();
+    const known=[...(this.state.rules||[]), ...this.profileRules()];
+    const pm=(this.state.profile&&this.state.profile.map)||{};
+    const out=list.map(p=>{
+      const r=this.mkRule({value:p.value, kind:p.kind, auto:true, g:p.g, sameAs:p.sameAs||undefined});
+      const old=known.find(x=>x&&n(x.value)===n(p.value)&&(x.kind||"NAME")===r.kind);
+      const rep=(old&&old.replacement)||pm[p.value]||"";
+      if(rep) r.replacement=rep;
+      if(old&&old.pinned&&old.replacement) r.pinned=true;
+      if(old&&old.style) r.style=old.style;
+      return r;
+    });
+    // מה שאינו ברשימה — יישובים ממסך היישובים, מספרים וערכים שסומנו במסך הבדיקה —
+    // אינו נבנה ממנה, ולכן נשאר כמו שהוא (H1 בביקורת השנייה: "קריית אתא" שנוספה
+    // כמקום חזרה לטקסט הגלוי אחרי סיבוב דרך הרשימה).
+    for(const r of this.state.rules||[]) if(r&&r.value&&r.kind!=="NAME"&&r.kind!=="ORG"&&!out.some(x=>n(x.value)===n(r.value))) out.push(r);
+    return out;
+  }
+  /* חזרה לרשימה ממסך הבדיקה (H1): הרשימה מראה את המצב הנוכחי. אדם שנוסף שם —
+     דרך "הוספה ידנית" או סימון בטקסט — מופיע כשבב; מי שהוסר שם ("אל תחליפו",
+     "לא שם") יורד מהרשימה ונראה ב"נשארים כמו שהם". אחרת "המשך" בנה את הכללים
+     מרשימה ישנה ומחק בשקט את ההחלטות שנעשו אחריה. */
+  showList(){
+    const S=this.state; if(!S.buf) return;
+    const E=S.E, n=v=>E.norm(String(v||"")).trim();
+    const rules=S.rules||[], has=v=>rules.some(r=>r&&n(r.value)===n(v));
+    const kept=[...(S.peoKept||[])], list=[];
+    const decided=S.res&&rules.length; // הכללים קיימים רק אחרי שהרשימה כבר עברה למסך הבדיקה
+    for(const p of S.peo||[]){
+      /* «זה אותו אחד כמו…» במסך הבדיקה נרשם על הכלל בלבד, והרשימה חזרה בלעדיו: «מי בתיק» ואז «המשך» נתנו לאותו אדם
+         כינוי שני (הציד של 11.10). השורה מקבלת את המיזוג שהוחלט שם, ורואים אותו («= …») */
+      if(decided&&has(p.value)){ const r=rules.find(x=>x&&n(x.value)===n(p.value)); list.push(r&&(r.sameAs||undefined)!==(p.sameAs||undefined)?{...p, sameAs:r.sameAs||undefined}:p); }
+      else if(!decided) list.push(p);
+      else if(!kept.some(k=>n(k.value)===n(p.value))) kept.push({...p});
+    }
+    if(decided) for(const r of rules) if((r.kind==="NAME"||r.kind==="ORG")&&r.value&&!list.some(p=>n(p.value)===n(r.value)))
+      list.push({value:r.value, kind:r.kind, note:"נוסף במסך הבדיקה", auto:!!r.auto, g:r.g||null, sameAs:r.sameAs||undefined});
+    this.setState({screen:"people", err:"", peo:list, peoKept:kept});
+  }
+  /* צעד בכותרת מוביל לרשימה של המסמך הזה. מסמך שעוד לא נסרק — גם כשהגיעו אליו בכפתורי החזרה, אחרי מסמך
+     שכבר עבר את כל הדרך — נסרק קודם, כמו ב«המשך — איתור שמות במסמך». עד כאן «מי בתיק» הראה את מה שהיה
+     ברשימה, ו«מקומות» המשיך בלי רשימה, והשמות של המסמך נשארו בטקסט (הביקורת של 6.10) */
+  unscanned(){ const S=this.state; return !!S.buf&&!!S.o.auto&&this._scannedBuf!==S.buf; }
+  peoAddAll(){
+    const open=this.openSugs(); if(!open.length) return;
+    this.log.add("add-all",{n:open.length});
+    // רשימה אחת, בקריאה אחת: peoAdd קורא את הרשימה מה-state, ולולאה הייתה משאירה רק את האחרון
+    const E=this.state.E, list=[...this.state.peo];
+    const added=[];
+    for(const x of open){
+      const {v, kind} = E.cleanEntry(x.value);
+      if(v.length<2||list.some(p=>E.norm(p.value)===E.norm(v))) continue;
+      list.push({value:v, kind:x.kind||kind, g:null, auto:true, note:"מההקשר"}); added.push(v);
+    }
+    this.setState({peo:list, sugAsk:false, ...this.unkeep(added)});
+  }
+  /* שם שנוסף לרשימה הוא ההחלטה החדשה (H3 בביקורת השנייה): "לא אדם" על הצעה שם
+     אותו ב"אל תחליפו", והקלדה של אותו שם אחר כך הוסיפה שבב שנראה רגיל, אבל רשימת
+     ההיתר עדיין חסמה אותו, והשם יצא בטקסט עם "האימות נכשל". ההוספה מסירה אותו
+     מרשימת ההיתר ומרצועת "נשארים כמו שהם". */
+  unkeep(values){
+    const E=this.state.E, n=v=>E.norm(String(v||"")).trim(), set=new Set(values.map(n));
+    if(!set.size) return {};
+    return {allow:(this.state.allow||[]).filter(a=>!set.has(n(a))), peoKept:(this.state.peoKept||[]).filter(k=>!set.has(n(k.value)))};
+  }
+  peoAdd = (txt, note, auto, kindAs) => {
+    const E=this.state.E; const list=[...this.state.peo]; let tooLong=0; const added=[];
+    for(const raw of String(txt||"").split(/[\n,;]+/)){
+      const {v, note:n2, kind} = E.cleanEntry(raw);
+      if(v.length<2) continue;
+      // פסקה שהודבקה לשדה השם אינה שם (ביקורת QA 007): לא נכנסת, ונאמר למה
+      if(v.length>80||v.split(/\s+/).length>8){ tooLong++; continue; }
+      if(list.some(p=>E.norm(p.value)===E.norm(v))) continue;
+      list.push({value:v, kind:kindAs||kind, g:null, auto:!!auto, note:note||n2}); added.push(v);
+    }
+    this.setState({...(tooLong?{peo:list, peoNote:"קטע ארוך לא נוסף: שם או גוף הם עד שמונה מילים. אפשר להדביק כמה שמות, שורה לכל אחד."}:{peo:list}), ...this.unkeep(added)});
+  };
+  setKind = (i, kind) => { const list=[...this.state.peo]; list[i]={...list[i], kind, note:""}; this.setState({peo:list}); };
+  cycleKind = i => { const list=[...this.state.peo]; const ks=["NAME","ORG","PLACE"];
+    list[i]={...list[i], kind:ks[(ks.indexOf(list[i].kind)+1)%ks.length], note:""};
+    this.setState({peo:list}); };
+  // מחיקה מהרשימה היא החלטה: השם נכנס ל"אל תחליפו", אחרת שכבת הפעלים והמודל מציעים
+  // אותו שוב במסך הבדיקה. שם שנוסף ביד ונמחק אינו החלטה על המסמך.
+  /* ה-✕ על שבב היה מחיקה שקטה: השם נכנס ל"אל תחליפו" לתמיד, בלי שום סימן על המסך,
+     בלי דרך חזרה במסך הזה, ובלי רישום ביומן. שם שהמודל מצא כמה
+     פעמים יכול היה לצאת בסוף מהכלי, והיומן לא יכול היה לומר אם זה מה שקרה. עכשיו המחיקה
+     גלויה — רצועת "נשארים כמו שהם" עם ↩ — ונרשמת. */
+  delPeo = i => { const list=[...this.state.peo]; const [p]=list.splice(i,1);
+    if(!p) return;
+    const allow=(p.auto&&p.value&&!this.state.allow.includes(p.value))?[...this.state.allow, p.value]:this.state.allow;
+    const kept=(this.state.peoKept||[]).filter(k=>k.value!==p.value).concat([{...p}]);
+    this.log.add("del-peo",{auto:!!p.auto, kept:kept.length});
+    this.setState({peo:list, allow, peoKept:kept}); };
+  // מיזוג שאושר: הקצר מקבל sameAs לארוך, ובמנוע שניהם מקבלים אותו כינוי.
+  // נרשם מבנית בלבד — כמה אותות היו, לא איזה שמות.
+  peoSame = (from, to, signals) => {
+    this.log.add("merge-suggest",{accepted:true, signals});
+    this.setState({peo:this.state.peo.map(p=>p.value===from?{...p, sameAs:to, note:""}:p)});
+  };
+  peoNotSame = (key, signals) => {
+    this.log.add("merge-suggest",{accepted:false, signals});
+    this.setState({peoNotSame:[...(this.state.peoNotSame||[]), key]});
+  };
+  peoUnSame = value => {
+    this.setState({peo:this.state.peo.map(p=>p.value===value?{...p, sameAs:undefined}:p)});
+  };
+  peoRestore = value => {
+    const k=(this.state.peoKept||[]).find(x=>x.value===value); if(!k) return;
+    this.log.add("restore-peo",{});
+    this.setState({peo:[...this.state.peo, k], peoKept:this.state.peoKept.filter(x=>x.value!==value),
+      allow:this.state.allow.filter(a=>a!==value)}); };
+  // "אל תחליפו" במסך הבדיקה, מכל מקור: אותה רצועה, אותו ↩
+  // שלושת אלה משנים את הרשימה, ולכן הם צעד בהיסטוריה כמו כל החלטה אחרת (ביקורת L7)
+  allowRestore = value => {
+    this.pushHistory(); this.log.add("restore-allow",{});
+    // שם שנמחק במסך השמות מעולם לא הפך לכלל; "לחזור ולהחליף" חייב להחזיר גם אותו,
+    // אחרת ההיתר נעלם והשם נשאר בטקסט בכל זאת
+    const E=this.state.E, n=x=>E.norm(String(x||"")).trim();
+    const rules=[...this.state.rules];
+    if(!rules.some(r=>n(r.value)===n(value))){
+      const k=(this.state.peoKept||[]).find(x=>n(x.value)===n(value));
+      rules.push(this.mkRule({value, kind:k&&k.kind, auto:true, g:k&&k.g}));
+    }
+    this.setState({allow:this.state.allow.filter(a=>a!==value), rules,
+      peoKept:(this.state.peoKept||[]).filter(x=>n(x.value)!==n(value))}, ()=>this.rerun()); };
+
+  /* ── דוגמאות מהמסמך ──
+     שני המסכים שלפני מסך הבדיקה מבקשים החלטה על מילה. בלי לראות את המילה
+     בתוך המשפט אי אפשר להחליט: «אזור» הוא גם עיירה וגם מילה רגילה. הדוגמאות
+     נשלפות בזמן ההצגה מהבלוקים של הסריקה האחרונה, ולכן הן נכונות גם לשם
+     שהוקלד ידנית ולא רק למה שהכלי מצא. */
+  examplesFor(v){
+    const E=this.state.E, b=this._lastScan&&this._lastScan.blocks;
+    if(!E||!E.examplesOf||!b||!b.length||!v) return [];
+    try{ return E.examplesOf(b, v, 3); }catch(_){ return []; }
+  }
+  showTip(e, label, pin){
+    const items=this.examplesFor(label);
+    if(!items.length) return;
+    const t=this.state.tip;
+    // הקשה שנייה על אותו ערך סוגרת
+    if(pin && t && t.pin && t.label===label){ this.setState({tip:null}); return; }
+    // דוגמה שננעצה בהקשה אינה מתחלפת בריחוף מקרי מעליה
+    if(t && t.pin && !pin) return;
+    const r=e&&e.currentTarget&&e.currentTarget.getBoundingClientRect
+      ? e.currentTarget.getBoundingClientRect() : {left:20, width:0, bottom:80};
+    this.setState({tip:{label, items, pin:!!pin, anchor:(e&&e.currentTarget)||null,
+      x:Math.max(12, Math.min(r.left+r.width/2-150, innerWidth-312)), y:r.bottom+8}});
+  }
+  hideTip(){ const t=this.state.tip; if(t&&!t.pin) this.setState({tip:null}); }
+  tipProps(v){
+    return {onTipIn:e=>this.showTip(e,v,false), onTipOut:()=>this.hideTip(),
+      onTipTap:e=>this.showTip(e,v,true),
+      tipHint:this.examplesFor(v).length?"":"לא נמצאו מופעים במסמך"};
+  }
+
+  /* ── מקומות ── */
+  // התחליפים שכבר נקבעו ליישובים, לפי השם המנורמל
+  placeReps(rules){ const E=this.state.E, m=new Map();
+    for(const r of rules||[]) if((r.kind||"")==="PLACE"&&r.value&&r.replacement) m.set(E.norm(r.value).trim(), r.replacement);
+    return m; }
+  // תחליף קיים נכנס למפה כמו תחליף שהיא הקלידה: הוא שורד "קבוצה אחרת" והסרה של יישוב אחר
+  caseEdits(geo, have){ const E=this.state.E, out={};
+    if(geo) geo.map.forEach((m,i)=>{ const h=have.get(E.norm(m.from).trim()); if(h&&h!==m.to) out[i]=h; });
+    return out; }
+  async toPlaces(rows){
+    const E=this.state.E;
+    const rules = rows.map(r=>({...r}));
+    this.setState({rules});
+    if(!this.state.o.places){ this.run(rules); return; }
+    try{
+      const blocks = await this.blocksOf(this.state.buf);
+      const text = blocks.map(b=>b.text).join("\n");
+      // סריקה אחת, במנוע, עם אותו שער דו-משמעיות של findPlaces. המסך הזה כותב
+      // כלל החלפה גורף, ולכן יישוב ששמו גם מילה רגילה אינו מוצע בו כלל.
+      const all = E.geoNames(text);
+      // כל מה שנמצא, ולא רק מה שנכנס למפת המרחקים
+      const every = E.placesFound ? E.placesFound(text) : all.map(n=>({name:n, mappable:true, ambiguous:false}));
+      /* "אל תחליפו" נשמר ברשימת ההיתר, שנשמרת בפרופיל התיק. הרצועה של היישובים
+         שנשארים כמו שהם נגזרת עכשיו ממנה, במקום להיות רשימה שנייה שנצברת לצדה.
+         הרשימה השנייה לא נשמרה בפרופיל, לא התאפסה בפתיחת קובץ חדש, ולא הופחתה
+         מהשורות המוצעות, ולכן אותו יישוב הופיע גם ברצועה וגם כשורה להחלפה.
+         גרוע מכך: אחרי טעינת פרופיל בלשונית חדשה הוא הוצע כשורה רגילה, ורשימת
+         ההיתר חסמה בשקט כל החלפה שהוגדרה עליו. */
+      const on = new Set((this.state.allow||[]).map(a=>E.norm(String(a||"")).trim()));
+      const found = all.filter(n=>!on.has(E.norm(n).trim()));
+      const excluded = all.filter(n=>on.has(E.norm(n).trim()));
+      // יעד למפה אינו יישוב שמופיע במסמך, גם לא כזה שנשאר מחוץ למפה (H4), ולא
+      // שם שאחת ממילותיו בטקסט. אותם גבולות משמשים גם את "קבוצה אחרת" ואת ↩.
+      /* מסך היישובים הוא המקום היחיד שמחליט מה יישוב נהיה: מה שמוצג כאן הוא מה שנכתב לכללים.
+         יישוב שכבר יש לו תחליף — מהתיק, ממסמך קודם — מוצג עם התחליף הזה ולא עם ניחוש חדש, ותחליף
+         כזה אינו מוצע ליישוב אחר. */
+      const have=this.placeReps(rules);
+      this._geoAvoid = new Set([...all, ...(every||[]).map(p=>p.name), ...have.values()]);
+      this._geoForbid = new Set(E.norm(text).match(/[א-ת][א-ת'"׳״]*/g)||[]);
+      const geo = found.length>=2 ? E.geoMap(found, 0, this._geoAvoid, this._geoForbid) : null;
+
+      /* כל מה שלא נכנס למפת המרחקים, ועדיין נמצא במסמך: יישוב מהמאגר הגדול
+         שאין לו קואורדינטות, ויישוב ששמו גם מילה רגילה. עד כאן הם לא הופיעו
+         כאן בכלל, ולכן על מסמך שכל היישובים בו כאלה המסך אמר "לא נמצאו
+         יישובים" בזמן שהזיהוי דווקא מצא אותם. הם מוצעים עכשיו אחד-אחד, בלי
+         שמירת מרחקים שממילא אי אפשר לחשב להם, ועם ההקשר מהמסמך לצדם.
+         דו-משמעי מגיע כבוי: המילה הרגילה שכיחה יותר מהיישוב. */
+      const inMap = new Set((geo?geo.map:[]).map(m=>E.norm(m.from).trim()));
+      const used = new Set((geo?geo.map:[]).map(m=>m.to));
+      const forbidden = new Set(E.norm(text).match(/[א-ת][א-ת'"׳״]*/g)||[]);
+      const extra=[];
+      // מקום שכבר אושר במסך השמות יוחלף בכל מקרה; המסך מראה את זה (UX #10) —
+      // "נשר" הופיע כבוי ו"להחליף", והוחלף בכל זאת
+      const listedAs=new Set(rules.filter(r=>(r.kind||"")==="PLACE").map(r=>E.norm(r.value).trim()));
+      for(const p of (every||[])){
+        const k=E.norm(p.name).trim();
+        if(on.has(k)||inMap.has(k))continue;
+        const to=have.get(k)||(E.fakePlace&&E.fakePlace(p.name, used, forbidden))||"";
+        if(to)used.add(to);
+        const listed=listedAs.has(k);
+        extra.push({name:p.name, ambiguous:!!p.ambiguous, to, on:listed||(!p.ambiguous&&!!to), listed});
+      }
+      /* מקום שהיא הקלידה במסך השמות והמאגר אינו מכיר (שכונה, מושב קטן) לא הופיע כאן בכלל, והוחלף
+         בכל זאת בתחליף שאיש לא ראה. הוא מקבל שורה משלו, מסומן, עם התחליף שלו, וניתן לעריכה ולכיבוי. */
+      for(const r of rules){
+        if((r.kind||"")!=="PLACE"||!r.value) continue;
+        const k=E.norm(r.value).trim();
+        if(on.has(k)||inMap.has(k)||extra.some(x=>E.norm(x.name).trim()===k)) continue;
+        const to=r.replacement||(E.fakePlace&&E.fakePlace(r.value, used, forbidden))||"";
+        if(to)used.add(to);
+        extra.push({name:r.value, ambiguous:false, to, on:true, listed:true, typed:true});
+      }
+      // אין יישוב להחליט עליו ואין יישוב שהוצא: המסך היה רק «לא נמצאו יישובים במסמך.» וכפתור אחד — עוד לחיצה בכל
+      // מכתב קצר. ממשיכים ישר לבדיקה, כמו כשהחלפת המקומות כבויה (הציד של 11.10)
+      if(!geo&&!extra.length&&!excluded.length){ this.run(rules); return; }
+      this.setState({screen:"places", geo, geoNames:found, geoExcluded:excluded,
+        geoExtra:extra, geoEdits:this.caseEdits(geo, have), geoV:0});
+    }catch(e){ this.run(rules); }
+  }
+  /* קובץ גיאומטריה אחד (Natural Earth דרך world-atlas) נטען פעם אחת ונשמר במטמון הדפדפן.
+     הבקשה זהה לכל מסמך ולא מכילה שום דבר מהתיק — בלי אריחי מפה לפי מיקום. */
+  loadAtlas = async () => {
+    if(this.state.atlas || this._atlasBusy) return;
+    this._atlasBusy = true;
+    // הספריות של המפה נטענות רק כשמבקשים לראות אותה, לא בכל ביקור
+    const libs=[["d3","https://unpkg.com/d3@7.9.0/dist/d3.min.js","sha384-CjloA8y00+1SDAUkjs099PVfnY2KmDC2BZnws9kh8D/lX1s46w6EPhpXdqMfjK6i"],["topojson","https://unpkg.com/topojson-client@3.1.0/dist/topojson-client.min.js","sha384-Ukv1p/xTma6P4/2bY5KzWBw+ydSpXmhCMtyciIQVDJ1RmOxtCYNMF1uXT9T63H67"]];
+    for(const [g,src,integrity] of libs){ if(window[g]) continue;
+      await new Promise(res=>{ const el=document.createElement("script"); el.src=src; el.integrity=integrity; el.crossOrigin="anonymous";
+        el.onload=res; el.onerror=res; document.head.appendChild(el); }); }
+    if(!(window.d3 && window.topojson)){ this._atlasBusy=false; return; }
+    try{
+      const t = await (await fetch((window.__resources && window.__resources.atlas) || "https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json")).json();
+      this.setState({atlas: window.topojson.feature(t, t.objects.countries)});
+    }catch(_){ }
+    this._atlasBusy = false;
+  };
+  mapView(){
+    const E=this.state.E, geo=this.state.geo; if(!geo||!E) return null;
+    const P=E.PLACE_BY, W=150, H=340, pad=12;
+    const rows=geo.map.map(m=>({fl:m.from, tl:m.to, f:P[m.from], t:P[m.to]})).filter(r=>r.f&&r.t);
+    if(!rows.length) return null;
+    const d3=window.d3, A=this.state.atlas;
+    let land="", proj=null;
+    if(A && d3){
+      try{
+        proj=d3.geoMercator().fitExtent([[pad,pad],[W-pad,H-pad]],
+          {type:"MultiPoint", coordinates:[[34.15,29.35],[35.95,33.4]]});
+        land=d3.geoPath(proj)(A)||"";
+      }catch(_){ proj=null; land=""; }
+    }
+    let from, to;
+    if(proj){
+      const at=p=>{ const c=proj([p.o, p.a]); return {x:c[0], y:c[1]}; };
+      from=rows.map(r=>({label:r.fl, ...at(r.f)}));
+      to=rows.map(r=>({label:r.tl, ...at(r.t)}));
+    } else {
+      const pr=p=>({x:p.o*Math.cos(p.a*Math.PI/180), y:-p.a});
+      const F=rows.map(r=>pr(r.f)), T=rows.map(r=>pr(r.t));
+      const span=a=>{ const xs=a.map(p=>p.x), ys=a.map(p=>p.y);
+        return Math.max(Math.max(...xs)-Math.min(...xs), Math.max(...ys)-Math.min(...ys)) || 0.02; };
+      const sc=(H-2*pad)/Math.max(span(F), span(T));
+      const fit=(a, labels)=>{ const xs=a.map(p=>p.x), ys=a.map(p=>p.y);
+        const cx=(Math.min(...xs)+Math.max(...xs))/2, cy=(Math.min(...ys)+Math.max(...ys))/2;
+        return a.map((p,i)=>({label:labels[i], x:W/2+(p.x-cx)*sc, y:H/2+(p.y-cy)*sc})); };
+      from=fit(F, rows.map(r=>r.fl)); to=fit(T, rows.map(r=>r.tl));
+    }
+    /* תוויות שנערמות (L13 בביקורת השנייה): יישובים סמוכים — חולון ורמת גן — כתבו את השם
+       זה על זה. תווית שהייתה נופלת על תווית קודמת עוברת אל מעל הנקודה, ואם גם שם תפוס —
+       מוסטת לצד. הנקודה עצמה נשארת במקומה. */
+    const place=list=>{
+      const boxes=[], h=15;
+      return list.map(p=>{
+        // the label is 11.5px Rubik: about 6.1px a letter plus its 4px of padding, so 7 a letter covers it
+        const w=Math.max(31, String(p.label||"").length*7);
+        // התווית מתחת לנקודה; אם תפוס — מעל, ואז בצעדים של 15 פיקסלים הלאה עד מקום פנוי
+        const slots=[11]; for(let k=1;k<=8;k++){ slots.push(-11-h*(k-1)); slots.push(11+h*k); }
+        const hit=dy=>boxes.some(q=>Math.abs(p.x-q.x)<(w+q.w)/2+2&&Math.abs((p.y+dy)-q.y)<h);
+        const dy=slots.find(d=>!hit(d)); const use=dy===undefined?11:dy;
+        boxes.push({x:p.x, y:p.y+use, w});
+        return {label:p.label,
+          dot:"position:absolute;left:"+p.x.toFixed(1)+"px;top:"+p.y.toFixed(1)+"px;transform:translate(-50%,-50%);pointer-events:none",
+          style:"position:absolute;left:"+p.x.toFixed(1)+"px;top:"+(p.y+use).toFixed(1)+"px;transform:translate(-50%,-50%);pointer-events:none"};
+      });
+    };
+    return {land, hasLand:!!land, from:place(from), to:place(to)};
+  }
+
+  /* "קבוצה אחרת" (L12 בביקורת השנייה): תחליף שהקלידה ביד נזרק בלי מילה. המפה החדשה
+     מחליפה רק את מה שלא נגעה בו; מה שהקלידה נשאר, לפי שם היישוב ולא לפי המקום בשורה. */
+  geoAlt = () => { const E=this.state.E;
+    const old=this.state.geo, edits=this.state.geoEdits||{}, byName={}, prev={};
+    if(old) old.map.forEach((m,i)=>{ if(edits[i]!=null) byName[m.from]=edits[i]; else prev[m.from]=m.to; });
+    // הקבוצה הבאה שמחליפה את כל מה שלא הקלידה (prev), ומקומה בדירוג הוא ההמשך של הלחיצה הבאה
+    const geo=E.geoMap(this.state.geoNames, this.state.geoV+1, this._geoAvoid, this._geoForbid, prev);
+    const v=geo&&geo.variant!=null?geo.variant:this.state.geoV+1;
+    const kept={}; if(geo) geo.map.forEach((m,i)=>{ if(byName[m.from]!=null) kept[i]=byName[m.from]; });
+    const n=Object.keys(kept).length;
+    this.setState({geoV:v, geo, geoEdits:kept, notice:n?`${n===1?"התחליף שהקלדתם נשאר":n+" התחליפים שהקלדתם נשארו"}; השאר הוחלפו בקבוצה חדשה.`:this.state.notice, noticeUndo:false}); };
+  /* "אל תחליפו" על יישוב אחד (Q7 בגרסה 3): שאר הזוגות לא זזים. עד כאן המפה חושבה
+     מחדש ומה שאישרה השתנה מאחורי גבה; עם פחות משני יישובים המפה התפרקה והשאר קיבלו
+     שמות אקראיים מהמאגר הלא-מתויג ("אשדוד" הפכה ל"אמונים"). עכשיו הזוגות שאושרו
+     נשמרים, ומפה שהתפרקה מוסרת את שמותיה לרשימת "יישובים נוספים" כמו שהם. */
+  geoRemove = name => {
+    const E=this.state.E;
+    const names=this.state.geoNames.filter(n=>n!==name);
+    const allow=this.state.allow.includes(name)?this.state.allow:[...this.state.allow, name];
+    const ex=this.state.geoExcluded||[];
+    const old=this.state.geo, edits=this.state.geoEdits||{};
+    const kept=old?old.map.map((m,i)=>({from:m.from, to:(edits[i]??m.to)})).filter(m=>m.from!==name):[];
+    let geo=null, extra=this.state.geoExtra||[];
+    if(kept.length>=2) geo={...old, map:kept};
+    else if(kept.length===1&&!extra.some(x=>E.norm(x.name).trim()===E.norm(kept[0].from).trim()))
+      extra=[{name:kept[0].from, ambiguous:false, to:kept[0].to, on:true}, ...extra];
+    // "אל תחליפו" על יישוב מוריד גם את הכלל שלו, כמו addAllow ו-notAName (ביקורת H8): במסמך שני בתיק
+    // הכלל הגיע מהפרופיל, נשאר לצד ההיתר, והחליף את היישוב בכל צורה שההיתר לא הכיר
+    const nm=E.norm(name).trim(), rules=(this.state.rules||[]).filter(r=>E.norm(r.value).trim()!==nm);
+    this.setState({geoNames:names, allow, rules, geoEdits:{}, geoV:0,
+      // בלי הבדיקה הזאת לחיצה שנייה על אותו יישוב הכניסה אותו לרצועה פעמיים
+      geoExcluded: ex.includes(name) ? ex : [...ex, name],
+      geo, geoExtra:extra});
+  };
+  geoRestore = name => {
+    this.pushHistory();
+    const E=this.state.E;
+    const names=[...this.state.geoNames, name];
+    const old=this.state.geo, edits=this.state.geoEdits||{};
+    const kept=old?old.map.map((m,i)=>({from:m.from, to:(edits[i]??m.to)})):[];
+    let extra=(this.state.geoExtra||[]).filter(x=>E.norm(x.name).trim()!==E.norm(name).trim());
+    let geo=null;
+    if(kept.length){
+      // היישוב שחזר מקבל תחליף משלו; מה שכבר אושר לא זז
+      const used=new Set(kept.map(m=>m.to));
+      const to=(E.fakePlace&&E.fakePlace(name, new Set([...used, ...(this._geoAvoid||[])]), this._geoForbid||new Set()))||name;
+      geo={...old, map:[...kept, {from:name, to}]};
+    } else if(names.length>=2){
+      geo=E.geoMap(names,0,this._geoAvoid,this._geoForbid);
+      if(geo) extra=extra.filter(x=>!geo.map.some(m=>E.norm(m.from).trim()===E.norm(x.name).trim()));
+    }
+    this.setState({geoNames:names, allow:this.state.allow.filter(a=>a!==name),
+      geoExcluded:(this.state.geoExcluded||[]).filter(x=>x!==name), geoEdits:this.caseEdits(geo, this.placeReps(this.state.rules)), geoV:0, geo, geoExtra:extra});
+  };
+  geoApply = () => {
+    const E=this.state.E, En=v=>E.norm(String(v||"")).trim();
+    const rules=this.state.rules.map(r=>({...r})), g=this.state.geo;
+    if(g) g.map.forEach((m,i)=>{
+      const to = (this.state.geoEdits[i] ?? m.to).trim();
+      if(!to) return;
+      /* מה שמוצג במסך הוא מה שנכתב, גם כשהכלל כבר קיים. קודם הכלל הקיים דולג: יישוב שהיא הקלידה
+         במסך השמות נשאר בלי תחליף, המנוע בחר לו אחד בעצמו, והמסמך קיבל יישוב שלישי — לא האמיתי
+         ולא זה שהיא בחרה כאן. */
+      const ex=rules.find(r=>En(r.value)===En(m.from));
+      if(ex){ ex.replacement=to; ex.kind="PLACE"; }
+      else rules.push(this.mkRule({value:m.from, kind:"PLACE", replacement:to}));
+    });
+    // היישובים שמחוץ למפה: רק מה שסומן להחלפה. מקום מהרשימה שהסימון שלו הוסר
+    // כאן — ההחלטה החדשה מנצחת: הכלל יוצא, והמקום נשאר כמו שהוא (UX #10)
+    let allow=this.state.allow;
+    for(const x of (this.state.geoExtra||[])){
+      const to=String(x.to||"").trim();
+      const ex=rules.find(r=>En(r.value)===En(x.name));
+      if(x.on && to && ex) ex.replacement=to;
+      else if(x.on && to && !ex) rules.push(this.mkRule({value:x.name, kind:"PLACE", replacement:to}));
+      /* לא מסומן: נשאר כמו שהוא — גם יישוב שהמנוע מצא בעצמו ולא היה ברשימה. עד כאן רק מקום מהרשימה נכנס להיתר, ויישוב
+         שהמנוע מצא הוחלף בכל זאת, אף שהכרטיס אומר «מסומן = יוחלף» (הציד של 11.10). יישוב שהמנוע עצמו לא מחליף (שגם מילה,
+         ושורתו מתחילה כבויה) אינו נכנס להיתר: ההיתר נשמר בתיק, ובמסמך הבא «גרה ב…» שלו היה נשאר גלוי */
+      else if(!x.on && (x.listed || !x.ambiguous)){
+        for(let i=rules.length-1;i>=0;i--) if(rules[i].value===x.name) rules.splice(i,1);
+        if(!allow.includes(x.name)) allow=[...allow, x.name];
+      }
+    }
+    this.setState({rules, allow}); this.run(rules);
+  };
+  geoExtraSet = (name, patch) => {
+    this.setState({geoExtra:(this.state.geoExtra||[]).map(x=>x.name===name?{...x,...patch}:x)});
+  };
+
+  /* ── עיבוד ── */
+  /* המפתח הסודי של השמות הבדויים (החלטת הבעלים, 12.10; הביקורת ההנדסית): נוצר פעם אחת בדפדפן הזה, לכל חשבון לחוד
+     (caseKey), ולא יוצא ממנו. בלעדיו כל אחד יכול היה לחשב מהקוד הציבורי את השם הבדוי של כל שם אמיתי, ולאשר מי במסמך.
+     «ניקוי התיקים מהמחשב» מוחק גם אותו (GONE_WITH_CASES). אם האחסון חסום, מפתח לביקור הזה בלבד */
+  aliasKey(){
+    if(this._aliasKey) return this._aliasKey;
+    const k=this.caseKey("redact-alias-key"), good=v=>/^[0-9a-f]{64}$/.test(String(v||""));
+    // בהדגמה שבלי חשבון (window.__inkDemo) שום דבר לא נשמר: גם המפתח הוא לביקור הזה בלבד
+    const keep=!window.__inkDemo;
+    let v=null; if(keep) try{ v=localStorage.getItem(k); }catch(_){}
+    if(!good(v)){
+      const b=new Uint8Array(32); crypto.getRandomValues(b);
+      v=Array.from(b, x=>x.toString(16).padStart(2,"0")).join("");
+      if(keep) try{ localStorage.setItem(k,v); }catch(_){}
+    }
+    return this._aliasKey=v;
+  }
+  opts(){
+    const E=this.state.E;
+    const on=new Set(E.PAT.filter(p=>p.on).map(p=>p.n));
+    const flag=new Set(E.PAT.filter(p=>!p.on).map(p=>p.n));
+    flag.add("NAME_ANCHORED");
+    if(this.state.o.places) on.add("PLACES"); else flag.add("PLACES");
+    // שכבת הפעלים רצה גם כשהמודל רץ: על הקורפוס היא סוגרת ארבע דליפות שהמודל
+    // מפספס (שם רוסי, «משפחת X», שם שמופיע רק בפרוזה) תמורת ארבע הצעות עודפות.
+    // סגנון לפי סוג: שמות, גופים ומקומות לפי המצב הגלובלי; כל השאר — מספרים,
+    // תאריכים, כתובות — לפי בחירתה, ומחיקה כברירת מחדל. כרטיס יכול לעקוף.
+    return {on, flag, mode:this.state.mode, near:this.state.o.near, body:true, prefixes:"normal", aliasKey:this.aliasKey(),
+      // תאריך מלא מוזז כברירת מחדל (Q5 בגרסה 3), בלי קשר לבחירה על שאר המספרים; כרטיס יכול לעקוף
+      // תאריך: מוזז כברירת מחדל (Q5 בגרסה 3); בחירה אחרת (Q1 בגרסה 5) נשמרת בפרופיל התיק
+      styles:{"*":this.state.o.numStyle||"blank", DATE:this.state.o.dateStyle||"name"}};
+  }
+  /* ההבטחה: שם שהמודל מצא פעמיים ומעלה אינו יוצא מהכלי בלי
+     שהוחלט עליו. גם כשהזיהוי מושלם — כמה פעמים בביטחון מלא — השם יכול לצאת, כי
+     בין המודל לרשימה יש כמה דרכים לאבד אותו, ולא כולן נרשמות. לכן הבדיקה
+     נעשית אחרי כל ריצה, מול הרשימה ורשימת ההיתר, ולא מול הזיכרון של המסך:
+     שם כזה שאינו בשתיהן נכנס ל"לבדיקה" כהצעה, והסרגל אדום עד שהיא עונה. */
+  guardModel(res, rules, allow){
+    const E=this.state.E, found=this._modelFound||[];
+    if(!res||!res.verification||!found.length) return res;
+    const n=v=>E.norm(String(v||"")).trim();
+    const inRules=new Set((rules||[]).map(r=>n(r.value))), inAllow=new Set((allow||[]).map(n));
+    const sug=res.verification.suggest=res.verification.suggest||[];
+    const already=new Set(sug.map(x=>n(x.value)));
+    let added=0;
+    for(const f of found){
+      if(f.kind&&f.kind!=="NAME") continue;
+      if((f.n||1)<2) continue;
+      const k=n(f.value); if(!k||inRules.has(k)||inAllow.has(k)||already.has(k)) continue;
+      sug.push({value:f.value, why:`המודל מצא ${f.n}× בגוף המסמך, ואינו ברשימה`, src:"model", count:f.n});
+      already.add(k); added++;
+    }
+    if(added){ res.verification.complete=false; this.log.add("model-guard",{added}); }
+    return res;
+  }
+  async run(rows){
+    const E=this.state.E;
+    const rules = rows ? rows.map(r=>({...r})) : this.state.rules;
+    // הרשימה נבנתה מחדש מחוץ למסך הבדיקה: היסטוריה מלפני כן אינה מתאימה לה (pushHistory)
+    this._undo=[]; this._redo=[];
+    this.setState({rules, sel:null, screen:"busy", busyT:"מעבד את המסמך…", err:"", undoN:0, redoN:0});
+    try{
+      const res = this.guardModel(await E.redactDocx(this.state.buf.slice(0), rules, this.state.allow, this.opts()), rules, this.state.allow);
+      // מגיעים למסמך עצמו קודם: הפאנלים מקופלים, פס הסטטוס אומר מה מחכה
+      // "לבדיקה" נפתח כשיש מה להחליט — כולל שמות שמחכים כ"לאישור" (UX #13) — או כשיש שם שהושאר
+      const toReview=(res.verification.near||[]).length+(res.verification.suggest||[]).length+(this.state.allow||[]).length+
+        res.flagged.filter(f=>f.src!=="near"&&f.src!=="nohit"&&f.src!=="collide").length;
+      this.log.add("run",{applied:res.applied.length, flagged:res.flagged.length, near:(res.verification.near||[]).length, suggest:(res.verification.suggest||[]).length, passed:!!res.verification.passed, incomplete:(res.verification.incomplete||[]).join(",")});
+      // יומן: מאיזו שכבה הגיע כל מה שהוחלף וכל מה שמחכה, כדי לראות מה עולה לה בזמן
+      { const cnt=(arr,f)=>arr.filter(f).length, A=res.applied, F=res.flagged;
+        this.log.add("run-src",{aList:cnt(A,r=>r.src==="list"), aSweep:cnt(A,r=>r.src==="sweep"), aPattern:cnt(A,r=>r.src==="pattern"),
+          aReview:cnt(A,r=>r.review), fReview:cnt(F,r=>r.review&&r.src!=="nohit"), fNohit:cnt(F,r=>r.src==="nohit"), fNear:cnt(F,r=>r.src==="near"),
+          fPattern:cnt(F,r=>r.src==="pattern"), fList:cnt(F,r=>r.src==="list"), fCollide:cnt(F,r=>r.src==="collide"), rules:(this.state.rules||[]).length,
+          rulesAuto:cnt(this.state.rules||[],r=>r.auto!==false), allow:(this.state.allow||[]).length}); }
+      /* מה שנוסף לכללים בזמן הריצה — תשובה מאוחרת של המודל אחרי «לא לחכות למודל» — נשאר, והמסמך מעובד שוב איתו. עד כאן
+         הריצה כתבה בחזרה את העותק שלה מתחילתה, והשמות שהמודל מצא נעלמו בלי סימן, תחת פס ירוק (הציד של 11.10) */
+      const key=r=>(r.kind||"")+"|"+E.norm(String(r.value||"")).trim(), had=new Set(rules.map(key));
+      const late=(this.state.rules||[]).filter(r=>!had.has(key(r)));
+      this.setState({res, rules:[...this.pinReps(rules,res),...late], screen:"work", open:toReview?["review","findings","send"]:["findings","send"], pane:"doc", docView:"red", markIdx:0, copied:false},
+        ()=>{ this.persistProfile(); if(late.length){ this.log.add("model-late-run",{added:late.length}); this.rerun(); } });
+    }catch(e){ this.setState({err:"העיבוד נכשל. אפשר לנסות שוב. (פרטים טכניים: "+(e.message||e)+")", screen:"entry", res:null}); }
+  }
+  async rerun(){
+    const E=this.state.E; const t0=Date.now();
+    // בזמן ריצה הרשימה כבר חדשה והתוצאה עוד ישנה: הבדיקה העצמית מחכה (שכבה 5), וגם העתקה והורדה: עד כאן
+    // הן קראו את התוצאה הקודמת, והשם שסומן הרגע יצא גלוי (הציד של 11.10). הכפתורים כבויים עד שהריצה נוחתת
+    this._reruns=(this._reruns||0)+1;
+    if(this._reruns===1) this.setState({rerunning:true});
+    try{
+      const res = this.guardModel(await E.redactDocx(this.state.buf.slice(0), this.state.rules, this.state.allow, this.opts()), this.state.rules, this.state.allow);
+      this.log.add("rerun",{ms:Date.now()-t0, applied:res.applied.length, flagged:res.flagged.length});
+      /* הכרטיס שנבחר נשאר פתוח אחרי ריצה חוזרת, כשהוא עדיין קיים: אחרי "ריק" הכרטיס נסגר,
+         והאזהרה שבו ("תשובת ה-AI לא תוכל להחזיר") נראתה רק למי שפתח אותו שוב. */
+      const n=v=>E.norm(String(v||"")).trim(), sel=this.state.sel;
+      const keep=sel&&(res.applied.some(r=>"a|"+n(r.of||r.base||r.value)===sel)||res.flagged.some(r=>"f|"+n(r.value)===sel));
+      this.setState({res, rules:this.pinReps(this.state.rules,res), sel:keep?sel:null, err:"", inline:null}, ()=>this.persistProfile());
+    }catch(e){ this.setState({err:"העדכון אחרי השינוי נכשל. אפשר לנסות שוב. (פרטים טכניים: "+(e.message||e)+")"}); }
+    finally{ this._reruns--; if(!this._reruns) this.setState({rerunning:false}); }
+  }
+  /* C1 בביקורת השנייה: כינוי אוטומטי נבחר מתוך מאגר תוך דילוג על שמות שכבר
+     נלקחו, ולכן היה תלוי בכל מה שהוקצה לפניו. שינוי כינוי של אדם אחד פינה שם
+     במאגר, ובריצה הבאה אדם אחר קיבל אותו: "יהודית אשכנזי" הפכה ל"מרים אשכנזי"
+     בלי שאיש נגע בה, והתשובה שכבר הועתקה ל-AI חזרה עם אנשים לא נכונים. אחרי כל
+     ריצה הכינוי שנבחר לאדם או לגוף נכתב על הכלל עצמו (pinned), ומכאן הוא קבוע:
+     המאגר יכול להשתנות, הוא לא. המנוע מתעלם מכינוי מוצמד כשהסגנון אינו "שם". */
+  pinReps(rules,res){
+    if(!res||this.state.mode!=="real") return rules;
+    const got={};
+    for(const r of res.applied){ const v=r.base||r.value, rp=r.baseRep||r.rep; if(v&&rp&&!(v in got)) got[v]=rp; }
+    let changed=false;
+    const out=rules.map(r=>{
+      if(r.replacement||r.style||r.sameAs||(r.kind!=="NAME"&&r.kind!=="ORG")) return r;
+      const rp=got[r.value];
+      if(!rp||/^\[|^פלוני\b|███|^\s*$/.test(rp)) return r;
+      changed=true; return {...r, replacement:rp, pinned:true};
+    });
+    return changed?out:rules;
+  }
+  /* ביטול.
+
+     כל החלטה במסך הבדיקה הייתה חד-כיוונית: "אל תחליפו" על הכרטיס הלא נכון, מיזוג
+     של שני אנשים בטעות, תחליף שהוקלד שגוי — לא הייתה דרך חזרה חוץ מלשחזר את
+     ההחלטה ההפוכה ביד, וכשלא זוכרים מה בדיוק השתנה גם זה לא עוזר.
+
+     כל ההחלטות במסך הזה הן פונקציה של שני דברים בלבד: rules ו-allow. לכן די
+     בצילום שלהם לפני כל שינוי, ואין צורך לתעד סוגי פעולות בנפרד. הצילומים
+     יושבים על המופע ולא ב-state, כי הם אינם משתתפים ברינדור; רק שני המונים כן,
+     בשביל הכפתורים. ארבעים צעדים מספיקים למסמך אחד. */
+  snapshot(){
+    return {rules:(this.state.rules||[]).map(r=>({...r})), allow:[...(this.state.allow||[])], removed:[...(this.state.removed||[])]};
+  }
+  /* ביטול חל על החלטות של מסך הבדיקה בלבד. צעד שנרשם במסך אחר (מספריים ב«מי בתיק», «↩» ב«יישובים»), או צעד
+     מלפני שהרשימה נבנתה מחדש, החזיר בלחיצה אחת את כל הרשימה, והשמות שנוספו אחריו יצאו גלויים (הציד של 11.10) */
+  pushHistory(){
+    if(this.state.screen!=="work") return;
+    this._undo=(this._undo||[]).concat([this.snapshot()]).slice(-40);
+    this._redo=[];
+    // הודעת סתירה חיה עד ההחלטה הבאה
+    this.setState({undoN:this._undo.length, redoN:0, notice:"", noticeUndo:true});
+  }
+  stepHistory(back){
+    const from=back?(this._undo=this._undo||[]):(this._redo=this._redo||[]);
+    if(!from.length) return;
+    const to=back?(this._redo=this._redo||[]):(this._undo=this._undo||[]);
+    to.push(this.snapshot());
+    const snap=from.pop();
+    if(this.log) this.log.add(back?"undo":"redo",{});
+    this.setState({rules:snap.rules, allow:snap.allow, removed:snap.removed||[], sel:null,
+      undoN:this._undo.length, redoN:this._redo.length}, ()=>this.rerun());
+  }
+  undo = () => this.stepHistory(true);
+  redo = () => this.stepHistory(false);
+
+  /* יומן עשיר (נוסף ב-v48): כל תיקון של המשתמש/ת נרשם עם מה שגרם לו, כדי שנבין למה
+     מתקנים בלי לראות מה. רק קודים, מספרים ודגלים — אף מילה מהמסמך, והשומר של היומן דוחה
+     כל מילה עברית בכל מקרה.
+       src  — מי הציע את הערך: m מודל · h כותרת · s דובר · p פרופיל התיק · t היא הוסיפה ·
+              b סריקת הגוף · w אחידות (חלק של שם) · x דפוס (מספר, תאריך) · n כתיב קרוב
+       kind · words · chars · review (חיכה להחלטה) · applied (הוחלף) · occ (הופעות שהוחלפו)
+       band — הוודאות של המודל: none · <.8 · <.95 · high
+       pre  — מתחיל באות שימוש שהגזע שלה גם ברשימה */
+  logFacts(v, base){
+    try{
+      const S=this.state, E=S.E; if(!E) return {};
+      const n=x=>E.norm(String(x||"")).trim(), keys=[n(v),n(base)].filter(Boolean), hit=x=>keys.includes(n(x));
+      const src=[];
+      const model=(this._modelFound||[]).find(f=>hit(f.value));
+      if(model) src.push("m");
+      const cand=(S.cands||[]).find(c=>hit(c.value));
+      if(cand) src.push(cand.speaker?"s":"h");
+      if(this.profileRules().some(r=>hit(r.value))) src.push("p");
+      const rule=(S.rules||[]).find(r=>hit(r.value));
+      if(rule&&rule.auto===false) src.push("t");
+      const ver=(S.res&&S.res.verification)||{};
+      if((ver.suggest||[]).some(x=>hit(x.value))) src.push("b");
+      const recs=S.res?[...S.res.applied,...S.res.flagged].filter(r=>hit(r.base)||hit(r.value)):[];
+      if(recs.some(r=>r.src==="sweep")) src.push("w");
+      if(recs.some(r=>r.src==="pattern")) src.push("x");
+      if(recs.some(r=>r.src==="near")) src.push("n");
+      const sc=model&&typeof model.score==="number"?model.score:null;
+      const nv=n(base||v);
+      return { src:src.join("")||"-", kind:(rule&&rule.kind)||(model&&model.kind)||(recs.length?"found":"-"),
+        words:nv.split(/\s+/).filter(Boolean).length, chars:nv.length,
+        review:recs.some(r=>r.review), applied:S.res?S.res.applied.some(r=>hit(r.base)||hit(r.value)):false,
+        occ:S.res?S.res.applied.filter(r=>hit(r.base)||hit(r.value)).length:0,
+        band:sc===null?"none":sc<0.8?"<.8":sc<0.95?"<.95":"high",
+        pre:/^[בהולמכש]/.test(nv)&&(S.rules||[]).some(r=>n(r.value)===nv.slice(1)) };
+    }catch(_){ return {factsError:true}; }
+  }
+  /* מה השתנה כשהיא החליפה כינוי: מגדר, מוצא, איזה חלק, ומספר המילים. הכינוי עצמו לא נרשם. */
+  repFacts(shown, rep){
+    try{
+      const E=this.state.E, a=String(shown||"").trim(), b=String(rep||"").trim();
+      if(!b) return {reset:true};
+      const aw=a.split(/\s+/).filter(Boolean), bw=b.split(/\s+/).filter(Boolean);
+      const part=!a?"new":aw.length!==bw.length?"shape":aw.every((w,i)=>w===bw[i])?"none":
+        aw.length===1?"one":(aw[0]!==bw[0]&&aw.slice(1).join(" ")===bw.slice(1).join(" "))?"first":
+        (aw[0]===bw[0])?"last":"both";
+      const code=/^\[|^[\d\s+()-]+$/.test(b)?"label":"name";
+      return { part, style:code, oldWords:aw.length, newWords:bw.length,
+        gender:a&&E.gender?(E.gender(a)===E.gender(b)?"same":"changed"):"?",
+        origin:a&&E.origin?(E.origin(a)===E.origin(b)?"same":"changed"):"?",
+        fromPool:E.POOL?["he_m","he_f","ar_m","ar_f"].some(k=>E.POOL[k].includes(bw[0])):false };
+    }catch(_){ return {factsError:true}; }
+  }
+  /* שם שהיא הוסיפה בעצמה הוא פספוס. מה כל שכבה חשבה עליו, בלי הטקסט (leakShape). */
+  async logMiss(value, kind, origin){
+    try{
+      const S=this.state, E=S.E; if(!S.buf||!window.PL) return;
+      const blocks=await this.blocksOf(S.buf);
+      const sh=window.PL.leakShape(E, blocks, value, {kind, modelUsed:S.nerUsed, cands:S.cands,
+        nerRaw:S.nerUsed&&E.nerLast?E.nerLast():[], rules:S.rules, near:(S.res&&S.res.verification.near)||[], suggest:(S.res&&S.res.verification.suggest)||[]});
+      const m=sh.layers.model;
+      this.log.add("miss",{origin:origin||"list", kind:kind||"NAME", words:sh.words, occ:sh.occurrences, otherForms:sh.otherForms,
+        prefix:!!sh.prefix, before:sh.before, after:sh.after, paraStart:!!sh.atParagraphStart,
+        model:m?(m.score<0.6?"below":m.score<0.8?"<.8":m.score<0.95?"<.95":"high"):"none", modelBounds:m?String(m.bounds||"exact").trim().slice(0,24):"-",
+        header:!!sh.layers.discover, near:!!sh.layers.near, suggest:!!sh.layers.suggest, hyphen:sh.hyphen, geresh:sh.geresh, nikud:sh.nikud, genre:sh.doc.genre});
+    }catch(_){}
+  }
+
+  addRule = (value, kind, rep, origin) => {
+    const E=this.state.E; value=E.trimEdges(value);
+    if(value.length<2){ this.setState({err:"נדרשים לפחות שני תווים."}); return; }
+    // צעד ביטול רק כשמשהו משתנה (L11): הוספה שנדחתה השאירה צעד ריק, ושני "ביטול" לא עשו דבר
+    if(!this.state.rules.some(r=>E.norm(r.value).trim()===E.norm(value).trim())) this.pushHistory();
+    const E2=this.state.E, ex=this.state.rules.find(r=>E2.norm(r.value).trim()===E2.norm(value).trim());
+    // מקום מהתיק שמוחלף רק במופע שהוא מקום (cond): ההחלטה שלה להחליף אותו הופכת אותו לכלל רגיל, בכל מופע.
+    // בלי זה «החלפה» על המופע שנשאל לא עשתה כלום, כי הכלל כבר ברשימה
+    if(ex&&ex.cond&&(kind||"NAME")===ex.kind){
+      this.pushHistory();
+      this.setState({rules:this.state.rules.map(r=>r===ex?{...r, cond:false}:r), popup:null, err:""}, ()=>this.rerun());
+      return; }
+    if(ex){
+      // כבר ברשימה: במקום שגיאה בראש העמוד, מסמנים את הכרטיס שלו ומספרים שם
+      if(this.state.res) this.setState({sel:"a|"+E2.norm(ex.value).trim(), open:this.openWith("findings"), popup:null, err:"«"+ex.value+"» כבר ברשימה — הכרטיס שלו מסומן."});
+      else this.setState({err:"«"+ex.value+"» כבר ברשימה."});
+      return; }
+    // סימון ידני בטקסט אחרי העיבוד הוא ההגדרה של דליפה: הכלי פספס, והיא תיקנה.
+    // הצורה של המקרה נרשמת (page-logic.js, leakShape) — בלי הטקסט — כדי שיהיה
+    // אפשר לשחזר אותו בלי המסמך.
+    this.log.add("add-rule",{origin:origin||"list", kind:kind||"NAME", words:value.split(/\s+/).length});
+    if(this.state.res) this.logMiss(value, kind||"NAME", origin);
+    if(origin==="mark"&&this.state.res&&this.state.buf&&window.PL) this.recordLeak(value, kind||"NAME");
+    // סתירה עם היתר קיים (Q6 בגרסה 3): ההחלטה החדשה מנצחת, וההיתר מוסר עם שורת הודעה
+    const nrm=x=>E.norm(String(x||"")).trim();
+    const allowGone=this.state.allow.filter(a=>nrm(a)===nrm(value));
+    if(allowGone.length) this.log.add("conflict",{won:"rule"});
+    this.setState({removed:(this.state.removed||[]).filter(x=>E.norm(x).trim()!==E.norm(value).trim()),
+      rules:[...this.state.rules, this.mkRule({value, kind, replacement:rep})],
+      allow:this.state.allow.filter(a=>nrm(a)!==nrm(value)),
+      notice:allowGone.length?`«${value}» יוחלף, והסימון «לא להחליף» הוסר ממנו.`:"",
+      addV:"", addR:"", popup:null, err:""}, ()=>this.rerun());
+  };
+  async recordLeak(value, kind){
+    try{
+      const S=this.state, E=S.E, blocks=await this.blocksOf(S.buf);
+      const ver=this.verText();
+      const shape=window.PL.leakShape(E, blocks, value, {kind, version:ver, modelUsed:S.nerUsed, cands:S.cands,
+        nerRaw:S.nerUsed&&E.nerLast?E.nerLast():[], rules:S.rules, near:(S.res.verification.near)||[], suggest:(S.res.verification.suggest)||[]});
+      this.setState({leaks:[...this.state.leaks, shape]});
+    }catch(_){}
+  }
+  // מוסיף מקטע לפתוחים בלי לסגור אחרים
+  openWith = k => { const o=Array.isArray(this.state.open)?this.state.open:[]; return o.includes(k)?o:[...o,k]; };
+  // מחיקה מרשימת הפרופיל היא החלטה כמו כל אחרת (M7 בביקורת השנייה): צעד ביטול משלה, ושורה שאומרת מה קרה
+  /* הסרה נזכרת בתיק (ביקורת H11): "לא שם" נשמר בהיתר ולכן לא חזר, אבל הסרה רגילה
+     נשכחה — המסמך הבא בתיק החזיר את הכלל בשקט, עם הכינוי הישן. הערך נרשם ב-removed, נשמר
+     בפרופיל התיק, ואינו חוזר מעצמו. אם הוא מופיע במסמך הבא הוא מוצע לה לאישור, לא מדולג בשקט. */
+  dropRule = v => { this.pushHistory(); this.log.add("drop-rule",this.logFacts(v)); this.setState({removed:this.state.removed.includes(v)?this.state.removed:[...this.state.removed, v], rules:this.state.rules.filter(r=>r.value!==v), notice:`«${v}» הוסר מהרשימה, והטקסט המקורי חזר.`}, ()=>this.rerun()); };
+  // "לא שם": הכלל יורד מהרשימה על כל צורותיו, והטקסט הזה לא יוצע שוב
+  notAName = (base, v) => { this.pushHistory(); this.log.add("not-a-name",this.logFacts(v, base)); return this.setState({allow:this.state.allow.includes(v)?this.state.allow:[...this.state.allow, v],
+    rules:this.state.rules.filter(r=>r.value!==base && r.value!==v)}, ()=>this.rerun()); };
+  /* החלטה חדשה שסותרת ישנה (Q6 בגרסה 3): החדשה מנצחת, הישנה מוסרת, ושורה אחת
+     אומרת מה הוחלף — עם ביטול. בלי זה אותה מילה יכלה לשבת בפרופיל גם ככלל (נמחק) וגם בהיתר. */
+  addAllow = v => { if(this.state.allow.includes(v)) return; this.pushHistory(); this.log.add("allow",this.logFacts(v));
+    const E=this.state.E, n=x=>E.norm(String(x||"")).trim();
+    const gone=this.state.rules.filter(r=>n(r.value)===n(v));
+    const notice=gone.length?`«${v}» יישאר כמו שהוא, וההחלפה שלו בוטלה.`:"";
+    if(gone.length) this.log.add("conflict",{won:"allow"});
+    // ההיתר נכנס לרצועת "נשארים כמו שהם" שב"לבדיקה", ולכן המקטע נפתח כדי שיראו אותו
+    this.setState({allow:[...this.state.allow, v], rules:this.state.rules.filter(r=>n(r.value)!==n(v)), notice, open:this.openWith("review")}, ()=>this.rerun()); };
+  /* סגנון לערך אחד: name / label / blank / black. הכלל נוצר אם אין — גם לערך שנתפס
+     בדפוס בלי כלל, כמו ת"ז — כדי שהבחירה תחזיק בכל ריצה ותישמר בפרופיל התיק. */
+  setStyle = (v, kind, style, base) => {
+    this.pushHistory();
+    const E=this.state.E, n=x=>E.norm(String(x||"")).trim();
+    const rules=[...this.state.rules];
+    let r=rules.find(x=>n(x.value)===n(base||v)||n(x.value)===n(v));
+    if(!r){ r=this.mkRule({value:v, kind:kind||"OTHER"}); rules.push(r); }
+    const prev=r.style||null; r.style=style; const facts=this.logFacts(v, base);
+    this.setState({rules}, ()=>this.rerun().then(()=>this.log.add("set-style",{...facts, style, from:prev||"default", changed:prev!==style, kind:r.kind})));
+  };
+  /* עריכות של תחליף לא שינו דבר. הכרטיס מציג את הערך
+     כפי שנמצא, והכלל יושב לפעמים תחת הצורה המלאה ("תמר גולדשמיט" כשהכרטיס אומר
+     "גולדשמיט"), ולפעמים בכתיב אחר. חיפוש לפי שוויון מחרוזות לא מצא אותו, ואז נוסף
+     כלל חדש מסוג OTHER שהמנוע לא הכיר. עכשיו מחפשים לפי הצורה המנורמלת ולפי הבסיס,
+     והיומן רושם אם העריכה שינתה משהו בפועל. */
+  setRep = (v, rep, base) => {
+    this.pushHistory();
+    const E=this.state.E, n=x=>E.norm(String(x||"")).trim();
+    const rules=[...this.state.rules];
+    const want=[n(v), n(base)].filter(Boolean);
+    let r=rules.find(x=>want.includes(n(x.value)));
+    if(!r){
+      // הערך שבכרטיס הוא חלק משם מלא שברשימה
+      r=rules.find(x=>x.kind==="NAME"&&n(x.value).split(/\s+/).includes(n(v)));
+    }
+    const before=this.state.res?this.state.res.applied.length:-1, prev=r?r.replacement:null;
+    // הכינוי שהיא ראתה: שלה, או זה שהכלי בחר
+    const seen=(r&&r.replacement)||((this.state.res&&this.state.res.applied.find(a=>want.includes(n(a.base||a.value))))||{}).baseRep||"";
+    const facts={...this.logFacts(v, base), ...this.repFacts(seen, rep), was:!r?"none":(r.pinned||!r.replacement)?"auto":"hers"};
+    if(r){ r.replacement=rep.trim(); delete r.pinned; } else rules.push(this.mkRule({value:v, replacement:rep}));
+    this.setState({rules}, ()=>this.rerun().then(()=>{
+      const after=this.state.res?this.state.res.applied.length:-1;
+      this.log.add("set-rep",{...facts, matched:!!r, changed:prev!==rep.trim(), appliedBefore:before, appliedAfter:after});
+    }));
+  };
+
+  /* ── קבוצות ממצאים ── */
+  groupsOf(){
+    const E=this.state.E, RES=this.state.res, src=[];
+    if(this.state.filter!=="flag") RES.applied.forEach((r,i)=>src.push({...r, ap:true, i}));
+    if(this.state.filter!=="rep") RES.flagged.forEach(r=>src.push({...r, ap:false, i:-1}));
+    const m=new Map();
+    /* כרטיס אחד לאדם (גרסה 5): עד כאן כל צורה שנתפסה — "מרים", "למרים", "ומרים" —
+       הייתה כרטיס נפרד, פזור בין אנשים אחרים לפי ספירה, וכרטיס של "למרים" נקרא
+       כאילו זה אדם אחר. ההחלפה מקובצת לפי הערך שברשימה; הצורות נשארות כשבבים
+       על הכרטיס, עם אות השימוש חיוורת, ואפשר להחליט על צורה אחת לבדה. */
+    for(const r of src){
+      // חלק של שם ("מרים" מתוך "מרים לוין") שייך לכרטיס של האדם, לא לכרטיס משלו
+      const baseV=r.ap?(r.of||r.base||r.value):r.value;
+      const k=(r.ap?"a":"f")+"|"+E.norm(baseV).trim();
+      let g=m.get(k);
+      if(!g){ g={key:k, value:baseV, label:r.label, why:r.why, rep:r.ap?(r.baseRep||r.rep):r.rep, ap:r.ap, src:r.src, base:r.base||r.value,
+        review:r.review&&!(this.state.approved||[]).includes(k), count:0, ctxs:[], parts:new Set(), ids:[], forms:new Map()}; m.set(k,g); }
+      g.count++;
+      if(r.ap){
+        const sv=String(r.value||""), bs=String(baseV||"");
+        const pre=(sv.endsWith(bs)&&sv.length>bs.length)?sv.slice(0,sv.length-bs.length):"";
+        const f=g.forms.get(sv)||{text:sv, pre, n:0}; f.n++; g.forms.set(sv,f);
+      }
+      if(g.ctxs.length<50) g.ctxs.push(r.ctx);
+      g.parts.add(r.part);
+      if(r.i>=0) g.ids.push(r.i);
+      // "אישור" על הכרטיס מסיר את התג (UX #14); אינו משנה את ההחלפה עצמה
+      if(r.review&&!(this.state.approved||[]).includes(k)) g.review=true;
+    }
+    // התנגשות פרופיל נרשמת גם על הכרטיס של הערך שהתחליף שלו מתנגש, לא רק בבדיקה
+    for(const r of src) if(r.src==="collide"&&r.collideOf){
+      const g=m.get("a|"+E.norm(r.collideOf).trim()); if(g) g.collide=r.value;
+    }
+    return [...m.values()].sort((x,y)=>y.count-x.count || x.value.localeCompare(y.value,"he"));
+  }
+  sugList(){
+    const E=this.state.E, RES=this.state.res;
+    const n=v=>E.norm(E.trimEdges(v)).trim();
+    return (RES.verification.suggest||[]).filter(x=>!this.state.allow.some(a=>n(a)===n(x.value)) &&
+      !this.state.rules.some(r=>n(r.value)===n(x.value)));
+  }
+  nearList(){
+    const RES=this.state.res;
+    const E=this.state.E, n=v=>E.norm(E.trimEdges(v)).trim();
+    // השוואה מנורמלת: "שביל הלב" עם גרש בקצה הוא אותו ערך שכבר ברשימה או ב"אל תחליפו"
+    return (RES.verification.near||[]).filter(x=>!this.state.allow.some(a=>n(a)===n(x.value)) &&
+      !this.state.rules.some(r=>n(r.value)===n(x.value)));
+  }
+  /* מה עוד מחכה להחלטה, במקום אחד (UX #13). עד כאן שלושה מקומות ספרו שלושה דברים:
+     הפאנל "לבדיקה" ספר כמעט-התאמות, הצעות ושמות שהושארו (החלטה שכבר נעשתה), הסרגל
+     התחתון בחר קודם את ההצעות — "רכב" — והשמות האמיתיים שחיכו כ"לאישור" הופיעו רק
+     בתוך "מה נמצא והוחלף". עכשיו רשימה אחת: אנשים שמחכים (אחרי תואר, לפי הקשר)
+     קודם, אחריהם שמות מגוף הטקסט, שיבושי כתיב, מספרים, ובסוף מקומות וגופים. */
+  static BLOCK_LBL=/^(?:שם|אדם|ת"ז|ת״ז|תעודת זהות|טלפון|טלפון נייד|טלפון קווי|פקס|דוא"ל|כתובת דוא"ל|כתובת|חשבון בנק|מספר רכב|תאריך לידה|כרטיס אשראי|IBAN|דרכון|התנגשות פרופיל|התנגשות תחליף)/;
+  /* השורה של הבדיקה השנייה בפס, בנוסח שאושר (12.10): «2 מילים שנראות כמו שמות ומספר אחד שנראה כמו ת״ז. כדאי לבדוק
+     אותם לפני שליחה.» אותה תבנית לכל מספר ולכל סוג */
+  secondLine(items){
+    const names=items.filter(x=>x.kind==="name").length, ids=items.filter(x=>/^ISRAELI_ID/.test(x.pat||"")).length,
+      mails=items.filter(x=>x.pat==="EMAIL").length, other=items.length-names-ids-mails, parts=[];
+    if(names) parts.push(names===1?"מילה אחת שנראית כמו שם":names+" מילים שנראות כמו שמות");
+    if(ids) parts.push(ids===1?"מספר אחד שנראה כמו ת״ז":ids+" מספרים שנראים כמו ת״ז");
+    if(other) parts.push(other===1?"מספר אחד שנראה כמו מספר מזהה":other+" מספרים שנראים כמו מספרים מזהים");
+    if(mails) parts.push(mails===1?"כתובת מייל אחת":mails+" כתובות מייל");
+    const and=p=>/^\d/.test(p)?"ו-"+p:"ו"+p;
+    const said=parts.length>1?parts.slice(0,-1).join(", ")+" "+and(parts[parts.length-1]):parts[0];
+    const one=items.length===1, fem=one&&(names===1||mails===1);
+    return said+". כדאי לבדוק "+(one?(fem?"אותה":"אותו"):"אותם")+" לפני שליחה.";
+  }
+  pendingReview(){
+    const S=this.state, E=S.E, RES=S.res;
+    const out={people:[], numbers:[], soft:[], sug:[], near:[], second:[], count:0, blocking:0};
+    if(!RES||!E) return out;
+    const n=v=>E.norm(E.trimEdges(String(v||""))).trim();
+    const decided=v=>S.allow.some(a=>n(a)===n(v))||S.rules.some(r=>n(r.value)===n(v));
+    const seen=new Set();
+    for(const f of RES.flagged){
+      if(f.src==="near"||f.src==="nohit"||f.src==="collide"||!f.value) continue;
+      const k=n(f.value); if(!k||seen.has(k)||decided(f.value)) continue; seen.add(k);
+      const lbl=f.label||"";
+      const item={value:f.value, label:lbl, why:f.why||"", ctx:f.ctx||{}};
+      if(/^(?:שם|אדם)/.test(lbl)) out.people.push(item);
+      else if(this.constructor.BLOCK_LBL.test(lbl)) out.numbers.push(item);
+      else out.soft.push(item);
+    }
+    out.sug=this.sugList().filter(x=>!seen.has(n(x.value)));
+    out.near=this.nearList().filter(x=>!seen.has(n(x.value)));
+    out.blocking=out.people.length+out.numbers.length+out.sug.length+out.near.length;
+    /* הבדיקה השנייה של התוצאה (secondScan; החלטת הבעלים, 12.10, «A»): מה שנמצא בה מחכה כאן, אבל אינו חוסם: הפס כתום,
+       וההעתקה וההורדה פתוחות. מה שכבר מחכה כאן בקבוצה אחרת, או שכבר הוחלט, לא חוזר */
+    const waiting=new Set([...seen, ...out.sug.map(x=>n(x.value)), ...out.near.map(x=>n(x.value))]);
+    out.second=(RES.second||[]).filter(x=>!waiting.has(n(x.value))&&!decided(x.value));
+    out.count=out.blocking+out.soft.length+out.second.length;
+    return out;
+  }
+  // "שם" הוא מפתח פנימי; על המסך אותו סוג נקרא "אדם" בכל מקום (UX #11)
+  kindLabel(l){ return String(l||"").replace(/^שם(?= \(|$)/,"אדם"); }
+  // מה נכנס לרשימה כשמאשרים ממצא מהפאנל, לפי התווית שלו
+  /* סוג המנוע של ממצא לפי התווית שלו (L9 בביקורת השנייה): ∅ של ת"ז שהפך ל"תווית" נוצר
+     ככלל מסוג "אחר", וקיבל "[פרט א׳]" במקום "[ת״ז א׳]". */
+  engineKindOf(l){
+    l=String(l||"");
+    if(/^(?:שם|אדם|גוף|יישוב|מקום)/.test(l)) return this.kindOfLabel(l);
+    if(/זהות|ת"ז|ת״ז/.test(l)) return "ID";
+    if(/טלפון|נייד|קווי|חיוג|פקס/.test(l)) return "PHONE";
+    if(/דוא"ל|דוא״ל|מייל/.test(l)) return "EMAIL";
+    if(/כתובת|רחוב|מיקוד/.test(l)) return "ADDRESS";
+    if(/תאריך/.test(l)) return "DATE";
+    return "OTHER";
+  }
+  kindOfLabel(l){ return /^(?:שם|אדם)/.test(l||"")?"NAME":/^גוף/.test(l||"")?"ORG":/^(?:יישוב|מקום)/.test(l||"")?"PLACE":"OTHER"; }
+  redactedText(){
+    return this.state.res.preview.filter(b=>!this.state.E.hiddenPart(b.part))
+      .map(b=>b.text).join("\n").replace(/\n{3,}/g,"\n\n").trim();
+  }
+
+  currentMap(){
+    const m={}, RES=this.state.res, E=this.state.E, n=v=>E?E.norm(String(v||"")).trim():String(v||"");
+    // "זה אותו אחד כמו" (M3 בביקורת השנייה): המקור שמוזג חולק כינוי עם היעד. זוג
+    // משלו במפה הפך את הכינוי ל"משותף לשניים", וההחזרה ויתרה עליו. היא אמרה שזה
+    // אותו אדם — הכינוי חוזר ליעד, והמקור אינו זוג נפרד.
+    const merged=new Set((this.state.rules||[]).filter(r=>r.sameAs&&r.sameAs!==r.value).map(r=>n(r.value)));
+    if(RES) for(const r of RES.applied){
+      const v=r.base||r.value, rp=r.baseRep||r.rep;
+      if(merged.has(n(v))) continue;
+      if(v&&rp&&rp!=="███"&&!(v in m)) m[v]=rp;
+    }
+    for(const r of this.state.rules) if(r.replacement&&!merged.has(n(r.value))) m[r.value]=r.replacement;
+    return m;
+  }
+  /* "זה אותו אחד כמו" (גרסה 3): עד כאן הכרטיס העתיק את השם הבדוי של היעד לכלל
+     של המקור — ועל צורה עם אות שימוש ("לגורגן") לא היה כלל כזה, אז נוסף כלל חדש
+     לצורה עצמה ולא קרה כלום. עכשיו שני הכללים נשארים, והמקור מקבל sameAs ליעד:
+     אותו מנגנון של הצעת המיזוג במסך השמות, ואותו כינוי לשניהם. */
+  /* קיצוץ שם למילים שנבחרו (Q2 בגרסה 5): "אסתר להידחות" (דוגמה בדויה) נתפס כשם של שתי
+     מילים, ואי אפשר היה להשאיר את "אסתר" ולוותר על "להידחות" — הסרה הסירה את שתיהן,
+     החלפה בלעה את המילה החשובה בכינוי. כל מילה בשם של שתי מילים ומעלה היא כפתור; הסרתה
+     כותבת את הכלל מחדש על המילים שנשארו. הכינוי הולך עם השם: "ליאת נחמיאס" של
+     "אסתר להידחות" נעשה "ליאת" של "אסתר", כדי שמה שכבר הועתק ל-AI עדיין יחזור. */
+  trimTo(value, keepIdx){
+    const E=this.state.E, n=v=>E.norm(String(v||"")).trim();
+    const words=String(value||"").trim().split(/\s+/);
+    keepIdx=[...new Set(keepIdx)].filter(i=>i>=0&&i<words.length).sort((a,b)=>a-b);
+    if(!keepIdx.length||keepIdx.length===words.length) return;
+    const newV=keepIdx.map(i=>words[i]).join(" ");
+    this.pushHistory();
+    const rules=[...this.state.rules];
+    const ri=rules.findIndex(r=>n(r.value)===n(value));
+    if(ri>=0){
+      const r=rules[ri]; let rep=r.replacement||"";
+      if(rep){
+        const rw=rep.trim().split(/\s+/);
+        if(rw.length===words.length) rep=keepIdx.map(i=>rw[i]).join(" ");
+        else if(rw.length>1&&keepIdx.length===1) rep=keepIdx[0]===0?rw[0]:keepIdx[0]===words.length-1?rw[rw.length-1]:"";
+        else if(rw.length>1) rep="";
+      }
+      const dup=rules.findIndex((x,j)=>j!==ri&&n(x.value)===n(newV));
+      if(dup>=0) rules.splice(ri,1); else rules[ri]={...r, value:newV, replacement:rep, pinned:!!(rep&&r.pinned)};
+    }
+    const peo=(this.state.peo||[]).map(p=>n(p.value)===n(value)?{...p, value:newV, note:p.note}:p);
+    this.log.add("trim",{from:words.length, to:keepIdx.length, rule:ri>=0});
+    this.setState({rules, peo, inline:null, sel:null, trimPeo:null, formSel:null}, ()=>{ if(this.state.res) this.rerun(); });
+  }
+  wordItems(value, when){
+    const words=String(value||"").trim().split(/\s+/);
+    if(words.length<2||words.length>6) return [];
+    return words.map((w,i)=>({w, title:`להסיר את «${w}» מהשם — נשאר: «${words.filter((_,j)=>j!==i).join(" ")}»`,
+      onDrop:e=>{ if(e&&e.stopPropagation) e.stopPropagation(); if(when) when(); this.trimTo(value, words.map((_,j)=>j).filter(j=>j!==i)); }}));
+  }
+  mergeInto(from, to){
+    const E=this.state.E, n=v=>E.norm(String(v||"")).trim();
+    const rules=[...this.state.rules];
+    const target=rules.find(r=>n(r.value)===n(to));
+    if(!target||n(from)===n(target.value)) return;
+    this.pushHistory();
+    let src=rules.find(r=>n(r.value)===n(from));
+    if(!src){ src=this.mkRule({value:from}); rules.push(src); }
+    const i=rules.indexOf(src);
+    rules[i]={...src, replacement:"", sameAs:target.value};
+    this.log.add("merge",{origin:"card", effect:true});
+    this.setState({rules}, ()=>this.rerun());
+  }
+
+  // בתוך iframe או בלי הרשאה, navigator.clipboard נחסם — יש נפילה חזרה ל-execCommand
+  legacyCopy(text){
+    try{
+      const ta=document.createElement("textarea");
+      ta.value=text; ta.setAttribute("readonly","");
+      ta.style.cssText="position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;pointer-events:none";
+      document.body.appendChild(ta);
+      const sel=document.getSelection(), prev=sel && sel.rangeCount ? sel.getRangeAt(0) : null;
+      ta.focus(); ta.select(); ta.setSelectionRange(0, text.length);
+      const ok=document.execCommand("copy");
+      ta.remove();
+      if(prev && sel){ sel.removeAllRanges(); sel.addRange(prev); }
+      return ok;
+    }catch(_){ return false; }
+  }
+  async copyTo(text, key, label){
+    let ok=false;
+    try{ await navigator.clipboard.writeText(text); ok=true; }catch(_){ ok=false; }
+    if(!ok) ok=this.legacyCopy(text);
+    if(!ok){ this.setState({err:"ההעתקה נחסמה בדפדפן. אפשר לסמן את הטקסט ולהעתיק ידנית."}); return false; }
+    this.setState({[key]:"הועתק ✓"});
+    setTimeout(()=>this.setState({[key]:label}), 1700);
+    return true;
+  }
+  /* ייצוא כשהסטטוס אדום (UX #18, #23): לחיצה ראשונה שואלת בסרגל, עם "להציג אותם"
+     ו"בכל זאת". הצבע האדום היה ההגנה היחידה, וההורדה לא נשאה אפילו אותו. */
+  /* אימות שנכשל עוצר גם הוא (ביקורת H2): הפס האדום אמר "אין לשלוח ואין להעתיק", וההורדה
+     יצאה בלי שאלה, כי השומר ספר רק פריטים בלי החלטה ולא הסתכל על תוצאת האימות. */
+  /* מה נוקה מהקובץ: רשימה אחת לפאנל ולדוח שיורד. היו שתי העתקות שלה, וכל שורה חדשה
+     הייתה צריכה להיכנס לשתיהן */
+  cleanStats(st){
+    return [["טקסט שנמחק במעקב שינויים",st.del],["שינויים שהתקבלו",st.ins],["סימוני הערות",st.cm],
+      ["חלקים שהוסרו",(st.dropped||[]).length],["שדות מטא-דאטה",(st.meta||[]).length],["קישורים שנוטרלו",(st.rels||[]).length],
+      ["מזהי עריכה",st.rsid],["קבצים מוטמעים שהוסרו",st.embedded],["נתונים נסתרים שהוסרו",st.hidden],["החלפות אחידות",st.sweep],
+      ["חלקים שהכלי אינו קורא, שנוקו מערכים מהרשימה",(st.residue||[]).length]].filter(x=>x[1]);
+  }
+  verifyFailed(){ const v=this.state.res&&this.state.res.verification; return !!(v&&v.passed===false&&(v.leaks||[]).length); }
+  /* שכבת חיפוש שלא הסתיימה (ביקורת M25) שואלת לפני ייצוא, כמו אימות שנכשל: היא לא יכולה
+     לתקן את זה בעצמה, ולכן השאלה מאפשרת להמשיך ביודעין ולא נועלת אותה בחוץ */
+  // שכבה שנשברה (גוף, תוויות) חוסמת; בדיקת כתיב שעברה רק על חלק מרשימה ארוכה היא אזהרה בלבד (L12)
+  scanIncomplete(){ const v=this.state.res&&this.state.res.verification; return !!(v&&(v.incomplete||[]).some(k=>k!=="near")); }
+  nearPartial(){ const v=this.state.res&&this.state.res.verification; return v&&(v.incomplete||[]).includes("near")&&v.nearOf?v.nearOf:null; }
+  scanIncompleteText(){
+    const v=this.state.res.verification;
+    const L={body:"החיפוש אחר שמות שלא ברשימה נכשל באמצע", labels:"החיפוש בתוויות של גרפים ותרשימים נכשל באמצע"};
+    return v.incomplete.filter(k=>k!=="near").map(k=>L[k]||k).join(" · ");
+  }
+  exportGuard(what){
+    const p=this.pendingReview(), failed=this.verifyFailed(), partial=this.scanIncomplete();
+    if((!p.blocking&&!failed&&!partial)||this.state.exportAsk===what) { if(this.state.exportAsk) this.setState({exportAsk:""}); return true; }
+    this.log.add("export-ask",{what, open:p.blocking, verifyFailed:failed, incomplete:partial});
+    this.setState({exportAsk:what});
+    return false;
+  }
+  copyAi = async () => {
+    if(!this.state.res||this._reruns>0) return;
+    if(this.tourBlocks("copy")) return;
+    if(!this.exportGuard("copy")) return;
+    this.log.add("copy",{applied:this.state.res.applied.length, open:this.pendingReview().blocking});
+    const ok=await this.copyTo(this.redactedText(), "copyLabel", "העתקה ל־AI");
+    this.log.add("copy-result",{ok});
+    // שלב 2 מתוך 3 מתקדם רק כשההעתקה באמת הצליחה (UX #18)
+    if(!ok) return;
+    this.markSent();
+    this.setState({copied:true});
+    const n=this.pendingReview().blocking;
+    if(n) this.setState({err:n===1?"הועתק, אבל פריט אחד עדיין בלי החלטה, והוא יגיע ל־AI כמו שהוא.":`הועתק, אבל ${n} פריטים עדיין בלי החלטה, והם יגיעו ל־AI כמו שהם.`});
+  };
+  /* Two moments of a document, for the hosted service only: docSent (the redacted text was
+     copied or downloaded: the tool just did its job) and docEnd (a new document, or leaving the
+     page). Its cloud.js sets window.__inkHost, and nothing here sends anything. It gets the same
+     text-free exports the package carries (the log's and the leak report's guards run here),
+     and decides itself what to do. Without a host, as on GitHub Pages, this does nothing. */
+  toHost = (what, how) => {
+    const h=window.__inkHost; if(!h||typeof h[what]!=="function") return;
+    try{
+      const leaks=this.state.leaks.length&&window.PL?window.PL.leakReport(this.state.leaks,{version:this.log.v}):null;
+      h[what]({how, log:this.log.export(), leaks});
+    }catch(_){}
+  };
+  docEnd = (how) => this.toHost("docEnd", how);
+  // חבילת בדיקה (PLAN-v18 Q9): יומן הסשן ודוח הדליפה בקובץ zip אחד, בלי טקסט מהמסמך.
+  // עד v56 היא הכילה גם את המסמך הנקי ופתחה מייל. עכשיו רק הורדה: היא שולחת אותה בעצמה, ואת
+  // המסמך בנפרד, רק כשהיא מחליטה.
+  sendPackage = async () => {
+    const RES=this.state.res, E=this.state.E; if(!RES) return;
+    if(this.tourBlocks("package")) return;
+    this.log.add("package",{});
+    try{
+      const enc=new TextEncoder(); const files=[];
+      files.push({name:"session-log.json", data:enc.encode(this.log.export())});
+      if(this.state.leaks.length&&window.PL) files.push({name:"leak-report.json", data:enc.encode(window.PL.leakReport(this.state.leaks,{version:this.log.v}))});
+      files.push({name:"README.txt", data:enc.encode("InKognito "+this.log.v+"\nחבילת בדיקה: יומן שימוש בלי טקסט, ופירוט השמות שסימנתם, אם יש כאלה. המסמך עצמו לא בחבילה.\n")});
+      const blob=await E.zip(files);
+      const u=URL.createObjectURL(blob), a=document.createElement("a");
+      a.href=u; a.download="inkognito-package-"+new Date().toISOString().slice(0,10)+".zip"; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(()=>URL.revokeObjectURL(u), 4000);
+    }catch(e){ this.setState({err:"הכנת חבילת הבדיקה נכשלה. אפשר לנסות שוב. (פרטים טכניים: "+(e.message||e)+")"}); }
+  };
+  download = () => {
+    const RES=this.state.res; if(!RES||this._reruns>0) return; if(this.tourBlocks("download")) return;
+    if(!this.exportGuard("download")) return;
+    this.log.add("download",{open:this.pendingReview().blocking});
+    this.markSent();
+    const u=URL.createObjectURL(RES.blob), a=document.createElement("a");
+    const name=this.safeBase()+".docx";
+    a.href=u; a.download=name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(u), 4000);
+    // הורדה נחשבת צעד 2 כמו העתקה, ואומרת לאן הקובץ הלך (UX #23)
+    this.setState({copied:true, notice:`הקובץ «${name}» ירד לתיקיית ההורדות.`, noticeUndo:false});
+  };
+  /* הכרטיס בכניסה שאל "להמשיך עם הפרופיל מהפעם הקודמת?" והציג מספר ערכים
+     ותאריך. אי אפשר לזהות תיק לפי "שבעה ערכים", והשמות היו בזיכרון בדיוק באותו
+     רגע — הם פשוט לא הוצגו. כאן נשלפות כמה שורות של ערך והתחליף שלו, אותה צורה
+     שכבר מוצגת ברשימת התיק במסך הבדיקה. */
+  profilePairs(prof, max=3){
+    const out=[], seen=new Set();
+    const push=(v,rep)=>{ const s=String(v||"").trim();
+      if(!s||seen.has(s)||out.length>=max)return;
+      seen.add(s); out.push({v:s, rep:String(rep||"").trim()}); };
+    for(const r of (prof&&prof.rules)||[]) push(r&&r.value, r&&(r.replacement||((prof.map||{})[r.value])));
+    for(const k of Object.keys((prof&&prof.map)||{})) push(k, (prof.map||{})[k]);
+    return out;
+  }
+  profileCount(prof){
+    const n=new Set();
+    for(const r of (prof&&prof.rules)||[]) if(r&&r.value) n.add(String(r.value).trim());
+    for(const k of Object.keys((prof&&prof.map)||{})) n.add(String(k).trim());
+    return n.size;
+  }
+
+  /* שם הקובץ הוא ערוץ דליפה בפני עצמו, והוא היה פתוח לרווחה.
+
+     הכלי מנקה את שם היוצר ואת הכותרת מתוך המסמך (docProps), ואז כתב את שם
+     הקובץ המקורי בחזרה על ההורדה: "תביעה-רונית-לוי.docx" חזר בתור
+     "תביעה-רונית-לוי_מושחר.docx". המסמך נקי, השם על הקובץ לא, וזה השם שנוסע
+     במייל ויושב בתיקיית ההורדות. אותו שם היה גם על המסמך שבתוך חבילת הבדיקה,
+     כלומר על הקובץ היחיד שנשלח החוצה במכוון.
+
+     נשקלה דרך מתוחכמת יותר — להחיל על שם הקובץ את אותם תחליפים של המסמך —
+     והיא נדחתה. היא בטוחה בדיוק במידה שבה הזיהוי מצא כל שם, וכשהוא מפספס שם
+     דווקא בשם הקובץ, השם עובר כמו שהוא ואיש לא יידע. שם קובץ אינו שווה דליפה.
+
+     לכן כל הורדה מקבלת שם ניטרלי עם תאריך, ומונה בתוך הסשן כדי שאפשר יהיה
+     להבחין בין כמה מסמכים באותו יום. השם המקורי נשאר על המסך, אצלה, ולא נוסע
+     על אף קובץ. */
+  /* שם אחד לכל תוצאה (ביקורת QA 009): המונה עלה בכל הורדה, ודוח ההשחרה קיבל
+     סיומת אחרת מהמסמך שהוא מתאר. עכשיו השם נקבע פעם אחת לכל עיבוד, ומסמך הבא מקבל חדש. */
+  safeBase(){
+    const RES=this.state.res;
+    const doc=this.state.buf||RES;
+    if(doc&&this._dlDoc===doc&&this._dlName) return this._dlName;
+    this._dlSeq=(this._dlSeq||0)+1;
+    this._dlDoc=doc; this._dlName="אינקוגניטו-"+new Date().toISOString().slice(0,10)+(this._dlSeq>1?"-"+this._dlSeq:"");
+    return this._dlName;
+  }
+  // מה שהוסר ועדיין מוסר: ערך שחזר להיות כלל (ביטול, או הוספה מחדש ביד) או שהותר יוצא מהרשימה
+  removedNow(){ const E=this.state.E, n=v=>E.norm(String(v||"")).trim();
+    const live=new Set([...(this.state.rules||[]).map(r=>n(r.value)), ...(this.state.allow||[]).map(n)]);
+    return (this.state.removed||[]).filter(v=>v&&!live.has(n(v))); }
+  wasRemoved(v){ const E=this.state.E, n=x=>E.norm(String(x||"")).trim(); return this.removedNow().some(x=>n(x)===n(v)); }
+  /* כל כינוי שיצא מהכלי — הועתק או ירד — נזכר לאדם שלו (סבב QA 1, H1). כינוי ששונה אחרי
+     ההעתקה נשמט מהמפה, והתשובה לטקסט שכבר נשלח חזרה בערבוב של כינוי ושם אמיתי ("יוסי שטרן",
+     אף אחד) עם הודעת הצלחה. התיק שומר את זה, כך שגם תשובה שחוזרת ביום אחר מוחזרת. */
+  markSent(){
+    const s={...(this.state.sent||{})};
+    for(const [real,fake] of Object.entries(this.currentMap())){ const a=s[real]||[]; if(fake&&!a.includes(fake)) s[real]=[...a,fake]; }
+    this.setState({sent:s});
+    this.toHost("docSent", "sent");
+  }
+  sentAll(){
+    const out={}, add=o=>{ for(const [r,a] of Object.entries(o||{})) for(const p of a||[]) (out[r]=out[r]||[]).includes(p)||out[r].push(p); };
+    add(this.state.profile&&this.state.profile.sent); add(this.state.sent);
+    return out;
+  }
+  /* כלל אחד, צורה אחת (ביקורת M17): הכלל נבנה בעשרה מקומות, שדה אחרי שדה, עם ברירות מחדל שונות —
+     אחד בלי auto, אחד בלי g. מי שקורא כלל יודע עכשיו אילו שדות יש לו. kind ברירת מחדל NAME; מי
+     שרוצה אחר אומר זאת במפורש */
+  mkRule({value, kind, replacement, auto, g, ...rest}){
+    return {value:String(value), kind:kind||"NAME", replacement:String(replacement||"").trim(), auto:!!auto, g:g||null, ...rest};
+  }
+  /* הסוג של כל ערך במפת התיק (שם, יישוב, גוף, תאריך…), לפי הסוג שהמנוע מצא או לפי הכלל. בלעדיו תיק שנפתח הפך כל זוג
+     במפה לאדם: «12.3.2026» → «16.1.2027» חזר ככלל של שם, והיישוב והגוף שהמנוע מצא — גם (הציד של 11.10) */
+  currentKinds(){
+    const k=Object.create(null), RES=this.state.res, C=(this.state.E&&this.state.E.CANON)||{};
+    if(RES) for(const r of RES.applied){ const v=r.base||r.value; if(v&&r.type&&!(v in k)) k[v]=(Object.prototype.hasOwnProperty.call(C,r.type)?C[r.type]:[r.type])[0]; }
+    for(const r of this.state.rules) if(r&&r.value&&r.kind) k[r.value]=r.kind;
+    return k;
+  }
+  // הסוג של ערך שהתיק מחזיר: מה שנשמר איתו; בתיק שנשמר לפני 11.10 — תאריך לפי צורתו, יישוב לפי הרשימה, ומה שאחרי כמו קודם
+  caseKind(value, replacement, kinds){
+    const E=this.state.E, K=(E&&E.KINDLBL)||{}, own=(o,k)=>!!o&&Object.prototype.hasOwnProperty.call(o,k);
+    const t=own(kinds,value)&&typeof kinds[value]==="string"?kinds[value]:"";
+    if(t) return t==="DATE"?"DATE":(own(K,t)?t:"OTHER");
+    if(E&&E.parseDate&&E.parseDate(value)) return "DATE";
+    if(E&&E.PLACE_BY&&own(E.PLACE_BY,E.norm(String(value)).trim())) return "PLACE";
+    return /^\[|^[\d\s+()-]+$/.test(replacement)?"OTHER":"NAME";
+  }
+  profileObj(){
+    return {v:1, created:(this.state.profile&&this.state.profile.created)||new Date().toISOString(), updated:new Date().toISOString(),
+      name:this.state.caseName||"", mode:this.state.mode, rules:this.state.rules, allow:this.state.allow, map:this.currentMap(), kinds:this.currentKinds(),
+      removed:this.removedNow(), sent:this.sentAll(),
+      // הבחירה על מספרים ועל תאריכים היא של התיק, לא של הלשונית (Q1 בגרסה 5)
+      styles:{num:this.state.o.numStyle||"blank", date:this.state.o.dateStyle||"name"}};
+  }
+  /* התיקים שמורים לכל חשבון בנפרד (המעבר ל-inkognito.co.il, 6.10.2026): השירות המאורח מריץ את הדף הזה
+     לכל חשבון, וכמה חשבונות יכולים לעבוד על אותו מחשב. כל קריאה, כתיבה ומחיקה של שני מפתחות התיקים,
+     "redact-cases" ו-"redact-profile-last", וגם הבדיקה של אירוע ה-storage שלהם, עוברות כאן: בלי
+     window.__inkStoreSuffix (הכלי הציבורי) המפתח הוא בדיוק מה שהיה, והתיקים שכבר שמורים ממשיכים לעבוד;
+     כשהדף המאורח קובע אותו לחשבון המחובר, המפתח הוא k + ":" + הסיומת. מפתחות התצוגה (redact-theme,
+     redact-intro-seen, redact-tour-seen) נשארים משותפים. tests/casekey_t.js, e2e/case-store.spec.js */
+  caseKey(k){ const s=window.__inkStoreSuffix; return s===undefined||s===null||s===""?k:k+":"+s; }
+  /* מחיקת כל התיקים השמורים במחשב הזה, של כל חשבון: שני המפתחות עצמם, וכל מפתח שהוא אחד מהם ואחריו ":".
+     זה המקום היחיד שלא עובר דרך caseKey, כי הוא לא של חשבון אחד. מחיקת המודל (modelForget) מחקה איתה את כל
+     התיקים, בלי שאלה ובמילים שמדברות רק על המודל (הביקורת העצמאית, 6.10); עכשיו היא של «ניקוי התיקים מהמחשב»
+     בלבד (clearCases), במילים שאושרו ואחרי שאלה. tests/casekey_t.js */
+  static CASE_KEYS=["redact-cases","redact-profile-last"];
+  // מפתח השמות הבדויים (aliasKey, 12.10) נמחק עם התיקים, אבל הוא לא תיק: casesHere לא סופר אותו
+  static GONE_WITH_CASES=["redact-alias-key"];
+  forgetCases(){
+    try{
+      const K=[...this.constructor.CASE_KEYS, ...this.constructor.GONE_WITH_CASES], gone=[];
+      for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(K.some(c=>k===c||k.startsWith(c+":"))) gone.push(k); }
+      for(const k of gone) localStorage.removeItem(k);
+    }catch(_){}
+    // המפתח של השמות הבדויים נמחק עם התיקים: מה שייבחר מעכשיו נגזר ממפתח חדש
+    this._aliasKey=null;
+    const E=this.state&&this.state.E; if(E&&typeof E.setAliasKey==="function") E.setAliasKey(this.aliasKey());
+  }
+  /* מה שהמסך קורא מפרופיל של תיק, בסוג שהכלי עצמו כותב (הביקורת העצמאית, 6.10). ייבוא התיקים בדק רק את
+     המעטפת של הקובץ, ובכל רשומה רק v:1 ושם, ושמר את הרשומה כמו שהיא: רשומה שבה rules היה אובייקט, מספר או
+     true נשמרה, ומאז מסך הכניסה לא עלה בכלל, בכל טעינה, עד שכל התיקים נמחקו. זו הבדיקה היחידה, לכל מה שנכנס
+     ולכל מה שנקרא בחזרה: קובץ פרופיל (onProfFile), כל רשומה בקובץ תיקים והפרופיל האחרון שבו (importCases,
+     שדוחה את כל הקובץ בגלל רשומה אחת), וכל קריאה של תיק שמור (readCases, readLast, writeCase), כך שרשומה
+     שנכתבה בגרסה אחרת או בלשונית אחרת מדולגת ולא מפילה את המסך. שדה חסר מותר, כמו בקבצים ישנים (בלי removed,
+     sent או styles, ובקובץ הראשון גם בלי שם); שדה שקיים חייב להיות מהסוג שהכלי כותב. named: רשומה ברשימת
+     התיקים, ולכן עם שם. tests/profile_t.js, e2e/case-store.spec.js */
+  static profileOk(p, named){
+    const obj=x=>!!x&&typeof x==="object"&&!Array.isArray(x), str=x=>typeof x==="string";
+    const opt=(x,f)=>x===undefined||x===null||f(x), strs=x=>Array.isArray(x)&&x.every(str);
+    return obj(p)&&p.v===1&&(named?str(p.name)&&p.name!=="":opt(p.name,str))
+      &&Array.isArray(p.rules)&&p.rules.every(r=>obj(r)&&str(r.value)&&["replacement","kind","style","sameAs"].every(k=>opt(r[k],str)))
+      &&opt(p.map,m=>obj(m)&&Object.values(m).every(str))&&opt(p.kinds,m=>obj(m)&&Object.values(m).every(str))&&opt(p.allow,strs)&&opt(p.removed,strs)
+      &&opt(p.sent,s=>obj(s)&&Object.values(s).every(strs))&&opt(p.styles,s=>obj(s)&&opt(s.num,str)&&opt(s.date,str))
+      &&["mode","created","updated"].every(k=>opt(p[k],str));
+  }
+  // הפרופיל הוא ההבטחה שאותו אדם מקבל את אותו שם בכל מסמך בתיק. עד עכשיו הוא
+  // חי רק כקובץ שהיא זוכרת לשמור; עכשיו הוא נכתב לדפדפן אחרי כל שינוי, מוצע
+  // בכניסה הבאה, ומזהיר לפני יציאה בלי ייצוא. הדפדפן אינו גיבוי — הייצוא הוא.
+  // היא עובדת על כמה תיקים במקביל (Q11 ב-docs/PLAN-v18.md): כל תיק בשם נשמר
+  // ברשימה בדפדפן, ומסך הכניסה מציע אותם. תיק בלי שם נשאר ב"פרופיל אחרון".
+  readCases(){
+    try{ const m=JSON.parse(localStorage.getItem(this.caseKey("redact-cases"))||"{}");
+      return Object.values(m).filter(p=>this.constructor.profileOk(p,true)).sort((a,b)=>String(b.updated||"").localeCompare(String(a.updated||""))); }catch(_){ return []; }
+  }
+  // הפרופיל האחרון, כשהמסך יכול להציג אותו (profileOk) ויש בו ערכים
+  readLast(){
+    try{ const p=JSON.parse(localStorage.getItem(this.caseKey("redact-profile-last"))||"null");
+      return this.constructor.profileOk(p)&&p.rules.length?p:null; }catch(_){ return null; }
+  }
+  writeCase(prof){
+    try{ const m=JSON.parse(localStorage.getItem(this.caseKey("redact-cases"))||"{}");
+      // רשומה שהמסך לא יכול להציג (profileOk) אינה מתמזגת: המיזוג נפל עליה בשקט, והתיק שבעבודה לא נשמר. היא מוחלפת
+      const prev=m[prof.name];
+      m[prof.name]=this.constructor.profileOk(prev,true)?this.mergeCase(prev, prof):prof;
+      localStorage.setItem(this.caseKey("redact-cases"), JSON.stringify(m)); }catch(_){}
+  }
+  /* התיק הוא איחוד של כל המסמכים שלו, לא צילום של האחרון (C2 בביקורת השנייה):
+     מסמך שבו אבנר לא מוזכר מחק אותו מהתיק, והמסמך הבא נתן לו שם חדש. מה שהוחלט
+     במסמך הנוכחי גובר; מי שלא מופיע בו נשאר מהקודם. ערך שהותר עכשיו ("אל
+     תחליף", מחיקה מהרשימה) אינו חוזר ככלל, וערך שהוא כלל עכשיו אינו נשאר מותר. */
+  mergeCase(prev, cur){
+    const E=this.state.E, n=v=>E.norm(String(v||"")).trim();
+    const curAllow=new Set((cur.allow||[]).map(n)), curRules=new Set((cur.rules||[]).map(r=>n(r&&r.value)));
+    // מה שהוסר בתיק נשאר מוסר, אלא אם הוא כלל או היתר במסמך הנוכחי
+    const removed=[...new Set([...(prev.removed||[]), ...(cur.removed||[])])].filter(v=>v&&!curRules.has(n(v))&&!curAllow.has(n(v)));
+    const gone=new Set(removed.map(n));
+    const rules=(cur.rules||[]).slice();
+    for(const r of prev.rules||[]) if(r&&r.value&&!curRules.has(n(r.value))&&!curAllow.has(n(r.value))&&!gone.has(n(r.value))) rules.push(r);
+    const allow=(cur.allow||[]).slice();
+    for(const a of prev.allow||[]) if(a&&!curRules.has(n(a))&&!curAllow.has(n(a))) allow.push(a);
+    const map={...(prev.map||{})}, kinds={...(prev.kinds||{})};
+    for(const k of Object.keys(map)) if(curAllow.has(n(k))||gone.has(n(k))) delete map[k];
+    for(const k of Object.keys(kinds)) if(!(k in map)&&!(k in (cur.map||{}))) delete kinds[k];
+    Object.assign(map, cur.map||{}); Object.assign(kinds, cur.kinds||{});
+    return {...cur, created:prev.created||cur.created, rules, allow, map, kinds, removed};
+  }
+  /* מחיקת תיק מוחקת את השמות (ביקורת M1): כל פרופיל נכתב גם ל"פרופיל אחרון", ומחיקת התיק ניקתה רק
+     את רשימת התיקים — מפת השמות האמיתיים נשארה בדפדפן בטקסט גלוי. ואם התיק שנמחק הוא זה שפתוח,
+     השמירה הבאה יצרה אותו מחדש; עכשיו המסמך ממשיך בלי תיק. */
+  deleteCase = name => {
+    try{ const m=JSON.parse(localStorage.getItem(this.caseKey("redact-cases"))||"{}"); delete m[name]; localStorage.setItem(this.caseKey("redact-cases"), JSON.stringify(m)); }catch(_){}
+    try{ const last=JSON.parse(localStorage.getItem(this.caseKey("redact-profile-last"))||"null"); if(last&&last.name===name) localStorage.removeItem(this.caseKey("redact-profile-last")); }catch(_){}
+    const mine=this.state.caseName===name;
+    this.setState({cases:this.readCases(), ...(mine?{caseName:"", profile:null}:{}),
+      ...(this.state.lastProfile&&this.state.lastProfile.name===name?{lastProfile:null}:{})});
+  };
+  resumeCase = name => { const p=this.readCases().find(c=>c.name===name); if(!p) return; this.setState({lastProfile:null}); this.applyProfile(p, name); };
+  /* ── הסיור (Q15 בגרסה 2) ──
+     פעם אחת לכל גרסה, על מסמך בדוי שמובנה בכלי, ומסומן ככזה בכותרתו. הסיור
+     מנווט בעצמו בין המסכים באותם מסלולים שהיא תלחץ בהם; המודל כבוי כדי שלא
+     תחכי להורדה; שום דבר מהמסמך לא נשמר בפרופיל, לא מועתק ולא יורד. */
+  /* הגרסה שבשבב: "v73", או "v73.1" לתיקון קטן של אותה גרסה (scripts/bump.js, החלטת הבעלים 9.10.2026).
+     עד כאן כל מי שקרא אותה זרק כל תו שאינו v או ספרה, ו-"v73.1" היה נקרא "v731". */
+  verText(){ return ((((document.getElementById("ver")||{}).textContent||"").match(/v\d+(?:\.\d+)?/))||[""])[0]; }
+  ver(){ return this.verText()||"v0"; }
+  tourMarkSeen(){ try{ localStorage.setItem("redact-intro-seen","1"); localStorage.setItem("redact-tour-seen", this.ver()); }catch(_){} }
+  static SAMPLE=[
+    // כל אדם כאן דובר פעמיים לפחות: כך הרשימה מתמלאת גם בלי המודל, והסיור
+    // מראה השחרה שלמה ולא מסמך עם שמות שנשארו בו. שם פרטי לבדו אינו מופיע.
+    "מסמך לדוגמה — סיור בכלי. כל השמות והפרטים כאן בדויים.",
+    "פרוטוקול פגישה בעניין הקטינה נועה שרעבי, בת 9.",
+    "מיכל שרעבי: אני האם. אנחנו גרים בחולון, ברחוב הזית 12.",
+    "אורן שרעבי: אני האב. אני גר ברמת גן, והילדה אצלי בסופי שבוע.",
+    "לודמילה כץ: אני המורה של הילדה. יש שיפור בלימודים.",
+    "נועה שרעבי: אני אוהבת את בית הספר.",
+    "מיכל שרעבי: מספר הזהות שלי 314277062, והטלפון 052-6613874.",
+    "אורן שרעבי: הדיון הקודם התקיים ב-11.2.2026 בבית המשפט לענייני משפחה.",
+    "לודמילה כץ: אשמח לעדכן שוב בחודש הבא.",
+    "נועה שרעבי: ואת המורה.",
+  ].join("\n");
+  static TOUR=[
+    {screen:"entry", title:"קובץ או טקסט", next:"טעינת המסמך לדוגמה", target:"[data-tour-target=upload]",
+     text:"כאן בוחרים קובץ Word או PDF. עכשיו: לחצו על «טעינת המסמך לדוגמה»."},
+    {screen:"people", title:"מי בתיק — הרשימה", next:"המשך", target:"[data-tour-target=people]",
+     text:"אלה האנשים שנמצאו במסמך. לחיצה על ✕ מוציאה שם מהרשימה, והוא יישאר במסמך כמו שהוא. עכשיו: הוסיפו שם בשדה למטה, או לחצו «המשך»."},
+    {screen:"places", title:"יישובים", next:"החלת הקבוצה", target:"[data-tour-target=places]",
+     text:"כל יישוב מקבל יישוב דומה לו: עיר בעיר, מושב במושב. עכשיו: לחצו «החלת הקבוצה»."},
+    {screen:"work", title:"מסך הבדיקה", next:"המשך", target:"[data-work] section",
+     text:"קו מלא — הוחלף. קו מקווקו עם ? — מחכה לכם. סמל המחק — נמחק. עכשיו: לחצו על מילה מסומנת, ותיפתח עריכה במקום."},
+    {screen:"work", title:"שמירה", next:"המשך", open:"profile", target:"[data-tour-target=case]",
+     text:"עם שם תיק, אותו אדם מקבל אותו שם בדוי גם במסמך הבא. עכשיו: הקלידו שם תיק בשדה המסומן."},
+    {screen:"work", title:"העתקה ל־AI", next:"המשך", target:"[data-tour-target=copy]",
+     text:"הכפתור המסומן מעתיק את הטקסט עם השמות הבדויים, להדבקה ב־AI. בסיור לא מעתיקים: לחצו «המשך», ונראה מה קורה כשהתשובה חוזרת."},
+    // מסך ההחזרה, עם תשובה לדוגמה בתיבה (tourAnswer); restore: ההחזרה עצמה מעבירה לצעד הבא (rvGo)
+    {screen:"reverse", title:"החזרת שמות", next:"החזרת שמות", target:"[data-tour-target=restore]", restore:true,
+     text:"כאן מדביקים את התשובה שחזרה מה־AI. בתיבה כבר יש תשובה לדוגמה, עם השמות הבדויים מהמסמך. עכשיו: לחצו «החזרת שמות»."},
+    {screen:"reverse", title:"סוף הסיור", next:"סיום", target:"[data-rv-out]",
+     text:"השמות מהמסמך חזרו לתשובה. בלחיצה על «סיום» המסמך לדוגמה יימחק, ושום דבר ממנו לא יישמר. אחר כך אפשר לבחור מסמך אמיתי."},
+  ];
+  /* התשובה לדוגמה בצעד ההחזרה של הסיור (הנוסח שאושר, 7.10.2026): בכל מקום של שם, יישוב או תאריך — מה שהכלי נתן
+     בריצה הזאת, כך ש«החזרת שמות» מחזירה את השמות, היישובים והתאריך של המסמך לדוגמה. שמות מלאים בלבד, כך שההחזרה
+     תמיד מצליחה; ערך שלא הוחלף (שם שהוצא מהרשימה) נשאר כמו שהוא. */
+  tourAnswer(){
+    const m=this.currentMap(), f=v=>m[v]||v;
+    return [
+      `סיכום הפגישה בעניין הקטינה ${f("נועה שרעבי")}, בת 9:`,
+      `1. האם, ${f("מיכל שרעבי")}, גרה עם הקטינה ב${f("חולון")}.`,
+      `2. האב, ${f("אורן שרעבי")}, גר ב${f("רמת גן")}, והקטינה אצלו בסופי שבוע.`,
+      `3. המורה, ${f("לודמילה כץ")}, דיווחה על שיפור בלימודים ותעדכן שוב בחודש הבא.`,
+      `4. הדיון הקודם התקיים ב־${f("11.2.2026")}.`,
+    ].join("\n");
+  }
+  tourStart = async () => {
+    if(!this.state.E) return this.afterEngine(()=>this.tourStart());
+    this.log.add("tour",{at:"start"});
+    this._tourNer=this.state.o.ner;
+    // hadPlaces: null עד שיודעים — כך המונה מראה שבעה צעדים מההתחלה ולא קופץ
+    // הסיור מתחיל ממסמך ריק: מה שהמסמך הקודם השאיר מתאפס כמו בכל מעבר בין מסמכים (docReset)
+    this.setState({...this.docReset(false), intro:false, tour:{i:0, hadPlaces:null}, tourSpot:null, o:{...this.state.o, ner:false}});
+    this._spotKey=null;
+    this._onSpot=()=>{ if(this.state.tour) this.tourMeasure(); };
+    window.addEventListener("resize", this._onSpot); window.addEventListener("scroll", this._onSpot, true);
+    // מסך שנכנס מחליק 6 פיקסלים (rise); מדידה באמצע התנועה השאירה את הזרקור נמוך מהיעד עד שינוי
+    // גודל (L1). סוף אנימציה ושינוי גודל של היעד עצמו (מפה שנפתחה) מודדים שוב.
+    document.addEventListener("animationend", this._onSpot, true);
+    /* לחיצה בעכבר מחוץ ליעד של הצעד נעצרת: החוסמים סביב הזרקור לא הספיקו,
+       כי כשהמסמך נגלל אל מתחת לכותרת העליונה, האזור המואר כולל את הכותרת וכפתור "‹ רשימת השמות"
+       שבה שבר את הסיור. מותר: היעד עצמו, כרטיס הסיור, חלונית העריכה וחלוניות שנפתחו ממנו.
+       גם הפעלה מהמקלדת (Enter על כפתור, detail 0) נעצרת: עד ביקורת M32 היא עברה, ו-Enter על
+       מתג מצב הלילה מחוץ לאזור המואר החליף ערכת צבעים בלי מילה. לחיצה מתוכנתת (click()) אינה
+       מהימנה ואינה נעצרת. */
+    this._tourGuard=e=>{
+      const t=this.state.tour; if(!t||!e.isTrusted) return;
+      const cur=this.constructor.TOUR[t.i], target=cur&&cur.target?document.querySelector(cur.target):null;
+      const el=e.target;
+      // a step whose target is not on the screen lets nothing through either (the tour lens, 6.10: step 7 did)
+      if(!el||!el.closest) return;
+      if((target&&target.contains(el))||el.closest("[data-tour],[data-inline],[data-notice],[data-intro],[data-tip],[data-demo]")) return;
+      e.preventDefault(); e.stopPropagation();
+      this.log.add("tour",{at:"blocked-click"});
+      if(t.nudge!==t.i) this.setState({tour:{...t, nudge:t.i}});
+    };
+    document.addEventListener("click", this._tourGuard, true);
+    /* The page scrolls under the tour, and the spotlight goes with it (tourMeasure on every scroll). v69 held the
+       page still, after the tour lens of 6.10 saw the spotlight lose its target on the save step; that did not
+       reproduce on the old code either, and holding the page hid everything below the window (the owner, 8.10).
+       e2e/tour-hold.spec.js scrolls every way and checks the spotlight. "touring" marks the page during the tour. */
+    document.documentElement.classList.add("touring");
+    /* And the keyboard stays with the tour: Tab and Enter reached the dimmed page (a field outside the lit area
+       took typing, Enter on the rail chose a card). Focus that lands outside the card and the lit area goes back
+       to the card itself, which has no action of its own, so a stray Enter does nothing there. */
+    this._tourFocus=e=>{
+      const t=this.state.tour; if(!t) return;
+      const cur=this.constructor.TOUR[t.i], target=cur&&cur.target?document.querySelector(cur.target):null, el=e.target;
+      if(!el||!el.closest||(target&&target.contains(el))||el.closest("[data-tour],[data-inline],[data-notice],[data-intro],[data-tip],[data-demo]")) return;
+      // the text caret stays in a field the focus left: text inserted without a key press went there
+      try{ const sel=getSelection(); if(sel) sel.removeAllRanges(); }catch(_){}
+      const card=document.querySelector("[data-tour]"); if(card) card.focus({preventScroll:true});
+    };
+    document.addEventListener("focusin", this._tourFocus, true);
+    // browser Back closes the tour and stays in the tool (the owner's decision 27, 6.10); it used to leave the site
+    if(!this._tourHist&&this.canPush()){ this._tourHist=true; try{ history.pushState({pib:"tour"}, ""); }catch(_){} }
+    this._spotRO=typeof ResizeObserver==="function"?new ResizeObserver(this._onSpot):null;
+    /* the sticky header can change height with no render and no resize: a web font arriving late (the
+       wordmark's Frank Ruhl, the interface's Rubik) moves the target without resizing it. A font that
+       finished loading measures again, and so does the header (tourMeasure observes it with the target) */
+    if(document.fonts&&document.fonts.addEventListener) document.fonts.addEventListener("loadingdone", this._onSpot);
+  };
+  // הזרקור: מלבן סביב מה שהצעד מדבר עליו, והשאר מוחשך. אינו חוסם לחיצות.
+  /* הזרקור בגלילה: הוא נע במעבר של רבע שנייה ועודכן דרך state, ולכן
+     נגרר אחרי כל גלילה ובטלפון ברח מהמסך; ומחוץ לאזור המואר אפשר היה ללחוץ ולשבור את
+     הסיור. עכשיו בגלילה הוא מוצב ישירות, בלי מעבר, באותו פריים; המעבר נשאר רק בין צעדים.
+     וארבעה חוסמים שקופים סביב האזור המואר מחזירים לחיצה בחוץ להודעה בכרטיס. */
+  spotCss(sp){
+    const tr=sp.slide?"transition:left .25s,top .25s,width .25s,height .25s;":"";
+    const b="position:fixed;z-index:76;background:transparent;";
+    return {spot:`position:fixed;left:${sp.x}px;top:${sp.y}px;width:${sp.w}px;height:${sp.h}px;border-radius:12px;box-shadow:0 0 0 9999px rgba(10,14,12,.45);pointer-events:none;z-index:75;${tr}`,
+      blocks:{tourBlockT:b+`left:0;top:0;width:100vw;height:${Math.max(0,sp.y)}px`,
+        tourBlockB:b+`left:0;top:${sp.y+sp.h}px;width:100vw;bottom:0`,
+        tourBlockL:b+`left:0;top:${sp.y}px;width:${Math.max(0,sp.x)}px;height:${sp.h}px`,
+        tourBlockR:b+`left:${sp.x+sp.w}px;top:${sp.y}px;right:0;height:${sp.h}px`}};
+  }
+  applySpot(sp){
+    const c=this.spotCss(sp), set=(sel,css)=>{ const el=document.querySelector(sel); if(el) el.setAttribute("style",css); };
+    set("[data-spot]", c.spot);
+    set('[data-tour-block="t"]', c.blocks.tourBlockT); set('[data-tour-block="b"]', c.blocks.tourBlockB);
+    set('[data-tour-block="l"]', c.blocks.tourBlockL); set('[data-tour-block="r"]', c.blocks.tourBlockR);
+  }
+  /* A history entry is pushed only right after a click or a key (the owner, 8.10: Chrome's Back arrow sometimes
+     did nothing, or was grey). Chrome marks the entry a page leaves by history.pushState without such a gesture
+     as one its Back button skips, and with nothing before it the button is greyed out. The document's entry was
+     pushed when the file finished loading, after the file dialog, with no gesture; the demo's tour, started on
+     its own, pushed one too. Without the gesture, the document's entry waits for the next click or key
+     (_histNow), and the tour's and the restore screen's are not pushed at all: Back then does what the browser
+     does. Where the browser cannot say (no navigator.userActivation), it is pushed as before. */
+  canPush(){ const ua=navigator.userActivation; return !ua||ua.isActive; }
+  /* The part of a tour target that can be seen, which is what the spotlight lights (tourMeasure) and what the
+     self-check holds it to. The document's box runs on under the bottom bar, and on step 4 the bar was lit with
+     it (the owner, 8.10): the header and the bar cut the target off where they sit over it (fixed or sticky),
+     unless the target is inside them. */
+  spotRect(el){
+    const r=el.getBoundingClientRect(); let top=r.top, bottom=r.bottom;
+    for(const bar of document.querySelectorAll("header,[data-bar]")){
+      if(bar.contains(el)||el.contains(bar)) continue;
+      const pos=getComputedStyle(bar).position; if(pos!=="fixed"&&pos!=="sticky") continue;
+      const b=bar.getBoundingClientRect(); if(!b.height) continue;
+      if(b.top<=0&&b.bottom>top&&b.bottom<bottom) top=b.bottom+6;
+      else if(b.bottom>=innerHeight-1&&b.top<bottom&&b.top>top) bottom=b.top-6;
+    }
+    return {left:r.left, width:r.width, top, height:Math.max(0,bottom-top)};
+  }
+  tourMeasure(onStep){
+    const t=this.state.tour; if(!t) return;
+    const cur=this.constructor.TOUR[t.i]; const el=cur&&cur.target?document.querySelector(cur.target):null;
+    if(this._spotRO&&el!==this._spotEl){ this._spotRO.disconnect(); if(el) this._spotRO.observe(el);
+      // disconnect() dropped every observation, so the header is observed again with the new target. Its
+      // outer box is what pushes the page down, so that is the box watched
+      const hd=document.querySelector("header"); if(hd) this._spotRO.observe(hd, {box:"border-box"});
+      this._spotEl=el; }
+    if(!el){ if(this.state.tourSpot) this.setState({tourSpot:null}); return; }
+    const r=el.getBoundingClientRect();
+    // גלילה אל היעד רק במעבר צעד; בגלילה של המשתמשת הזרקור הולך איתה, לא מושך אותה חזרה
+    if(onStep&&(r.bottom<0||r.top>innerHeight)){ el.scrollIntoView({block:"center"}); return; }
+    const v=this.spotRect(el);
+    const spot={x:Math.round(v.left)-6, y:Math.round(v.top)-6, w:Math.round(v.width)+12, h:Math.round(v.height)+12, slide:!!onStep};
+    const p=this.state.tourSpot;
+    if(!p||p.x!==spot.x||p.y!==spot.y||p.w!==spot.w||p.h!==spot.h){
+      if(!onStep) this.applySpot(spot);
+      this.setState({tourSpot:spot});
+    }
+  }
+  tourStep(i){ return this.constructor.TOUR[i]; }
+  /* On a phone the review screen shows one pane at a time: the save step's field sits in «ממצאים ובדיקה», and the
+     step said «הקלידו שם תיק בשדה המסומן» over the document, with nothing lit (the tour lens, 6.10). A step
+     whose target is in the rail shows the rail; the step about the document shows the document. */
+  tourPane(step){
+    if(!this.state.narrow||!step||!step.target) return {};
+    return step.target.includes("data-tour-target=case")?{pane:"find"}:step.target.includes("[data-work] section")?{pane:"doc"}:{};
+  }
+  tourClose = () => {
+    const t=this.state.tour; if(!t) return;
+    this.log.add("tour",{at:"close", step:t.i, done:t.i>=this.constructor.TOUR.length-1});
+    // ההדגמה לא כותבת דבר לדפדפן, גם לא שהסיור נראה
+    if(!window.__inkDemo) this.tourMarkSeen();
+    const o={...this.state.o, ner:this._tourNer===undefined?this.state.o.ner:this._tourNer};
+    if(this._onSpot){ window.removeEventListener("resize", this._onSpot); window.removeEventListener("scroll", this._onSpot, true); document.removeEventListener("animationend", this._onSpot, true); document.removeEventListener("click", this._tourGuard, true);
+      if(document.fonts&&document.fonts.removeEventListener) document.fonts.removeEventListener("loadingdone", this._onSpot);
+      this._onSpot=null; }
+    if(this._spotRO){ this._spotRO.disconnect(); this._spotRO=null; this._spotEl=null; }
+    document.documentElement.classList.remove("touring");
+    if(this._tourFocus){ document.removeEventListener("focusin", this._tourFocus, true); this._tourFocus=null; }
+    // closed by its own buttons: its history entry goes too, so the next Back is the page's own
+    if(this._tourHist){ this._tourHist=false; if(!this._tourPopped){ this._tourSkip=true; try{ history.back(); }catch(_){ this._tourSkip=false; } } this._tourPopped=false; }
+    // שם תיק שהוקלד בסיור הוא חלק מהמסמך הבדוי (M1 בביקורת השנייה): הוא לא עובר למסמך
+    // הבא, ולא נשמר כתיק — הסיור מבטיח ששום דבר ממנו לא נשמר
+    // והמסמך הבדוי נמחק כולו, באותה רשימה שמאפסת כל מסמך (docReset): עד כאן נשארו ממנו ההחלטות, הטקסט והסריקה
+    // בהדגמה, סוף הסיור (או דילוג) הוא הכרטיס שמזמין לפתוח חשבון: אין בה מסמך אמיתי לבחור
+    this.setState({...this.docReset(false), tour:null, tourSpot:null, o,
+      caseName:"", profile:null, profileDirty:false, demoEnd:!!window.__inkDemo});
+  };
+  tourNext = async () => {
+    const t=this.state.tour; if(!t) return;
+    const T=this.constructor.TOUR, cur=T[t.i];
+    if(t.i>=T.length-1){ this.tourClose(); return; }
+    this.log.add("tour",{at:"next", step:t.i});
+    if(cur.screen==="entry"){
+      try{
+        const {textToDocx} = await import((window.__resources && window.__resources.todocx) || "./text-to-docx.js");
+        const buf = await textToDocx(this.constructor.SAMPLE);
+        const blocks = await this.blocksOf(buf);
+        this.setState({...this.docReset(true), buf, name:"מסמך לדוגמה", origBlocks:blocks.map(b=>({part:b.part, text:b.text})), pending:false});
+        // הצעד מתקדם רק אחרי שהסריקה נגמרה: באתר החי הלוח הראה "מי בתיק" בזמן
+        // שהרשימה עוד הייתה ריקה, ו"המשך" המשיך בלי אף שם — והמסמך יצא לא מושחר
+        await this.scanNames();
+        if(this.state.tour) this.setState({tour:{...this.state.tour, i:1}});
+      }catch(e){ this.setState({err:"הסיור לא הצליח לטעון את המסמך לדוגמה: "+(e.message||e)}); }
+      return;
+    }
+    if(cur.screen==="people"){
+      const S=this.state;
+      if(S.scanning||S.screen!=="people") return;
+      await this.toPlaces(this.rulesFromPeo(S.peo));
+      // הלוח מתקדם רק כשהמסך הבא באמת על המסך. בלי מסך יישובים (אין שני
+      // יישובים למפה) מחכים למסך הבדיקה ומדלגים ישר אליו.
+      if(this.state.screen==="places"){ this.setState({tour:{...this.state.tour, i:2, hadPlaces:true}}); return; }
+      await this.tourWait(()=>this.state.screen==="work"||this.state.err);
+      if(this.state.tour) this.setState({tour:{...this.state.tour, i:3, hadPlaces:false}});
+      return;
+    }
+    if(cur.screen==="places"){
+      this.geoApply();
+      await this.tourWait(()=>this.state.screen==="work"||this.state.err);
+      if(this.state.tour) this.setState({tour:{...this.state.tour, i:3}});
+      return;
+    }
+    const nx=T[t.i+1];
+    // מצעד ההעתקה אל מסך ההחזרה: התשובה לדוגמה כבר בתיבה, ושם «החזרת שמות» מחזירה אותה
+    if(nx.screen==="reverse"&&cur.screen!=="reverse"){
+      this.setState({tour:{...t, i:t.i+1}, screen:"reverse", returnTo:"work", rvIn:this.tourAnswer(), rvOut:"", rvLeft:[], rvDates:[], rvCount:0, err:""});
+      return;
+    }
+    // בצעד ההחזרה, כפתור הכרטיס עושה מה שעושה הכפתור שבמסך (rvGo מעביר לצעד הבא); תיבה שרוקנה מתמלאת שוב
+    if(cur.restore){ if((this.state.rvIn||"").trim()) this.rvGo(); else this.setState({rvIn:this.tourAnswer()}, this.rvGo); return; }
+    this.setState({tour:{...t, i:t.i+1}, open:nx.open?this.openWith(nx.open):this.state.open, ...this.tourPane(nx)});
+  };
+  // עד עשרים שניות, בפסיעות קטנות, עד שהתנאי מתקיים — העיבוד רץ בלי await
+  async tourWait(cond){ for(let i=0;i<200&&!cond();i++) await new Promise(r=>setTimeout(r,100)); }
+  tourBack = () => {
+    const t=this.state.tour; if(!t||t.i<=0) return;
+    const T=this.constructor.TOUR; let i=t.i-1;
+    if(T[i].screen==="places"&&!t.hadPlaces) i--;
+    const cur=T[i];
+    this.log.add("tour",{at:"back", step:t.i});
+    const patch={tour:{...t, i}, ...this.tourPane(cur)};
+    if(cur.screen==="entry") Object.assign(patch,{screen:"entry", pending:!!this.state.buf});
+    else if(cur.screen==="people") Object.assign(patch,{screen:"people"});
+    else if(cur.screen==="places") Object.assign(patch,{screen:"places"});
+    else if(cur.screen==="work"&&this.state.res) Object.assign(patch,{screen:"work"});
+    this.setState(patch);
+  };
+  // בסיור אין העתקה, הורדה או חבילה: המסמך הבדוי לא יוצא מהכלי, וזה גם מה שהסיור אומר
+  tourBlocks(what){
+    if(!this.state.tour) return false;
+    this.log.add("tour",{at:"blocked", what});
+    this.setState({err:"בסיור אין "+(what==="copy"?"העתקה":what==="download"?"הורדה":what==="report"?"הורדת דוח":"שליחת חבילה")+" — זה מסמך בדוי. בתיק אמיתי הכפתור הזה עובד."});
+    return true;
+  }
+  tourView(){
+    const t=this.state.tour; if(!t) return {tourOn:false};
+    const T=this.constructor.TOUR, cur=T[t.i]||T[0];
+    // צעד היישובים נספר עד שיודעים בוודאות שאין יישובים; אחרת המונה קופץ
+    const shown=T.filter((s,i)=>!(s.screen==="places"&&t.hadPlaces===false&&i!==t.i));
+    const pos=shown.indexOf(cur)+1;
+    const sp=this.state.tourSpot;
+    /* ולא את היעד של הצעד (החזרת שמות, 7.10.2026): התשובה המשוחזרת בצעד האחרון ישבה מתחת לכרטיס. כשהזרקור
+       יורד אל המקום של הכרטיס בתחתית, ויש מקום מעליו, הכרטיס עולה למעלה. הכרטיס בצד ההתחלה (ימין), ובטלפון ברוחב המסך */
+    const card=document.querySelector("[data-tour]"), ch=(card&&card.offsetHeight)||200, cw=(card&&card.offsetWidth)||400;
+    const covers=!!sp&&sp.y+sp.h>innerHeight-ch-24&&sp.y>ch+24&&sp.x+sp.w>innerWidth-18-cw;
+    const up=(this.state.inline&&this.state.inline.y>innerHeight/2-120)||covers;
+    return {tourOn:true, tourTitle:cur.title, tourText:cur.text, tourNextLabel:cur.next,
+      tourPos:`${pos} מתוך ${shown.length}`, tourHasBack:t.i>0,
+      // כרטיס הסיור אינו מכסה את חלונית העריכה (L3): כשהיא פתוחה בחצי התחתון, הכרטיס עולה למעלה
+      tourCardStyle:"position:fixed;inset-inline-start:18px;"+(up?"top:18px;":"bottom:18px;")+"z-index:80;max-width:400px;background:var(--panel);border:1px solid var(--accent);border-radius:14px;padding:16px 18px;box-shadow:0 18px 48px rgba(0,0,0,.28)",
+      tourSpot:!!sp, tourSpotStyle:sp?this.spotCss(sp).spot:"", ...(sp?this.spotCss(sp).blocks:{}),
+      tourNudge:!!(this.state.tour&&this.state.tour.nudge===this.state.tour.i), onTourBlocked:e=>{ if(e&&e.preventDefault) e.preventDefault(); this.log.add("tour",{at:"blocked-click"}); this.setState({tour:{...this.state.tour, nudge:this.state.tour.i}}); },
+      onTourNext:this.tourNext, onTourBack:this.tourBack, onTourClose:this.tourClose};
+  }
+  /* how: true — רק «הרשימה האחרונה», ולא רשימת התיקים, כך ששם התיק נשמר בכל הקשה בלי שאות אחרי אות תיווצר
+     רשומה בתיקים; "typing" — רגע אחרי שההקלדה נעצרת, אבל לא לתוך תיק קיים אחר ששמו הוא מה שהוקלד עד כאן: זה
+     מחכה ליציאה מהשדה (הציד של 11.10: כל אות שמרה תיק, ושם חלקי התמזג לתיק קיים) */
+  persistProfile(how){
+    const onlyLast=how===true;
+    // המסמך לדוגמה של הסיור אינו תיק: שום דבר ממנו לא נשמר בדפדפן
+    if(this.state.tour) return;
+    // רשימה ריקה נשמרת גם היא כשיש מה לזכור: קודם, מחיקה של כל הכללים לא שמרה דבר, והתיק הישן החזיק את כולם
+    if(!this.state.res) return;
+    if(!this.state.rules.length&&!(this.state.allow||[]).length&&!this.removedNow().length) return;
+    const prof=this.profileObj();
+    try{ localStorage.setItem(this.caseKey("redact-profile-last"), JSON.stringify(prof)); }catch(_){}
+    if(onlyLast) return;
+    const was=this._caseSaved;
+    if(how==="typing"&&prof.name&&!(was&&was.name===prof.name)&&this.readCases().some(c=>c.name===prof.name)) return;
+    if(was&&was.name!==prof.name&&!was.existed){ this.dropStored(was.name); this._caseSaved=null; }
+    if(prof.name){
+      const existed=was&&was.name===prof.name?was.existed:this.readCases().some(c=>c.name===prof.name);
+      this.writeCase(prof); this._caseSaved={name:prof.name, existed};
+      this.setState({cases:this.readCases()});
+    } else if(was&&!was.existed) this.setState({cases:this.readCases()});
+    if(!this.state.profileDirty) this.setState({profileDirty:true});
+  }
+  // רק הרשומה ברשימת התיקים, בלי לגעת בתיק הפתוח או ברשימה האחרונה (שם התיק שהוחלף)
+  dropStored(name){
+    try{ const m=JSON.parse(localStorage.getItem(this.caseKey("redact-cases"))||"{}"); delete m[name]; localStorage.setItem(this.caseKey("redact-cases"), JSON.stringify(m)); }catch(_){}
+  }
+  /* קובץ תיק עם סיסמה (החלטת הבעלים, 12.10, «A», הנוסח אושר; הביקורת ההנדסית): «ייצוא לקובץ» שואל סיסמה, והקובץ שיורד
+     מוצפן (PL.lockJSON). ייבוא של קובץ כזה שואל אותה (onProfFile). קובץ רגיל, מלפני 12.10 או מהכתובת הישנה, נקלט כמו קודם.
+     e2e/lockfile.spec.js */
+  static PW_EXPORT="סיסמה לקובץ התיקים (צריך אותה כדי לייבא אותו):";
+  static PW_IMPORT="הקובץ מוגן בסיסמה. סיסמה:";
+  static PW_BAD="הסיסמה לא נכונה, או שהקובץ פגום.";
+  pwOpen(mode){ this.setState({pw:{mode, value:"", err:"", busy:false}}, ()=>{ const el=document.querySelector("[data-pw-in]"); if(el) el.focus(); }); }
+  pwCancel = () => { this._pwFile=null; this.setState({pw:null}); };
+  pwSubmit = async () => {
+    const S=this.state, pw=S.pw; if(!pw||pw.busy||!pw.value) return;
+    this.setState({pw:{...pw, busy:true, err:""}});
+    if(pw.mode==="export"){
+      const locked=await window.PL.lockJSON(this.profileObj(), pw.value);
+      this.setState({pw:null}, ()=>this.saveProfileFile(locked));
+      return;
+    }
+    let inner=null;
+    try{ inner=await window.PL.unlockJSON(this._pwFile, pw.value); }catch(_){ inner=null; }
+    if(!inner){ this.log.add("profile-import-locked",{ok:false}); this.setState({pw:{...pw, value:"", busy:false, err:this.constructor.PW_BAD}}, ()=>{ const el=document.querySelector("[data-pw-in]"); if(el) el.focus(); }); return; }
+    const all=this._pwAll; this._pwFile=null; this.log.add("profile-import-locked",{ok:true});
+    this.setState({pw:null}, ()=>this.importParsed(inner, all));
+  };
+  saveProfile = () => { if(window.__inkDemo) return; this.pwOpen("export"); };
+  saveProfileFile = (prof) => {
+    const blob=new Blob([JSON.stringify(prof,null,1)],{type:"application/json"});
+    const u=URL.createObjectURL(blob), a=document.createElement("a");
+    const name=(this.state.caseName?"תיק-"+this.state.caseName.replace(/[\\/:*?"<>|]+/g," ").trim():"רשימת-שמות")+".json";
+    a.href=u; a.download=name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(u), 4000);
+    // "שמירה" רמזה שהתיק לא נשמר עד הלחיצה; זה ייצוא, והוא אומר לאן (UX #17)
+    this.log.add("profile-export",{locked:!!(window.PL&&window.PL.isLocked(prof))});
+    this.setState({profileDirty:false, notice:`הקובץ «${name}» ירד לתיקיית ההורדות. התיק עצמו נשמר בדפדפן גם בלי זה.`, noticeUndo:false});
+  };
+  loadProfileClick = () => { if(window.__inkDemo) return; this._importAll=false; if(this.profEl) this.profEl.click(); };
+  resumeLast = () => { const p=this.state.lastProfile; if(!p) return; this.setState({lastProfile:null}); this.applyProfile(p, p.name||""); };
+  dismissLast = () => this.setState({lastProfile:null});
+  /* ── מסך ההחזרה (החזרת שמות, 7.10.2026) ── */
+  // לאן חוזרים מכל מסך, ובאיזו מילה; ממסך ההחזרה — למסך שממנו הגיעו, כשהוא עוד קיים
+  // השורה שאחרי עדכון (componentDidMount); «מה חדש» לידה הוא קישור לעמוד השינויים באתר
+  static WHATS_NEW="אינקוגניטו עודכן.";
+  static SCR_LBL={entry:"לבחירת מסמך", people:"מי בתיק", places:"יישובים", work:"חזרה למסמך"};
+  backOf(){
+    const S=this.state, L=this.constructor.SCR_LBL;
+    if(S.screen==="people") return {to:"entry", label:"קובץ"};
+    if(S.screen==="places"||S.screen==="work") return {to:"people", label:"מי בתיק"};
+    if(S.screen==="reverse"){
+      let to = S.returnTo && S.returnTo!=="reverse" ? S.returnTo : "entry";
+      if((to==="work" && !S.res) || (to!=="entry" && !S.buf)) to="entry";
+      return {to, label:L[to]||L.entry};
+    }
+    return {to:"entry", label:"קובץ"};
+  }
+  goBack = () => { const b=this.backOf(); if(b.to==="people"){ this.showList(); return; } this.setState({screen:b.to, pending:b.to==="entry"?!!this.state.buf:false, err:""}); };
+  /* אחרי רענון או בלשונית חדשה אין מסמך ואין תיק, אבל הדפדפן זוכר את התיק האחרון: המסך שואל אם להחזיר לפיו,
+     ולא מניח, כי התשובה יכולה להיות של תיק אחר. תיק עם שם נקרא מרשימת התיקים, שבה הוא שלם (mergeCase), ותיק
+     שנמחק משם אינו מוצע; רשימה בלי שם — כמו שהיא. e2e/restore-ux.spec.js */
+  rvLastOffer(){
+    const last=this.readLast(); if(!last) return null;
+    return last.name?(this.readCases().find(c=>c.name===last.name)||null):last;
+  }
+  openReverse = () => {
+    const S=this.state;
+    this.setState({screen:"reverse", returnTo:S.screen==="reverse"?(S.returnTo||"entry"):S.screen, err:"", rvProfile:null,
+      rvLast:!S.res&&!S.profile&&!S.tour?this.rvLastOffer():null});
+  };
+  rvGo = () => {
+    const S=this.state, E=S.E; this._rvN=(this._rvN||0)+1;
+    /* ביקורת QA (ISSUE-001): אחרי הצמדת תיק שמור מ"תיקים אחרונים" ההחזרה קראה
+       רק את המפה של התיק השמור, ולא את זו של המסמך שבעבודה — הכינוי שהכלי
+       עצמו כתב רגע קודם לא נמצא. המסמך הנוכחי קודם; הפרופיל משלים שמות
+       ממסמכים קודמים באותו תיק. */
+    // תיק שנטען כאן להחזרה בלבד (rvProfile, applyProfile): המפה שלו לבדה, לא של המסמך הפתוח של לקוח אחר
+    const rvP=S.rvProfile, map=rvP?E.restorePairs(rvP.map||{}, {}):E.restorePairs((S.profile&&S.profile.map)||{}, this.currentMap());
+    if(!S.rvIn.trim()){ this.setState({err:"אין טקסט להחזרה. מדביקים כאן את התשובה שה-AI החזיר (Ctrl+V)."}); return; }
+    if(!Object.keys(map).length){ this.setState({err:"עדיין אין שמות להחזרה. בחרו תיק שמור במסך הפתיחה, או ייבאו תיק מקובץ."}); return; }
+    /* הכתיב שחוזר הוא הכתיב שבמסמך (UX #19): "ברקוביץ׳" ו"ברקוביץ'" התערבבו,
+       כי הערך ברשימה הוקלד בגרש אחר מזה שבמסמך */
+    const orig=(S.origBlocks||[]).map(b=>b.text).join("\n");
+    const surface=real=>{
+      if(!orig||!/['׳’"״”]/.test(real)) return real;
+      const pat=[...real].map(c=>/['׳’]/.test(c)?"['׳’]":/["״”]/.test(c)?'["״”]':c.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("");
+      const m=new RegExp(pat,"u").exec(orig); return m?m[0]:real;
+    };
+    const pairs=Object.entries(map).map(([real,fake])=>[surface(real),fake]);
+    // כינויים שיצאו קודם ושונו מאז חוזרים גם הם לאדם שלהם (H1); כינוי שכבר במפה לא נכפל
+    for(const [real,arr] of Object.entries(rvP?(rvP.sent||{}):this.sentAll())) for(const fake of arr) if(!pairs.some(p=>p[1]===fake)) pairs.push([surface(real),fake]);
+    // שמות בדויים של מסמכים קודמים בסשן (docReset), שאינם של המפה הזו: מסומנים כמה שנשאר, לא מוחזרים
+    const mine=new Set(pairs.map(p=>p[1])), earlier=[...(this._earlierFakes||[])].filter(f=>!mine.has(f));
+    /* שם בדוי של מסמך אחר — תיק ששמור במחשב הזה, או מסמך קודם בסשן — שחולק מילה עם שם בדוי של המסמך הזה (השמות
+       הבדויים באים ממאגרים משותפים): ההחזרה הייתה מכניסה את האדם של המסמך הזה לתשובה של לקוח אחר, «מרים הרשקוביץ»
+       ← «מרים ליה», ומציגה הצלחה (הציד של 11.10, ux.md). כלום לא מוחזר, וזה מה שנאמר (הנוסח שאושר, 12.10). מילית של
+       שם («בן», «בר») אינה מילה משותפת, וגם לא תאריך או מספר */
+    const PART=new Set(["בן","בת","בר","אבו","אל","דה","ואן","לה"]);
+    const words=f=>E.norm(String(f||"")).trim().split(/\s+/).filter(w=>w.length>1&&/[א-ת]/.test(w)&&!PART.has(w));
+    const mineW=new Set([...mine].flatMap(words)), here=rvP?(rvP.name||""):(S.caseName||""), others=new Set(earlier);
+    for(const p of this.readCases()) if(p.name!==here){
+      for(const f of Object.values(p.map||{})) others.add(f);
+      for(const a of Object.values(p.sent||{})) for(const f of a||[]) others.add(f);
+    }
+    if(rvP) for(const f of Object.values(this.currentMap())) others.add(f);
+    // כל שם בדוי שבתשובה, של המסמך הזה ושל אחרים; מופע ארוך גובר על מופע שבתוכו: «הרשקוביץ» שבתוך «מרים הרשקוביץ»
+    // שייך למי ש«מרים הרשקוביץ» שלו (התיק שנטען כאן להחזרה בלבד, e2e/case-open-doc.spec.js)
+    const ans=E.norm(S.rvIn), spans=[];
+    for(const [f,own] of [...[...mine].map(f=>[f,true]), ...[...others].filter(f=>f&&!mine.has(f)).map(f=>[f,false])]){
+      const n=E.norm(f).trim(); if(!n) continue;
+      const rx=new RegExp("(^|[^א-ת])([ובהלמכש]?"+n.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+")(?![א-ת])","gu");
+      for(const m of ans.matchAll(rx)){ const s=m.index+m[1].length; spans.push({s, e:s+m[2].length, f, own}); }
+    }
+    spans.sort((a,b)=>(b.e-b.s)-(a.e-a.s));
+    const taken=[];
+    for(const x of spans) if(!taken.some(t=>x.s<t.e&&t.s<x.e)) taken.push(x);
+    const cross=taken.filter(x=>!x.own&&words(x.f).some(w=>mineW.has(w))).map(x=>x.f);
+    if(cross.length){
+      if(!S.tour) this.log.add("restore-other-doc",{n:cross.length});
+      this.setState({rvOut:"", rvCount:0, rvLeft:[], rvDates:[], err:"בתשובה יש שמות בדויים של מסמך אחר, ולכן היא לא הוחזרה. פותחים את המסמך או התיק שלה."});
+      return;
+    }
+    // תאריך שה-AI חישב מתאריך מוזז זז אחורה בהזזה של המסמך הפתוח (backDates; החלטת הבעלים, 12.10). תיק שנטען להחזרה
+    // בלבד: ההזזה נלמדת מזוגות התאריכים שלו, אם יש אחת ודאית
+    const r=E.restoreNames(S.rvIn, pairs, earlier, {off: rvP?undefined:(S.res&&S.res.dateOff)});
+    // ההחזרה בסיור היא של המסמך לדוגמה: ביומן נרשם הסיור עצמו
+    if(!S.tour) this.log.add("restore",{count:r.count, left:(r.left||[]).length, dates:(r.dates||[]).length});
+    // כינוי שמשותף ליותר מאדם אחד אינו "לא נמצא" — הוא נמצא ולא הוחזר, וזה מה שנאמר (M3)
+    const conflictMsg=(r.conflict&&r.conflict.length)?`«${r.conflict.join("», «")}» ${r.conflict.length===1?"הוא שם בדוי":"הם שמות בדויים"} של יותר מאדם אחד במסמך הזה, ולכן לא הוחזר${r.conflict.length===1?"":"ו"}; אפשר לתקן את זה בכרטיס של אחד מהם.`:"";
+    // "לא נמצא אף שם בדוי" רק כשבאמת לא נמצא: כינוי שנשאר בתשובה נמצא, והרשימה שלו אומרת מה נשאר
+    // שם בדוי של מסמך קודם (earlier) אינו מהרשימה הזו: תשובה שיש בה רק כאלה היא של מסמך אחר, וזה מה שנאמר, לצד הרשימה שלהם
+    const none=!r.count&&!(r.left||[]).some(x=>!x.earlier);
+    this.setState({rvOut:r.text, rvCount:r.count, rvLeft:r.left||[], rvDates:r.dates||[], err: conflictMsg||(none?"לא נמצא בתשובה אף שם בדוי מהרשימה. ייתכן שהתשובה שייכת למסמך או לתיק אחר.":"")},
+      ()=>{ const el=document.querySelector("[data-rv-result]"); if(el&&el.scrollIntoView) el.scrollIntoView({block:"start", behavior:(window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches)?"auto":"smooth"});
+        // בצעד ההחזרה של הסיור, ההחזרה עצמה מעבירה לצעד הבא, בכפתור שבמסך כמו בכפתור הכרטיס
+        const t=this.state.tour, T=this.constructor.TOUR;
+        if(t&&T[t.i]&&T[t.i].restore&&this.state.rvOut) this.setState({tour:{...t, i:t.i+1}}); });
+  };
+  // שורה ברשימת מה שנשאר בתשובה: «בדוי» במקום «אמיתי», וכמה פעמים כשיותר מפעם אחת; כינוי של יותר מאדם אחד — בלי אמיתי
+  // החלטת הבעלים, 12.10 («A», בנוסח שהוצג): תאריך בתשובה שזז אחורה כי ה-AI חישב אותו מתאריך מוזז
+  static DATE_BACK="תאריך שה-AI חישב מתאריך מוזז, והוחזר בהתאם. כדאי לבדוק.";
+  leftLine(x){
+    const n=x.at.length;
+    // שם בדוי של מסמך קודם בסשן: האמיתי אינו ידוע כאן, והשם מסומן כמו שהוא
+    if(x.earlier) return `«${x.fake}»`+(n>1?` · ${n} פעמים`:"");
+    return x.real==null?`«${x.fake}» · שייך ליותר מאדם אחד`:`«${x.fake}» במקום «${x.real}»`+(n>1?` · ${n} פעמים`:"");
+  }
+  // התשובה שחזרה, בקטעים: מה שנשאר בה מהפרטים הבדויים מסומן, והשורה שלו מהרשימה היא התיאור שלו
+  rvSegs(){
+    const S=this.state, t=S.rvOut||"", at=[];
+    for(const x of S.rvLeft||[]) for(const [s,e] of x.at) at.push([s,e,this.leftLine(x),false]);
+    for(const x of S.rvDates||[]) for(const [s,e] of x.at) at.push([s,e,this.constructor.DATE_BACK,true]);
+    at.sort((a,b)=>a[0]-b[0]);
+    const out=[]; let i=0;
+    for(const [s,e,title,date] of at){ if(s<i) continue; if(s>i) out.push({t:t.slice(i,s), plain:true}); out.push({t:t.slice(s,e), mark:!date, date, title}); i=e; }
+    if(i<t.length||!out.length) out.push({t:t.slice(i), plain:true});
+    return out;
+  }
+  // אותם קטעים בפסקאות, פסקה לכל שורה, וקטע שעובר שורה נחתך בה. שורה ריקה נשארת פסקה ריקה, כמו
+  // שהייתה שורה ריקה; ירידת השורה האחרונה בסוף התשובה לא מוסיפה שורה
+  rvParas(){
+    const out=[{segs:[]}];
+    for(const sg of this.rvSegs()) sg.t.split("\n").forEach((t,k)=>{ if(k) out.push({segs:[]}); if(t) out[out.length-1].segs.push({...sg, t}); });
+    if(out.length>1&&!out[out.length-1].segs.length) out.pop();
+    return out;
+  }
+  // הסיבה בהודעה על קובץ פרופיל פגום (L17), וגם על קובץ תיקים פגום (importCases)
+  static BAD_PROFILE="הקובץ אינו קובץ תיק, או שהוא פגום";
+  /* ייבוא כל התיקים מקובץ אחד («ייבוא תיקים מקובץ»; המעבר ל-inkognito.co.il, 6.10.2026). הקובץ יורד
+     מהדף «הכלי עבר לכתובת חדשה» שבכתובת הישנה (forward/index.html, «הורדת התיקים לקובץ»), וזו התבנית שלו:
+       {"inkognito":"cases", "v":1, "exported":"<תאריך ISO>",
+        "cases": <מה ששמור שם תחת redact-cases: שם התיק ← הפרופיל שלו>,
+        "last": <מה ששמור שם תחת redact-profile-last, או null>}
+     התיקים נוספים לתיקים של מי שעובד עכשיו (caseKey). תיק שהשם שלו כבר קיים נשאר כמו שהוא, והמיובא נכנס
+     בשם עם המספר הפנוי הבא אחריו («לוי נ׳ לוי 2»): שום דבר לא נדרס. "last" נכנס רק כשאין פרופיל אחרון.
+     הכול או כלום (הביקורת העצמאית, 6.10): כל רשומה, וגם "last", עוברת את profileOk לפני שנכתב דבר, וקובץ
+     שאחת מהן לא עוברת נדחה כולו. קובץ כזה, וכל קובץ פגום או זר, לא משנה כלום, ומקבל את ההודעה של קובץ
+     פרופיל פגום. e2e/case-store.spec.js, e2e/moved.spec.js */
+  importCases(file){
+    const P=this.constructor, obj=x=>!!x&&typeof x==="object"&&!Array.isArray(x);
+    if(file.v!==1||!obj(file.cases)||!Object.values(file.cases).every(p=>P.profileOk(p,true))||(file.last!=null&&!P.profileOk(file.last)))
+      throw new Error(P.BAD_PROFILE);
+    const kc=this.caseKey("redact-cases"), kl=this.caseKey("redact-profile-last");
+    // בלי אב טיפוס: גם תיק בשם "__proto__" הוא רק שם
+    const m=Object.assign(Object.create(null), JSON.parse(localStorage.getItem(kc)||"{}"));
+    let n=0;
+    for(const p of Object.values(file.cases)){
+      let name=p.name;
+      for(let k=2; name in m; k++) name=p.name+" "+k;
+      m[name]={...p, name}; n++;
+    }
+    localStorage.setItem(kc, JSON.stringify(m));
+    const last=file.last&&localStorage.getItem(kl)===null?file.last:null;
+    if(last) localStorage.setItem(kl, JSON.stringify(last));
+    this.log.add("cases-import",{n, last:!!last});
+    // ההודעה במילים שאושרו (7.10.2026). כשתיק בשימוש הרשימה מוסתרת (hasCases), והתיק שבשימוש נשאר כמו שהוא
+    // בלי תיק אחד בקובץ (רק רשימה אחרונה) אין מה לומר: הכרטיס של הרשימה האחרונה הוא מה שנוסף
+    this.setState({cases:this.readCases(), casesHidden:false, err:"", ...(n?{notice:"התיקים מהקובץ נוספו לרשימת התיקים.", noticeUndo:false}:{}),
+      ...(last&&!this.state.lastProfile&&last.rules.length?{lastProfile:last}:{})});
+  }
+  // «ייבוא תיקים מקובץ»: אותה בחירת קובץ, וקובץ שלא נקרא מקבל את ההודעה של קובץ תיקים (onProfFile)
+  importCasesClick = () => { if(window.__inkDemo) return; this._importAll=true; if(this.profEl) this.profEl.click(); };
+  static BAD_CASES="הקובץ לא נקרא: הוא לא קובץ תיקים של אינקוגניטו, או שהוא פגום. שום תיק לא נוסף.";
+  onProfFile = async e => {
+    const f=e.target.files[0]; e.target.value=""; if(!f) return;
+    const all=!!this._importAll; this._importAll=false;
+    let parsed=null;
+    try{ parsed=JSON.parse(await f.text()); }catch(_){ parsed=undefined; }
+    // קובץ עם סיסמה: הסיסמה קודם (pwSubmit), ואחר כך אותה דרך
+    if(parsed&&window.PL&&window.PL.isLocked(parsed)){ this._pwFile=parsed; this._pwAll=all; this.pwOpen("import"); return; }
+    this.importParsed(parsed, all);
+  };
+  importParsed(prof, all){
+    let cases=false;
+    try{
+      if(prof===undefined) throw new Error("JSON");
+      // קובץ של כל התיקים נקלט מכל כפתור ייבוא; כל קובץ אחר הוא הפרופיל של תיק אחד, כמו קודם
+      if(prof&&prof.inkognito==="cases"){ cases=true; this.importCases(prof); return; }
+      // אותה בדיקה של כל פרופיל שנכנס או נקרא (profileOk), עם אותה הודעה של קובץ שאינו פרופיל
+      if(!this.constructor.profileOk(prof)) throw new Error("קובץ תיק לא מזוהה");
+      this.applyProfile(prof, prof.name||undefined);
+    }catch(err){
+      // קובץ תיקים פגום, או קובץ שלא נקרא אחרי «ייבוא תיקים מקובץ»: שום תיק לא נוסף, וזה מה שנאמר (הנוסח שאושר, 7.10.2026)
+      if(cases||all){ this.setState({err:this.constructor.BAD_CASES}); return; }
+      // L17: שגיאת JSON גולמית באנגלית לא אמרה לה כלום
+      const m=String((err&&err.message)||err||"");
+      const why=/JSON|Unexpected|Expected|position/i.test(m)?this.constructor.BAD_PROFILE:m;
+      this.setState({err:"ייבוא התיק נכשל: "+why+". קובץ תיק הוא הקובץ שירד בלחיצה על «ייצוא לקובץ» (סיומת ‎.json)."});
+    }
+  }
+  /* «ניקוי התיקים מהמחשב» (הנוסח שאושר, 7.10.2026): כל התיקים השמורים במחשב הזה, של כל חשבון (forgetCases), אחרי
+     שאלה. גם התיק שמחובר למסמך שבעבודה מתנתק, אחרת השינוי הבא היה שומר אותו שוב. e2e/restore-ux.spec.js */
+  casesHere(){
+    try{ const K=this.constructor.CASE_KEYS;
+      for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(K.some(c=>k===c||k.startsWith(c+":"))) return true; } }catch(_){}
+    return false;
+  }
+  clearCases = () => {
+    if(!confirm("למחוק מהמחשב הזה את כל התיקים השמורים? אי אפשר לבטל את זה.")) return;
+    this.forgetCases();
+    this.log.add("cases-clear",{});
+    this.setState({cases:[], lastProfile:null, rvLast:null, caseName:"", profile:null, profileDirty:false, notice:"התיקים השמורים נמחקו מהמחשב.", noticeUndo:false});
+  };
+  /* תיק שמצטרף למסמך פתוח מוסיף לו את האנשים שלו, כמו ב«מי בתיק», ולא מחליף את הרשימה (הציד של 11.10): ב«קובץ»,
+     ב«החזרת שמות» ובמסך הבדיקה הוא החליף אותה, והשמות שהוקלדו למסמך הזה יצאו גלויים תחת פס ירוק. ערך שבשניהם מקבל
+     את השם הבדוי של התיק, כדי שאותו אדם יקבל אותו שם בכל מסמכי התיק; מה שהוחלט במסמך הזה (להשאיר, להחליף) גובר,
+     כמו ב-mergeCase. מסמך ששייך כבר לתיק אחר נשאר בתיק שלו, ושום דבר ממנו לא נכתב לתיק של לקוח אחר: תיק אחר
+     מצרפים למסמך חדש. name הוא שם התיק שנבחר ("" לרשימה בלי שם), או undefined כשהקובץ לא נושא שם. */
+  applyProfile(prof, name){
+    try{
+      const open=!!this.state.res, mine=this.state.caseName||"";
+      /* תיק שנטען ב«החזרת שמות» כשמסמך פתוח שאינו בתיק הזה — בלי תיק, או של לקוח אחר — הוא להחזרה בלבד: השמות שלו הם
+         המפה של ההחזרה, והמסמך, הרשימה שלו והתיק נשארים כמו שהם. עד כאן המסמך הפתוח הוצמד לתיק ועובד מחדש, והשמירה
+         הבאה כתבה את הלקוח שלו לתוך התיק של הלקוח האחר (הציד של 11.10). e2e/case-open-doc.spec.js */
+      if(open&&this.state.screen==="reverse"&&(name===undefined||name!==mine)){
+        this.log.add("case-restore-only",{});
+        this.setState({rvProfile:prof, err:""});
+        return;
+      }
+      if(open&&mine&&name!==undefined&&name!==mine){
+        this.log.add("case-kept",{});
+        this.setState({notice:`המסמך הפתוח שייך לתיק «${mine}», והוא נשאר בו. כדי לעבוד עם ${name?"«"+name+"»":"הרשימה הקודמת"}, פותחים מסמך חדש.`, noticeUndo:false});
+        return;
+      }
+      // ↶ מחזיר את הרשימה שהייתה לפני התיק
+      if(open) this.pushHistory();
+      const En=this.state.E, nn=v=>En.norm(String(v||"")).trim(), goneP=new Set((prof.removed||[]).map(nn));
+      const rules=(prof.rules||[]).filter(r=>r&&!goneP.has(nn(r.value)));
+      for(const [value, replacement] of Object.entries(prof.map||{})){
+        if(!value||!replacement||goneP.has(nn(value))) continue;
+        const ex=rules.find(r=>r.value===value);
+        if(ex){ if(!ex.replacement) ex.replacement=replacement; continue; }
+        const kind=this.caseKind(value, replacement, prof.kinds);
+        // תאריך זז לפי המסמך שהוא בו (הבחירה של 15.9): התאריך שהוזז במסמך קודם של התיק אינו כלל כאן, וגם לא אדם.
+        // תאריך שקיבל תווית («[תאריך א׳]») נשאר כלל: אותו תאריך מקבל את אותה תווית בכל מסמך בתיק, והתווית לא תינתן לתאריך אחר
+        if(kind==="DATE"&&!/^\[/.test(replacement)) continue;
+        // מקום שהמנוע החליף במסמך קודם (cond): יישוב שהוא גם מילה מוחלף כאן רק במופע שהוא מקום, באותו תחליף.
+        // כלל גורף החליף את «אני חוששת לשלומי» כי «תושבת שלומי» הוחלף במסמך הקודם (הביקורת של 11.10)
+        rules.push(this.mkRule({value, kind:kind==="DATE"?"OTHER":kind, replacement, auto:true, ...(kind==="PLACE"?{cond:true}:{})}));
+      }
+      const own=open?this.state.rules||[]:[], ownAllow=open?this.state.allow||[]:[];
+      const ownR=new Set(own.map(r=>nn(r&&r.value))), ownA=new Set(ownAllow.map(nn));
+      const merged=[...rules.filter(r=>!ownA.has(nn(r.value))||ownR.has(nn(r.value))), ...own.filter(r=>r&&!rules.some(x=>nn(x.value)===nn(r.value)))];
+      const allow=[...new Set([...(prof.allow||[]).filter(a=>!ownR.has(nn(a))), ...ownAllow])];
+      const removed=[...new Set([...(prof.removed||[]), ...(open?this.state.removed||[]:[])])];
+      const mode = prof.mode || this.state.mode;
+      const st=prof.styles||{};
+      const o={...this.state.o, ...(st.num?{numStyle:st.num}:{}), ...(st.date?{dateStyle:st.date}:{})};
+      this.setState({profile:prof, ...(name!==undefined?{caseName:name}:{}), rules:merged, allow, removed, mode, o, err:""}, ()=>{
+        if(this.state.screen==="people"){
+          const list=[...this.state.peo]; const E=this.state.E;
+          for(const r of merged) if(r.kind==="NAME"||r.kind==="ORG"){
+            if(!list.some(p=>E.norm(p.value)===E.norm(r.value)))
+              list.push({value:r.value, kind:r.kind, note:"מהתיק", auto:true, g:null});
+          }
+          this.setState({peo:list, peoNote:`נוספו השמות מהתיק: ברשימה עכשיו ${list.length} שמות, ומי שהופיע במסמכים הקודמים יקבל אותו שם בדוי.`});
+        } else if(this.state.res) this.rerun();
+      });
+    }catch(err){
+      // L17: שגיאת JSON גולמית באנגלית לא אמרה לה כלום
+      const m=String((err&&err.message)||err||"");
+      const why=/JSON|Unexpected|Expected|position/i.test(m)?this.constructor.BAD_PROFILE:m;
+      this.setState({err:"ייבוא התיק נכשל: "+why+". קובץ תיק הוא הקובץ שירד בלחיצה על «ייצוא לקובץ» (סיומת ‎.json)."});
+    }
+  }
+
+  /* ── סימון בטקסט ── */
+  onSheetSelect = ev => {
+    // לחיצה על סימון פותחת עריכה במקום (inlineAt); לחיצה על טקסט רגיל סוגרת אותה
+    const onMark=!!(ev&&ev.target&&ev.target.closest&&ev.target.closest("[data-mark],[data-inline]"));
+    setTimeout(()=>{
+      const E=this.state.E, sel=getSelection();
+      if(!sel || sel.isCollapsed){ this.setState(onMark?{popup:null}:{popup:null, inline:null}); return; }
+      const t=E.trimEdges(sel.toString());
+      if(!t || t.length<2 || t.length>70){ this.setState({popup:null}); return; }
+      const range=sel.getRangeAt(0), r=range.getBoundingClientRect();
+      /* "מילה רגילה" קיבל את הטקסט הגולמי שנבחר, ולכן בחירה עם אות שימוש או פיסוק
+         ("בשרון,") לא התאימה לערך המסומן ולא עשתה כלום. הפתרון אינו חפיפת מחרוזות —
+         "רון" מוכל ב"שרון" והם שני אנשים. זהות של אלמנט ושוויון: אם הבחירה נוגעת
+         בסימון אחד בדיוק, והטקסט שלה שווה לערך שלו אחרי קיצוץ פיסוק ולכל היותר אות
+         שימוש אחת, פועלים על הערך של הסימון. אחרת — על הטקסט כמו שהוא, כביטוי שלם. */
+      let hit=null;
+      try{
+        const root=this.sheetEl;
+        const els=root?Array.from(root.querySelectorAll("[data-mark]")).filter(el=>range.intersectsNode(el)):[];
+        if(els.length===1){
+          // השוויון נבדק מול מה שכתוב על המסך, כי על החלפה מוצג השם הבדוי; הערך
+          // שפועלים עליו הוא המקורי, שיושב ב-data-val
+          const shown=E.norm(E.trimEdges(els[0].textContent||"")).trim(), st=E.norm(t).trim();
+          const val=E.trimEdges(els[0].getAttribute("data-val")||els[0].textContent||"");
+          if(val&&shown&&(st===shown||(/^[בהולמכש]/.test(st)&&st.slice(1)===shown))) hit=val;
+        }
+      }catch(_){}
+      this.setState({popup:{text:t, hit, x:Math.max(12, Math.min(r.left+r.width/2-130, innerWidth-280)), y:r.bottom+10}});
+    }, 10);
+  };
+  /* עריכה במקום (Q1 בגרסה 3): לחיצה על סימון במסמך פותחת ליד המילה את כל הפעולות
+     של הכרטיס — תחליף עם תצוגה מקדימה של המשפט, שלוש הבחירות, "אותו אדם כמו",
+     "אל תחליפו", "לא שם". כך אפשר לעבוד מתוך הטקסט ולא מהצד. הפאנל
+     נשאר כמו שהיה; כל פעולה כאן היא אותה פעולה, נרשמת ביומן עם origin:"inline". */
+  /* בדיקה עצמית (docs/QUALITY-PLAN.md, שכבה 2). ההבטחות של המוצר, נבדקות על המסך שבו
+     המשתמשת נמצאת עכשיו, בלי קשר למה שהבדיקה שהגיעה לכאן בדקה:
+     - כרטיס אינו מתחיל או נגמר בסימן פיסוק, ואין שני כרטיסים באותן אותיות;
+     - ערך ברשימה שמופיע במסמך נמצא — מוחלף או ממתין — ואינו "לא מופיע במסמך";
+     - הזרקור, חלונית העריכה והרמז צמודים למה שהם מצביעים עליו;
+     - אין גלילה אופקית, ואין {{ }} שלא נפתר.
+     זיהוי ההופעה במסמך בנוי כאן מחדש, מאותיות בלבד, ולא מהביטוי של המנוע — אחרת באג
+     בגבול המילה (כמו המירכאות) היה מסתתר גם מהבדיקה. verbose מחזיר ערכים (לבדיקות);
+     בלעדיו רק שמות הכללים ומספרים, כדי שאפשר יהיה לרשום אותם ביומן בלי טקסט. */
+  /* שכבה 5 בתוכנית האיכות: אותה בדיקה עצמית שרצה אחרי כל בדיקת דפדפן רצה גם בסשן
+     אמיתי, ומה שנשבר נכתב ליומן הסשן — שם הכלל, המסך וכמה פעמים, בלי מילה מהמסמך
+     (selfCheck(false) מחזיר שמות כללים בלבד, והשומר של היומן דוחה כל מילה עברית).
+     היומן מגיע בחבילת הבדיקה, כך שנראה שבר לפני שהיא צריכה לתאר אותו. רצה רק כשהמסך
+     נרגע: שנייה אחרי השינוי האחרון ואחרי שכל אנימציה הסתיימה, אחרת היא מודדת שכבה
+     באמצע תנועה (אנימציה אינסופית, כמו סמן טעינה, אינה נספרת). כל כלל נכתב פעם אחת לכל מסך. בדיקה איטית שלוש פעמים נכבית, ונרשמת. */
+  scheduleSelfCheck(){
+    if(this._scOff) return;
+    if(this._scT) clearTimeout(this._scT);
+    this._scT=setTimeout(()=>this.runSelfCheck(), 1000);
+  }
+  runSelfCheck(){
+    this._scT=null;
+    if(this._scOff||!this.log||document.hidden) return;
+    if(this._reruns>0||(document.getAnimations&&document.getAnimations().some(a=>a.playState==="running"&&!(a.effect&&a.effect.getTiming().iterations===Infinity)))){
+      this._scWait=(this._scWait||0)+1; if(this._scWait<=10) this._scT=setTimeout(()=>this.runSelfCheck(), 300);
+      return;
+    }
+    this._scWait=0;
+    const t0=performance.now(); let found;
+    try{ found=this.selfCheck(false); }catch(_){ found=[{rule:"check-error"}]; }
+    const ms=Math.round(performance.now()-t0);
+    if(ms>200&&(this._scSlow=(this._scSlow||0)+1)>=3){ this._scOff=true; this.log.add("self-check-off",{ms}); }
+    const S=this.state, screen=S.tour?"tour-"+S.screen:S.screen, seen=this._scSeen||(this._scSeen=new Set()), by={};
+    for(const f of found) by[f.rule]=(by[f.rule]||0)+1;
+    for(const [rule,n] of Object.entries(by)){
+      const k=rule+"|"+screen; if(seen.has(k)) continue;
+      // ארבעים סוגים לכל היותר ביומן; כשהתקרה מתמלאת זה נרשם פעם אחת, כדי שסשן רווי לא ייראה נקי (L12)
+      if(seen.size>=40){ if(!this._scFull){ this._scFull=true; this.log.add("self-check-full",{screen}); } continue; }
+      seen.add(k); this.log.add("self-check",{rule, screen, n, ms});
+    }
+  }
+  selfCheck(verbose){
+    const S=this.state, E=S.E, out=[], add=(rule,detail)=>out.push(verbose?{rule,detail}:{rule});
+    if(!E) return out;
+    const letters=v=>String(v||"").replace(/[\u0591-\u05c7\u200e\u200f]/g,"").replace(/[^\u05d0-\u05eaA-Za-z0-9]+/g," ").trim();
+    const n=v=>letters(v);
+    // כרטיסים
+    const titles=[...document.querySelectorAll("[data-group]")].map(g=>({key:g.getAttribute("data-group")||"", t:((g.querySelector("span")||{}).textContent||"").trim()}));
+    for(const c of titles) if(c.t&&/^[^\u05d0-\u05eaA-Za-z0-9]|[^\u05d0-\u05eaA-Za-z0-9'\u05f3]$/.test(c.t)) add("card-edge-punct", c.t);
+    const seen=new Map();
+    for(const c of titles.filter(x=>x.key.startsWith("a|"))){ const k=n(c.t); if(!k) continue; if(seen.has(k)&&seen.get(k)!==c.t) add("card-duplicate", seen.get(k)+" / "+c.t); else seen.set(k,c.t); }
+    // ערכים ברשימה שמופיעים במסמך
+    if(S.screen==="work"&&S.res&&!S.tour){
+      const docToks=letters((S.origBlocks||[]).map(b=>b.text).join("\n")).split(" ").filter(Boolean);
+      const PFX="בהולמכש";
+      const present=v=>{ const vt=letters(v).split(" ").filter(Boolean); if(!vt.length) return false;
+        for(let i=0;i+vt.length<=docToks.length;i++){ let ok=true;
+          for(let j=0;j<vt.length;j++){ const d=docToks[i+j], w=vt[j];
+            if(d===w) continue;
+            if(j===0&&d.length>w.length&&d.endsWith(w)&&[...d.slice(0,d.length-w.length)].every(c=>PFX.includes(c))&&d.length-w.length<=2) continue;
+            ok=false; break; }
+          if(ok) return true; }
+        return false; };
+      const allowed=new Set((S.allow||[]).map(n));
+      const handled=[...S.res.applied.map(r=>r.of||r.base||r.value), ...S.res.flagged.filter(r=>r.src!=="nohit").map(r=>r.value)].map(n);
+      const covers=(h,v)=>(" "+h+" ").includes(" "+v+" ");
+      for(const r of S.rules||[]){
+        const v=n(r.value); if(!v||v.length<2||allowed.has(v)) continue;
+        if(!present(r.value)) continue;
+        if(!handled.some(h=>covers(h,v)||h===v)) add("listed-not-handled", r.value);
+      }
+      for(const f of S.res.flagged.filter(r=>r.src==="nohit")) if(present(f.value)&&!allowed.has(n(f.value))) add("nohit-but-present", f.value);
+      // הבטחה 4: שני אנשים אינם חולקים כינוי. אם כן, התשובה מה-AI אינה יכולה לחזור אליהם
+      // (restoreNames מוותר על כינוי משותף). אותה מפה שמסך ההחזרה משתמש בה; מיזוג "אותו אדם" כבר יצא ממנה.
+      const byPseudo=new Map();
+      for(const [v,p] of Object.entries(this.currentMap())){ const k=n(p); if(!k) continue;
+        if(byPseudo.has(k)&&n(byPseudo.get(k))!==n(v)) add("pseudonym-shared", byPseudo.get(k)+" / "+v); else byPseudo.set(k,v); }
+    }
+    // שכבות צמודות למה שהן מצביעות עליו
+    const near=(a,b)=>Math.abs(a-b)<=1.5;
+    if(S.tour&&S.tourSpot){
+      const cur=this.constructor.TOUR[S.tour.i], el=cur&&cur.target?document.querySelector(cur.target):null, sp=document.querySelector("[data-spot]");
+      if(el&&sp){ const a=this.spotRect(el), b=sp.getBoundingClientRect();
+        if(!(near(b.top,a.top-6)&&near(b.left,a.left-6)&&near(b.height,a.height+12)&&near(b.width,a.width+12))) add("spotlight-drift", Math.round(b.top-(a.top-6))+"px"); }
+    }
+    if(S.inline&&S.inline.anchor&&document.contains(S.inline.anchor)){
+      const ed=document.querySelector("[data-inline]"), r=S.inline.anchor.getBoundingClientRect();
+      if(ed&&r.bottom>=0&&r.top<=innerHeight){ const p=this.popPos(r), b=ed.getBoundingClientRect(); if(!near(b.top,p.y)||!near(b.left,p.x)) add("inline-drift", Math.round(b.top-p.y)+"px"); }
+    }
+    if(S.tip&&S.tip.anchor&&document.contains(S.tip.anchor)){
+      const tp=document.querySelector('[data-tip="panel"]'), r=S.tip.anchor.getBoundingClientRect();
+      if(tp&&r.bottom>=0&&r.top<=innerHeight){ const b=tp.getBoundingClientRect(); if(!near(b.top,r.bottom+8)) add("tip-drift", Math.round(b.top-r.bottom-8)+"px"); }
+    }
+    // פריסה
+    if(document.documentElement.scrollWidth>innerWidth+1) add("horizontal-overflow", document.documentElement.scrollWidth+">"+innerWidth);
+    const raw=[...document.querySelectorAll("#dc-root *")].filter(e=>e.childElementCount===0&&/\{\{\s*[\w.]+\s*\}\}/.test(e.textContent||""));
+    if(raw.length) add("unresolved-placeholder", raw.slice(0,3).map(e=>e.textContent.trim().slice(0,40)).join(" | "));
+    return out;
+  }
+  popPos(r){ let x=Math.max(12, Math.min(r.left+r.width/2-170, innerWidth-352)), y=r.bottom+8; if(y>innerHeight-260) y=Math.max(12, r.top-250); return {x,y}; }
+  inlineAt(e, info){
+    let x=24, y=80, anchor=null;
+    try{ anchor=e.currentTarget; const p=this.popPos(anchor.getBoundingClientRect()); x=p.x; y=p.y; }catch(_){}
+    this.log.add("inline-open",{mode:info.mode, ...this.logFacts(info.value, info.base)});
+    return {...info, x, y, anchor};
+  }
+  /* החלונית והרמז נעים עם הסימון שלהם (M4 בביקורת השנייה): הם קבועים על המסך, ובגלילה
+     של העמוד או של המסמך נשארו במקום וכיסו שורה אחרת. בגלילה הם ממוקמים מחדש לפי
+     הסימון, ונסגרים כשהוא יוצא מהמסך או נעלם. */
+  followAnchors(){
+    if(this._followRaf) return;
+    this._followRaf=requestAnimationFrame(()=>{
+      this._followRaf=null;
+      const S=this.state, up={};
+      const gone=a=>!a||!document.contains(a);
+      if(S.inline&&S.inline.anchor){
+        const a=S.inline.anchor;
+        if(gone(a)) up.inline=null;
+        else{ const r=a.getBoundingClientRect(); if(r.bottom<0||r.top>innerHeight) up.inline=null; else{ const p=this.popPos(r); if(p.x!==S.inline.x||p.y!==S.inline.y) up.inline={...S.inline, x:p.x, y:p.y}; } }
+      }
+      if(S.tip&&S.tip.anchor){
+        const a=S.tip.anchor;
+        if(gone(a)) up.tip=null;
+        else{ const r=a.getBoundingClientRect(); if(r.bottom<0||r.top>innerHeight) up.tip=null; else{ const x=Math.max(12, Math.min(r.left+r.width/2-150, innerWidth-312)), y=r.bottom+8; if(x!==S.tip.x||y!==S.tip.y) up.tip={...S.tip, x, y}; } }
+      }
+      if(Object.keys(up).length) this.setState(up);
+    });
+  }
+  inlinePreview(info, draft){
+    if(!info||!info.text) return "";
+    const pre=info.pre||"", d=String(draft||"").trim();
+    let rep=pre&&d? (d[0]==="ה"&&/[בלכ]$/.test(pre)?pre+d.slice(1):pre+d) : (d||"");
+    const a=Math.max(0,info.s-36), z=Math.min(info.text.length,info.e+36);
+    return (a>0?"…":"")+info.text.slice(a,info.s)+"«"+rep+"»"+info.text.slice(info.e,z)+(z<info.text.length?"…":"");
+  }
+  inlineView(){
+    const S=this.state, E=S.E, I=S.inline; if(!I||!E) return {inline:false};
+    const n=x=>E.norm(String(x||"")).trim();
+    const rule=S.rules.find(r=>n(r.value)===n(I.base)||n(r.value)===n(I.value));
+    // סימון ∅ אינו יודע את הסוג; הכלל שלו יודע
+    const nameish=/^(שם|גוף|יישוב|מקום)/.test(I.label||"")||!!(rule&&["NAME","ORG","PLACE"].includes(rule.kind));
+    const isDate=/^תאריך/.test(I.label||"")||!!(rule&&rule.kind==="DATE");
+    const cur=(rule&&rule.style)||(nameish?(S.mode==="block"?"black":S.mode==="label"?"label":"name"):isDate?(S.o.dateStyle||"name"):(S.o.numStyle||"blank"));
+    const btn=on=>"padding:5px 10px;border-radius:12px;font-size:12px;white-space:nowrap;border:1px solid var(--line);"+(on?"background:var(--accent-soft);color:var(--accent-ink);font-weight:500":"color:var(--ink2)");
+    const kind=rule?rule.kind:(nameish?"NAME":this.engineKindOf(I.label));
+    const act=(what,fn)=>e=>{ if(e&&e.stopPropagation) e.stopPropagation(); this.log.add("inline-act",{act:what}); this.setState({inline:null}); fn(); };
+    const KINDS=E.KINDS||[];
+    return {inline:true,
+      inlineStyle:`position:fixed;z-index:65;left:${I.x}px;top:${I.y}px;width:340px;max-width:calc(100vw - 24px);background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;box-shadow:0 14px 40px rgba(0,0,0,.22)`,
+      inlineStop:e=>e.stopPropagation(),
+      // אות השימוש מוצגת חיוורת לפני השם, וכשבב לפני התיבה: היא של המסמך, התיבה של השם (Q6 בגרסה 5)
+      inlineValue:I.base||I.value, inlinePre:I.pre||"", inlineRep:I.mode==="applied"?(I.rep||""):"", inlineKind:I.label||"",
+      // שם של שתי מילים ומעלה מהרשימה: כל מילה ניתנת להסרה מהשם (Q2 בגרסה 5)
+      inlineHasWords:!!rule&&I.mode==="applied"&&this.wordItems(rule.value).length>0,
+      inlineWords:rule?this.wordItems(rule.value, ()=>this.log.add("inline-act",{act:"trim"})):[],
+      inlineApplied:I.mode==="applied", inlineFlag:I.mode==="flag", inlineDel:I.mode==="del",
+      inlineDraft:S.inlineDraft||"", onInlineDraft:e=>this.setState({inlineDraft:e.target.value}),
+      onInlineKey:e=>{ e.stopPropagation(); if(e.key==="Enter") this.inlineSave(); if(e.key==="Escape") this.setState({inline:null}); },
+      onInlineSave:act("rep",()=>this.setRep(I.value, S.inlineDraft, I.base)),
+      inlinePreview:this.inlinePreview(I, S.inlineDraft),
+      inlineIsName:kind==="NAME"&&I.mode==="applied",
+      inlineNameLabel:nameish?"שם":isDate?"תאריך מוזז":"תווית",
+      inlineNameBtn:btn(cur==="name"||cur==="label"), inlineBlankBtn:btn(cur==="blank"), inlineBlackBtn:btn(cur==="black"),
+      onInlineName:act("style",()=>this.setStyle(I.value, kind, nameish||isDate?"name":"label", I.base)),
+      onInlineBlank:act("style",()=>this.setStyle(I.value, kind, "blank", I.base)),
+      onInlineBlack:act("style",()=>this.setStyle(I.value, kind, "black", I.base)),
+      inlineSameOpts:[...new Set(S.rules.filter(r=>(r.kind||"NAME")==="NAME"&&!r.sameAs).map(r=>r.value))].filter(o=>n(o)!==n(I.base)).map(o=>({value:o,label:o})),
+      onInlineSame:e=>{ e.stopPropagation(); const to=e.target.value; if(!to) return; this.log.add("inline-act",{act:"same"}); this.setState({inline:null}); this.mergeInto(I.base, to); },
+      onInlineAllow:act("allow",()=>this.addAllow(I.base||I.value)),
+      inlineFromList:I.src==="list"||I.src==="sweep", onInlineNotName:act("not-a-name",()=>this.notAName(I.base, I.value)),
+      inlineKinds:KINDS.map(([k,label])=>({label:this.kindLabel(label), onClick:act("add",()=>this.addRule(I.value, k, "", "mark"))})),
+      onInlineClose:e=>{ e.stopPropagation(); this.setState({inline:null}); }};
+  }
+  inlineSave(){ const I=this.state.inline; if(!I) return; this.log.add("inline-act",{act:"rep"}); this.setState({inline:null}); this.setRep(I.value, this.state.inlineDraft, I.base); }
+  scrollToMark = id => {
+    const root=this.sheetEl; if(!root) return;
+    const el=root.querySelector('[data-mark="'+id+'"]'); if(!el) return;
+    const r=el.getBoundingClientRect(), sr=root.getBoundingClientRect();
+    root.scrollTop += (r.top-sr.top) - root.clientHeight/2 + r.height/2;
+    el.style.animation="none"; void el.offsetWidth; el.style.animation="flash 1.1s ease";
+  };
+
+  renderVals(){
+    const S=this.state, E=S.E;
+    const KINDS = E ? E.KINDS : [];
+    const primaryBtn="padding:12px 20px;border-radius:10px;background:var(--accent);color:var(--panel);font-weight:600;letter-spacing:.01em;font-size:14px;white-space:nowrap";
+    const seg = on => "flex:1;padding:8px 6px;border-radius:7px;font-size:12.5px;font-weight:500;"+
+      (on?"background:var(--panel);color:var(--accent-ink);box-shadow:var(--shadow)":"color:var(--ink2)");
+    const chip = on => "padding:5px 12px;border-radius:14px;font-size:12px;font-weight:500;white-space:nowrap;"+
+      (on?"background:var(--accent);color:var(--panel)":"background:var(--panel2);color:var(--ink2)");
+    // הבחירה הזאת נוגעת לשמות בלבד. מספר מזהה לעולם אינו מוחלף במספר בדוי אחר —
+    // הוא מוחלף בתווית, בכל אחד משלושת המצבים. בלי לומר את זה, תווית כמו [ת"ז א׳]
+    // בתוך הטקסט נקראת כאילו הכלי פספס משהו.
+    const NUMNOTE="מספרים מזהים (ת״ז, טלפון, חשבון, רכב, מספר תיק, כתובת) נמחקים מהטקסט כברירת מחדל, והמשפט נשאר בלעדיהם; הם לא מוחלפים במספר בדוי. אפשר לשנות את זה למטה, או בכל כרטיס בנפרד. תאריך מלא מוזז באותו מספר ימים בכל המסמך: ה־AI רואה תאריכים שנראים אמיתיים והמרווחים ביניהם נשמרים, ובהחזרת השמות חוזרים התאריכים המקוריים. גיל נשאר תמיד. הבחירה כאן נוגעת לשמות.";
+    const MNOTE={
+      real:"«רונית לוי» תהפוך ל«מיכל ברנע». המשפט נשאר תקין, וכלי ה־AI עובד על טקסט שנקרא כמו מסמך אמיתי. אותו אדם מקבל את אותו שם גם במסמך הבא באותו תיק. "+NUMNOTE,
+      label:"«דוד לוי» יהפוך ל«פלוני א׳». ברור לעין, אבל הטקסט נקרא פחות טבעי. "+NUMNOTE,
+      block:"«רונית לוי» תהפוך ל«███». הכי בטוח, אבל כלי AI מתקשה לנתח טקסט כזה. "+NUMNOTE};
+    const KIND_ORDER=["NAME","ORG","PLACE"], KIND_GROUP={NAME:"אנשים",ORG:"גופים",PLACE:"מקומות"};
+const KIND_NAME={NAME:"אדם", ORG:"גוף", PLACE:"מקום"};
+    // שם קובץ עברי עם סיומת לטינית: בידוד משמאל לימין, אחרת הסיומת קופצת לצד הלא נכון
+    const bdi=s=>s?String.fromCharCode(8294)+s+String.fromCharCode(8297):s;
+    // the current step is the action colour, which is gilt on the header, as on the site's own index; the
+    // others stay cream (in the header's cream, the current step was 1.12:1 against the rest)
+    const stepStyle=(active, enabled)=>"font-size:12.5px;padding:4px 2px;white-space:nowrap;cursor:"+(enabled?"pointer":"default")+
+      ";color:"+(active?"var(--accent)":enabled?"var(--ink2)":"var(--ink3)");
+    const back=this.backOf();
+
+    const MV = S.screen==="places" ? this.mapView() : null;
+
+    const v = {
+      isEntry:S.screen==="entry", isPeople:S.screen==="people", isPlaces:S.screen==="places",
+      isBusy:S.screen==="busy", isWork:S.screen==="work" && !!S.res, isReverse:S.screen==="reverse",
+      // במסך הבדיקה יש סרגל שלבים משלו למטה; שני מודלים של התקדמות על אותו מסך בלבלו (UX #12)
+      showSteps:S.screen!=="reverse"&&S.screen!=="work",
+      step1:stepStyle(S.screen==="entry", true),
+      step2:stepStyle(S.screen==="people", !!S.buf),
+      step3:stepStyle(S.screen==="places", !!S.buf),
+      step4:stepStyle(S.screen==="work", false),
+      // the current step is said, not only shown (undefined leaves the attribute off)
+      step1Cur:S.screen==="entry"?"step":undefined, step2Cur:S.screen==="people"?"step":undefined,
+      step3Cur:S.screen==="places"?"step":undefined, step4Cur:S.screen==="work"?"step":undefined,
+      // בלי מסמך אין לאן ללכת: מושבתים באמת, לא רק בצבע חיוור (ראו header nav button:disabled)
+      step2Off:!S.buf, step3Off:!S.buf,
+      goStep1:()=>this.setState({screen:"entry", pending:!!S.buf, err:""}),
+      goStep2:()=>{ if(this.unscanned()) this.start(); else this.showList(); },
+      // מ«מי בתיק» הצעד «יישובים» הוא «המשך» (peoForward); ממסך אחר הכללים כבר הולכים עם הרשימה (componentDidUpdate)
+      goStep3:()=>{ if(!S.buf) return; if(this.unscanned()) this.start(); else if(S.screen==="people") this.peoForward(); else this.toPlaces(S.rules); },
+      showBack:S.screen!=="entry",
+      backLabel:back.label, onBack:this.goBack,
+      pasteText:S.pasteText||"", hasPaste:(S.pasteText||"").trim().length>0,
+      pasteLabel:"שימוש בטקסט הזה", onPasteGo:this.usePastedText,
+      onPasteText:e=>this.setState({pasteText:e.target.value}),
+      hasPending:!!S.pending, pendName:bdi(S.name), pendMeta:S.pendMeta||"", onStart:this.start,
+      nerAsk:!!S.nerAsk&&!!S.pending, onNerAskYes:this.onNerAskYes, onNerAskNo:this.onNerAskNo,
+      startLabel:S.o.auto?"המשך — איתור שמות במסמך":"המשך לעיבוד",
+      rvBackLabel:S.returnTo==="work"?"חזרה למסמך":"חזרה",
+      // התיק האחרון, כשאין מסמך ואין תיק (rvLastOffer): שאלה עם שני כפתורים, במקום תיבת ההקשר
+      rvLastOn:!!S.rvLast&&!S.res&&!S.profile&&!S.tour, rvCtxOn:!(S.rvLast&&!S.res&&!S.profile&&!S.tour),
+      rvLastTitle:S.rvLast?(S.rvLast.name?"להחזיר את השמות לפי התיק «"+S.rvLast.name+"»?":"להחזיר את השמות לפי רשימת השמות מהפעם הקודמת?"):"",
+      rvLastMeta:S.rvLast?((n=>n===1?"שם או פרט אחד":n+" שמות ופרטים")(this.profileCount(S.rvLast))+" · עודכן "+new Date(S.rvLast.updated||S.rvLast.created).toLocaleString("he-IL",{dateStyle:"short",timeStyle:"short"})):"",
+      rvLastUseLabel:S.rvLast&&S.rvLast.name?"שימוש בתיק הזה":"שימוש ברשימה הזאת",
+      onRvLastUse:()=>{ const p=S.rvLast; if(!p) return; this.setState({rvLast:null, lastProfile:null}); this.applyProfile(p, p.name||""); },
+      onRvLastOther:()=>this.setState({rvLast:null}),
+      // בסיור: שורה מעל התשובה לדוגמה, ובלי ייבוא תיק (המסמך לדוגמה אינו תיק)
+      rvTour:!!S.tour, rvImportOn:!S.tour,
+      // מה שנשאר בתשובה (leftOver במנוע): הרשימה, או שורה שלא נמצא דבר, רק כשההחזרה מצאה משהו להחזיר
+      rvLeftOn:!!S.rvOut&&(S.rvLeft||[]).length>0,
+      rvLeftNone:!!S.rvOut&&!(S.rvLeft||[]).length&&S.rvCount>0,
+      rvLeftHead:(n=>n===1?"נשאר בתשובה פרט בדוי אחד":"נשארו בתשובה "+n+" פרטים בדויים")((S.rvLeft||[]).length),
+      rvLeftItems:(S.rvLeft||[]).map(x=>({t:this.leftLine(x)})),
+      rvDatesOn:!!S.rvOut&&(S.rvDates||[]).length>0,
+      rvDateItems:(S.rvDates||[]).map(x=>({t:"«"+x.now+"»: "+this.constructor.DATE_BACK})),
+      rvParas:this.rvParas(),
+      // «חזרה למסמך» גם מתחת לתוצאה, כשיש מסמך לחזור אליו; בכפתור העליון בלי מסמך כתוב «לבחירת מסמך»
+      rvBackOn:back.to==="work"&&!S.tour,
+      rvCtxStyle:"padding:12px 15px;border-radius:11px;font-size:13px;margin-bottom:16px;border:1px solid var(--line);background:"+(S.res||S.profile?"var(--accent-soft)":"var(--panel2)"),
+      rvCtxTitle:(S.res?"השמות מהמסמך שבעבודה":(S.profile?"השמות מתיק שמור":"עדיין אין כאן שמות להחזרה"))+
+        ((S.profile&&(S.profile.name||S.caseName))?" · תיק: "+(S.profile.name||S.caseName):""),
+      rvCtxText:S.res
+        ? `הכלי יחזיר את השמות של המסמך «${bdi(S.name)}» שבמסך הבדיקה (${Object.keys(this.currentMap()).length} שמות`+
+          ((S.profile&&S.profile.map&&Object.keys(S.profile.map).length)?`, ועוד ${Object.keys(S.profile.map).length} מהתיק`:"")+`). אפשר לחזור אליו בכל רגע.`
+        : (S.profile
+          ? `הכלי יחזיר את השמות של התיק (${Object.keys((S.profile.map)||{}).length} שמות). אין צורך לפתוח שוב את המסמך.`
+          : "כדי להחזיר שמות צריך את המסמך שעובדים עליו בלשונית הזאת, או תיק שמור: בוחרים אותו במסך הפתיחה, או מייבאים אותו מקובץ."),
+      showTagline:!S.narrow,
+      showIntro:!!S.intro&&!S.tour,
+      onCloseIntro:()=>{ this.tourMarkSeen(); this.setState({intro:false}); },
+      // לחיצה על הרקע סוגרת כמו "להתחיל ישר"; לחיצה בתוך החלון לא (ביקורת QA 003)
+      onIntroBackdrop:()=>{ this.tourMarkSeen(); this.setState({intro:false}); },
+      introStop:e=>e.stopPropagation(),
+      onTourStart:()=>this.tourStart(),
+      ...this.tourView(),
+      introSteps:[
+        {n:"1", title:"החלפת שמות", text:"בוחרים קובץ Word או PDF, או מדביקים טקסט, ועוברים על רשימת האנשים והיישובים שנמצאו."},
+        {n:"2", title:"העתקה או הורדה", text:"מעתיקים את הגרסה עם השמות הבדויים ומדביקים אותה בכלי ה־AI, או מורידים אותה כקובץ Word."},
+        {n:"3", title:"החזרת שמות", text:"את התשובה של ה־AI מדביקים ב«החזרת שמות מתשובת AI», והשמות האמיתיים חוזרים למקומם."}
+      ],
+      isDark:S.theme==="dark", isLight:S.theme!=="dark", onTheme:this.toggleTheme,
+      onReverse:this.openReverse,
+      demoOn:!!window.__inkDemo&&!S.demoEnd, demoEnd:!!S.demoEnd, demoSignup:(window.__inkDemo&&window.__inkDemo.signup)||"#",
+      // «עזרה»: הסיור מעל מסמך פתוח שואל קודם, באותה שאלה של «אחורה» בדפדפן, כי הסיור מתחיל ממסמך ריק
+      helpOpen:!!S.helpOpen, helpExpanded:S.helpOpen?"true":"false",
+      onHelp:()=>this.setState({helpOpen:!S.helpOpen}), onHelpClose:()=>this.setState({helpOpen:false}),
+      onHelpTour:()=>{ this.setState({helpOpen:false}); if(S.buf&&!S.tour&&!confirm("לצאת מהמסמך? המסמך וההחלטות שקיבלתם לגביו יאבדו. התיק נשאר שמור בדפדפן.")) return; this.tourStart(); },
+      onHelpIntro:()=>this.setState({helpOpen:false, intro:true}),
+      /* היה כפתור אחד בכותרת, כפתור שני זהה בסרגל התחתון, ומקטע שלישי במסילה
+         שרץ בכלל על מסלול אחר: הוא בנה את הזוגות מ-livePairs, שאינה מסננת ערך
+         שהושחר ל-███, בעוד שהמסך בנה אותם מ-currentMap שכן. אותה הדבקה יכלה
+         להחזיר תוצאה אחרת לפי איפה הודבקה. נשאר הכפתור בכותרת, שנראה בכל
+         המסכים ועובד גם בלי מסמך טעון; אחרי ההעתקה ל־AI הוא מודגש, כי זה הרגע
+         שבו מחפשים אותו. */
+      reverseBtnStyle:"font-size:13px;padding:7px 11px;border-radius:8px;white-space:nowrap;"+
+        (S.copied&&S.screen!=="reverse"
+          ? "border:1px solid var(--accent);background:var(--accent-soft);color:var(--accent-ink);font-weight:500"
+          : "color:var(--ink2)"),
+      onHome:()=>this.setState({screen:"entry", pending:!!S.buf, err:""}),
+      notice:S.notice||"", onNoticeClose:()=>this.setState({notice:""}), noticeNew:S.notice===this.constructor.WHATS_NEW,
+      noticeUndo:S.noticeUndo!==false,
+      onNoticeUndo:()=>{ this.setState({notice:""}); this.undo(); },
+      err:S.err, busyT:S.busyT, primaryBtn,
+      fileRef:el=>{ if(el) this.fileEl=el; }, profRef:el=>{ if(el) this.profEl=el; },
+      onPick:this.pickFile, onFile:this.onFile, onProfFile:this.onProfFile, fileErrRef:S.fileErr?"file-err":"",
+      onDragOver:this.onDragOver, onDragLeave:this.onDragLeave, onDropFile:this.onDropFile,
+      fileName:S.pending?"":bdi(S.name),
+      dropStyle:"display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:12px;text-align:start;"+
+        "background:var(--panel);border:1px solid "+(S.drag?"var(--accent)":"var(--line)")+";box-shadow:var(--shadow)",
+      oAuto:S.o.auto, oPlaces:S.o.places, oNer:S.o.ner, oNear:S.o.near, nerOff:S.nerOff, nerHint:S.nerHint, nerHave:!!S.nerHave&&!S.nerOff, onModelForget:this.modelForget,
+      tAuto:()=>this.setState({o:{...S.o, auto:!S.o.auto}}),
+      tPlaces:()=>this.setState({o:{...S.o, places:!S.o.places}}),
+      tNer:()=>this.setState({o:{...S.o, ner:!S.o.ner}}),
+      tNear:()=>this.setState({o:{...S.o, near:!S.o.near}}),
+      mReal:()=>this.setState({mode:"real"}, ()=>{ if(S.res) this.rerun(); }),
+      mLabel:()=>this.setState({mode:"label"}, ()=>{ if(S.res) this.rerun(); }),
+      mBlock:()=>this.setState({mode:"block"}, ()=>{ if(S.res) this.rerun(); }),
+      segReal:seg(S.mode==="real"), segLabel:seg(S.mode==="label"), segBlock:seg(S.mode==="block"),
+      segRealOn:String(S.mode==="real"), segLabelOn:String(S.mode==="label"), segBlockOn:String(S.mode==="block"),
+      modeNote:MNOTE[S.mode],
+      numStyle:S.o.numStyle||"blank", numBlank:(S.o.numStyle||"blank")==="blank", numLabel:S.o.numStyle==="label", numBlack:S.o.numStyle==="black",
+      onNumStyle:e=>{ const v=e.target.value; this.log.add("num-style",{}); this.setState({o:{...S.o, numStyle:v}}, ()=>{ if(this.state.res) this.rerun(); }); },
+      dateStyle:S.o.dateStyle||"name", dateName:(S.o.dateStyle||"name")==="name", dateBlank:S.o.dateStyle==="blank", dateBlack:S.o.dateStyle==="black",
+      onDateStyle:e=>{ const v=e.target.value; this.log.add("date-style",{style:v}); this.setState({o:{...S.o, dateStyle:v}}, ()=>{ if(this.state.res) this.rerun(); else this.persistProfile(); }); },
+      nerBox:S.nerBox, nerMsg:S.nerMsg,
+      nerBarStyle:"height:100%;border-radius:2px;background:var(--accent);transition:width .25s ease;width:"+Math.round(S.nerPct||0)+"%",
+      peoIn:S.peoIn, peoNote:S.peoNote, peoEmpty:!S.peo.length,
+      scanning:S.scanning, peoGoLabel:S.scanning?"סורק את המסמך…":"המשך",
+      onPeoIn:e=>this.setState({peoIn:e.target.value}),
+      onPeoKey:e=>{ if(e.key==="Enter"){ e.preventDefault(); this.peoAdd(S.peoIn); this.setState({peoIn:""}); } },
+      onPeoPaste:e=>{ const t=(e.clipboardData||window.clipboardData).getData("text");
+        if(t && /[\n,;]/.test(t)){ e.preventDefault(); this.peoAdd(t); } },
+      onPeoAdd:()=>{ this.peoAdd(S.peoIn); this.setState({peoIn:""}); },
+      /* "המשך" עם הצעות פתוחות (UX #8): בלי שאלה, שמות שהופיעו ב"נמצאו גם" ולא
+         נוספו הגיעו לפלט כמו שהם. עכשיו לחיצה ראשונה שואלת בשורה אחת, עם "הוספת
+         כולם" — ולחיצה שנייה על "להמשיך בלעדיהם" היא החלטה. */
+      sugPrompt:!!S.sugAsk&&this.openSugs().length>0,
+      sugPromptText:(n=>n===1?"שם אחד שנמצא עדיין בלי החלטה — הוא יגיע ל-AI כמו שהוא.":n+" שמות שנמצאו עדיין בלי החלטה — הם יגיעו ל-AI כמו שהם.")(this.openSugs().length),
+      onPeoGo:()=>this.peoForward(),
+      onPeoGoAnyway:()=>{ this.log.add("sug-prompt",{act:"skip", open:this.openSugs().length}); this.peoGo(); },
+      onPeoAddAll:()=>this.peoAddAll(),
+      onPeoAddAllGo:()=>{ this.log.add("sug-prompt",{act:"add-all", open:this.openSugs().length}); this.peoAddAll(); setTimeout(()=>this.peoGo(), 0); },
+      onSkipNames:()=>{ if(S.scanning) return; this.setState({peo:[]}); this.toPlaces([]); },
+      // בקו איטי ההורדה הראשונה לוקחת דקות; השמות מהכותרת כבר על המסך. הסריקה
+      // הזאת מבוטלת (כמו מסמך שהוחלף באמצע), המודל ממשיך לרדת ברקע למסמך הבא.
+      /* "להמשיך בלי לחכות" קידם את מונה הסריקה, ולכן כשהמודל סיים — תוצאתו נזרקה
+         כולה: שמות שנמצאו כמה פעמים בביטחון מלא לא הגיעו לשום מקום. עכשיו הסריקה
+         ממשיכה ברקע; כשהיא נגמרת השמות נכנסים לכללים ולא לרשימה שכבר עזבה. */
+      /* "לא לחכות למודל" (UX #7): עד כאן הכפתור קפץ ישר למסך היישובים, ורשימת
+         "נמצאו גם" לא הוצגה לעולם — המקום היחיד שבו הוספת אדם חסר היא הקשה אחת.
+         עכשיו הוא רק מפסיק את ההמתנה: נשארים ברשימה, "המשך" נפתח. המודל ממשיך
+         ברקע; אם יסיים לפני "המשך" — השמות נכנסים לרשימה, אחרת לכללים. */
+      onGoNow:()=>{ if(!S.scanning) return; this._goneAhead=this._scan; this.log.add("go-without-model",{names:S.peo.length});
+        this.setState({scanning:false, nerBox:false, nerUsed:false, peoNote:"ממשיכים בלי לחכות. השמות כאן נלקחו מראש המסמך ומשמות הדוברים; שמות שהמודל ימצא בהמשך יתווספו לרשימה, או יוחלפו במסמך אם כבר המשכתם."}); },
+      onLoadProf:this.loadProfileClick, onSaveProf:this.saveProfile, onImportCases:this.importCasesClick,
+      pwOn:!!S.pw, pwLabel:S.pw?(S.pw.mode==="export"?this.constructor.PW_EXPORT:this.constructor.PW_IMPORT):"",
+      pwValue:S.pw?S.pw.value:"", pwErr:S.pw?S.pw.err:"", pwOk:S.pw&&S.pw.mode==="export"?"ייצוא לקובץ":"ייבוא מקובץ",
+      pwOkOff:!S.pw||!S.pw.value||!!S.pw.busy,
+      onPwIn:e=>{ const p=this.state.pw; if(p) this.setState({pw:{...p, value:e.target.value, err:""}}); },
+      onPwKey:e=>{ if(e.key==="Enter"){ e.preventDefault(); this.pwSubmit(); } else if(e.key==="Escape"){ e.preventDefault(); this.pwCancel(); } },
+      onPwOk:this.pwSubmit, onPwCancel:this.pwCancel,
+      casesHere:this.casesHere(), onClearCases:this.clearCases,
+      fileErr:S.screen==="entry"?(S.fileErr||""):"",
+      /* הודעה שחוזרת באותן מילים נאמרת שוב: אזור חי שלא השתנה אינו אומר דבר, ולכן כל דחייה של קובץ וכל החזרת
+         שמות מעלות את האזעקה ואת הכותרת שלהן כאלמנט חדש (key), שקורא מסך קורא כחדש (הביקורת של 6.10) */
+      fileErrKey:"fe"+(this._fileErrN||0), rvKey:"rv"+(this._rvN||0),
+      settingsShown:S.settingsOpen===undefined?!S.narrow:!!S.settingsOpen,
+      settingsHint:(S.o.ner?"מודל מקומי":"בלי מודל")+" · "+(S.mode==="block"?"███":S.mode==="label"?"תוויות":"שמות בדויים"),
+      onToggleSettings:()=>this.setState({settingsOpen:!(S.settingsOpen===undefined?!S.narrow:!!S.settingsOpen)}),
+      hasCases:S.cases.length>0&&S.screen==="entry"&&!S.profile&&!S.casesHidden,
+      onHideCases:()=>this.setState({casesHidden:true}),
+      // התיק שבשימוש, בכל מסך (UX #21): בלי זה אי אפשר לדעת שהלחיצה על התיק עשתה משהו
+      hasCaseChip:!!(S.profile&&(S.profile.name||S.caseName))&&S.screen!=="work",
+      caseChipName:(S.profile&&(S.profile.name||S.caseName))||"",
+      /* «בלי התיק הזה»: המסמך ממשיך להגן על כל שם שמופיע בו, מי שלא הוסיף אותו; אנשי התיק שלא מופיעים בו יוצאים, כדי
+         שתיק שייקרא לו אחר כך לא יקבל אותם (הציד של 11.10: הרשימה התרוקנה, והמכתב יצא ל-AI עם כל השמות גלויים
+         תחת פס ירוק). בלי מסמך, אין מה לשמור. */
+      onCaseChipDrop:()=>{ this.log.add("case-detach",{});
+        const blocks=S.origBlocks||[], E=S.E;
+        const text=E&&blocks.length?E.norm(blocks.map(b=>b.text).join("\n")):"";
+        const here=r=>!!text&&!!r&&text.includes(E.norm(String(r.value||"")).trim());
+        const rules=text?(S.rules||[]).filter(here):[], same=rules.length===(S.rules||[]).length;
+        this.setState({profile:null, caseName:"", casesHidden:false, rules, allow:text?S.allow:[]}, ()=>{ if(this.state.res&&!same) this.rerun(); }); },
+      // שם התיק גם במסך "מי בתיק" (UX #16): המדריך קורא לזה צעד 1, והשדה היה בתחתית המסילה, סגור
+      hasCaseField:S.screen==="people"&&!(S.profile&&S.profile.name),
+      caseItems:S.cases.map(c=>({name:c.name, meta:((c.rules||[]).length===1?"שם או פרט אחד":(c.rules||[]).length+" שמות ופרטים")+" · עודכן "+new Date(c.updated||c.created).toLocaleString("he-IL",{dateStyle:"short",timeStyle:"short"}),
+        pairs:this.profilePairs(c,3), morePairs:(n=>n>3?"ועוד "+(n-3):"")(this.profileCount(c)),
+        onResume:()=>this.resumeCase(c.name), onDelete:()=>{ if(confirm("למחוק את «"+c.name+"» מרשימת התיקים בדפדפן? קובץ תיק ששמרתם במחשב לא יימחק.")) this.deleteCase(c.name); }})),
+      // הפרופיל האחרון בלי שם מוצע רק כשאין תיק בשם שמכסה אותו
+      hasLast:!!S.lastProfile&&!S.lastProfile.name&&S.screen==="entry"&&!S.profile,
+      lastTitle:S.lastProfile?(S.lastProfile.name?"להמשיך את התיק «"+S.lastProfile.name+"»?":"להמשיך עם רשימת השמות מהפעם הקודמת?"):"",
+      lastMeta:S.lastProfile?((n=>n===1?"שם או פרט אחד":n+" שמות ופרטים")(this.profileCount(S.lastProfile))+" ברשימה · עודכן "+new Date(S.lastProfile.updated||S.lastProfile.created).toLocaleString("he-IL",{dateStyle:"short",timeStyle:"short"})+" · אותם שמות בדויים כמו במסמך הקודם"):"",
+      lastPairs:S.lastProfile?this.profilePairs(S.lastProfile,3):[],
+      lastMorePairs:S.lastProfile?(n=>n>3?"ועוד "+(n-3):"")(this.profileCount(S.lastProfile)):"",
+      onResumeLast:this.resumeLast, onDismissLast:this.dismissLast,
+      engineFailed:!!S.engineFailed, onEngineRetry:()=>{ try{ location.reload(); }catch(_){} },
+      // שם התיק: הרשימה האחרונה נשמרת בכל הקשה, ורשימת התיקים כשעוזבים את השדה או את הדף. כל אות שמרה קודם תיק
+      // משלו, עם השמות האמיתיים (הציד של 11.10)
+      caseName:S.caseName, onCaseName:e=>this.setState({caseName:e.target.value}, ()=>{ this.persistProfile(true); clearTimeout(this._caseT); this._caseT=setTimeout(()=>this.persistProfile("typing"), 800); }),
+      onCaseNameDone:()=>{ clearTimeout(this._caseT); this.persistProfile(); },
+      profileNote:(S.caseName?"התיק נשמר בדפדפן הזה אחרי כל שינוי, ויוצע בפעם הבאה. ":"בלי שם תיק נשמרת רק הרשימה האחרונה. ")+(S.profileDirty?"הדפדפן אינו גיבוי: «ייצוא לקובץ» שומר את התיק גם אם נתוני הדפדפן יימחקו.":"נשמר גם בקובץ."),
+      hasPeoSug:S.peoSug.some(x=>!S.peo.some(p=>S.E.norm(p.value)===S.E.norm(x.value))&&!(S.peoKept||[]).some(k=>S.E.norm(k.value)===S.E.norm(x.value))),
+      peoSugItems:S.peoSug.filter(x=>!S.peo.some(p=>S.E.norm(p.value)===S.E.norm(x.value))&&!(S.peoKept||[]).some(k=>S.E.norm(k.value)===S.E.norm(x.value))).map(x=>({
+        value:x.value, why:x.why, removed:this.wasRemoved(x.value),
+        onAdd:()=>this.peoAdd(x.value,"מההקשר",true,x.kind),
+        // "לא אדם" הוא החלטה, ולכן נראית (H3): השם נכנס ל"נשארים כמו שהם" עם ↩, כמו מחיקת שבב
+        onDrop:()=>{ this.log.add("sug-drop",{}); this.setState({peoSug:S.peoSug.filter(y=>y!==x), allow:S.allow.includes(x.value)?S.allow:[...S.allow, x.value],
+          peoKept:(S.peoKept||[]).some(k=>k.value===x.value)?S.peoKept:[...(S.peoKept||[]), {value:x.value, kind:x.kind||"NAME", auto:true, note:x.why||""}]}); }})),
+      nerFailed:!!S.nerFailed, nerOk:!S.nerFailed,
+      onRetryScan:()=>{ const L=this._lastScan; if(!L)return; this.setState({nerFailed:false, peoNote:""}); this.showPeople(L.blocks, L.cands); },
+      // הורדה שנעצרה (UX #6): טעינה חדשה במקום לחכות להבטחה התקועה
+      nerStall:!!S.nerStall&&!!S.scanning,
+      onRetryDownload:()=>{ const L=this._lastScan; if(!L) return; this.log.add("model-retry",{}); if(E.nerReset) E.nerReset();
+        this._dlT0=null; this._dlLastP=null; this._dlLastAt=Date.now(); this.setState({nerStall:false, peoNote:""}); this.showPeople(L.blocks, L.cands); },
+      // הרשימה מקובצת: אנשים, גופים, מקומות. הסדר לתצוגה בלבד; המחיקה והחלפת הסוג
+      // עובדות על האינדקס המקורי.
+      // הרשימה נשארת בסדר ההוספה: מיון לפי סוג הזיז שבב מתחת לאצבע כשהסוג שונה
+      // שני שמות שעשויים להיות אותו אדם: מוצע עם הסיבה, ומתקבל רק בהקשה (Q12 בגרסה 2)
+      mergeSugs:(()=>{ const out=[]; const not=new Set(S.peoNotSame||[]);
+        for(let i=0;i<S.peo.length;i++)for(let j=i+1;j<S.peo.length;j++){
+          const a=S.peo[i], b=S.peo[j]; if(a.sameAs||b.sameAs||(a.kind||"NAME")!=="NAME"||(b.kind||"NAME")!=="NAME")continue;
+          const why=S.E.mergeSignals?S.E.mergeSignals(a.value,b.value):[]; if(!why.length)continue;
+          const k=[a.value,b.value].sort().join("|"); if(not.has(k))continue;
+          // הקצר מתמזג לתוך הארוך: השם המלא הוא הכינוי המשותף
+          const [from,to]=a.value.length<=b.value.length?[a.value,b.value]:[b.value,a.value];
+          out.push({from,to,why:why.join(" · "),
+            onSame:()=>this.peoSame(from,to,why.length), onNotSame:()=>this.peoNotSame(k,why.length)});
+        } return out; })(),
+      hasMergeSugs:false,
+      peoItems:S.peo.map((p,i)=>({
+        value:p.value, note:p.sameAs?"= "+p.sameAs:p.note, kindName:KIND_NAME[p.kind]||"אדם",
+        // ערך ארוך נשבר בתוך השבב ולא מרחיב את העמוד (ביקורת QA 007)
+        style:"display:flex;align-items:center;gap:8px;padding:7px 10px 7px 12px;border-radius:20px;font-size:14px;max-width:100%;min-width:0;overflow-wrap:anywhere;"+
+          "border:1px solid "+(p.auto?"var(--accent-soft)":"var(--line)")+";background:"+(p.auto?"var(--accent-soft)":"var(--panel)"),
+        kindOpts:KIND_ORDER.map(k=>({value:k, label:KIND_NAME[k]||k, sel:(p.kind||"NAME")===k})),
+        onKindSel:e=>this.setKind(i, e.target.value), onDel:()=>this.delPeo(i),
+        canTrim:String(p.value||"").trim().split(/\s+/).length>1, onTrim:()=>this.setState({trimPeo:S.trimPeo===i?null:i}),
+        ...this.tipProps(p.value)})),
+      trimRow:S.trimPeo!=null&&!!S.peo[S.trimPeo], trimValue:S.trimPeo!=null&&S.peo[S.trimPeo]?S.peo[S.trimPeo].value:"",
+      trimWords:S.trimPeo!=null&&S.peo[S.trimPeo]?this.wordItems(S.peo[S.trimPeo].value):[],
+      onTrimClose:()=>this.setState({trimPeo:null}),
+      // השגיאה של המסך הזה מוצגת ליד השדה, לא בראש העמוד מעל לכותרת
+      rvErr:S.screen==="reverse"?S.err:"", errTop:(S.screen==="reverse"||(S.screen==="work"&&S.res))?"":S.err,
+      rvIn:S.rvIn, rvOut:S.rvOut, rvCopyLabel:S.rvCopyLabel,
+      // תשובה חדשה בתיבה: התוצאה של הקודמת יורדת, ו«החזרת שמות» חוזר להיות הפעולה. עד כאן היא נשארה מתחת לתשובה החדשה,
+      // עם הכותרת שלה, וכפתור ההעתקה המלא העתיק אותה (הציד של 11.10)
+      onRvIn:e=>this.setState({rvIn:e.target.value, err:"", ...(S.rvOut?{rvOut:"", rvLeft:[], rvDates:[], rvCount:0}:{})}),
+      onRvGo:this.rvGo,
+      // אחרי החזרה, ההעתקה היא הפעולה הראשית; לפני — ההחזרה (UX #19). ריק — אין מה להחזיר (UX #20).
+      rvEmpty:!(S.rvIn||"").trim(),
+      rvGoStyle:S.rvOut?"padding:12px 20px;border-radius:10px;border:1px solid var(--line);background:var(--panel);font-weight:500;font-size:14px;white-space:nowrap":primaryBtn,
+      rvCopyStyle:S.rvOut?primaryBtn:"",
+      rvHead:S.rvOut?("התשובה עם השמות האמיתיים"+(S.rvCount?` · ${S.rvCount===1?"שם אחד הוחזר":S.rvCount+" שמות הוחזרו"}`:"")):"",
+      onRvCopy:()=>{ if(this.tourBlocks("copy")) return; this.copyTo(S.rvOut, "rvCopyLabel", "העתקת הטקסט המשוחזר"); },
+      hasGeo:!!S.geo, noGeo:S.screen==="places" && !S.geo,
+      // ההודעה הזאת אמרה "לא נמצאו יישובים" גם כשהזיהוי מצא אותם, רק לא כאלה
+      // שאפשר למפות. עכשיו היא מבחינה בין השניים.
+      placesTitle:S.geo?"יישובים — החלפה ששומרת על המרחקים":"יישובים שנמצאו",
+      noGeoText:(S.geoExtra||[]).length
+        ? "אין מפת מרחקים למסמך הזה: כל יישוב שנמצא מוחלף בפני עצמו, ביישוב מאותו סוג."
+        : (S.geoExcluded||[]).length
+          ? "נשאר יישוב אחד או אף אחד, ולכן אין מפת מרחקים. אפשר להחזיר יישוב או להמשיך."
+          : "לא נמצאו יישובים במסמך.",
+      geoCount:S.geo?S.geo.map.length:0,
+      geoErr:S.geo?S.geo.err.toFixed(1):"",
+      geoQuality:S.geo?(S.geo.err<2?"דיוק מצוין":S.geo.err<5?"דיוק טוב":"דיוק סביר"):"",
+      geoRows:(S.geo?S.geo.map:[]).map((m,i)=>({
+        from:m.from, to:S.geoEdits[i] ?? m.to,
+        // מה משותף ומה שונה בין היישוב לתחליפו, לפי הטבלה (docs/atlas-tags-he.md)
+        tagNote:(()=>{ if(!S.E.atlasTags) return ""; const t=S.E.atlasTags(m.to), d=S.E.atlasDiff?S.E.atlasDiff(m.from,m.to):[];
+          const same=["סוג","אוכלוסייה","דת","גודל"].filter(k=>!d.includes(k)).map(k=>t[k]).join(" · ");
+          return (same?same:"")+(d.length?(same?"  ·  ":"")+"שונה: "+d.map(k=>k+" ("+S.E.atlasTags(m.from)[k]+" ← "+t[k]+")").join(", "):""); })(),
+        onChange:e=>this.setState({geoEdits:{...S.geoEdits, [i]:e.target.value}}),
+        onRemove:()=>this.geoRemove(m.from), ...this.tipProps(m.from)}))
+        // the tags line sits inside its row, above the row's rule: the row hands its rule to the tags
+        // (the tags were pulled up over the rule with a negative margin)
+        .map(g=>({...g, rowStyle:"display:flex;align-items:center;gap:12px;"+
+          (g.tagNote?"padding:11px 18px 4px":"padding:11px 18px;border-bottom:1px solid var(--line2)")})),
+      // מחיקה במסך השמות ו"אל תחליפו" במסך הבדיקה: שניהם גלויים ושניהם עם ↩
+      hasKept:(S.peoKept||[]).length>0,
+      keptItems:(S.peoKept||[]).map(k=>({name:k.value, onUndo:()=>this.peoRestore(k.value)})),
+      hasAllowed:S.screen==="work"&&(S.allow||[]).length>0,
+      allowedItems:(S.allow||[]).map(a=>({name:a, onUndo:()=>this.allowRestore(a)})),
+      hasExcluded:(S.geoExcluded||[]).length>0,
+      excluded:(S.geoExcluded||[]).map(n=>({name:n, onUndo:()=>this.geoRestore(n)})),
+      mapLand:MV?MV.land:"", hasLand:!!(MV&&MV.hasLand), showMap:!!S.showMap, mapLabel:S.showMap?"הסתרת המפה":"הצגת המפה", onToggleMap:()=>{ if(!S.showMap) this.loadAtlas(); this.setState({showMap:!S.showMap}); },
+      mapFrom:MV?MV.from:[], mapTo:MV?MV.to:[],
+      hasExtra:(S.geoExtra||[]).length>0,
+      extraRows:(S.geoExtra||[]).map(x=>({
+        name:x.name, to:x.to, isOn:x.on, listed:!!x.listed,
+        note:x.ambiguous?"לא רק שם יישוב":x.typed?"הוספתם במסך השמות":"",
+        toggleLabel:x.on?"לא להחליף":"להחליף",
+        toggleStyle:"font-size:12.5px;padding:7px 11px;border-radius:8px;white-space:nowrap;border:1px solid "+
+          (x.on?"var(--line)":"var(--accent)")+";color:"+(x.on?"var(--ink2)":"var(--accent-ink)"),
+        rowStyle:"display:flex;align-items:center;gap:12px;padding:11px 18px;border-bottom:1px solid var(--line2);"+
+          // an excluded place reads dimmer by its colour, not by opacity: at .72 the arrow and the
+          // small notes fell under the 4.5:1 contrast minimum; --ink2 keeps 5.6:1 and more
+          (x.on?"":"color:var(--ink2)"),
+        onChange:e=>this.geoExtraSet(x.name,{to:e.target.value}),
+        onToggle:()=>this.geoExtraSet(x.name,{on:!x.on}),
+        ...this.tipProps(x.name)})),
+      onGeoAlt:this.geoAlt, onGeoApply:this.geoApply, onGeoSkip:()=>this.run(S.rules),
+      // יציאה בלי ייצוא: הפרופיל נשאר בדפדפן הזה בלבד, וזו הבטחה חלשה מדי לתיק
+      onBackHome:()=>{ if(S.profileDirty&&S.rules.length&&!confirm("התיק נשמר רק בדפדפן הזה, ולא בקובץ. אם נתוני הדפדפן יימחקו, הוא יאבד. לעבור למסמך חדש בכל זאת?")) return;
+        // המסמך נגמר ב-docReset, פעם אחת לכל מסמך: שם נקראת docEnd של השירות המתארח, ושם נרשם "new-doc" ביומן
+        /* מסמך חדש מתחיל נקי (UX #22, ביקורת QA 005): חיפוש, הוספה ידנית, טקסט
+           מודבק ושם הקובץ הקודמים נשארו — והמסמך הבא נפתח עם מסילה ריקה, או עם
+           שני מסמכים מודבקים יחד. הגלילה חוזרת לראש העמוד. */
+        /* והתיק נשאר במקומו (C3 בביקורת השנייה): שם התיק, הפרופיל, הכללים ורשימת
+           ההיתר עברו למסמך הבא, שם התיק חיכה ממולא בשדה שבמסך הרשימה, ומסמך של
+           לקוח אחר נכתב לתוך התיק של הקודם. מסמך חדש מתחיל בלי תיק; התיק השמור
+           מוצע ברצועת "תיקים אחרונים", ופרופיל בלי שם — בכרטיס "להמשיך עם
+           הפרופיל", כמו אחרי טעינה מחדש. */
+        const last=this.readLast(), lastProfile=last&&!last.name&&(last.rules||[]).length?last:null;
+        /* כל מה ששייך למסמך ולא לסשן מתאפס ב-docReset, באותה רשימה שמאפסת כל מסמך שנטען (ביקורת H1: דוח הדליפה
+           של לקוח אחד יצא בחבילה של הבא, ותשובת ה-AI עם השמות האמיתיים שלו חיכתה במסך ההחזרה). כאן נוסף רק
+           ניתוק התיק. tests/state_t.js בודק שכל מפתח ב-state מתאפס שם, רשום שם כשייך ל«מסמך חדש» בלבד, או
+           רשום כשייך לסשן. */
+        this.setState({...this.docReset(false), caseName:"", profile:null, profileDirty:false, casesHidden:false, lastProfile, cases:this.readCases()},
+          ()=>{ try{ scrollTo(0,0); }catch(_){} }); },
+      tip:!!S.tip, tipLabel:S.tip?S.tip.label:"", tipItems:S.tip?S.tip.items:[],
+      tipMore:S.tip&&S.tip.items.length>=3?"שלוש הראשונות":"",
+      // חלונית מידע בלבד: אינה תופסת לחיצות, אחרת היא חוסמת את הכפתור שמתחתיה כשהעכבר נשאר במקומו אחרי מעבר מסך
+      tipStyle:S.tip?("position:fixed;z-index:60;pointer-events:none;left:"+S.tip.x+"px;top:"+S.tip.y+"px;width:300px;max-width:calc(100vw - 24px);"+
+        "background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 13px;box-shadow:0 12px 34px rgba(0,0,0,.22)"):"",
+      popup:!!S.popup, popupText:S.popup?S.popup.text:"",
+      ...this.inlineView(),
+      popupStyle:S.popup?("position:fixed;z-index:60;left:"+S.popup.x+"px;top:"+S.popup.y+"px;max-width:270px;"+
+        "background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 13px;box-shadow:0 12px 34px rgba(0,0,0,.22)"):"",
+      /* התיבה הזאת הציעה סוגים בלבד — אדם, גוף, מקום — כלומר רק "כן, זה פרט
+         מזהה". כשמסמנים מילה כדי לומר בדיוק את ההפך, שהיא מילה רגילה ולא שם,
+         לא הייתה שום אפשרות שמתאימה, והדרך היחידה הייתה למצוא את הכרטיס שלה
+         במסילה. addAllow כבר קיים ומשמש את "אל תחליפו" שעל הכרטיסים; כאן הוא
+         נגיש מהמסמך עצמו. */
+      popupKinds:KINDS.map(([k,l])=>({label:this.kindLabel(l), wide:"",
+          onClick:()=>{ this.addRule(S.popup.text, k, "", "mark"); getSelection().removeAllRanges(); }}))
+        .concat([{label:"מילה רגילה — לא להחליף", wide:"flex-basis:100%;justify-content:center;color:var(--ink2)",
+          onClick:()=>{ this.addAllow(S.popup.hit||S.popup.text); this.setState({popup:null}); getSelection().removeAllRanges(); }}]),
+      hasLeaks:S.leaks.length>0, leakCount:S.leaks.length, leakCopyLabel:S.leakCopyLabel||"העתקת פירוט השמות שסימנתם",
+      logCopyLabel:S.logCopyLabel||"העתקת יומן השימוש",
+      onCopyLog:()=>{ try{ this.copyTo(this.log.export(), "logCopyLabel", "העתקת יומן השימוש"); }catch(e){ this.setState({err:String(e.message||e)}); } },
+      onPackage:()=>this.sendPackage(),
+      onCopyLeaks:()=>{ try{ this.copyTo(window.PL.leakReport(S.leaks,{version:this.verText()}), "leakCopyLabel", "העתקת פירוט השמות שסימנתם"); }catch(e){ this.setState({err:String(e.message||e)}); } },
+      addV:S.addV, addR:S.addR,
+      onAddV:e=>this.setState({addV:e.target.value}), onAddR:e=>this.setState({addR:e.target.value}),
+      onAddKey:e=>{ if(e.key==="Enter") this.addRule(this.state.addV, this.state.addK, this.state.addR); },
+      onAdd:()=>this.addRule(S.addV, S.addK, S.addR),
+      kindChips:KINDS.map(([k,l])=>({label:this.kindLabel(l), on:S.addK===k, style:chip(S.addK===k), onClick:()=>this.setState({addK:k})})),
+      sheetRef:el=>{this.sheetEl=el}, listRef:el=>{this.listEl=el},
+      onSheetSelect:this.onSheetSelect
+    };
+
+    // אזור המצב הקבוע (data-sr-status): «מאתר שמות…» בזמן עבודה; ההכרעה של מסך הבדיקה נקבעת למטה, פעם אחת בכל הגעה אליו
+    v.srStatus = S.screen==="busy" ? (S.busyT||"") : "";
+    if(!v.isWork){ this._srWork=null; return v; }
+
+    const RES=S.res, near=this.nearList(), sug=this.sugList(), groups=this.groupsOf();
+    let mpos=0; const firstPos={}; // מיקום רץ של סימונים במסמך, ומיקום ראשון לכל ערך
+    const ver=RES.verification;
+
+    const narrow=!!S.narrow, pane=S.pane||"find";
+    v.narrow=narrow;
+    /* הסרגל התחתון צף מעל התוכן, והרווח שהושאר לו היה שלושה מספרים קבועים
+       (72, 84, 132) שאיש לא קשר לגובה האמיתי שלו. על טלפון הוא נשבר לשתי שורות
+       וכיסה את תחתית המסמך. עכשיו הגובה נמדד מהאלמנט עצמו ל---bar-h, וגם
+       הריפוד וגם גובה גיליון המסמך נגזרים ממנו. */
+    v.workGrid = narrow
+      ? "display:block;max-width:1520px;margin:0 auto;padding:14px 16px calc(var(--bar-h, 76px) + 18px)"
+      : "display:grid;grid-template-columns:minmax(0,1fr) var(--rail-w);gap:18px;max-width:1520px;margin:0 auto;padding:18px 22px calc(var(--bar-h, 64px) + 16px);align-items:start";
+    v.docPaneStyle = "background:var(--paper);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden;"+
+      (narrow ? (pane==="doc"?"display:block":"display:none") : "position:sticky;top:74px");
+    v.railStyle = (narrow && pane==="doc")
+      ? "display:none"
+      : "display:flex;flex-direction:column;gap:12px;"+(narrow?"margin-top:12px":"");
+    v.paneDocStyle = "flex:1;padding:8px 6px;border-radius:7px;font-size:13px;font-weight:500;"+
+      (pane==="doc"?"background:var(--panel);color:var(--accent-ink);box-shadow:var(--shadow)":"color:var(--ink2)");
+    v.paneFindStyle = "flex:1;padding:8px 6px;border-radius:7px;font-size:13px;font-weight:500;"+
+      (pane==="find"?"background:var(--panel);color:var(--accent-ink);box-shadow:var(--shadow)":"color:var(--ink2)");
+    // הבחירה נאמרת ולא רק נראית: הכרטיסייה, התצוגה והמסננים שנבחרו הם aria-pressed, כמו «שם חלופי»
+    v.paneDocOn = pane==="doc"; v.paneFindOn = pane==="find";
+    v.onPaneDoc=()=>this.setState({pane:"doc"});
+    v.onPaneFind=()=>this.setState({pane:"find"});
+    v.docTitle = bdi(S.name) || "המסמך אחרי ההחלפה";
+    v.docSub = RES.applied.length+" החלפות · "+RES.preview.length+" פסקאות";
+    // המקרא מופיע רק כשיש מה להסביר: בלי פריטים לבדיקה, שבב שני מבלבל יותר משעוזר
+    v.hasFlagMarks = (RES.preview||[]).some(b=>(b.marks||[]).some(m=>m.flag));
+    const viewOrig = S.docView==="orig";
+    const viewSeg = on => "padding:5px 12px;border-radius:6px;font-size:12px;font-weight:500;"+
+      (on?"background:var(--panel);color:var(--accent-ink);box-shadow:var(--shadow)":"color:var(--ink2)");
+    v.viewRedStyle=viewSeg(!viewOrig); v.viewOrigStyle=viewSeg(viewOrig);
+    v.viewRedOn=!viewOrig; v.viewOrigOn=viewOrig;
+    v.onViewRed=()=>this.setState({docView:"red"});
+    v.onViewOrig=()=>this.setState({docView:"orig"});
+
+    if(viewOrig){
+      const src = (S.origBlocks || []).map(b=>({part:E.partName(b.part), text:b.text}));
+      v.sheet = src.map((b,bi)=>({part:b.part, head:b.part!==(bi>0?src[bi-1].part:null), n:bi+1,
+        segs:[{plain:true, mark:false, t:b.text||" "}]}));
+    }
+    v.emptyFindings = S.query&&S.query.trim() ? `אין ממצאים שמתאימים ל«${S.query.trim()}».` : (S.cat||(S.filter&&S.filter!=="all")) ? "אין ממצאים בסינון הזה." : "אין ממצאים.";
+    v.legendDate = RES.applied.some(r=>/^תאריך/.test(r.label||"")&&r.rep&&r.rep!=="███");
+    // בלי התנאי הזה הגיליון המושחר דרס תמיד את גיליון המקור, והכפתור «מקור» הציג את הטקסט
+    // המושחר כשהוא מסומן כנבחר (ביקורת H3): else בלי סוגריים חל על שורה אחת בלבד
+    if(!viewOrig) v.sheet = RES.preview.map((b,bi)=>{
+      const segs=[]; let last=0;
+      for(const m of b.marks){
+        // ערך שנמצא ולא הוחלף: מסומן בצבע אזהרה, כדי שלא ייראה כמו טקסט שלא נגעו בו.
+        // בלי זה מספר שנשאר בטקסט נקרא "פוספס". אינו נכנס לסדר החיצים, שרץ על ההחלפות.
+        // השמטה: הערך איננו בטקסט, אבל נשאר סימן קטן במקום שבו היה, כדי שתראה שמשהו
+        // נמחק ותוכל לבטל. לחיצה בוחרת את הכרטיס, ושם אפשר לעבור לשם או ל-███.
+        if(m.del){
+          if(m.s>last) segs.push({plain:true, mark:false, t:b.text.slice(last,m.s)});
+          const drec=RES.applied.find(x=>x.value===m.val);
+          const dkey="a|"+E.norm((drec&&(drec.of||drec.base))||m.val||"").trim();
+          // the spot is a dashed chip with a drawn eraser (it was the text ∅); the chip is a button, so it
+          // is named «נמחק» on its own, rather than by its title, which holds the deleted value
+          segs.push({plain:false, mark:true, id:-1, val:m.val||"", t:"", del:true, aria:"נמחק", badge:"", pre:"", kind:"del",
+            title:"נמחק: "+(m.val||"")+". לחיצה לעריכה",
+            style:"cursor:pointer;border-radius:4px;padding:0 4px;font-size:11.5px;color:var(--ink);border:1px dashed var(--line);border-bottom-width:2.5px;"+
+              "line-height:1;display:inline-flex;align-items:center;justify-content:center;height:1.25em;vertical-align:middle;transform:translateY(-.08em);",
+            onClick:e=>this.setState({sel:dkey, filter:"all", cat:"", open:this.openWith("findings"), pane:this.state.pane,
+              inline:this.inlineAt(e,{mode:"del", value:m.val||"", base:m.val||"", kind:"", label:(drec&&drec.label)||"נמחק", text:b.text, s:m.s, e:m.s, pre:""}), inlineDraft:""}, ()=>{
+              const node=this.listEl && this.listEl.querySelector('[data-group="'+CSS.escape(dkey)+'"]');
+              if(node && this.listEl){ const nr=node.getBoundingClientRect(), lr=this.listEl.getBoundingClientRect(); this.listEl.scrollTop += (nr.top-lr.top) - 40; }
+            })});
+          last=Math.max(last,m.s); continue;
+        }
+        if(m.flag){
+          if(m.s>last) segs.push({plain:true, mark:false, t:b.text.slice(last,m.s)});
+          /* הסימון הזה נוסף כדי שערך שנמצא ולא הוחלף לא ייראה כמו טקסט שאיש לא
+             נגע בו. אבל הוא הפנה ל"לבדיקה", שמכיל רק כמעט-התאמות והצעות, בעוד
+             שהכרטיס עצמו יושב ב"מה נמצא והוחלף" — כלומר הסימון הבטיח מקום שבו
+             אי אפשר למצוא אותו. עכשיו הקשה עליו בוחרת את הכרטיס שלו וגוללת
+             אליו, בדיוק כמו הקשה על החלפה. */
+          const fkey="f|"+E.norm(m.val||"").trim();
+          const fl=RES.flagged.find(x=>x.value===m.val)||{};
+          segs.push({plain:false, mark:true, id:-1, val:m.val||"", t:b.text.slice(m.s,m.e), badge:"?", pre:"", kind:"flag",
+            title:"נמצא ומחכה להחלטה שלכם · לחיצה לעריכה",
+            // צורה ולא רק צבע (Q2 בגרסה 3): קו מקווקו עבה ותג "?" — נראה גם על מסך חיוור. הטקסט בדיו,
+            // והוודאות בקו: מקווקו של 2.5px בצבע האזהרה (המראה החדש, 6.10)
+            style:"cursor:pointer;border-radius:4px;box-decoration-break:clone;padding:1px;"+
+              "color:var(--ink);border-bottom:2.5px dashed var(--warn);font-weight:500;",
+            onClick:e=>this.setState({sel:fkey, filter:"all", cat:"",
+              open:this.openWith("findings"), pane:this.state.pane,
+              inline:this.inlineAt(e,{mode:"flag", value:m.val||"", base:m.val||"", kind:"", label:fl.label||"לבדיקה", text:b.text, s:m.s, e:m.e, pre:""}), inlineDraft:""}, ()=>{
+                const node=this.listEl && this.listEl.querySelector('[data-group="'+CSS.escape(fkey)+'"]');
+                if(node && this.listEl){ const nr=node.getBoundingClientRect(), lr=this.listEl.getBoundingClientRect();
+                  this.listEl.scrollTop += (nr.top-lr.top) - 40; }
+              })});
+          last=m.e; continue;
+        }
+        // מיקום רץ במסמך: כל מופע מקבל מספר משלו, גם כשכמה מופעים שייכים לאותו ערך
+        const pos=mpos++; if(!(m.id in firstPos))firstPos[m.id]=pos;
+        if(m.s>last) segs.push({plain:true, mark:false, t:b.text.slice(last,m.s)});
+        const src=RES.applied[m.id];
+        const orig=(!m.amb && src)?src.value:"";
+        const srcKey=src?("a|"+E.norm(src.of||src.base||src.value).trim()):"";
+        const selected = S.sel && src && srcKey===S.sel;
+        // אות השימוש חיוורת (Q6 בגרסה 5): "לליאת" נקרא כ-ל + ליאת, לא כשגיאת הקלדה
+        const mt=b.text.slice(m.s,m.e);
+        const bRep=src&&src.baseRep?String(src.baseRep):"";
+        const pre=(bRep&&mt.endsWith(bRep)&&mt.length>bRep.length)?mt.slice(0,mt.length-bRep.length):"";
+        // תאריך מוזז נראה אחרת מהחלפה רגילה (Q1 בגרסה 5): הוא נראה כמו טקסט שלא נגעו בו
+        const isDateMark=!!(src&&/^תאריך/.test(src.label||"")&&src.rep&&src.rep!=="███");
+        segs.push({plain:false, mark:true, id:pos, val:orig||(src?src.value:""), pre, t:mt.slice(pre.length), badge:"", kind:isDateMark?"date":"",
+          title: (isDateMark ? "תאריך מוזז — המקורי «"+(orig||"")+"» חוזר בהחזרת השמות" : (orig ? orig+" ← במקור" : "הוחלף — המקור אינו חד-משמעי"))+" · לחיצה לעריכה",
+          // צורה ולא רק צבע (Q2 בגרסה 3): קו תחתון מלא בצבע הפעולה; תאריך מוזז — קו מנוקד. הטקסט בדיו.
+          // השם שבמוקד (הכרטיס שנבחר, הכרטיס שמרחפים עליו, או החיצים) מקבל את המרקר, והטקסט נשאר כהה:
+          // מילוי בצבע הפעולה עם טקסט בהיר היה נעלם כשההבזק עובר עליו (e2e/marks.spec.js)
+          style:"cursor:pointer;border-radius:4px;box-decoration-break:clone;padding:1px;font-weight:500;"+
+            "border-bottom:2.5px "+(isDateMark?"dotted":"solid")+" var(--accent);"+
+            ((selected||S.hot===m.id)
+              ? "background:var(--mark);color:var(--mark-ink);box-shadow:0 0 0 2px var(--mark);"
+              : "color:var(--ink);"),
+          onClick:e=>{
+            const r=RES.applied[m.id]; if(!r) return;
+            const base=r.base||r.value, sv=String(r.value||"");
+            const pre=(base&&sv.endsWith(base)&&sv.length>base.length)?sv.slice(0,sv.length-base.length):"";
+            // הסמן של החיצים עוקב אחרי מה שנלחץ, אחרת "הבא" קופץ מהמקום הקודם
+            this.setState({markIdx:pos, filter:"all", cat:"", open:this.openWith("findings"), sel:"a|"+E.norm(r.of||r.base||r.value).trim(),
+              pane:this.state.pane, repDraft:r.rep||"",
+              inline:this.inlineAt(e,{mode:"applied", value:r.value, base, kind:r.label||"", label:r.label||"", rep:r.baseRep||r.rep||"", text:b.text, s:m.s, e:m.e, pre, src:r.src}), inlineDraft:r.baseRep||r.rep||""}, ()=>{
+              const node=this.listEl && this.listEl.querySelector('[data-group="'+CSS.escape("a|"+E.norm(r.of||r.base||r.value).trim())+'"]');
+              if(node && this.listEl){ const nr=node.getBoundingClientRect(), lr=this.listEl.getBoundingClientRect();
+                this.listEl.scrollTop += (nr.top-lr.top) - 40; }
+            });
+          }});
+        last=m.e;
+      }
+      if(last<b.text.length) segs.push({plain:true, mark:false, t:b.text.slice(last)});
+      if(!segs.length) segs.push({plain:true, mark:false, t:" "});
+      const prev=bi>0?RES.preview[bi-1].part:null;
+      return {part:b.part, head:b.part!==prev, n:bi+1, segs};
+    });
+
+    const order=[]; RES.preview.forEach(b=>b.marks.forEach(m=>order.push(m.id))); // id of the group at each position
+    v.hasMarks=order.length>0;
+    const cur=Math.min(S.markIdx??0, Math.max(order.length-1,0));
+    v.markNav=order.length?(cur+1)+" / "+order.length:"";
+    const jump=d=>{ if(!order.length) return;
+      const i=(cur+d+order.length)%order.length;
+      const r=RES.applied[order[i]];
+      this.setState({markIdx:i, docView:"red", sel:r?"a|"+E.norm(r.value).trim():null,
+        repDraft:r?(r.rep||""):"", open:this.openWith("findings")}, ()=>this.scrollToMark(i));
+    };
+    v.onPrevMark=()=>jump(-1); v.onNextMark=()=>jump(1);
+    // חצי הביטול יושבים ליד חצי הניווט, ומעומעמים כשאין לאן לחזור
+    const histBtn=on=>"width:26px;height:26px;border-radius:7px;font-size:13px;flex:none;color:"+
+      (on?"var(--ink2)":"var(--ink3)")+(on?"":";opacity:.4;cursor:default");
+    v.onHistUndo=()=>this.undo(); v.onHistRedo=()=>this.redo();
+    v.undoStyle=histBtn((S.undoN||0)>0); v.redoStyle=histBtn((S.redoN||0)>0);
+    // nothing to undo: a disabled button, not only a dim one (screen readers say so, and a
+    // disabled control is exempt from the contrast minimum its dimmed glyph cannot meet)
+    v.undoOff=!((S.undoN||0)>0); v.redoOff=!((S.redoN||0)>0);
+
+    // אותה רשימה בדיוק כמו המונה: ערך שכבר מחכה כאדם לא מופיע שוב כהצעה (UX #13)
+    const PRv=this.pendingReview();
+    v.nearItems = PRv.near.map(x=>({
+      value:x.value, ctx:x.ctx||{pre:"",hit:"",post:""},
+      tag:"כמו «"+x.near.target+"»"+(x.near.rep?" ← "+x.near.rep:""),
+      fixLabel: x.near.rep ? "החלפה ל«"+x.near.rep+"»" : "החלפה גם כאן",
+      // הערך שנתפס עשוי לשאת גרש או מקף בקצה; מנקים אותו כמו ש-addRule היה מנקה,
+      // ואם צורה כזאת כבר ברשימה — מעדכנים לה את התחליף במקום להיכשל על "כבר ברשימה"
+      onFix:()=>{ const v=E.trimEdges(x.value); const ex=S.rules.find(r=>E.norm(r.value).trim()===E.norm(v).trim());
+        if(x.near.rep){ if(ex) this.setRep(ex.value, x.near.rep); else this.addRule(v, x.near.kind||"NAME", x.near.rep); }
+        else this.mergeInto(v, x.near.target); },
+      onSkip:()=>this.addAllow(E.trimEdges(x.value))}));
+    v.sugItems = PRv.sug.map(x=>({
+      value:x.value, ctx:x.ctx||{pre:"",hit:"",post:""}, tag:x.count+"× · "+x.why,
+      onAdd:()=>{ const v=E.trimEdges(x.value); const ex=S.rules.find(r=>E.norm(r.value).trim()===E.norm(v).trim());
+        if(ex) this.setState({sel:"a|"+E.norm(ex.value).trim(), open:this.openWith("findings")}); else this.addRule(v,"NAME",""); },
+      onNo:()=>this.addAllow(E.trimEdges(x.value))}));
+
+    v.reviewClean = PRv.count===0;
+    /* ממצאים שנמצאו ולא הוחלפו, בראש "לבדיקה" (UX #13, #14): אנשים קודם, אחר כך
+       מספרים, ובסוף מקומות וגופים. לכל אחד "להחליף" ישיר ו"להשאיר". */
+    v.pendItems=[...PRv.people, ...PRv.numbers, ...PRv.soft].map(x=>({
+      value:x.value, tag:this.kindLabel(x.label)+(x.why?" · "+x.why:""), ctx:x.ctx||{pre:"",hit:"",post:""},
+      onAdd:()=>{ this.log.add("review-act",{act:"replace", kind:this.kindOfLabel(x.label)}); this.addRule(E.trimEdges(x.value), this.kindOfLabel(x.label), "", "review"); },
+      onKeep:()=>{ this.log.add("review-act",{act:"keep"}); this.addAllow(E.trimEdges(x.value)); }}))
+      .concat(PRv.second.map(x=>({
+        value:x.value, tag:"בבדיקה שנייה · "+this.kindLabel(x.label), ctx:x.ctx||{pre:"",hit:"",post:""},
+        onAdd:()=>{ this.log.add("review-act",{act:"replace", kind:this.engineKindOf(x.label), src:"second"}); this.addRule(E.trimEdges(x.value), this.engineKindOf(x.label), "", "review"); },
+        onKeep:()=>{ this.log.add("review-act",{act:"keep", src:"second"}); this.addAllow(E.trimEdges(x.value)); }})));
+
+    // המסנן הזה מראה מה שלא הוחלף; "לבדיקה" הוא הפאנל, עם מספר משלו (UX #13)
+    v.tabs=[["all","הכל",RES.applied.length+RES.flagged.length],["rep","הוחלף",RES.applied.length],
+      ["flag","לא הוחלף",RES.flagged.length]].map(([k,l,c])=>({
+      label:l+" "+c, on:S.filter===k, style:chip(S.filter===k), onClick:()=>this.setState({filter:k, sel:null})}));
+    const counts={}; groups.forEach(g=>counts[g.label]=(counts[g.label]||0)+g.count);
+    v.cats=[["","הכל"]].concat(Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([l,n])=>[l,this.kindLabel(l)+" "+n]))
+      .map(([val,label])=>({label, on:S.cat===val, style:chip(S.cat===val), onClick:()=>this.setState({cat:val, sel:null})}));
+
+    const q=(S.query||"").trim();
+    let shown = S.cat ? groups.filter(g=>g.label===S.cat) : groups;
+    if(q) shown = shown.filter(g=>(g.value+" "+(g.rep||"")+" "+g.label).includes(q));
+    v.query=S.query||"";
+    v.onQuery=e=>this.setState({query:e.target.value});
+    const nameOpts=[...new Set(RES.applied.filter(r=>r.label==="שם"||r.label.startsWith("שם")).map(r=>r.value))];
+    v.groupsEmpty = !shown.length;
+    v.groups = shown.map(g=>({
+      key:g.key, value:g.value, count:g.count, why:g.why||"", review:!!g.review,
+      rep:g.ap?g.rep:"לא הוחלף",
+      // הצורות של האדם הזה כשבבים (גרסה 5): אות השימוש חיוורת, ספירה לכל צורה,
+      // ולחיצה על שבב פותחת החלטה על הצורה הזאת בלבד
+      ...(()=>{
+        const forms=g.forms?[...g.forms.values()]:[];
+        const hasForms=!!g.ap&&(forms.length>1||forms.some(f=>f.pre));
+        const selKey=S.formSel&&S.formSel.startsWith(g.key+"|")?S.formSel.slice(g.key.length+1):"";
+        return {
+          hasForms,
+          forms:forms.map(f=>({pre:f.pre, rest:f.text.slice(f.pre.length), n:f.n,
+            title:f.pre?`הצורה «${f.text}»: האות ${f.pre} מהמסמך, השם מוחלף`:`הצורה «${f.text}»`,
+            style:"padding:2px 8px;border-radius:12px;font-size:12px;border:1px solid var(--line);"+(selKey===f.text?"background:var(--accent-soft);color:var(--accent-ink)":"color:var(--ink2)"),
+            onClick:e=>{ e.stopPropagation(); this.setState({formSel:selKey===f.text?null:g.key+"|"+f.text}); }})),
+          formSel:!!selKey, formSelText:selKey,
+          hasWords:!!g.ap&&(g.src==="list"||g.src==="sweep")&&this.wordItems(g.value).length>0,
+          words:this.wordItems(g.value, ()=>this.log.add("review-act",{act:"trim", from:"card"})),
+          onFormAllow:e=>{ e.stopPropagation(); this.log.add("allow-form",{}); this.setState({formSel:null}); this.addAllow(selKey); },
+        };
+      })(),
+      // הפעולות גלויות בלי לחיצה: "אל תחליפו" משאיר את הטקסט, "הסרה מהרשימה" מוחקת
+      // את השם שהמודל טעה בו. עד עכשיו הן הופיעו רק אחרי לחיצה על הכרטיס, בלי רמז.
+      isApplied:!!g.ap, isFlagged:!g.ap, fromList:g.src==="list"||g.src==="sweep",
+      onQuickAllow:e=>{ e.stopPropagation(); this.addAllow(g.value); },
+      // הבחירה לכל ערך: שם בדוי (או תווית למספר), ריק, ███. ברירת המחדל לפי סוג;
+      // כלל שנקבע על הכרטיס גובר. ריק על אדם מקבל שורת אזהרה, לא חלון.
+      ...(()=>{
+        const n=x=>E.norm(String(x||"")).trim();
+        const rule=S.rules.find(r=>n(r.value)===n(g.base||g.value)||n(r.value)===n(g.value));
+        const nameish=/^(שם|גוף|יישוב|מקום)/.test(g.label||"");
+        const isDate=/^תאריך/.test(g.label||"");
+        const cur=(rule&&rule.style)||(nameish?(S.mode==="block"?"black":S.mode==="label"?"label":"name"):isDate?(S.o.dateStyle||"name"):(S.o.numStyle||"blank"));
+        const btn=on=>"padding:5px 10px;border-radius:12px;font-size:12px;white-space:nowrap;"+(on?"background:var(--panel);box-shadow:var(--shadow);color:var(--ink);font-weight:500":"color:var(--ink2)");
+        const set=st=>e=>{ e.stopPropagation(); this.setStyle(g.value, rule?rule.kind:(nameish?"NAME":this.engineKindOf(g.label)), st, g.base); };
+        return {
+          styleNameLabel: nameish?"שם":isDate?"תאריך מוזז":"תווית",
+          onStyleName:set(nameish||isDate?"name":"label"), onStyleBlank:set("blank"), onStyleBlack:set("black"),
+          styleNameBtn:btn(cur==="name"||cur==="label"), styleBlankBtn:btn(cur==="blank"), styleBlackBtn:btn(cur==="black"),
+          blankWarn:cur==="blank"&&/^שם/.test(g.label||""),
+          // התחליף שהיא בחרה הוא גם שם אמיתי במסמך. הבחירה נשארת, והכרטיס אומר את זה (Q14 בגרסה 2).
+          collideWarn:g.collide?`«${g.collide}» מופיע במסמך גם כשם אמיתי, ושני האנשים ייראו כאחד. אפשר לבחור תחליף אחר כאן, או להוסיף לרשימה את האדם האמיתי בשם «${g.collide}».`:"",
+        };
+      })(),
+      onDropRule:e=>{ e.stopPropagation(); this.notAName(g.base||g.value, g.value); },
+      // "להחליף" ישיר על ממצא שמחכה, ו"אישור" על החלפה שמחכה לאישור (UX #14)
+      kindShown:this.kindLabel(g.label),
+      onReplaceFlag:e=>{ e.stopPropagation(); this.log.add("review-act",{act:"replace", from:"card", kind:this.kindOfLabel(g.label)}); this.addRule(E.trimEdges(g.value), this.kindOfLabel(g.label), "", "review"); },
+      onApprove:e=>{ e.stopPropagation(); this.log.add("review-act",{act:"approve"}); this.setState({approved:[...(S.approved||[]), g.key]}); },
+      repStyle:"font-weight:500;font-size:14px;color:"+(g.ap?"var(--accent-ink)":"var(--warn)"),
+      meta:this.kindLabel(g.label)+" · "+[...g.parts].join(", "),
+      ctx:g.ctxs[0]||{pre:"",hit:"",post:""}, selected:S.sel===g.key, applied:g.ap && S.sel===g.key, flagged:!g.ap && S.sel===g.key,
+      repDraft:S.sel===g.key?S.repDraft:"",
+      style:"padding:12px 15px;border-bottom:1px solid var(--line2);cursor:pointer;"+
+        (S.sel===g.key?"background:var(--panel2);":""),
+      onClick:()=>{ const nowSel = S.sel===g.key ? null : g.key;
+        const at=g.ids.length&&(g.ids[0] in firstPos)?firstPos[g.ids[0]]:-1;
+        this.setState({sel:nowSel, repDraft:g.rep||"", markIdx:at>=0?at:S.markIdx}, ()=>{ if(nowSel && at>=0 && !this.state.narrow) this.scrollToMark(at); }); },
+      onEnter:()=>{ if(g.ids.length) this.setState({hot:g.ids[0]}); },
+      onLeave:()=>this.setState({hot:null}),
+      stop:e=>e.stopPropagation(),
+      onRepChange:e=>this.setState({repDraft:e.target.value}),
+      onRepKey:e=>{ e.stopPropagation(); if(e.key==="Enter") this.setRep(g.value, this.state.repDraft, g.base); },
+      onSave:e=>{ e.stopPropagation(); this.setRep(g.value, this.state.repDraft, g.base); },
+      onAllow:e=>{ e.stopPropagation(); this.addAllow(g.value); },
+      showSame: g.ap && g.label.startsWith("שם") && nameOpts.filter(o=>o!==g.value).length>0,
+      // היעדים הם ערכי הרשימה עצמם (הבסיס), לא הצורות שנתפסו עם אות שימוש
+      sameOpts: [...new Set(S.rules.filter(r=>(r.kind||"NAME")==="NAME"&&!r.sameAs).map(r=>r.value))].filter(o=>E.norm(o).trim()!==E.norm(g.base||g.value).trim()).map(o=>({value:o, label:o})),
+      onSame:e=>{ e.stopPropagation(); const to=e.target.value; if(to) this.mergeInto(g.base||g.value, to); },
+      kinds:KINDS.map(([k,l])=>({label:l, onClick:e=>{ e.stopPropagation(); this.addRule(g.value,k,""); }}))
+    }));
+
+    const stats=this.cleanStats(RES.structural).map(([label,value])=>({label, value}));
+    v.stats = stats.length?stats:[{label:"לא נמצא מה לנקות", value:"—"}];
+
+    v.onReport = this.downloadReport;
+    v.hasMine = S.rules.length>0 || S.allow.length>0;
+    v.mineItems = S.rules.map(r=>({kind:this.kindLabel(E.KINDLBL[r.kind]||r.kind), value:r.value, rep:r.replacement||"",
+      onDel:()=>this.dropRule(r.value)}))
+      .concat(S.allow.map(a=>({kind:"נשאר כמו שהוא", value:a, rep:"", onDel:()=>{
+        this.pushHistory(); this.log.add("drop-allow",{});
+        this.setState({allow:S.allow.filter(x=>x!==a), notice:`«${a}» כבר לא מסומן «לא להחליף», ויוחלף אם יימצא.`}, ()=>this.rerun()); }})));
+
+    // "בטוח לשליחה" (החלטה Q2/Q8 ב-docs/PLAN-v18.md): שמות ומספרים חייבים להיעלם —
+    // דליפה, כמעט-התאמה, שם שלא ברשימה, או ממצא פתוח מסוג מזהה (ת"ז, טלפון, דוא"ל,
+    // חשבון, רכב, תאריך לידה, כתובת) — אדום. יישוב, שכונה, גוף ומספר תיק שנשארו
+    // לבדיקה — כתום, לא חוסמים: זו ההחלטה שלה.
+    // רשימת ההמתנה אחת לכל המסך (UX #13): אותו מספר בסרגל, בכותרת "לבדיקה" ובשאלה לפני ייצוא
+    const PR=this.pendingReview();
+    const listNames=a=>a.slice(0,3).join(" · ")+(a.length>3?" ועוד":"");
+    let kind="ok", title="", text="";
+    if(!ver.passed){ kind="bad";
+      title="האימות נכשל: פרטים מזהים עדיין בקובץ";
+      text=ver.leaks.slice(0,3).map(l=>l.value+" בתוך "+l.part).join(" · ")+(ver.leaks.length>3?" ועוד":"")+". אין לשלוח ואין להעתיק.";
+    } else if(this.scanIncomplete()){ kind="bad";
+      // שכבה שנשברה אינה שכבה שלא מצאה כלום (ביקורת M25): בלי זה הפס היה ירוק
+      title="הבדיקה האחרונה לא הושלמה";
+      text=this.scanIncompleteText()+". ייתכנו שמות שלא הוצעו. כדאי לקרוא את המסמך בעין לפני שליחה.";
+    } else if(PR.blocking){ kind="bad";
+      title=(PR.count===1?"פריט אחד ממתין":PR.count+" פריטים ממתינים")+" להחלטה בפאנל «לבדיקה»";
+      // אנשים קודם, ספקות ברמת המילה בסוף
+      const ordered=[...PR.people.map(x=>x.value), ...PR.numbers.map(x=>x.value), ...PR.sug.map(x=>x.value), ...PR.near.map(x=>x.value), ...PR.soft.map(x=>x.value)];
+      text=listNames(ordered)+". מה שלא הוחלט יגיע ל-AI כמו שהוא.";
+    } else if(PR.second.length){ kind="warn";
+      title="בבדיקה שנייה נמצאו פרטים שאינם ברשימה";
+      text=this.secondLine(PR.second);
+    } else if(PR.soft.length||ver.embedded.length||this.nearPartial()){ kind="warn";
+      const bits=[], np=this.nearPartial();
+      if(np) bits.push(`הבדיקה של כתיב דומה עברה רק על ${np.read} מתוך ${np.of} השמות ברשימה`);
+      if(PR.soft.length) bits.push((PR.soft.length===1?"מקום או גוף אחד ממתין":PR.soft.length+" מקומות או גופים ממתינים")+" בפאנל «לבדיקה» — ההחלטה שלכם");
+      // קבצים מוטמעים יוצאים מהקובץ (dropObjects, 12.10): מה שנשאר בלי סריקה הוא תמונות
+      if(ver.embedded.length) bits.push(ver.embedded.length+" תמונות שלא נסרקו");
+      title="השמות והמספרים הוחלפו. נשארו פריטים שכדאי לבדוק";
+      text=bits.join(" · ")+(ver.embedded.length?". טקסט בתוך תמונה אינו נסרק.":".");
+    } else {
+      // בלי מונחי מנוע (UX #15)
+      title="לא נשארו בטקסט שמות או מספרים מהרשימה";
+      text=(ver.hadList?"נבדקו גם כותרות, הערות שוליים ותיבות טקסט":"בלי רשימת שמות הבדיקה חלשה")+". כדאי לקרוא את המסמך פעם אחת לפני שליחה.";
+    }
+    // "ok" draws its check; warn and bad keep their "!" as text
+    const cmap={ok:["var(--accent)","var(--accent-soft)",null], warn:["var(--warn)","var(--warn-soft)","!"], bad:["var(--bad)","var(--bad-soft)","!"]};
+    v.statusDot="width:22px;height:22px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:13px;font-weight:600;color:"+cmap[kind][0]+";background:"+cmap[kind][1];
+    v.statusOk=kind==="ok"; v.statusIcon=cmap[kind][2]; v.statusTitle=title; v.statusText=text;
+    // שגיאה של המסך הזה יושבת בסרגל, לא בראש העמוד מעבר לגלילה; ✕ מנקה אותה
+    v.barErr=S.err||""; v.barOk=!S.err; v.onClearErr=()=>this.setState({err:""});
+    // שלושת השלבים בסרגל: הנוכחי מודגש
+    const stepOn="padding:3px 8px;border-radius:10px;background:var(--accent-soft);color:var(--accent-ink);font-weight:500", stepOff="padding:3px 8px;border-radius:10px;color:var(--ink3)";
+    v.step1Style=stepOff; v.step2Style=S.copied?stepOff:stepOn; v.step3Style=S.copied?stepOn+";border:1px solid var(--accent);font-size:inherit;cursor:pointer":stepOff; v.step2Done=!!S.copied;
+    // אחרי ההעתקה השלב השלישי הוא כפתור אל מסך ההחזרה, באותן מילים (הנוסח שאושר, 7.10.2026)
+    v.step3Btn=!!S.copied; v.step3Plain=!S.copied;
+    // undefined משאיר את התכונה בחוץ: אחרי ההעתקה השורה של כלי ה־AI מוצגת גם בטלפון
+    v.aiLater=S.copied?undefined:"1";
+    v.copyLabel=S.copyLabel;
+    v.copyBtnStyle="padding:11px 20px;border-radius:10px;font-weight:600;letter-spacing:.01em;font-size:14px;white-space:nowrap;color:var(--panel);background:"+(kind==="ok"?"var(--accent)":kind==="warn"?"var(--warn)":"var(--bad)");
+    v.onCopyAi=this.copyAi; v.onDownload=this.download; v.rerunning=!!S.rerunning;
+    // השאלה לפני ייצוא כשיש ממתינים (UX #18, #23)
+    const vFail=this.verifyFailed(), vLeaks=vFail?S.res.verification.leaks:[];
+    const vPartial=this.scanIncomplete();
+    v.exportAsk=!!S.exportAsk&&(PR.blocking>0||vFail||vPartial);
+    v.exportAskText=vFail
+      ? "האימות נכשל: "+(vLeaks.length===1?"פרט מזהה אחד":vLeaks.length+" פרטים מזהים")+" עדיין בקובץ ("+[...new Set(vLeaks.map(l=>E.partName(l.part)))].slice(0,3).join(", ")+(vLeaks.length===1?"), והוא יופיע גם במה שתעתיקו או תורידו עכשיו.":"), והם יופיעו גם במה שתעתיקו או תורידו עכשיו.")
+      : vPartial&&!PR.blocking ? this.scanIncompleteText()+", ולכן ייתכנו שמות שלא הוצעו לכם."
+      : (PR.blocking===1?"פריט אחד עדיין בלי החלטה":PR.blocking+" פריטים עדיין בלי החלטה")+" — "+listNames([...PR.people.map(x=>x.value), ...PR.numbers.map(x=>x.value), ...PR.sug.map(x=>x.value), ...PR.near.map(x=>x.value)]);
+    v.exportAnyLabel=S.exportAsk==="download"?"להוריד בכל זאת":"להעתיק בכל זאת";
+    v.onExportShow=()=>{ this.log.add("export-ask",{act:"show"}); this.setState({exportAsk:"", open:this.openWith("review"), pane:"find"}); };
+    v.onExportAnyway=()=>{ const w=S.exportAsk; this.log.add("export-ask",{act:"anyway", what:w}); if(w==="download") this.download(); else this.copyAi(); };
+    v.onExportCancel=()=>this.setState({exportAsk:""});
+
+    // כמה מקטעים פתוחים יחד; "לבדיקה" נפתח מעצמו כשיש מה לבדוק. אקורדיון שסוגר
+    // מקטע כשפותחים אחר החביא את הרשימה שהיא צריכה לעבור עליה.
+    const open=Array.isArray(S.open)?S.open:(S.open?[S.open]:[]);
+    const isOpen=k=>open.includes(k);
+    const secDef=[
+      // מספר אחד: מה שעוד מחכה להחלטה (UX #13). שם שהושאר הוא החלטה שכבר נעשתה, ולא נספר.
+      ["review","לבדיקה", PR.count, PR.count?"warn":"ok"],
+      ["findings","מה נמצא והוחלף", RES.applied.length+RES.flagged.length, "ok"],
+      ["profile","התיק ורשימת השמות", S.rules.length, "plain"],
+      ["clean","מה נוקה מהקובץ", stats.length, "plain"],
+      // כלי המשוב שלנו בסוף, מתחת לפרופיל — הוא אינו חלק מהעבודה על המסמך (UX #16)
+      ["send","עזרה בשיפור הזיהוי", 0, "plain"]
+    ];
+    v.sections = secDef.map(([key,title,count,tone])=>({
+      key, title, count:count?count:"", expanded:String(isOpen(key)),
+      wrapStyle:"background:var(--panel);border:1px solid "+(isOpen(key)?"var(--line)":"var(--line2)")+";border-radius:12px;box-shadow:"+(isOpen(key)?"var(--shadow)":"none")+";overflow:hidden",
+      dotStyle:"width:7px;height:7px;border-radius:50%;flex:none;background:"+(tone==="warn"?"var(--warn)":tone==="ok"?"var(--accent)":"var(--ink3)"),
+      onToggle:()=>this.setState({open:isOpen(key)?open.filter(k=>k!==key):[...open,key]}),
+      openReview:isOpen("review")&&key==="review", openFindings:isOpen("findings")&&key==="findings",
+      openProfile:isOpen("profile")&&key==="profile",
+      openSend:isOpen("send")&&key==="send",
+      openClean:isOpen("clean")&&key==="clean"
+    }));
+    // ההכרעה נאמרת פעם אחת, כשמגיעים; שינוי שלה אחר כך נאמר בסרגל עצמו, שכבר בדף
+    if(this._srWork==null) this._srWork=v.statusTitle||"";
+    v.srStatus=this._srWork;
+    return v;
+  }
+}
+;return (typeof Component!=="undefined"&&Component)||undefined;
+} };

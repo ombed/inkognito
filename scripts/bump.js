@@ -52,6 +52,8 @@ for (const [re, rep] of shapes) {
   if (!re.test(html)) { console.error("index.html: site not found: " + re); process.exit(1); }
   html = html.replace(re, rep);
 }
+// three of the four sit in the boot script, which the page's policy names by its hash (scripts/page-parts.js)
+html = require("./page-parts.js").withHashes(html);
 write("index.html", html);
 
 let sw = read("sw.js");

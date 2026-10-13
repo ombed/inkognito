@@ -74,7 +74,7 @@ for (const l of libs) {
   if (f && l.alg) ok(crypto.createHash(l.alg).update(fs.readFileSync(f)).digest("base64") === l.pin, "and it is the pinned file: " + l.url);
 }
 const literal = /https:\/\/(?:unpkg\.com|cdn\.jsdelivr\.net\/npm)\/[^"'`\s)]+/g;
-const stray = ["index.html", "support.js", "sw.js", "pdf-text.js", ...fs.readdirSync(path.join(ROOT, "engine")).map((f) => "engine/" + f)]
+const stray = ["index.html", "page-component.js", "support.js", "sw.js", "pdf-text.js", ...fs.readdirSync(path.join(ROOT, "engine")).map((f) => "engine/" + f)]
   .flatMap((f) => (read(f).toString().match(literal) || []).filter((u) => !libs.some((l) => l.url.startsWith(u))).map((u) => f + ": " + u));
 ok(stray.length === 0, "every CDN address in the tool is one of them: " + stray.join(", "));
 

@@ -58,19 +58,28 @@ async function selfCheckOf(page, hookTimeout = 10000) {
   });
 }
 
+/* One fixed key for the invented names. Since v73.13 each browser draws its own (aliasKey in the page), so each test
+   drew new names, and a test that mixes two documents' invented names met, by chance, the restore's guard against
+   a shared word («בתשובה יש שמות בדויים של מסמך אחר»): e2e/restore.spec.js failed so in WebKit on 13.10. With one
+   key the names are the same in every run, as before v73.13. A test about the key itself takes
+   test.use({ aliasPin: null }). */
+const ALIAS_PIN = "5eed".repeat(16);
+
 const test = base.test.extend({
+  aliasPin: [ALIAS_PIN, { option: true }],
   localLibs: [async ({ context, serviceWorkers }, use) => {
     if (serviceWorkers !== "allow") await context.route(/^https:\/\/(?:unpkg\.com|cdn\.jsdelivr\.net)\//, serveLocal);
     await use();
   }, { auto: true }],
-  selfCheck: [async ({ page }, use, info) => {
-    await page.addInitScript(() => {
+  selfCheck: [async ({ page, aliasPin }, use, info) => {
+    await page.addInitScript((pin) => {
       window.__PIB_TEST = true;
+      if (pin) try { if (!/^[0-9a-f]{64}$/.test(localStorage.getItem("redact-alias-key") || "")) localStorage.setItem("redact-alias-key", pin); } catch (_) {}
       // the Content-Security-Policy (review H14): anything the page is refused is recorded, and a
       // refusal fails the test, so a host the policy forgot shows here and not in a session
       window.__csp = [];
       document.addEventListener("securitypolicyviolation", (e) => window.__csp.push(e.violatedDirective + " " + String(e.blockedURI).slice(0, 80)));
-    });
+    }, aliasPin);
     const noise = [];
     page.on("console", (m) => { if (/never resolved/.test(m.text())) noise.push({ rule: "runtime-warning", detail: m.text().slice(0, 160) }); });
     page.on("pageerror", (e) => noise.push({ rule: "page-error", detail: String(e && e.message || e).slice(0, 160) }));

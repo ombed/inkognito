@@ -69,7 +69,7 @@ console.log("\n— the whole path: a case used, its people list, the engine —"
       if (!proto.querySelector) proto.querySelector = function (t) { const l = this.getElementsByTagName(t); return l && l.length ? l[0] : null; };
     } }
   const { mkzip } = require("./mkzip.js");
-  const src = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+  const src = require("../scripts/page-parts.js").pageWithLogic();
   const at = src.indexOf("class Component extends DCLogic"), end = src.indexOf("</script>", at);
   global.window = global; global.document = { getElementById: () => null, querySelector: () => null };
   const store = new Map();

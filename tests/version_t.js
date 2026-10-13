@@ -51,6 +51,8 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "bump-"));
 try {
   fs.mkdirSync(path.join(tmp, "scripts"));
   fs.copyFileSync(path.join(ROOT, "scripts", "bump.js"), path.join(tmp, "scripts", "bump.js"));
+  // which names the page's inline scripts by hash after the versions it moves
+  fs.copyFileSync(path.join(ROOT, "scripts", "page-parts.js"), path.join(tmp, "scripts", "page-parts.js"));
   for (const f of ["index.html", "sw.js", "README.md"]) fs.copyFileSync(path.join(ROOT, f), path.join(tmp, f));
   const bump = (...a) => { try { execFileSync(process.execPath, [path.join(tmp, "scripts", "bump.js"), ...a], { stdio: "pipe" }); return 0; } catch (e) { return e.status || 1; } };
   const n = Number(chip.match(/^v(\d+)/)[1]), k = Number((chip.match(/\.(\d+)$/) || [0, 0])[1]);
