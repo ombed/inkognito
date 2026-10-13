@@ -47,11 +47,15 @@ const zipOf = (body, parts) => mkzip([...base, { name: "word/document.xml", body
 const outOf = async (res) => E.unzip(await res.blob.arrayBuffer());
 const docXml = (out) => TXT.decode(out.find((f) => f.name === "word/document.xml").data);
 const bodyOf = (x) => (x.match(/<w:body>[\s\S]*<\/w:body>/) || [""])[0];
+// text standing directly under a part's root element (none in Word's own parts; a custom XML part may hold some)
+const rootText = (t) => { let r; try { r = new DOMParser().parseFromString(t, "application/xml").documentElement; } catch (e) { return ["(does not parse: " + e.message.slice(0, 90) + ")"]; }
+  return r ? Array.from(r.childNodes).filter((c) => (c.nodeType === 3 || c.nodeType === 4) && c.nodeValue.trim()).map((c) => c.nodeValue) : []; };
 
 (async () => {
   console.log(`\n— ${NAME} in every Word structure: no piece of it in any part of the output —`);
   for (const [name, c] of Object.entries(S)) {
-    const zip = mkzip([...base, { name: "word/document.xml", body: doc(c.body) }, ...(c.parts || [])]);
+    const parts = [...base, { name: "word/document.xml", body: doc(c.body) }, ...(c.parts || [])];
+    const zip = mkzip(parts);
     let res;
     try { res = await E.redactDocx(zip, SUBS, [], OPT); } catch (e) { ok(false, `${name}: the pipeline threw: ${e.message}`); continue; }
     const out = await E.unzip(await res.blob.arrayBuffer());
@@ -59,6 +63,15 @@ const bodyOf = (x) => (x.match(/<w:body>[\s\S]*<\/w:body>/) || [""])[0];
     ok(!left.length, `${name}: the name is still in ${left.join(", ")}`);
     const docOut = TXT.decode(out.find((f) => f.name === "word/document.xml").data);
     ok(/<w:body>/.test(docOut) && docOut.includes("פרוטוקול הדיון"), `${name}: the document body did not survive`);
+    /* Every part leaves as one declaration and then its root, with no text of its own under the root that the part
+       did not have. Browsers (and xmldom) write a declaration before the root; putting the original root tag back
+       by slicing the serializer's off the start left the tail of the tag in every rewritten part as text (13.10). */
+    const before = new Map(parts.map((p) => [p.name, rootText(p.body).length]));
+    for (const f of out.filter((x) => /\.(xml|rels)$/.test(x.name))) {
+      const t = TXT.decode(f.data), decl = t.match(/<\?xml\s/g) || [], stray = rootText(t);
+      ok(decl.length <= 1 && (!decl.length || t.startsWith("<?xml")), `${name}: ${f.name} does not open with one XML declaration`);
+      ok(stray.length <= (before.get(f.name) || 0), `${name}: ${f.name} has text of its own under its root: ${JSON.stringify(stray.map((s) => s.slice(0, 40)))}`);
+    }
   }
 
   // the last pass says where it had to reach, so the report can show it

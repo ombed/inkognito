@@ -72,6 +72,12 @@ test("markup and template syntax in a document and its name are text on every sc
   const errors = [];
   const dom = new DOMParser({ onError: (level, msg) => { if (level !== "warning") errors.push(msg); } }).parseFromString(xml, "application/xml");
   expect(errors, "document.xml parses").toEqual([]);
+  // one declaration, at the start, and no text of its own under the root: every browser writes a declaration
+  // before the root, and putting the original root tag back once left the end of the tag there as text (13.10)
+  expect((xml.match(/<\?xml\s/g) || []).length, "one XML declaration").toBe(1);
+  expect(xml.startsWith("<?xml"), "the declaration opens the part").toBe(true);
+  const rootText = Array.from(dom.documentElement.childNodes).filter((n) => (n.nodeType === 3 || n.nodeType === 4) && n.nodeValue.trim()).map((n) => n.nodeValue);
+  expect(rootText, "no text directly under the root").toEqual([]);
   const text = Array.from(dom.getElementsByTagName("w:t")).map((t) => t.textContent).join("");
   for (const p of PAYLOADS) expect(text, "the file holds «" + p + "» as text").toContain(p);
   expect(dom.getElementsByTagName("script").length + dom.getElementsByTagName("img").length).toBe(0);
