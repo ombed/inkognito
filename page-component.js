@@ -435,6 +435,8 @@ class Component extends DCLogic {
       repDraft:"", approved:[], formSel:null, markIdx:0, docView:"red", exportAsk:"", notice:"", leaks:[], copied:false, copyLabel:"העתקה ל־AI", undoN:0, redoN:0, rerunning:false,
       // החזרת שמות
       rvIn:"", rvOut:"", rvCount:0, rvLeft:[], rvDates:[], rvLast:null, rvProfile:null,
+      // ציטוטים של תיקים אחרים שהיא ביקשה להחליף בכל זאת: של המסמך הזה בלבד (07-cite.js)
+      citeReplace:[],
       // מה שהתיק שומר (profileObj)
       rules:[], allow:[], removed:[], sent:{}};
     if(keepCase&&(S.profile||S.caseName)) for(const k of ["rules","allow","removed","sent"]) delete reset[k];
@@ -625,6 +627,14 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     return raw.length>=2 ? [{part:"__name", text:raw}] : [];
   }
 
+  /* שם שכל המופעים שלו בתוך ציטוטים של תיקים אחרים שנשארים (07-cite.js). הציטוטים נקבעים כמו בהחלפה: שמות התיק הם
+     המועמדים שמופיעים גם מחוץ לציטוטים, וציטוט שיש בו אחד מהם — הליך קודם בין אותם צדדים — אינו נשאר, והצד השני שבו
+     נשאר ברשימה */
+  citeOnlyOf(blocks, values){
+    const E=this.state.E; if(!E||!E.citeListKeys) return ()=>false;
+    const texts=(blocks||[]).map(b=>b.text||""), keys=E.citeListKeys(texts.join("\n"), values||[]);
+    return v=>E.citeOnly(v, texts, keys);
+  }
   // הקריאה של המסמך נעשית במנוע, באותו קורא שמשמש את ההחלפה (ביקורת C2): שכבות ההצעה
   // רואות בדיוק את החלקים שההחלפה מנקה — כולל הגדרות, SmartArt וגרפים
   blocksOf(buf){ return this.state.E.readBlocks(buf.slice(0)); }
@@ -634,8 +644,11 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     const E=this.state.E;
     const dt=new Set();
     for(const c of cands) for(const w of c.value.split(/\s+/)) dt.add(w);
+    // שם שמופיע רק בתוך ציטוטים של תיקים אחרים הוא צד לתיק אחר: לא ברשימה ולא בהצעות, והציטוט נשאר כמו שהוא (07-cite.js)
+    const cite=this.citeOnlyOf(blocks, cands.map(c=>c.value));
     const peo=[];
     for(const c of cands){
+      if(cite(c.value)) continue;
       // דובר שחוזר בתמלול הוא אדם גם בשם אחד: "ענבר:" בראש כמה פסקאות.
       if(c.conf!=="high" || (!c.value.includes(" ") && !c.speaker)) continue;
       const w=c.value.split(/\s+/);
@@ -662,7 +675,7 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     const inList=v=>peo.some(p=>E.norm(p.value)===E.norm(v));
     // מי שהוסר בתיק ומופיע שוב עולה ראשון, עם ההסבר שלו, גם אם לא היה עובר את סף ההצעות
     const REMOVED_WHY="הוסר מהרשימה במסמך קודם בתיק — להחליף גם כאן?";
-    const peoSug=cands.filter(c=>!inList(c.value)).filter(c=>{const w=c.value.split(/\s+/);
+    const peoSug=cands.filter(c=>!inList(c.value)&&!cite(c.value)).filter(c=>{const w=c.value.split(/\s+/);
       return this.wasRemoved(c.value)||(w.length<=3&&w.every(x=>x.length>=2)&&(w.length>=2||c.speaker||c.count>=2));})
       .sort((a,b)=>(this.wasRemoved(b.value)?1:0)-(this.wasRemoved(a.value)?1:0))
       .slice(0,8).map(c=>({value:c.value, why:this.wasRemoved(c.value)?REMOVED_WHY:c.why, count:c.count, kind:"NAME"}));
@@ -709,9 +722,10 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
         // היא כבר המשיכה. הרשימה שבמסך השמות היא היסטוריה; מה שקובע הוא הכללים.
         const E2=this.state.E, rules=[...this.state.rules]; let late=0;
         const allowN=new Set((this.state.allow||[]).map(a=>E2.norm(a).trim()));
+        const cite=this.citeOnlyOf(blocks, [...rules.map(r=>r.value), ...found.map(f=>f.value)]);
         for(const f of found){
           const k=E2.norm(f.value).trim();
-          if(rules.some(r=>E2.norm(r.value).trim()===k)||allowN.has(k)) continue;
+          if(rules.some(r=>E2.norm(r.value).trim()===k)||allowN.has(k)||cite(f.value)) continue;
           if(f.prefixOf&&f.fold==="yes") continue;
           // הוסר בתיק: לא חוזר ככלל מאחורי גבה; guardModel מעלה אותו כהצעה במסך הבדיקה (H11)
           if(this.wasRemoved(f.value)) continue;
@@ -725,8 +739,10 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
         return;
       }
       const list=[...this.state.peo]; let added=0; const sug=[...this.state.peoSug];
+      // מה שהמודל מצא רק בתוך ציטוטים של תיקים אחרים הוא צד לתיק אחר (07-cite.js)
+      const cite=this.citeOnlyOf(blocks, [...list.map(p=>p.value), ...found.map(f=>f.value)]);
       for(const f of found){
-        if(list.some(p=>E.norm(p.value)===E.norm(f.value))) continue;
+        if(list.some(p=>E.norm(p.value)===E.norm(f.value))||cite(f.value)) continue;
         // גוף בלי מילת סוג ("נורבין", "שביל הלב" לבדו) אינו נכנס לרשימה מעצמו:
         // הוא מוצע לאישור, כי בלי הראש אין לדעת אם זה מזהה או מילה מהעולם.
         if(f.review){ if(!sug.some(x=>E.norm(x.value)===E.norm(f.value))) sug.push({value:f.value, why:"אולי שם של חברה או מוסד, אבל אין לפניו מילה כמו «חברת» או «עמותת»", count:f.n, kind:f.kind}); continue; }
@@ -898,6 +914,11 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     }
     this.setState({allow:this.state.allow.filter(a=>a!==value), rules,
       peoKept:(this.state.peoKept||[]).filter(x=>n(x.value)!==n(value))}, ()=>this.rerun()); };
+  // ציטוט של תיק אחר שנשאר כמו שהוא, והיא ביקשה להחליף גם אותו (07-cite.js): צעד בהיסטוריה, כמו «לחזור ולהחליף»
+  citeReplace = key => {
+    if((this.state.citeReplace||[]).includes(key)) return;
+    this.pushHistory(); this.log.add("cite-replace",{});
+    this.setState({citeReplace:[...(this.state.citeReplace||[]), key]}, ()=>this.rerun()); };
 
   /* ── דוגמאות מהמסמך ──
      שני המסכים שלפני מסך הבדיקה מבקשים החלטה על מילה. בלי לראות את המילה
@@ -1193,6 +1214,8 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     // סגנון לפי סוג: שמות, גופים ומקומות לפי המצב הגלובלי; כל השאר — מספרים,
     // תאריכים, כתובות — לפי בחירתה, ומחיקה כברירת מחדל. כרטיס יכול לעקוף.
     return {on, flag, mode:this.state.mode, near:this.state.o.near, body:true, prefixes:"normal", aliasKey:this.aliasKey(),
+      // ציטוט של תיק אחר נשאר כמו שהוא, חוץ ממה שהיא ביקשה להחליף (07-cite.js)
+      citeReplace:this.state.citeReplace||[],
       // תאריך מלא מוזז כברירת מחדל (Q5 בגרסה 3), בלי קשר לבחירה על שאר המספרים; כרטיס יכול לעקוף
       // תאריך: מוזז כברירת מחדל (Q5 בגרסה 3); בחירה אחרת (Q1 בגרסה 5) נשמרת בפרופיל התיק
       styles:{"*":this.state.o.numStyle||"blank", DATE:this.state.o.dateStyle||"name"}};
@@ -1294,7 +1317,8 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
      יושבים על המופע ולא ב-state, כי הם אינם משתתפים ברינדור; רק שני המונים כן,
      בשביל הכפתורים. ארבעים צעדים מספיקים למסמך אחד. */
   snapshot(){
-    return {rules:(this.state.rules||[]).map(r=>({...r})), allow:[...(this.state.allow||[])], removed:[...(this.state.removed||[])]};
+    return {rules:(this.state.rules||[]).map(r=>({...r})), allow:[...(this.state.allow||[])], removed:[...(this.state.removed||[])],
+      citeReplace:[...(this.state.citeReplace||[])]};
   }
   /* ביטול חל על החלטות של מסך הבדיקה בלבד. צעד שנרשם במסך אחר (מספריים ב«מי בתיק», «↩» ב«יישובים»), או צעד
      מלפני שהרשימה נבנתה מחדש, החזיר בלחיצה אחת את כל הרשימה, והשמות שנוספו אחריו יצאו גלויים (הציד של 11.10) */
@@ -1312,7 +1336,7 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     to.push(this.snapshot());
     const snap=from.pop();
     if(this.log) this.log.add(back?"undo":"redo",{});
-    this.setState({rules:snap.rules, allow:snap.allow, removed:snap.removed||[], sel:null,
+    this.setState({rules:snap.rules, allow:snap.allow, removed:snap.removed||[], citeReplace:snap.citeReplace||[], sel:null,
       undoN:this._undo.length, redoN:this._redo.length}, ()=>this.rerun());
   }
   undo = () => this.stepHistory(true);
@@ -3084,6 +3108,9 @@ const KIND_NAME={NAME:"אדם", ORG:"גוף", PLACE:"מקום"};
       keptItems:(S.peoKept||[]).map(k=>({name:k.value, onUndo:()=>this.peoRestore(k.value)})),
       hasAllowed:S.screen==="work"&&(S.allow||[]).length>0,
       allowedItems:(S.allow||[]).map(a=>({name:a, onUndo:()=>this.allowRestore(a)})),
+      // ציטוטים של תיקים אחרים שנשארו כמו שהם (07-cite.js); ↩ מחליף גם אותם
+      hasCited:S.screen==="work"&&!!(S.res&&(S.res.cited||[]).length),
+      citedItems:((S.res&&S.res.cited)||[]).map(k=>({text:k, onReplace:()=>this.citeReplace(k)})),
       hasExcluded:(S.geoExcluded||[]).length>0,
       excluded:(S.geoExcluded||[]).map(n=>({name:n, onUndo:()=>this.geoRestore(n)})),
       mapLand:MV?MV.land:"", hasLand:!!(MV&&MV.hasLand), showMap:!!S.showMap, mapLabel:S.showMap?"הסתרת המפה":"הצגת המפה", onToggleMap:()=>{ if(!S.showMap) this.loadAtlas(); this.setState({showMap:!S.showMap}); },
