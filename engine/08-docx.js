@@ -948,6 +948,18 @@ async function redactDocx(buf,subs,allow,opt){
   // שם שתווית בתא או בפסקה שלידו מעידה עליו נבדק כמו שם שאחרי תווית באותה שורה (labelNext)
   const nextTo=new Map();
   for(const {i,h} of labelNext(blocks)){const l=nextTo.get(blocks[i])||[]; l.push(h); nextTo.set(blocks[i],l)}
+  /* ציטוטים של תיקים אחרים שנשארים כמו שהם (07-cite.js, החלטת הבעלים 13.10). קודם מעבר בלי ההגנה, שאוסף כל מה שיוחלף
+     מחוץ לציטוטים — שם, יישוב, מספר — ורק אז נקבע מה נשאר: ציטוט שיש בו ערך כזה הוא של התיק הזה (הליך קודם בין אותם
+     צדדים), והערך היה נשאר בקובץ בתוכו. cite:false מכבה; citeReplace: ציטוטים שהיא ביקשה להחליף */
+  if(!(opt&&opt.cite===false)){
+    const mine=new Set();
+    for(const blk of blocks){ if(blk.dupOf)continue;
+      const sp0=citeSpans(norm(blk.text)).filter(x=>x.parties);
+      for(const h of eng.detect(blk.text,false,nextTo.get(blk))){
+        if(!h.apply||sp0.some(x=>x.s<=h.s&&h.e<=x.e))continue;
+        mine.add(h.base||h.text); if(h.dtext)mine.add(h.dtext); } }
+    eng.citeKeys=citeKept(blocks.filter(b=>!b.dupOf).map(b=>b.text).join("\n"),mine,opt&&opt.citeReplace?new Set(opt.citeReplace):null);
+  }
   for(const blk of blocks){
     // החלופה של תיבת טקסט מקבלת בדיוק את ההחלפות של הצורה, ואינה נספרת שוב
     if(blk.dupOf){if(blk.dupOf.reps)applyReps(blk,blk.dupOf.reps.map(r=>r.slice()));continue}
@@ -1098,6 +1110,8 @@ async function redactDocx(buf,subs,allow,opt){
       while((z=rx0.exec(n)))zones.push([z.index,z.index+z[0].length])}
     for(const w of pseudoWritten){let i=n.indexOf(w);
       while(i>=0){zones.push([i,i+w.length]);i=n.indexOf(w,i+1)}}
+    // ציטוט של תיק אחר שנשאר (07-cite.js): גם המעבר הזה אינו כותב בתוכו
+    for(const z of citeSpansIn(n,eng.citeKeys))zones.push(z);
     for(const [o,inf] of Object.entries(sweep)){
       if(!nl.includes(loose(o)))continue;
       const nw=inf.rep;
@@ -1302,7 +1316,9 @@ async function redactDocx(buf,subs,allow,opt){
     const known=[...subs.map(s=>s.value),...(allow||[]),
       ...applied.map(r=>r.base||r.value),...applied.map(r=>r.baseRep||r.rep)];
     suggest=bodyNames(ORIG.filter(b=>!notProse(b.part)),known)
-      .filter(x=>!near.some(nm=>norm(nm.value).trim()===norm(x.value).trim()));
+      .filter(x=>!near.some(nm=>norm(nm.value).trim()===norm(x.value).trim()))
+      // שם שמופיע רק בתוך ציטוטים של תיקים אחרים שנשארים אינו שם של התיק הזה (07-cite.js)
+      .filter(x=>!citeOnly(x.value,ORIG.map(b=>b.text),eng.citeKeys));
     // בלי תקרה: ההצעות נחתכו בשתים-עשרה, והשם השלושה-עשר שלא ברשימה לא הוצע ונשאר בקובץ (ביקורת L12).
   }catch(e){if(!e||!e.skip){console.warn("סריקת גוף הטקסט נכשלה",e);incomplete.push("body")}}
   ver.suggest=suggest;
@@ -1346,7 +1362,9 @@ async function redactDocx(buf,subs,allow,opt){
     !near.length&&!suggest.length&&!incomplete.length;
   // dateOff: ההזזה של התאריכים במסמך הזה, בימים; ההחזרה מזיזה בה אחורה תאריך שה-AI חישב (backDates)
   // second: הבדיקה השנייה של התוצאה, בלי הרשימה (secondScan)
-  return {blob,applied,flagged,preview,structural:rep,verification:ver,map:eng.map,dateOff:eng.dateOff,second:secondScan(preview,allow,subs)};
+  return {blob,applied,flagged,preview,structural:rep,verification:ver,map:eng.map,dateOff:eng.dateOff,second:secondScan(preview,allow,subs,eng.citeKeys),
+    // הציטוטים של תיקים אחרים שנשארו כמו שהם, לפי סדר הופעתם (07-cite.js); citeReplace מקבל מפתח מכאן
+    cited:eng.citeKeys?[...eng.citeKeys]:[]};
 }
 const PARTN={"document.xml":"גוף המסמך","footnotes.xml":"הערות שוליים","endnotes.xml":"הערות סיום"};
 function partName(p){
@@ -1418,7 +1436,8 @@ const XUN=s=>s.replace(/&(quot|apos|lt|gt|amp);/g,(m,k)=>({quot:'"',apos:"'",lt:
    preview: [{text, marks:[{s,e}]}], התוצאה. tests/secondscan_t.js */
 const SECOND_NUM=new Set(["EMAIL","PHONE_MOBILE","PHONE_LAND","PHONE_INTL","FAX","ISRAELI_ID","ISRAELI_ID_SEP","ISRAELI_ID_LABELED",
   "CREDIT_CARD","IBAN","PASSPORT","PLATE","PLATE_LABELED","BANK_ACCOUNT"]);
-function secondScan(preview,allow,subs){
+// citeKeys: ציטוטים של תיקים אחרים שנשארו (07-cite.js); השמות שבהם אינם של התיק, והבדיקה אינה מעלה אותם
+function secondScan(preview,allow,subs,citeKeys){
   const keep=new Set((allow||[]).map(a=>norm(String(a)).trim())), out=[], seen=new Set();
   const ctxOf=(t,s,e)=>({pre:(s>40?"…":"")+t.slice(Math.max(0,s-40),s), hit:t.slice(s,e), post:t.slice(e,e+40)+(e+40<t.length?"…":"")});
   const plain=x=>!poolWordy(x)&&!wordish(x);
@@ -1432,7 +1451,7 @@ function secondScan(preview,allow,subs){
   const SUR_END=/(?:וביץ|ביץ|סקי|ברג|בורג|שטיין|שטין|צקי)$/;
   const nameOk=x=>!!x&&plain(x)&&(KNOWN_FIRST.has(x)||listed.has(x)||near(x)||(x.length>=5&&SUR_END.test(x)));
   for(const b of preview||[]){
-    const t=String(b.text||""), nt=norm(t), marks=b.marks||[];
+    const t=String(b.text||""), nt=norm(t), marks=(b.marks||[]).concat(citeSpansIn(nt,citeKeys).map(([s,e])=>({s,e})));
     const inMark=(s,e)=>marks.some(m=>m.s<e&&s<m.e);
     // label: התווית של סוג הפרט, כמו בממצא רגיל, כדי ש«להחליף» יוסיף לרשימה את הסוג הנכון
     const push=(kind,pat,label,s,e)=>{
@@ -2674,4 +2693,5 @@ export {nerLast, hiddenPart, nerForget, VRB, COMMON, KNOWN_FIRST, NW, NWE, crc32
   resolve, Engine, flatten, acceptTracked, stripComments, redactDocx, partName, ctxHTML, verify,
   discover, PLACES, PLACE_BY, geoMap, geoNames, placesFound, examplesOf, findPlaces, fakePlace,
   atlasTags, atlasDiff, atlasPenalty, placeKind, nerEnv, nerCached, nerPersist, nerLoad, nerRun,
-  TITLE_RX, ORG_RX, likelyOrg, cleanEntry, trimEdges, pseudoRX, restoreNames, restorePairs, STOP, gender, origin, readBlocks, isTextPart, setAliasKey, hmac32, stripImageMeta, secondScan, OBJ_NOTE};
+  TITLE_RX, ORG_RX, likelyOrg, cleanEntry, trimEdges, pseudoRX, restoreNames, restorePairs, STOP, gender, origin, readBlocks, isTextPart, setAliasKey, hmac32, stripImageMeta, secondScan, OBJ_NOTE,
+  citeSpans, citeKept, citeKey, citeSpansIn, citeOnly, citeListKeys, ORG_TAIL};
