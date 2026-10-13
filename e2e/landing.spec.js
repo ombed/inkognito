@@ -2,6 +2,9 @@ const { test, expect } = require("./base");
 const AxeBuilder = require("@axe-core/playwright").default;
 const fs = require("fs");
 const path = require("path");
+// the site's pages, not the tool: no fixed key for the invented names in the storage they read and clear
+// (e2e/base.js, aliasPin; the account-deleted page found it there again after its clearing, 13.10)
+test.use({ aliasPin: null });
 
 /* The home page (site/index.html), in the law-report design (6.10), and the site's other pages,
    which share its frame. What it pins:
