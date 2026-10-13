@@ -538,6 +538,8 @@ const SUR_SUFFIX=/(?:וביץ|ביץ|ביץ'|סקי|סקה|ברג|בורג|שט�
    שה-AI עדיין יידע שהוא קורא על מכון. גוף בלי אף אחת משתי הראשים עולה לבדיקה. */
 const GROUP_HEADS=/^(?:חסידי|חסידות|חסידת|תנועת|מפלגת|זרם|עדת|קהילת|ארגון\s+ה)/u;
 const ORG_HEADS=/^(?:עמותת|עמותה|מכון|חברת|חברה|בית\s+ספר|בי"ס|ביה"ס|בית\s+הספר|מרכז|אגודת|אגודה|קרן|מוסד|גן|מעון|פנימיית|פנימייה|ישיבת|ישיבה|קופת\s+חולים|בנק|מרפאת|מרפאה|בית\s+חולים|ביה"ח|מכללת|אוניברסיטת|תיכון|חטיבת|מתנ"ס|בית\s+אבות|מועדון|סניף|קבוצת)(?=\s|$)/u;
+// סיומת שעושה מהשם חברה בוודאות: «… בע"מ», «… Ltd», «… ושות'», ואחריה אולי מצב בסוגריים («(בפירוק)»)
+const ORG_TAIL=/(?:^|\s)(?:בע"מ|Ltd\.?|LTD\.?|Inc\.?|ושות'?|ושותפיו?)(?:\s*\((?:\d{4}|בפירוק|בפירוק זמני|בכינוס נכסים|בהקפאת הליכים)\))?$/u;
 const ORG_TAILS=["אורנים","הגפן","שקד","נווה","הרימון","תמר","ארז","הדס","אלון","ברוש","נטע","גלים","אופק","דקל","צבר","הזית","סביון","יובל","עמית","רקפת"];
 function orgHead(v){ const m=ORG_HEADS.exec(norm(v).trim()); return m?m[0]:null; }
 function fakeOrg(value,used,forbidden){
@@ -1418,7 +1420,9 @@ function nerClean(ents,text,opt){
     if(kind==="ORG"){
       const nv=norm(v).trim();
       if(typeof GROUP_HEADS!=="undefined"&&GROUP_HEADS.test(nv))continue;
-      if(typeof ORG_HEADS!=="undefined"&&!ORG_HEADS.test(nv))orgReview=true;
+      // סיומת של חברה («… בע"מ», «… Ltd», «… ושות'») ודאית כמו מילת סוג לפני השם. עד כאן חברה כזאת עלתה רק כהצעה, וכל
+      // החברות שהיו צד בפסקי הדין של הבדיקה העיוורת השנייה נשארו בטקסט כשהרשימה אושרה כמו שהוצעה (13.10)
+      if(typeof ORG_HEADS!=="undefined"&&!ORG_HEADS.test(nv)&&!ORG_TAIL.test(nv))orgReview=true;
     }
     // גם כשהמודל תפס רק קטע: "הרווחה" מתוך "משרד הרווחה". בודקים את הקטע עם
     // עד שתי המילים שלפניו בטקסט המקורי, אחרת גוף ציבורי מוצע ומושחר.
@@ -1528,7 +1532,10 @@ function addrOK(v,n,i){
   return !(PLACE_BY[m[1]]||(m[2]&&PLACE_BY[m[1]+" "+m[2]]))}
 /* מספר תיק בכל סוג תיק (הציד של 11.10): עד כאן רק עשרה סוגים, ואף לא אחד מסוגי התיקים של בית המשפט
    לענייני משפחה מלבד תמ"ש ועמ"ש. ראשי התיבות נשארים (הם אומרים ל-AI איזה הליך זה), המספר נמחק. */
-const COURT='תלה"מ|תמ"ש|עמ"ש|רמ"ש|בע"מ|ה"ט|י"ס|ת"ע|תה"ס|ת"א|תא"מ|תא"ק|ת"ק|ת"פ|תפ"ח|ת"צ|ע"א|ע"פ|רע"א|רע"פ|בר"ע|ע"מ|ה"פ|בג"ץ|בג"צ|עת"מ|עע"ם|ע"ע|ס"ע|ב"ל|בש"א|בש"פ|פש"ר|חדל"פ|עש"א';
+const COURT='תלה"מ|תמ"ש|עמ"ש|רמ"ש|בע"מ|ה"ט|י"ס|ת"ע|תה"ס|ת"א|תא"מ|תא"ק|ת"ק|ת"פ|תפ"ח|ת"צ|ע"א|ע"פ|רע"א|רע"פ|בר"ע|ע"מ|ה"פ|בג"ץ|בג"צ|עת"מ|עע"ם|ע"ע|ס"ע|ב"ל|בש"א|בש"פ|פש"ר|חדל"פ|עש"א'+
+  // ועוד סוגים שהיו חסרים, ומספר התיק שלהם נשאר בטקסט (הבדיקה העיוורת השנייה, 13.10): עע"מ גם במם פתוחה, ערעורים פליליים
+  // במחוזי, רשות ערעור מנהלי, דיון נוסף, עתירות אסיר, עבודה, פירוק וחדלות פירעון, משפט חוזר
+  '|עע"מ|עפ"ג|עפ"א|עפ"ת|בר"מ|בר"ם|דנ"א|דנ"פ|דנג"ץ|רע"ב|עמ"נ|עת"א|סע"ש|סק"כ|פר"ק|חדל"ת|תת"ע|מ"ח';
 const PAT=[
  ["EMAIL",'כתובת דוא"ל',`(?<![\\w.%+])[\\w%+][\\w.%+-]*@[\\w.-]+\\.[A-Za-z\u05d0-\u05ea]{2,}`,0,null,0,1],
  // תאריך מלא. עד כאן תאריכים לא זוהו בכלל (רק תאריך לידה אחרי "יליד"), והמשתמשת ביקשה
@@ -2678,6 +2685,127 @@ function geoMap(names,variant,avoid,forbidden,prev){
   return best;
 }
 
+/* ══════════════════════════ ציטוטים ══════════════════════════ */
+/* ציטוט של תיק אחר נשאר כמו שהוא (החלטת הבעלים, 13.10): «ע"א 1234/90 כהן נ' לוי, פ"ד מה(2) 233». השמות והמספר
+   שבו אינם של התיק הזה, וה-AI צריך אותם כדי לקרוא את פסק הדין; עד כאן הכלי החליף את כולם. לא נשאר, ומוחלף כמו קודם:
+   (1) התיק עצמו ותיקי הערכאות שלו: מספר שמופיע בכותרת, לפני «פסק-דין» / «החלטה» / «גזר-דין»;
+   (2) מספר בלי צדדים: ברוב המקרים זה הליך של התיק הזה («המערער הורשע בעבר בת"פ 12345-06-15», דוגמה בדויה);
+   (3) ציטוט שאחד הצדדים בו הוא שם של התיק הזה — שם מהרשימה שמופיע גם מחוץ לציטוטים: הליך קודם בין אותם צדדים
+       מוביל לתיק. מילה כללית של שם חברה («פיתוח», «השקעות», «בע"מ») או של גוף ציבורי אינה קושרת ציטוט לתיק.
+   ההחלטה לפי מקום, לא לפי ערך: מה שבתוך ציטוט שנשאר אינו מוחלף שם, ואותו שם מחוץ לציטוט מוחלף. הבדיקה העיוורת
+   השנייה (פסקי דין פומביים, notes/blind-test-2/CITATIONS.md): על חצי הפיתוח נשארות 88% ממילות הציטוט, ואף מילה
+   שצריך להחליף אינה בתוך ציטוט שנשאר. tests/cite_t.js */
+const CITE_NUM="\\d{1,7}(?:[-/]\\d{1,4}){1,2}";
+// אות השימוש שלפני הסוג אינה חלק מהציטוט: «בע"א …» ו«וע"א …» הם אותו ציטוט, ואותו מפתח
+const CITE_HEAD=new RegExp(`(?<![א-ת"'])((?:[ובלמכשה]{1,3}-?)?)(?:${COURT})\\s*(?:\\([^)\\n]{1,25}\\)\\s*)?(${CITE_NUM}(?:\\s*(?:,|ו-?)\\s*${CITE_NUM})*)`,"gu");
+// נגד: «נ'», «נ׳» (אחרי norm: נ'), «נגד»
+const CITE_VS=/\s(?:נ'|נגד)\s/u;
+// סוף הצד השני: פסיק, נקודה-פסיק, סוגריים, נקודה בסוף משפט, שורה חדשה, או מראה מקום (פ"ד, תק-על, פורסם בנבו…)
+const CITE_END=/[,;(\[\n]|\.(?=\s|$)|\s(?:פ"ד|פד"י|תק-|תקדין|דינים|פורסם|נבו)/u;
+// מילים שאינן קושרות ציטוט לתיק: כלליות של שמות חברות, גופים ציבוריים, תארים
+const CITE_GENERIC=/^(?:בע"מ|חברת|חברה|החברה|חב'|ואח'?|ושות'?|פיתוח|השקעות|נכסים|החזקות|אחזקות|ייזום|יזמות|בניה|בנייה|ובניה|ובנין|הנדסה|שירותים|סחר|תעשיות|תעשייה|מערכות|טכנולוגיות|ניהול|לניהול|פרויקטים|נדל"ן|ביטוח|לביטוח|מימון|שיווק|יבוא|ייבוא|יצוא|מרכז|קבוצת|ישראל|בישראל|הלאומית|הישראלית|מדינת|היועץ|המשפטי|לממשלה|השר|שר|שרת|משרד|רשות|הרשות|עיריית|מועצה|המועצה|מועצת|מנהל|פקיד|שומה|המוסד|לאומי|ועדה|הוועדה|הועדה|ועדת|ועד|המקומית|המחוזית|מחוז|לתכנון|ולבניה|פרקליט|פרקליטות|המדינה|משטרת|בנק|מע"מ|מס|הכנסה|מקרקעי|מקרקעין|הביטחון|הפנים|האוצר|החינוך|הבריאות|הרווחה|המשפטים|התחבורה|ממשלת|הממשלה|צה"ל|מפקד|המפקד|פיקוד|רשם|הרשם|יו"ר|ראש|העירייה|יהודה|שומרון|והשומרון|איו"ש|חברון|שכם|רמאללה|ג'נין|טולכרם|קלקיליה|יריחו|עו"ד|רו"ח|ד"ר|מר|גב'|פלוני|פלונית|אלמוני|אלמונית)$/u;
+// מילה שאינה קושרת ציטוט לתיק: כללית (למעלה), מילת יחס או מילה נפוצה, שם פרטי לבדו, או יישוב (שמות גופים ציבוריים)
+const citeDull=w=>CITE_GENERIC.test(w)||(typeof STOP!=="undefined"&&STOP.has(w))||(typeof COMMON!=="undefined"&&COMMON.has(w))||
+  (typeof KNOWN_FIRST!=="undefined"&&KNOWN_FIRST.has(w))||(typeof PLACE_BY!=="undefined"&&!!PLACE_BY[w]);
+const CITE_INVIS=/[\u200e\u200f\u202a-\u202e\u2066-\u2069\u00ad\u0000]/g;
+const citeKey=s=>norm(s).replace(CITE_INVIS,"").replace(/\s+/g," ").trim();
+// מילים מבחינות של ערך, כמו שהן (בלי המילים הכלליות, גם כשלפניהן אות שימוש: «ולאומי», «בבע"מ»)
+const CITE_PFX=/^[ובלמכשה]/u;
+function citeWords(s){
+  return (norm(s).replace(CITE_INVIS,"").match(/[א-ת][א-ת"'׳״]*[א-ת']|[א-ת]{2,}/gu)||[])
+    .filter(w=>w.length>=2&&!citeDull(w)&&!(CITE_PFX.test(w)&&w.length>3&&citeDull(w.slice(1))));
+}
+// אותה מילה, או אותה מילה אחרי אות שימוש אחת, בשני הכיוונים («מזרחי» ו«ומזרחי»)
+const citeSame=(w,set)=>set.has(w)||(CITE_PFX.test(w)&&w.length>3&&set.has(w.slice(1)))||[...set].some(x=>CITE_PFX.test(x)&&x.length>3&&x.slice(1)===w);
+/* הצדדים הפרטיים של התיק כפי שהכותרת מונה אותם: השורות שאחרי מילת תפקיד (המערער, המשיבה, העותרים, התובע…) עד עורכי
+   הדין, ההרכב או הכותרת. שופט ועורך דין אינם צד («ברק» שבהרכב אינו חוסם את «ע"א … ברק נ' …»), וגוף ציבורי לפי המילה
+   שבראשו (מדינת ישראל, עיריית X, מנהל מע"מ, מועצת התכנון) אינו קושר דבר: PUBLIC_ORG אינו מכיר רבים מהם */
+const CITE_ROLE=/^\s*ה(?:מערער|משיב|עותר|מבקש|נאשם|מאשים|נתבע|תובע)\S*/u;
+const CITE_STOPLINE=/^\s*(?:בשם|לפני|כבוד|פסק[- ]?דין|החלטה|גזר[- ]?דין|ערעור|ערעורים|עתירה|בקשת|בקשה|תאריך|ניתן|ניתנה|בית המשפט|בבית המשפט|בית הדין|בבית הדין)/u;
+const CITE_PUBHEAD=/^(?:מדינת ישראל|המדינה|היועץ|היועמ"ש|שר\s|שרת\s|השר|משרד|רשות|הרשות|עיריית|העירייה|ראש\s|מועצת|מועצה|המועצה|ועדת|הועדה|הוועדה|ועדה|ועד\s|הועד\s|מנהל|המנהל|מינהל|המינהל|מנהלת|פקיד|פרקליט|משטרת|המשטרה|המוסד|בית המשפט|בית הדין|הכנסת|ממשלת|הממשלה|מפקד|המפקד|אלוף|צבא|צה"ל|קצין|קמ"ט|לשכת|רשם|הרשם|נציב|הנציב|מבקר|הממונה|ממונה|האפוטרופוס הכללי|הקדש|ההקדש|הווקף|וקף)/u;
+function citeParties(head){
+  const out=new Set(); let on=false, pub=false, next=false;
+  for(const raw of String(head||"").split("\n")){
+    const l=raw.trim(); if(!l)continue;
+    if(CITE_STOPLINE.test(l)){on=false;continue}
+    // צד חדש: מה שאחרי מילת התפקיד (באותה שורה או בשורה הבאה), או אחרי מספר ברשימה. שורה אחרת ממשיכה את הצד שמעליה
+    // (תא בטבלת הכותרת שנשבר לשתי שורות), ואם הוא גוף ציבורי, גם היא
+    let v=l, fresh=next;
+    if(CITE_ROLE.test(l)){on=true; const c=l.indexOf(":"); v=c>=0?l.slice(c+1).trim():""; fresh=true; next=!v;}
+    else next=false;
+    if(!on)continue;
+    if(/^\d{1,2}[.)]/u.test(v)){fresh=true; v=v.replace(/^\d{1,2}[.)]\s*/u,"").trim();}
+    if(!v||v.length===1||/^(?:נגד|נ\s*ג\s*ד|ו?אח'?)$/u.test(v))continue;
+    if(fresh)pub=CITE_PUBHEAD.test(v)||CITE_PUBHEAD.test(v.replace(/^[ובהלמכש]/u,""));
+    if(pub)continue;
+    for(const w of citeWords(v))out.add(w);
+  }
+  return out;
+}
+// כל ציטוט מועמד בטקסט (אחרי norm): המקום, המספרים, אם יש בו צדדים, ומילות הצדדים
+function citeSpans(n){
+  const out=[]; CITE_HEAD.lastIndex=0; let m;
+  while((m=CITE_HEAD.exec(n))){
+    const s=m.index+m[1].length, after=m.index+m[0].length, nums=m[2].match(new RegExp(CITE_NUM,"g"))||[];
+    const rest=n.slice(after,after+400), vs=CITE_VS.exec(rest);
+    const A=vs?rest.slice(0,vs.index):"";
+    if(!vs||A.includes("\n")||A.trim().split(/\s+/).length>12){out.push({s,e:after,nums,parties:false,words:[]});continue}
+    const bAt=vs.index+vs[0].length, tail=rest.slice(bAt), end=tail.search(CITE_END);
+    const B=end<0?tail.slice(0,80):tail.slice(0,end);
+    if(!B.trim()||B.trim().split(/\s+/).length>12){out.push({s,e:after,nums,parties:false,words:[]});continue}
+    out.push({s,e:after+bAt+B.replace(/\s+$/,"").length,nums,parties:true,words:citeWords(A+" "+B)});
+  }
+  return out;
+}
+/* הציטוטים שנשארים במסמך, כמפתחות (citeKey של טקסט הציטוט). text: כל המסמך; mine: הערכים שיוחלפו מחוץ לציטוטים
+   (שמות, יישובים, מספרים — redactDocx מוצא אותם במעבר בלי ההגנה); replace: מפתחות שהיא ביקשה להחליף בכל זאת.
+   ציטוט שיש בו ערך כזה, או מילה מבחינה שלו, אינו נשאר: אחרת הערך היה נשאר בקובץ בתוך הציטוט, והבדיקה האחרונה
+   הייתה מוצאת אותו שם */
+function citeKept(text,mine,replace){
+  const n=norm(String(text||""));
+  // הכותרת: עד השורה שהיא רק הכותרת של ההחלטה; בלעדיה, אלף וחמש מאות התווים הראשונים
+  let head=-1, at=0;
+  for(const l of n.split("\n")){ if(/^\s*(?:פסק[- ]?דין|החלטה|גזר[- ]?דין|הכרעת[- ]?דין)\s*:?\s*$/u.test(l)){head=at+l.length;break} at+=l.length+1; }
+  if(head<0)head=Math.min(n.length,1500);
+  const own=new Set(n.slice(0,head).match(new RegExp(CITE_NUM,"g"))||[]);
+  const vals=[...new Set([...(mine||[])].map(v=>norm(String(v)).replace(CITE_INVIS,"").trim()).filter(v=>v.length>=2))];
+  /* וגם הצדדים כפי שהכותרת מונה אותם: ציטוט של הליך קודם בין הצדדים נשאר עד כאן כשהכלי פספס את הצד במקום אחר,
+     והמספר שלו דלף יחד איתו (החצי השמור של הבדיקה העיוורת השנייה: 17 → 19 מופעים של מספר התיק עצמו, 13.10) */
+  const words=citeParties(n.slice(0,head)); for(const v of vals)for(const w of citeWords(v))words.add(w);
+  const keys=new Set();
+  for(const sp of citeSpans(n)){
+    if(!sp.parties||sp.s<head||sp.nums.some(x=>own.has(x))||sp.words.some(w=>citeSame(w,words)))continue;
+    const k=citeKey(n.slice(sp.s,sp.e));
+    if(vals.some(v=>k.includes(v))||(replace&&replace.has(k)))continue;
+    keys.add(k);
+  }
+  return keys;
+}
+/* לרשימת השמות, לפני שאושרה: הציטוטים שנשארים, כששמות התיק הם המועמדים שמופיעים גם מחוץ לציטוטים. מועמד שמופיע רק
+   בתוך ציטוט שנשאר (citeOnly) הוא צד לתיק אחר, ואינו נכנס לרשימה. מועמד שמופיע רק בתוך ציטוט שאינו נשאר — הצד שכנגד
+   בהליך קודם של אותם צדדים — נשאר ברשימה, ומוחלף */
+function citeListKeys(text,values){
+  const n=norm(String(text||"")), spans=citeSpans(n).filter(x=>x.parties), outside=[];
+  for(const v0 of values||[]){
+    const v=norm(String(v0||"")).trim(); if(v.length<2)continue;
+    for(let i=n.indexOf(v);i>=0;i=n.indexOf(v,i+1)) if(!spans.some(sp=>sp.s<=i&&i<sp.e)){outside.push(v);break}
+  }
+  return citeKept(text,outside,null);
+}
+// המקומות של הציטוטים שנשארים בטקסט אחד (אחרי norm)
+function citeSpansIn(n,keys){
+  if(!keys||!keys.size)return [];
+  return citeSpans(n).filter(sp=>sp.parties&&keys.has(citeKey(n.slice(sp.s,sp.e)))).map(sp=>[sp.s,sp.e]);
+}
+// ערך שכל המופעים שלו בטקסטים הם בתוך ציטוטים שנשארים: שם של צד לתיק אחר, לא של התיק הזה
+function citeOnly(value,texts,keys){
+  const v=norm(String(value||"")).trim(); if(!v||!keys||!keys.size)return false;
+  let seen=false;
+  for(const t of texts){ const n=norm(String(t||"")); let i=n.indexOf(v); if(i<0)continue;
+    const ks=citeSpansIn(n,keys);
+    while(i>=0){ seen=true; if(!ks.some(([a,b])=>a<=i&&i+v.length<=b))return false; i=n.indexOf(v,i+1); } }
+  return seen;
+}
 /* ══════════════════════════ מנוע ══════════════════════════ */
 // more: שמות שתווית בפסקה או בתא שלידו מעידה עליהם (labelNext), כבר במיקומים של הטקסט הזה
 function findPatterns(text,on,flag,more){
@@ -2864,6 +2992,8 @@ class Engine{
   constructor(subs,allow,opt,docText){
     subs=subs.map(x=>({...x}));
     this.opt=opt; this.subs=subs;
+    // ציטוטים של תיקים אחרים שנשארים כמו שהם (07-cite.js): redactDocx קובע אותם אחרי מעבר שמוצא מה יוחלף מחוץ להם
+    this.citeKeys=null;
     // המפתח הסודי של השמות הבדויים, מהדפדפן של החשבון (setAliasKey). רק אפשרויות שמציינות אותו משנות אותו
     // (null מנקה): מנוע שנבנה בלי השדה לא יחזיר בשקט את הגזירה הציבורית, שכל אחד יכול לחשב
     if(typeof setAliasKey==="function"&&opt&&Object.prototype.hasOwnProperty.call(opt,"aliasKey")) setAliasKey(opt.aliasKey);
@@ -3082,6 +3212,9 @@ class Engine{
       h.review=h.conf!=="high"; h.base=h.base||h.text; hits.push(h);
     }
     if(!addr&&/%[0-9A-Fa-f]{2}/.test(text))for(const h of this.encoded(text))hits.push(h);
+    // מה שבתוך ציטוט של תיק אחר שנשאר — שם, מספר — אינו מוחלף שם (07-cite.js)
+    if(!addr&&this.citeKeys&&this.citeKeys.size){ const ks=citeSpansIn(n,this.citeKeys);
+      if(ks.length)for(let i=hits.length-1;i>=0;i--)if(ks.some(([a,b])=>hits[i].s<b&&a<hits[i].e))hits.splice(i,1); }
     const res=resolve(hits);
     return addr?res:this.twins(text,res)}
   /* שם של אדם באותיות לטיניות בסוגריים, צמוד לשם שלו בעברית ("קלייר דובואה-לוי (Claire Dubois-Levi)", או בסדר ההפוך):
@@ -4169,6 +4302,18 @@ async function redactDocx(buf,subs,allow,opt){
   // שם שתווית בתא או בפסקה שלידו מעידה עליו נבדק כמו שם שאחרי תווית באותה שורה (labelNext)
   const nextTo=new Map();
   for(const {i,h} of labelNext(blocks)){const l=nextTo.get(blocks[i])||[]; l.push(h); nextTo.set(blocks[i],l)}
+  /* ציטוטים של תיקים אחרים שנשארים כמו שהם (07-cite.js, החלטת הבעלים 13.10). קודם מעבר בלי ההגנה, שאוסף כל מה שיוחלף
+     מחוץ לציטוטים — שם, יישוב, מספר — ורק אז נקבע מה נשאר: ציטוט שיש בו ערך כזה הוא של התיק הזה (הליך קודם בין אותם
+     צדדים), והערך היה נשאר בקובץ בתוכו. cite:false מכבה; citeReplace: ציטוטים שהיא ביקשה להחליף */
+  if(!(opt&&opt.cite===false)){
+    const mine=new Set();
+    for(const blk of blocks){ if(blk.dupOf)continue;
+      const sp0=citeSpans(norm(blk.text)).filter(x=>x.parties);
+      for(const h of eng.detect(blk.text,false,nextTo.get(blk))){
+        if(!h.apply||sp0.some(x=>x.s<=h.s&&h.e<=x.e))continue;
+        mine.add(h.base||h.text); if(h.dtext)mine.add(h.dtext); } }
+    eng.citeKeys=citeKept(blocks.filter(b=>!b.dupOf).map(b=>b.text).join("\n"),mine,opt&&opt.citeReplace?new Set(opt.citeReplace):null);
+  }
   for(const blk of blocks){
     // החלופה של תיבת טקסט מקבלת בדיוק את ההחלפות של הצורה, ואינה נספרת שוב
     if(blk.dupOf){if(blk.dupOf.reps)applyReps(blk,blk.dupOf.reps.map(r=>r.slice()));continue}
@@ -4319,6 +4464,8 @@ async function redactDocx(buf,subs,allow,opt){
       while((z=rx0.exec(n)))zones.push([z.index,z.index+z[0].length])}
     for(const w of pseudoWritten){let i=n.indexOf(w);
       while(i>=0){zones.push([i,i+w.length]);i=n.indexOf(w,i+1)}}
+    // ציטוט של תיק אחר שנשאר (07-cite.js): גם המעבר הזה אינו כותב בתוכו
+    for(const z of citeSpansIn(n,eng.citeKeys))zones.push(z);
     for(const [o,inf] of Object.entries(sweep)){
       if(!nl.includes(loose(o)))continue;
       const nw=inf.rep;
@@ -4523,7 +4670,9 @@ async function redactDocx(buf,subs,allow,opt){
     const known=[...subs.map(s=>s.value),...(allow||[]),
       ...applied.map(r=>r.base||r.value),...applied.map(r=>r.baseRep||r.rep)];
     suggest=bodyNames(ORIG.filter(b=>!notProse(b.part)),known)
-      .filter(x=>!near.some(nm=>norm(nm.value).trim()===norm(x.value).trim()));
+      .filter(x=>!near.some(nm=>norm(nm.value).trim()===norm(x.value).trim()))
+      // שם שמופיע רק בתוך ציטוטים של תיקים אחרים שנשארים אינו שם של התיק הזה (07-cite.js)
+      .filter(x=>!citeOnly(x.value,ORIG.map(b=>b.text),eng.citeKeys));
     // בלי תקרה: ההצעות נחתכו בשתים-עשרה, והשם השלושה-עשר שלא ברשימה לא הוצע ונשאר בקובץ (ביקורת L12).
   }catch(e){if(!e||!e.skip){console.warn("סריקת גוף הטקסט נכשלה",e);incomplete.push("body")}}
   ver.suggest=suggest;
@@ -4567,7 +4716,9 @@ async function redactDocx(buf,subs,allow,opt){
     !near.length&&!suggest.length&&!incomplete.length;
   // dateOff: ההזזה של התאריכים במסמך הזה, בימים; ההחזרה מזיזה בה אחורה תאריך שה-AI חישב (backDates)
   // second: הבדיקה השנייה של התוצאה, בלי הרשימה (secondScan)
-  return {blob,applied,flagged,preview,structural:rep,verification:ver,map:eng.map,dateOff:eng.dateOff,second:secondScan(preview,allow,subs)};
+  return {blob,applied,flagged,preview,structural:rep,verification:ver,map:eng.map,dateOff:eng.dateOff,second:secondScan(preview,allow,subs,eng.citeKeys),
+    // הציטוטים של תיקים אחרים שנשארו כמו שהם, לפי סדר הופעתם (07-cite.js); citeReplace מקבל מפתח מכאן
+    cited:eng.citeKeys?[...eng.citeKeys]:[]};
 }
 const PARTN={"document.xml":"גוף המסמך","footnotes.xml":"הערות שוליים","endnotes.xml":"הערות סיום"};
 function partName(p){
@@ -4639,7 +4790,8 @@ const XUN=s=>s.replace(/&(quot|apos|lt|gt|amp);/g,(m,k)=>({quot:'"',apos:"'",lt:
    preview: [{text, marks:[{s,e}]}], התוצאה. tests/secondscan_t.js */
 const SECOND_NUM=new Set(["EMAIL","PHONE_MOBILE","PHONE_LAND","PHONE_INTL","FAX","ISRAELI_ID","ISRAELI_ID_SEP","ISRAELI_ID_LABELED",
   "CREDIT_CARD","IBAN","PASSPORT","PLATE","PLATE_LABELED","BANK_ACCOUNT"]);
-function secondScan(preview,allow,subs){
+// citeKeys: ציטוטים של תיקים אחרים שנשארו (07-cite.js); השמות שבהם אינם של התיק, והבדיקה אינה מעלה אותם
+function secondScan(preview,allow,subs,citeKeys){
   const keep=new Set((allow||[]).map(a=>norm(String(a)).trim())), out=[], seen=new Set();
   const ctxOf=(t,s,e)=>({pre:(s>40?"…":"")+t.slice(Math.max(0,s-40),s), hit:t.slice(s,e), post:t.slice(e,e+40)+(e+40<t.length?"…":"")});
   const plain=x=>!poolWordy(x)&&!wordish(x);
@@ -4653,7 +4805,7 @@ function secondScan(preview,allow,subs){
   const SUR_END=/(?:וביץ|ביץ|סקי|ברג|בורג|שטיין|שטין|צקי)$/;
   const nameOk=x=>!!x&&plain(x)&&(KNOWN_FIRST.has(x)||listed.has(x)||near(x)||(x.length>=5&&SUR_END.test(x)));
   for(const b of preview||[]){
-    const t=String(b.text||""), nt=norm(t), marks=b.marks||[];
+    const t=String(b.text||""), nt=norm(t), marks=(b.marks||[]).concat(citeSpansIn(nt,citeKeys).map(([s,e])=>({s,e})));
     const inMark=(s,e)=>marks.some(m=>m.s<e&&s<m.e);
     // label: התווית של סוג הפרט, כמו בממצא רגיל, כדי ש«להחליף» יוסיף לרשימה את הסוג הנכון
     const push=(kind,pat,label,s,e)=>{
@@ -5911,4 +6063,5 @@ export {nerLast, hiddenPart, nerForget, VRB, COMMON, KNOWN_FIRST, NW, NWE, crc32
   resolve, Engine, flatten, acceptTracked, stripComments, redactDocx, partName, ctxHTML, verify,
   discover, PLACES, PLACE_BY, geoMap, geoNames, placesFound, examplesOf, findPlaces, fakePlace,
   atlasTags, atlasDiff, atlasPenalty, placeKind, nerEnv, nerCached, nerPersist, nerLoad, nerRun,
-  TITLE_RX, ORG_RX, likelyOrg, cleanEntry, trimEdges, pseudoRX, restoreNames, restorePairs, STOP, gender, origin, readBlocks, isTextPart, setAliasKey, hmac32, stripImageMeta, secondScan, OBJ_NOTE};
+  TITLE_RX, ORG_RX, likelyOrg, cleanEntry, trimEdges, pseudoRX, restoreNames, restorePairs, STOP, gender, origin, readBlocks, isTextPart, setAliasKey, hmac32, stripImageMeta, secondScan, OBJ_NOTE,
+  citeSpans, citeKept, citeKey, citeSpansIn, citeOnly, citeListKeys, ORG_TAIL};

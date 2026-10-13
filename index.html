@@ -16,7 +16,7 @@
      אין כאן 'unsafe-eval' ולא 'unsafe-inline': סקריפט שהוזרק לדף, או onerror של תמונה, לא ירוץ (הביקורת ההנדסית
      של 12.10, סעיף 4). 'wasm-unsafe-eval' הוא ל-WebAssembly של המודל. בתבנית אין מאפיין אירוע (onClick): הוא כתוב
      sc-camel-on-click, הצורה ששכבת ההרצה קוראת כ-onClick, כדי שאף דפדפן לא יפרש אותו כקוד שנחסם (Firefox דיווח על כל אחד). -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' blob: https://unpkg.com 'sha256-n0+wLToED3zsrfY9U5xP3ORaeNWBPlKBcS5X6QQgtv4=' 'sha256-A0vCMcCxoF+0kDd/KOPtj1QiLMlRxK8lmYwUIJfKpos='; worker-src 'self' blob:; connect-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob:; object-src 'none'; base-uri 'self'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' blob: https://unpkg.com 'sha256-n0+wLToED3zsrfY9U5xP3ORaeNWBPlKBcS5X6QQgtv4=' 'sha256-043+0nKUzO9Zbqg2C+oR812LRu3bj1o9LnI89H0j8L4='; worker-src 'self' blob:; connect-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob:; object-src 'none'; base-uri 'self'; form-action 'none'">
 <script>/* ערכת הצבעים לפני הציור הראשון: בלי זה טעינה מחדש במצב לילה הבהבה ביום עד שהממשק עלה */try{var t=localStorage.getItem("redact-theme")||(matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");if(t==="dark")document.documentElement.classList.add("dark")}catch(e){}</script>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./icon.svg" type="image/svg+xml">
@@ -294,7 +294,7 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
 </div></div>
 <script>
 (function(){
-  console.log("אינקוגניטו — גרסה v74.2");
+  console.log("אינקוגניטו — גרסה v75");
   /* הכלי באתר צריך חיבור כדי להיפתח: בכל פתיחה נבדקת הכניסה לחשבון (דף האבטחה). עד 12.10 ההודעה כאן הבטיחה שבלי
      אינטרנט הכלי עובד, וכשלא היה חיבור היא הוצגה בדיוק אז (הנוסח שאושר, 12.10). בלי חיבור היא מוצגת מיד, ולא אחרי
      תשע שניות של «נטען…» */
@@ -347,8 +347,8 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
         console.log("עובד שירות: "+served);
         var el=document.getElementById("ver"); if(!el) return;
         if(chip===null) chip=el.innerHTML; else el.innerHTML=chip;
-        if(served==="v74.2") return;
-        el.innerHTML='גרסה v74.2 · <b style="color:var(--warn)">יש גרסה חדשה: רעננו עם Ctrl+Shift+R</b>';
+        if(served==="v75") return;
+        el.innerHTML='גרסה v75 · <b style="color:var(--warn)">יש גרסה חדשה: רעננו עם Ctrl+Shift+R</b>';
       });
       var ask=function(){ if(sw.controller) sw.controller.postMessage("version") };
       sw.ready.then(ask);
@@ -1129,6 +1129,15 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
                   <button sc-camel-on-click="{{ c.onClick }}" aria-pressed="{{ c.on }}" style="{{ c.style }}">{{ c.label }}</button>
                 </sc-for>
               </div>
+              <!-- ציטוטים של תיקים אחרים שנשארו כמו שהם (07-cite.js): מה שהכלי השאיר, גלוי בלי לפתוח את «לבדיקה»; ↩ מחליף -->
+              <sc-if value="{{ hasCited }}">
+                <div data-cited style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:0 15px 10px;font-size:12.5px;color:var(--ink2)">
+                  <span title="השמות והמספרים בציטוט של פסק דין אחר אינם של התיק הזה, וה-AI צריך אותם כדי לקרוא את המסמך.">ציטוטים של תיקים אחרים, נשארים כמו שהם:</span>
+                  <sc-for list="{{ citedItems }}" as="x" hint-placeholder-count="2">
+                    <button sc-camel-on-click="{{ x.onReplace }}" title="להחליף גם את הציטוט הזה" style="display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:14px;background:var(--panel2);border:1px solid var(--line);font-size:12.5px;max-width:100%;min-width:0;overflow-wrap:anywhere;text-align:start">{{ x.text }} <span style="color:var(--ink3)">↩</span></button>
+                  </sc-for>
+                </div>
+              </sc-if>
               <div ref="{{ listRef }}" style="max-height:52vh;overflow:auto;scroll-padding:8px;scrollbar-width:thin;border-top:1px solid var(--line2)">
                 <sc-for list="{{ groups }}" as="g" hint-placeholder-count="6">
                   <div data-group="{{ g.key }}" sc-camel-on-click="{{ g.onClick }}" sc-camel-on-mouse-enter="{{ g.onEnter }}" sc-camel-on-mouse-leave="{{ g.onLeave }}" style="{{ g.style }}">
@@ -1399,7 +1408,7 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
 
 </div>
 </x-dc>
-<footer><nav data-foot aria-label="מידע ומסמכים משפטיים"><a href="https://inkognito.co.il/" target="_blank" rel="noopener">עמוד הבית</a><a href="https://inkognito.co.il/terms" target="_blank" rel="noopener">תנאי שימוש</a><a href="https://inkognito.co.il/privacy" target="_blank" rel="noopener">מדיניות פרטיות</a><a href="https://inkognito.co.il/accessibility" target="_blank" rel="noopener">הצהרת נגישות</a><a href="mailto:contact@inkognito.co.il">יצירת קשר</a></nav><div id="ver">גרסה v74.2</div></footer>
+<footer><nav data-foot aria-label="מידע ומסמכים משפטיים"><a href="https://inkognito.co.il/" target="_blank" rel="noopener">עמוד הבית</a><a href="https://inkognito.co.il/terms" target="_blank" rel="noopener">תנאי שימוש</a><a href="https://inkognito.co.il/privacy" target="_blank" rel="noopener">מדיניות פרטיות</a><a href="https://inkognito.co.il/accessibility" target="_blank" rel="noopener">הצהרת נגישות</a><a href="mailto:contact@inkognito.co.il">יצירת קשר</a></nav><div id="ver">גרסה v75</div></footer>
 <script type="text/x-dc" data-dc-script data-props="{&quot;docFont&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;serif&quot;,&quot;sans&quot;],&quot;default&quot;:&quot;serif&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;עיצוב&quot;},
 &quot;railWidth&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:340,&quot;max&quot;:500,&quot;step&quot;:4,&quot;default&quot;:404,&quot;unit&quot;:&quot;px&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;עיצוב&quot;}}"></script>
 </body>
