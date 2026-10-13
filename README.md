@@ -27,7 +27,18 @@ The interface is in Hebrew; the Hebrew documentation follows this section.
 - Name recognition: the NER head of DictaBERT-parse, exported to ONNX, quantized to 8 bits and run in the browser with transformers.js. It is served from this site and checked against a pinned SHA-256 before use.
 - Rules, Hebrew prefix handling and a gazetteer run alongside the model; the model only adds suggestions.
 - Tests: about 7,800 Node checks and 348 Playwright browser tests in CI, WebKit and Firefox before each release that changes the page, plus the benchmark gates above.
-- Developed with Claude Code as the coding agent. Each decision is recorded with its reasons: the model choice in [docs/model-eval/](docs/model-eval/README.md), the rest in the changelog and the code. Who does what, and what the owner catches that the agent and the tests miss: [docs/HOW-IT-WAS-BUILT.md](docs/HOW-IT-WAS-BUILT.md).
+- Developed with Claude Code as the coding agent. Each decision is recorded with its reasons: the model choice in [docs/model-eval/](docs/model-eval/README.md), the rest in the changelog and the code. Who does what, and what the owner catches that the agent and the tests miss: [docs/HOW-IT-WAS-BUILT.md](docs/HOW-IT-WAS-BUILT.md). How real documents are handled while it is built: [docs/DATA-GOVERNANCE.md](docs/DATA-GOVERNANCE.md).
+
+## Known limits
+
+- **Recall depends on the model.** On the 43 benchmark documents the rules alone leave 64 of the 272 details somewhere in the output, in 33 of the documents; with the model, 2. The model is a 185 MB download that the browser keeps after the first time. If it cannot load, the tool says so and the rules still run.
+- **The second scan is a net, not a guarantee.** It reads the finished text for what the list missed (ID-like numbers, known first names, a listed name's word on its own). Without the model it turns 10 of the 28 benchmark documents that still leak a person amber; the other 18 still end green. The review screen, and the person reading it, remain the check.
+- **What is not read:** text inside pictures (scans, photos, screenshots), a PDF without a text layer, and descriptions that identify someone without a name ("the only notary in the village"). The tool counts the pictures it did not read.
+- **It replaces some things it could leave:** 9 of the 18 public bodies in the Knesset transcript are replaced too, which costs the AI context but leaks nothing.
+- **Saved cases** (each case's map of real and invented names) are kept in the browser's storage unencrypted, under each account's own key, by decision for now. A case file exported as a backup is encrypted with a password (AES-GCM, PBKDF2 with 600,000 rounds). On a shared computer, «ניקוי התיקים מהמחשב» removes them.
+- **Deploys run from the owner's computer.** GitHub also builds every push to the hosted branch and publishes the SHA-256 of every file with a signed attestation, so what the site serves can be checked against the repository: on its first run (13 October 2026), all 146 files GitHub built matched the deployed ones. Moving the deploy itself into that workflow is next.
+- **Browsers:** the model needs WebAssembly under a strict policy (Chrome or Edge 97+, Firefox 102+, Safari 16+). In an older browser the rules run alone.
+- **No independent security audit or penetration test has been done yet.**
 
 **Licence:** source-available under [PolyForm Shield 1.0.0](LICENSE). Read it before using the code in a product of your own.
 
