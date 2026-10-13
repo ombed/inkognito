@@ -1,4 +1,4 @@
-/schemas.openxmlformats.org/wordprocessingml/2006/main">עמדת האפוטרופא לדין
+עמדת האפוטרופא לדין
 התובעת:  סמדר
 הנתבע:  דמיטרי
 נושא: משמורת
