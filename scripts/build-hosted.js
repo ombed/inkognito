@@ -229,7 +229,10 @@ function build(out) {
      another site". "no-transform" tells Cloudflare not to touch a page. Only on the pages, at both
      their addresses: it also stops Cloudflare's compression, which matters for the scripts and the
      model, not for these. The gate does the same for the pages it serves (lib/gate.mjs). */
-  const pages = files.filter((p) => /^\/[^/]+\.html$/.test(p)).flatMap((p) => [p, p === "/index.html" ? "/" : p.slice(0, -".html".length)]);
+  const pages = files.filter((p) => /^\/[^/]+\.html$/.test(p)).flatMap((p) => [p, p === "/index.html" ? "/" : p.slice(0, -".html".length)])
+    // and a public folder's page at its three addresses: the demo's (/demo/index.html) fell outside this rule, and
+    // Cloudflare added its analytics beacon to /demo/ alone, which the page's policy then refused (13.10)
+    .concat(files.filter((p) => /^\/[^/]+\/index\.html$/.test(p)).flatMap((p) => [p, p.slice(0, -"index.html".length), p.slice(0, -"/index.html".length)]));
   const headers = HEADERS_NOW + "\n" + pages.map((p) => p + "\n  Cache-Control: public, max-age=0, must-revalidate, no-transform\n").join("\n");
   const rules = headers.split("\n").filter((l) => l && !/^\s/.test(l)).length;
   if (rules > HEADER_LIMIT) throw new Error("build-hosted: " + rules + " header rules exceed Cloudflare's " + HEADER_LIMIT);

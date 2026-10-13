@@ -220,7 +220,11 @@ try {
   const rules = h.split(/\n(?=\S)/).map((b) => { const [p, ...l] = b.trim().split("\n"); return { p: p.trim(), cc: l.filter((x) => /^\s*Cache-Control:/i.test(x)) }; });
   const withCc = rules.filter((r) => r.cc.length);
   ok(withCc.length > 0 && withCc.every((r) => !/[*:]/.test(r.p) && r.cc.length === 1 && /^\s*Cache-Control: public, max-age=0, must-revalidate, no-transform$/.test(r.cc[0])), "only exact page rules set Cache-Control, each once, with no-transform");
-  const pagesServed = files.filter((f) => /^[^/]+\.html$/.test(f)).flatMap((f) => ["/" + f, f === "index.html" ? "/" : "/" + f.slice(0, -5)]);
+  // and a public folder's page, the demo's, at its three addresses: it fell outside the rule, and Cloudflare added
+  // its analytics beacon to /demo/ alone (13.10). /app/'s pages get it from the gate
+  const pagesServed = [...files.filter((f) => /^[^/]+\.html$/.test(f)).flatMap((f) => ["/" + f, f === "index.html" ? "/" : "/" + f.slice(0, -5)]),
+    ...files.filter((f) => /^[^/]+\/index\.html$/.test(f) && !f.startsWith("app/")).flatMap((f) => ["/" + f, "/" + f.slice(0, -"index.html".length), "/" + f.slice(0, -"/index.html".length)])];
+  ok(pagesServed.includes("/demo/"), "the demo's page is among them");
   ok(pagesServed.every((p) => withCc.some((r) => r.p === p)) && withCc.every((r) => pagesServed.includes(r.p)), "every page has it, at both addresses, and nothing else does (" + withCc.length + " rules)");
   ok(new Set(withCc.map((r) => r.p)).size === withCc.length, "no page address has two such rules");
   /* The real domain is attached before launch (4.10); until then it is kept out of search engines,
