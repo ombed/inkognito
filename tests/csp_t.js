@@ -17,6 +17,13 @@ const src = policy(html)["script-src"] || [];
 ok(!src.includes("'unsafe-inline'"), "no 'unsafe-inline': an injected <script> or onerror does not run");
 ok(!src.includes("'unsafe-eval'"), "no 'unsafe-eval': the page builds no code from text");
 ok(src.includes("'wasm-unsafe-eval'"), "'wasm-unsafe-eval', for the model's WebAssembly");
+{
+  // no handler attribute in the template: «onClick» is written sc-camel-on-click, which the runtime reads as onClick,
+  // so no browser parses one as code it must refuse (Firefox reported each of the 199 once 'unsafe-inline' was gone)
+  const tpl = html.slice(html.indexOf("<x-dc"), html.indexOf("</x-dc>"));
+  const left = tpl.match(/\son[a-z]+\s*=/gi) || [];
+  ok(left.length === 0 && (tpl.match(/\ssc-camel-on-[a-z-]+=/g) || []).length === 199, "the template holds no handler attribute, its 199 handlers in the runtime's form: " + left.slice(0, 3).join(""));
+}
 const inline = P.inlineScripts(html), hashes = src.filter((x) => /^'sha256-/.test(x));
 ok(inline.length === 2, "two inline scripts, the colours before the first paint and the boot: " + inline.length);
 for (const code of inline) ok(hashes.includes(P.hashOf(code)), "named by its hash: " + code.trim().slice(0, 60));
