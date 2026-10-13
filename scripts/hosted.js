@@ -140,7 +140,8 @@ function hostedApp(html) {
     .map((d) => (/^connect-src\b/.test(d) ? d + " " + PROJECT : d)).join("; ") + z);
   // the map's libraries and data are named by the component's logic, page-component.js (hostedComponent)
   // the account button in the top bar, right after the day/night button (site/cloud.js opens its panel)
-  const themeBtn = /(<button onClick="\{\{ onTheme \}\}"[^\n]*?<\/button>)(\s*<\/header>)/;
+  // the template's handlers are in the runtime's own form since v74.1 (onClick → sc-camel-on-click)
+  const themeBtn = /(<button sc-camel-on-click="\{\{ onTheme \}\}"[^\n]*?<\/button>)(\s*<\/header>)/;
   if ((out.match(new RegExp(themeBtn.source, "g")) || []).length !== 1) throw new Error("hosted: the top bar's day/night button is no longer where it was");
   out = out.replace(themeBtn, "$1\n    " + ACCOUNT_BTN + "$2");
   // the name: the page's own since v60, in both titles (the page's and the template's) and the wordmark
