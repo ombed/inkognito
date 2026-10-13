@@ -5,7 +5,8 @@ function findPatterns(text,on,flag,more){
   if(on.has("NAME_ANCHORED")||flag.has("NAME_ANCHORED"))
     // העוגן הפרוזאי (rolep) מזין רק את ההצעות ב-discover, לא את ההשחרה: ניחוש
     // שגוי שם עולה הקשה אחת; כאן הוא היה דוחק החלפה אמיתית מאותם תווים.
-    for(const h of anchored(text).concat(more||[])){if(h.anchor==="rolep")continue;h.apply=on.has("NAME_ANCHORED");hits.push(h)}
+    // שם לפי הקשר שמוצע לבדיקה ואין בו מילה שאינה נפוצה («ילכו», «נקלע», «משהו») אינו מוצע (worthAsking, 05-bodynames.js)
+    for(const h of anchored(text).concat(more||[])){if(h.anchor==="rolep")continue;h.apply=on.has("NAME_ANCHORED");if(!h.apply&&!worthAsking(h.text))continue;hits.push(h)}
   if(on.has("PLACES")||flag.has("PLACES"))
     for(const h of findPlaces(text)){
       if(!on.has("PLACES"))h.apply=false;

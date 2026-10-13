@@ -1318,7 +1318,9 @@ async function redactDocx(buf,subs,allow,opt){
     suggest=bodyNames(ORIG.filter(b=>!notProse(b.part)),known)
       .filter(x=>!near.some(nm=>norm(nm.value).trim()===norm(x.value).trim()))
       // שם שמופיע רק בתוך ציטוטים של תיקים אחרים שנשארים אינו שם של התיק הזה (07-cite.js)
-      .filter(x=>!citeOnly(x.value,ORIG.map(b=>b.text),eng.citeKeys));
+      .filter(x=>!citeOnly(x.value,ORIG.map(b=>b.text),eng.citeKeys))
+      // והצעה שכל המילים בה נפוצות («במסגרתה», «עליו», «בעת ביצוע») אינה מוצגת (worthAsking, 05-bodynames.js)
+      .filter(x=>worthAsking(x.value));
     // בלי תקרה: ההצעות נחתכו בשתים-עשרה, והשם השלושה-עשר שלא ברשימה לא הוצע ונשאר בקובץ (ביקורת L12).
   }catch(e){if(!e||!e.skip){console.warn("סריקת גוף הטקסט נכשלה",e);incomplete.push("body")}}
   ver.suggest=suggest;
@@ -2694,4 +2696,4 @@ export {nerLast, hiddenPart, nerForget, VRB, COMMON, KNOWN_FIRST, NW, NWE, crc32
   discover, PLACES, PLACE_BY, geoMap, geoNames, placesFound, examplesOf, findPlaces, fakePlace,
   atlasTags, atlasDiff, atlasPenalty, placeKind, nerEnv, nerCached, nerPersist, nerLoad, nerRun,
   TITLE_RX, ORG_RX, likelyOrg, cleanEntry, trimEdges, pseudoRX, restoreNames, restorePairs, STOP, gender, origin, readBlocks, isTextPart, setAliasKey, hmac32, stripImageMeta, secondScan, OBJ_NOTE,
-  citeSpans, citeKept, citeKey, citeSpansIn, citeOnly, citeListKeys, ORG_TAIL};
+  citeSpans, citeKept, citeKey, citeSpansIn, citeOnly, citeListKeys, ORG_TAIL, commonWord, worthAsking};
