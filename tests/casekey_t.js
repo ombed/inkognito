@@ -48,7 +48,7 @@ ok(!!forget && calls.length === 1, "forgetCases() has exactly one caller: " + ca
 const clear = code.match(/clearCases = \(\) => \{[\s\S]*?\n {2}\};/);
 ok(!!clear && /^clearCases = \(\) => \{\s*if\(!confirm\("למחוק מהמחשב הזה את כל התיקים השמורים\? אי אפשר לבטל את זה\."\)\) return;\s*this\.forgetCases\(\);/.test(clear[0]),
   "the caller is clearCases, which asks in the approved words before anything is deleted: " + (clear ? clear[0].replace(/\s+/g, " ").slice(0, 200) : "none"));
-ok(/onClick="\{\{ onClearCases \}\}"[^>]*>ניקוי התיקים מהמחשב</.test(html) && /onClearCases:this\.clearCases/.test(code), "its button is «ניקוי התיקים מהמחשב»");
+ok(/sc-camel-on-click="\{\{ onClearCases \}\}"[^>]*>ניקוי התיקים מהמחשב</.test(html) && /onClearCases:this\.clearCases/.test(code), "its button is «ניקוי התיקים מהמחשב»");
 
 console.log("\n— the display keys stay shared —");
 for (const k of ["redact-theme", "redact-intro-seen", "redact-tour-seen"]) {

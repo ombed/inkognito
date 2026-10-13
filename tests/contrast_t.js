@@ -38,8 +38,8 @@ ok(unexplained('        (x.on?"":"opacity:.72"),').length === 1, "the check catc
 ok(unexplained('<g stroke="var(--panel)" stroke-width="1.7" opacity=".5">').length === 1, "the check catches an SVG part drawn at opacity .5");
 
 // 3. the undo/redo glyphs are dimmed only when their button is disabled too
-ok(/onClick="\{\{ onHistUndo \}\}" disabled="\{\{ undoOff \}\}"/.test(template), "the undo button is disabled when there is nothing to undo");
-ok(/onClick="\{\{ onHistRedo \}\}" disabled="\{\{ redoOff \}\}"/.test(template), "the redo button is disabled when there is nothing to redo");
+ok(/sc-camel-on-click="\{\{ onHistUndo \}\}" disabled="\{\{ undoOff \}\}"/.test(template), "the undo button is disabled when there is nothing to undo");
+ok(/sc-camel-on-click="\{\{ onHistRedo \}\}" disabled="\{\{ redoOff \}\}"/.test(template), "the redo button is disabled when there is nothing to redo");
 ok(/v\.undoOff=!\(\(S\.undoN\|\|0\)>0\); v\.redoOff=!\(\(S\.redoN\|\|0\)>0\);/.test(app), "undoOff and redoOff follow the same counts as the dim style");
 
 // 4. the check itself bites: an invented template line with dimmed text is caught
