@@ -184,6 +184,8 @@ class Engine{
   constructor(subs,allow,opt,docText){
     subs=subs.map(x=>({...x}));
     this.opt=opt; this.subs=subs;
+    // ציטוטים של תיקים אחרים שנשארים כמו שהם (07-cite.js): redactDocx קובע אותם אחרי מעבר שמוצא מה יוחלף מחוץ להם
+    this.citeKeys=null;
     // המפתח הסודי של השמות הבדויים, מהדפדפן של החשבון (setAliasKey). רק אפשרויות שמציינות אותו משנות אותו
     // (null מנקה): מנוע שנבנה בלי השדה לא יחזיר בשקט את הגזירה הציבורית, שכל אחד יכול לחשב
     if(typeof setAliasKey==="function"&&opt&&Object.prototype.hasOwnProperty.call(opt,"aliasKey")) setAliasKey(opt.aliasKey);
@@ -402,6 +404,9 @@ class Engine{
       h.review=h.conf!=="high"; h.base=h.base||h.text; hits.push(h);
     }
     if(!addr&&/%[0-9A-Fa-f]{2}/.test(text))for(const h of this.encoded(text))hits.push(h);
+    // מה שבתוך ציטוט של תיק אחר שנשאר — שם, מספר — אינו מוחלף שם (07-cite.js)
+    if(!addr&&this.citeKeys&&this.citeKeys.size){ const ks=citeSpansIn(n,this.citeKeys);
+      if(ks.length)for(let i=hits.length-1;i>=0;i--)if(ks.some(([a,b])=>hits[i].s<b&&a<hits[i].e))hits.splice(i,1); }
     const res=resolve(hits);
     return addr?res:this.twins(text,res)}
   /* שם של אדם באותיות לטיניות בסוגריים, צמוד לשם שלו בעברית ("קלייר דובואה-לוי (Claire Dubois-Levi)", או בסדר ההפוך):
