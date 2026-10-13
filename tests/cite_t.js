@@ -69,6 +69,27 @@ const outText = async (res) => { const f = (await C.unzip(await res.blob.arrayBu
   ok(Array.isArray(res.cited) && res.cited.length === 2, "the result lists the two kept citations: " + JSON.stringify(res.cited));
   ok(!(res.second || []).some((x) => /יוסי|דוד|ברקמן|אלמגור/.test(x.value)), "the second check does not put the precedents' names to her: " + JSON.stringify((res.second || []).map((x) => x.value)));
 
+  console.log("\n— an earlier proceeding between this case's parties is replaced even when the tool missed the parties —");
+  // the held-out half of the second blind test: the party was not found elsewhere, so the citation of the earlier
+  // proceeding looked like a precedent, and this case's own number stayed with it. The heading names the parties
+  const R2 = ["בבית המשפט העליון", "ע\"א 4712/19", "המערערת: דלתא שירותי דוגמה בע\"מ", "נגד", "המשיב: אבנר גוטליב", "פסק-דין",
+    "בהליך קודם, רע\"א 9999/15 דלתא שירותי דוגמה בע\"מ נ' גוטליב, נדחתה בקשה דומה.", "וכן ע\"א 1357/02 רוזנטל נ' קורן, פ\"ד נו(3) 12."];
+  const t5 = await outText(await C.redactDocx(docx(R2), [], [], OPT));
+  ok(!t5.includes("9999/15"), "the earlier proceeding's number is replaced, though nothing in the list ties it to the case: " + JSON.stringify((t5.split("\n").find((l) => l.startsWith("בהליך")) || "").slice(0, 80)));
+  ok(t5.includes("ע\"א 1357/02 רוזנטל נ' קורן"), "a precedent whose parties are not in the heading stays");
+
+  // the heading's parties are read like a lawyer reads them: a public body (also wrapped over two lines) and the bench tie
+  // nothing; a party named on the line after its role does
+  const R3 = ["בבית המשפט העליון", "עע\"מ 3131/20", "לפני: כבוד השופט ש' ברקאי", "המערערים:", "1. ועדת המשנה להתנגדויות - מועצת", "התכנון העליונה",
+    "נגד", "המשיב:", "אבנר גוטליב", "פסק-דין",
+    "ראו בג\"ץ 5555/12 ארגון דוגמה נ' ועדת המשנה להתנגדויות של מועצת התכנון העליונה, פ\"ד סו(1) 1.",
+    "וכן ע\"א 7777/08 ברקאי נ' שמעוני, פ\"ד סג(2) 5.",
+    "ובהליך קודם, רע\"א 8888/16 גוטליב נ' הוועדה המקומית, נדחתה הבקשה."];
+  const t6 = await outText(await C.redactDocx(docx(R3), [], [], OPT));
+  ok(t6.includes("5555/12"), "a precedent against the same public body stays: the body is no party to tie it to the case");
+  ok(t6.includes("7777/08"), "a precedent whose party shares the judge's surname stays: the bench is no party");
+  ok(!t6.includes("8888/16"), "the respondent named on the line after «המשיב:» ties the earlier proceeding to the case");
+
   console.log("\n— she can still replace a kept citation, and the feature can be turned off —");
   const key = C.citeKey ? C.citeKey(C.norm(KEPT.split(",")[0])) : "";
   const res2 = await C.redactDocx(docx(RULING), LIST, [], { ...OPT, citeReplace: [key] });
