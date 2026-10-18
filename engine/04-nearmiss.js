@@ -37,7 +37,8 @@ function wordsOf(t){return (String(t).match(WRX)||[]).map(unseen)}
    וחלק מהשם המשולש. מחזיר רשימת סיבות; ריקה כשאין. ההצעה מוצגת, ולעולם
    אינה מתקבלת מעצמה: מיזוג הוא הקשה שלה על הכרטיס. */
 function mergeSignals(a,b){
-  const A=norm(String(a||"")).trim(), B=norm(String(b||"")).trim();
+  // ניקוד ותווים שאיש אינו רואה אינם חלק מהשם: «מַרְגָּלִית» היא «מרגלית» (הביקורת החיצונית של 18.10, F7)
+  const A=unseen(norm(String(a||""))).trim(), B=unseen(norm(String(b||""))).trim();
   if(!A||!B||A===B)return [];
   const aw=A.split(/[\s\-־–]+/).filter(Boolean), bw=B.split(/[\s\-־–]+/).filter(Boolean);
   const out=[];

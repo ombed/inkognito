@@ -811,7 +811,8 @@ function wordsOf(t){return (String(t).match(WRX)||[]).map(unseen)}
    וחלק מהשם המשולש. מחזיר רשימת סיבות; ריקה כשאין. ההצעה מוצגת, ולעולם
    אינה מתקבלת מעצמה: מיזוג הוא הקשה שלה על הכרטיס. */
 function mergeSignals(a,b){
-  const A=norm(String(a||"")).trim(), B=norm(String(b||"")).trim();
+  // ניקוד ותווים שאיש אינו רואה אינם חלק מהשם: «מַרְגָּלִית» היא «מרגלית» (הביקורת החיצונית של 18.10, F7)
+  const A=unseen(norm(String(a||""))).trim(), B=unseen(norm(String(b||""))).trim();
   if(!A||!B||A===B)return [];
   const aw=A.split(/[\s\-־–]+/).filter(Boolean), bw=B.split(/[\s\-־–]+/).filter(Boolean);
   const out=[];
@@ -1569,6 +1570,9 @@ function nerClean(ents,text,opt){
     const wasCut=en>endWas;
     let v=trimEdges(text.slice(s,en));
     if(!v||v.length<2)continue;
+    // סוג תיק לפני מספר תיק («ת"א 48213-05-25») אינו מקום ואינו גוף: המודל קרא את «ת"א» כתל אביב, והכותרת יצאה
+    // «חולון 48213-05-25» (הביקורת החיצונית של 18.10, F6). ראשי התיבות נשארים, והמספר נמחק (CASE_NUMBER)
+    if(COURT_SET.has(norm(v).replace(/[״]/g,'"'))&&/^\s*(?:\([^)\n]{1,12}\)\s*)?\d/.test(text.slice(en)))continue;
     // ── קילוף אות שימוש ──
     // "המוסד לביטוח לאומי": הקילוף לפי ראש מוסד ("מוסד") הפך גוף ציבורי לגוף
     // פרטי לכאורה. הצורה שלפני הקילוף נשמרת ונבדקת גם היא מול הגופים הציבוריים.
@@ -1764,10 +1768,15 @@ const NOT_STREET=new Set(["קומה","קומת","דירה","דירת","בניי�
   "יישוב","ישוב","כפר","עיר","שכונה","מקום","מגדל","מבנה","אגף","קרוון","מרתף","יחידה","יחידת","שנת","גיל","מעון","פנימייה","משק","נחלה","נחלת",
   "פנימיה","מוסד","הוסטל","בסיס","מחנה","אותה","אותו","אותם","אותן","זה","זו","חו\"ל","חוץ"]);
 // הכתובת אחרי פועל של מגורים אינה יישוב ("גרה בחיפה 3", "בתל אביב 3") ואינה קומה, דירה או בניין
+/* ועוד (הביקורת החיצונית של 18.10): «גרה בת"א מאז 2010» אינה כתובת. ראשי התיבות של עיר הם עיר כאן (רק כאן: «ת"א» הוא גם
+   סוג תיק, ומגלה היישובים אינו קורא אותו), ושנה אחרי מילת זמן («מאז 2010», «משנת 1998») אינה מספר בית. עד כאן «ת"א מאז
+   2010» נמחק ככתובת. tests/address_t.js */
+const CITY_ABBR=new Set(['ת"א','ב"ש','פ"ת','ראשל"צ','ק"ש','ק"ג','ק"א','ק"ב','ר"ג','ר"ע','נ"צ','כ"ס','ק"מ','מ"א','ב"ב','ת"ש','י-ם']);
+const ADDR_YEAR=/(?:^|\s)(?:מאז|משנת|בשנת|שנת|עד|החל|מ-|לפני|אחרי|ב-)(?:\s+(?:שנת|מ-?))?\s*(?:19|20)\d\d(?!\d)/u;
 function addrOK(v,n,i){
   const t=String(v||""); if(!new RegExp(`^ו?(?:${RES_VERB})\\s`,"u").test(t))return true;
   const m=/\sב-?([א-ת"'-]+)(?:\s+([א-ת"'-]+))?/u.exec(t); if(!m)return false;
-  if(NOT_STREET.has(m[1]))return false;
+  if(NOT_STREET.has(m[1])||CITY_ABBR.has(m[1].replace(/[״]/g,'"'))||ADDR_YEAR.test(t))return false;
   return !(PLACE_BY[m[1]]||(m[2]&&PLACE_BY[m[1]+" "+m[2]]))}
 /* מספר תיק בכל סוג תיק (הציד של 11.10): עד כאן רק עשרה סוגים, ואף לא אחד מסוגי התיקים של בית המשפט
    לענייני משפחה מלבד תמ"ש ועמ"ש. ראשי התיבות נשארים (הם אומרים ל-AI איזה הליך זה), המספר נמחק. */
@@ -1775,6 +1784,8 @@ const COURT='תלה"מ|תמ"ש|עמ"ש|רמ"ש|בע"מ|ה"ט|י"ס|ת"ע|תה"ס
   // ועוד סוגים שהיו חסרים, ומספר התיק שלהם נשאר בטקסט (הבדיקה העיוורת השנייה, 13.10): עע"מ גם במם פתוחה, ערעורים פליליים
   // במחוזי, רשות ערעור מנהלי, דיון נוסף, עתירות אסיר, עבודה, פירוק וחדלות פירעון, משפט חוזר
   '|עע"מ|עפ"ג|עפ"א|עפ"ת|בר"מ|בר"ם|דנ"א|דנ"פ|דנג"ץ|רע"ב|עמ"נ|עת"א|סע"ש|סק"כ|פר"ק|חדל"ת|תת"ע|מ"ח';
+// סוגי התיקים כקבוצה, לבדיקה של ערך שלם (nerClean)
+const COURT_SET=new Set(COURT.split("|"));
 const PAT=[
  ["EMAIL",'כתובת דוא"ל',`(?<![\\w.%+])[\\w%+][\\w.%+-]*@[\\w.-]+\\.[A-Za-z\u05d0-\u05ea]{2,}`,0,null,0,1],
  // תאריך מלא. עד כאן תאריכים לא זוהו בכלל (רק תאריך לידה אחרי "יליד"), והמשתמשת ביקשה
@@ -3105,7 +3116,8 @@ const CANON={PLACE_CITY:["PLACE","יישוב"],PLACE_VENUE:["PLACE","מקום"],
  PHONE_TOLL:["PHONE","טלפון"],FAX:["PHONE","פקס"],EMAIL:["EMAIL",'דוא"ל'],
  ADDRESS:["ADDRESS","כתובת"],ADDRESS_STREET:["ADDRESS","כתובת"],
  NAME:["NAME","שם"],NAME_ANCHORED:["NAME","שם"]};
-function ckey(t,x){const f=(CANON[t]||[t])[0],v=norm(x).trim();
+// שני ערכים שההבדל ביניהם רק ניקוד הם אותו ערך, ומקבלים אותו כינוי (הביקורת החיצונית של 18.10, F7)
+function ckey(t,x){const f=(CANON[t]||[t])[0],v=unseen(norm(x)).trim();
   if(f==="ID")return "ID|"+v.replace(/\D/g,"");
   if(f==="PHONE")return "PHONE|"+v.replace(/\D/g,"").slice(-9);
   if(f==="EMAIL")return "EMAIL|"+v.toLowerCase();
@@ -3381,14 +3393,18 @@ class Engine{
   // התווים שבתוך הערך; סימני כיוון שלפניו ואחריו נשארים מחוצה לה, כדי שזוגות הבידוד יישארו שלמים.
   // addr: הטקסט הוא כתובת מפוענחת. שם בה מחובר ב-_ או ב-+ ("דנה_שגיא.pdf", "?q=דנה+שגיא"), ורק כללי הכתובת רצים.
   // more: שמות שתווית בשכן מעידה עליהם (labelNext), במיקומים של הטקסט המקורי; עוברים לטקסט שהקורא רואה
+  /* ניקוד שאחרי האות האחרונה של ממצא שייך לה, ונכנס להחלפה: עד כאן «מַרְגָּלִית לַנְדָּאוּ» יצא «… דהןּ», עם הדגש של
+     השם האמיתי על הכינוי (הביקורת החיצונית של 18.10, F7). סימני כיוון אינם ניקוד ונשארים מחוץ להחלפה */
   detect(text,addr,more){
+    // סימן מצטרף שהוא גם תו שאיש אינו רואה (מצרף הגרפמות, INVIS) נשאר מחוץ, כמו סימני הכיוון (tests/invisible_t.js)
+    const marks=hits=>{ for(const h of hits){ let e=h.e; while(e<text.length&&/\p{M}/u.test(text[e])&&!INVIS.test(text[e]))e++; if(e!==h.e){h.e=e; h.text=text.slice(h.s,e)} } return hits; };
     const q=squeeze(text);
-    if(!q) return this.detectSeen(text,addr,more&&more.map(h=>({...h})));
+    if(!q) return marks(this.detectSeen(text,addr,more&&more.map(h=>({...h}))));
     const seen=x=>seenAt(q,x);
     const m2=(more||[]).map(h=>{const s=seen(h.s),e=seen(h.e); return {...h,s,e,text:q.t.slice(s,e)}}).filter(h=>h.e>h.s);
     const hits=this.detectSeen(q.t,addr,m2);
     for(const h of hits){ h.s=q.pos[h.s]; h.e=q.pos[h.e-1]+1; h.text=text.slice(h.s,h.e); }
-    return hits;
+    return marks(hits);
   }
   detectSeen(text,addr,more){
     const n=norm(text),zones=[];
@@ -3513,6 +3529,24 @@ class Engine{
   sameSurname(real,fake){
     const k=surKeyOf(real), sp=splitFake(fake);
     if(!k||!sp||!sp.sur)return fake;
+    /* שם משפחה כפול («גלעדי-ורבר», הביקורת החיצונית של 18.10, F9): כל חלק מקבל את הבדוי של מי שנושא אותו לבדו, והכפול
+       מורכב מהם: «נועה גלעדי» ← «… לוי», «אורי גלעדי-ורבר» ← «… לוי-אזולאי», בכל סדר. עד כאן אח ואחות, בעל ואישה, קיבלו
+       שמות משפחה זרים. «בן-רביב» אינו כפול: «בן» הוא מילית של השם */
+    const free=s=>!!s&&!norm(s).split(/[\s\-־]+/).some(w=>this.forbidden.has(w));
+    const dbl=/^([^\s\-־]{3,})([-־])([^\s\-־]{3,})$/.exec(k);
+    if(dbl&&!SUR_PARTS.has(dbl[1])&&!SUR_PARTS.has(dbl[3])){
+      let sur=free(this.surOf.get(k))?this.surOf.get(k):null;
+      if(!sur){
+        const part=(p,dflt)=>{ const h=this.surOf.get(p); if(free(h))return h;
+          const f=dflt||(splitFake(fakeName(p,null,this.used,this.forbidden,this.firstish))||{}).sur; if(f)this.surOf.set(p,f); return f; };
+        const a=part(dbl[1],sp.sur), b=part(dbl[3],null);
+        if(!a||!b||a===b)return fake;
+        sur=a+dbl[2]+b; this.surOf.set(k,sur);
+      }
+      const out=sp.head.concat(sur).join(" ");
+      this.used.add(norm(out).trim());
+      return out;
+    }
     const had=this.surOf.get(k);
     if(had&&had!==sp.sur&&!norm(had).split(/\s+/).some(w=>this.forbidden.has(w))){
       const out=sp.head.concat(had).join(" ");
@@ -4364,6 +4398,15 @@ function stripRsid(doc){let n=0;
    מוחלף בכינוי שלו, ובלי כינוי ב"[הוסר]". מה שנשאר גם אחרי זה — שם שמפוצל בין תגיות, או
    בתוך קובץ מוטמע — האימות עדיין תופס, וזה נכון: שם הוא לא יכול לנקות. */
 const XESC=v=>String(v).split("&").join("&amp;").split("<").join("&lt;").split(">").join("&gt;").split('"').join("&quot;").split("'").join("&apos;");
+/* שגיאה בקונסול, בלי ההודעה שלה: הסוג והמקום בקוד בלבד. הודעה של שגיאה שנזרקה תוך כדי קריאת המסמך יכולה להכיל קטע
+   ממנו, והקונסול אינו המקום שלו (הביקורת החיצונית של 18.10, F10). tests/console_t.js */
+function errNote(e){
+  if(!e||typeof e!=="object")return typeof e;
+  // ההודעה יכולה להיות בכמה שורות: היא יוצאת כולה, ונשארות רק שורות של מקום בקוד («at …», «שם@קובץ:שורה:עמודה»)
+  const at=String(e.stack||"").split(String(e.message||"\u0000")).join("").split("\n")
+    .filter(l=>/^\s*at\s/.test(l)||/@\S+:\d+:\d+\s*$/.test(l)).slice(0,3).map(l=>l.trim()).join(" | ");
+  return (e.name||"Error")+(at?" @ "+at:"");
+}
 // dateOut: לכל תאריך שהוחלף כאן, התאריך הבדוי שנכתב במקומו (הבדיקה האחרונה סופרת אותם, verify)
 function residuePass(files,walked,subs,applied,dateOut){
   const repOf=new Map(), dateKey=new Set();
@@ -5081,7 +5124,7 @@ async function redactDocx(buf,subs,allow,opt){
       // והצעה שכל המילים בה נפוצות («במסגרתה», «עליו», «בעת ביצוע») אינה מוצגת (worthAsking, 05-bodynames.js)
       .filter(x=>worthAsking(x.value));
     // בלי תקרה: ההצעות נחתכו בשתים-עשרה, והשם השלושה-עשר שלא ברשימה לא הוצע ונשאר בקובץ (ביקורת L12).
-  }catch(e){if(!e||!e.skip){console.warn("סריקת גוף הטקסט נכשלה",e);incomplete.push("body")}}
+  }catch(e){if(!e||!e.skip){console.warn("סריקת גוף הטקסט נכשלה",errNote(e));incomplete.push("body")}}
   ver.suggest=suggest;
   /* תווית בגרף או בתרשים עומדת לבדה, בלי משפט סביבה, ולכן סריקת הגוף — ששוקלת הקשר — אינה
      יכולה להציע אותה, וגם המודל כבוי לפעמים. תווית קצרה שכל מילה בה נראית כמו שם מוצעת
@@ -5116,7 +5159,7 @@ async function redactDocx(buf,subs,allow,opt){
         suggest.push({value:t,score:0,count:1,why:"שם בטקסט החלופי של תמונה",ctx:ctxHTML(b.text,0,b.text.length),part:partName(b.part)});
       }
     }
-  }catch(e){console.warn("סריקת התוויות נכשלה",e);incomplete.push("labels")}
+  }catch(e){console.warn("סריקת התוויות נכשלה",errNote(e));incomplete.push("labels")}
   ver.incomplete=incomplete;
   // ירוק רק כשאין דליפות, אין ממצאים פתוחים, ואין ערוץ שלא נותח
   ver.complete=ver.passed&&!remaining.length&&!ver.embedded.length&&
@@ -6003,9 +6046,9 @@ async function nerRun(blocks,onProgress){
     const {t,off}=parts[i];
     let res;
     try{res=await pipe(t,{ignore_labels:[]})}
-    catch(e){console.warn("קטע נכשל",e);failed++;continue}
+    catch(e){console.warn("קטע נכשל",errNote(e));failed++;continue}
     if(!Array.isArray(res))res=res?[res]:[];
-    if(!raw&&res.length)console.log("מבנה חיזוי גולמי:",JSON.stringify(res[0]));
+    if(!raw&&res.length)console.log("מבנה חיזוי גולמי:",Object.keys(res[0]||{}).join(","));
     raw+=res.length;
     withOff+=res.filter(r=>r.start!=null).length;
     nerAlign(t,res,off);
@@ -6414,7 +6457,14 @@ function restoreNames(txt,pairs,earlier,dateOpt){
   const moved=backDates(txt,took,days,dateOpt&&dateOpt.off,dateOpt&&dateOpt.today);
   let out="",at=0;
   for(const [s,e,t] of took.sort((a,b)=>a[0]-b[0])){out+=txt.slice(at,s)+t;at=e}
-  const left=leftOver(txt,took,{conflict,held,bad,reals,seen,partial,toks,dates:lone,wordOne,toksOnly,earlier});
+  // כינוי של אדם שה-AI כתב באות אחת אחרת («לנדא» של «לנדאו»): לכל מילה של כינוי, שלוש אותיות ומעלה, המילה האמיתית שבמקומה
+  const nearOf=new Map();
+  for(const [real,pseudo] of pairs) for(const [p,r] of nameParts(pseudo,real)){
+    const pw=String(p).split(/\s+/), rw=String(r).split(/\s+/);
+    if(pw.length!==rw.length)continue;
+    pw.forEach((w,i)=>{ const k=norm(w).trim(); if(k.length>=3&&!wordish(k,toks)&&!nearOf.has(k))nearOf.set(k,rw[i]); });
+  }
+  const left=leftOver(txt,took,{conflict,held,bad,reals,seen,partial,toks,dates:lone,wordOne,toksOnly,earlier,nearOf});
   // המקום של כל תאריך שזז בטקסט שחוזר: ההחלפות שלפניו משנות את האורך
   const shiftAt=p=>took.reduce((d,[s,e,t])=>e<=p?d+t.length-(e-s):d,0);
   const dates=moved.map(x=>({was:x.was,now:x.now,at:[[x.s+shiftAt(x.s),x.s+shiftAt(x.s)+x.now.length]]}));
@@ -6430,7 +6480,7 @@ function restoreNames(txt,pairs,earlier,dateOpt){
    ותאריך בדוי שנשאר (הציד של 11.10): בלי השנה שיצאה איתו ("4 ביולי" של "4.7.2027"), עם שנה שה-AI הוסיף ליום וחודש,
    או כסוף של טווח ("4-5.7.2027"). הוא אינו מוחזר, כי אין ודאות שזה הוא; עד כאן גם לא נאמר, והמסך כתב שלא נשאר דבר.
    tests/dateforms_t.js */
-function leftOver(txt,took,{conflict,held,bad,reals,seen,partial,toks,dates,wordOne,toksOnly,earlier}){
+function leftOver(txt,took,{conflict,held,bad,reals,seen,partial,toks,dates,wordOne,toksOnly,earlier,nearOf}){
   const marked=[], left=[];
   const hit=(s,e)=>took.some(t=>t[0]<e&&s<t[1])||marked.some(t=>t[0]<e&&s<t[1]);
   const add=(fake,real,s,e,from)=>{
@@ -6469,6 +6519,25 @@ function leftOver(txt,took,{conflict,held,bad,reals,seen,partial,toks,dates,word
     for(const rx of [dateRX(x.f,{range:true}),other])for(const m of txt.matchAll(rx)){
       const pre=((m.groups&&m.groups.pre)||"").length;
       add(x.p,x.r,m.index+pre,m.index+m[0].length,m.index);
+    }
+  }
+  /* כינוי שה-AI כתב באות אחת אחרת («לנדא» של «לנדאו», הביקורת החיצונית של 18.10, F12): הוא לא חזר, והמסך אמר שלא נשאר
+     בתשובה פרט בדוי. הוא נרשם כמו שנכתב, עם המילה האמיתית שבמקומו, ואינו מוחזר בניחוש. לא מילה רגילה, לא אחרי אות שימוש
+     שהיא חלק ממילה אחרת, ולא מה שכבר חזר או סומן (nearOf, restoreNames) */
+  // ועוד אות סופית במקום רגילה («פרצ» של «פרץ»), גם בשם של שלוש אותיות; והמילה גם בלי אות שימוש לפניה («ולנדא»)
+  const fin=x=>x.replace(/[ךםןףץ]/g,c=>({"ך":"כ","ם":"מ","ן":"נ","ף":"פ","ץ":"צ"})[c]);
+  if(nearOf&&nearOf.size)for(const m of txt.matchAll(/(?<![א-ת])[א-ת]{3,}(?![א-ת])/gu)){
+    const tok=m[0], cands=[[0,tok]];
+    for(let k=1;k<=2&&k<tok.length-2&&PFX.has(tok[k-1]);k++)cands.push([k,tok.slice(k)]);
+    let done=false;
+    for(const [k,c] of cands){
+      const w=norm(c).trim(); if(nearOf.has(w)||wordish(w,toks))continue;
+      for(const [sw,real] of nearOf){
+        const near=w.length>=4&&Math.abs(w.length-sw.length)<=1&&lev(w,sw)===1;
+        if(!near&&!(w!==sw&&fin(w)===fin(sw)))continue;
+        add(c,real,m.index+k,m.index+tok.length,m.index+k); done=true; break;
+      }
+      if(done)break;
     }
   }
   // המקומות בטקסט שחוזר: כל החזרה שלפני הפריט מזיזה אותו בהפרש האורכים (פריט לעולם אינו בתוך החזרה)

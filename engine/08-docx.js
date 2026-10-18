@@ -770,6 +770,15 @@ function stripRsid(doc){let n=0;
    מוחלף בכינוי שלו, ובלי כינוי ב"[הוסר]". מה שנשאר גם אחרי זה — שם שמפוצל בין תגיות, או
    בתוך קובץ מוטמע — האימות עדיין תופס, וזה נכון: שם הוא לא יכול לנקות. */
 const XESC=v=>String(v).split("&").join("&amp;").split("<").join("&lt;").split(">").join("&gt;").split('"').join("&quot;").split("'").join("&apos;");
+/* שגיאה בקונסול, בלי ההודעה שלה: הסוג והמקום בקוד בלבד. הודעה של שגיאה שנזרקה תוך כדי קריאת המסמך יכולה להכיל קטע
+   ממנו, והקונסול אינו המקום שלו (הביקורת החיצונית של 18.10, F10). tests/console_t.js */
+function errNote(e){
+  if(!e||typeof e!=="object")return typeof e;
+  // ההודעה יכולה להיות בכמה שורות: היא יוצאת כולה, ונשארות רק שורות של מקום בקוד («at …», «שם@קובץ:שורה:עמודה»)
+  const at=String(e.stack||"").split(String(e.message||"\u0000")).join("").split("\n")
+    .filter(l=>/^\s*at\s/.test(l)||/@\S+:\d+:\d+\s*$/.test(l)).slice(0,3).map(l=>l.trim()).join(" | ");
+  return (e.name||"Error")+(at?" @ "+at:"");
+}
 // dateOut: לכל תאריך שהוחלף כאן, התאריך הבדוי שנכתב במקומו (הבדיקה האחרונה סופרת אותם, verify)
 function residuePass(files,walked,subs,applied,dateOut){
   const repOf=new Map(), dateKey=new Set();
@@ -1487,7 +1496,7 @@ async function redactDocx(buf,subs,allow,opt){
       // והצעה שכל המילים בה נפוצות («במסגרתה», «עליו», «בעת ביצוע») אינה מוצגת (worthAsking, 05-bodynames.js)
       .filter(x=>worthAsking(x.value));
     // בלי תקרה: ההצעות נחתכו בשתים-עשרה, והשם השלושה-עשר שלא ברשימה לא הוצע ונשאר בקובץ (ביקורת L12).
-  }catch(e){if(!e||!e.skip){console.warn("סריקת גוף הטקסט נכשלה",e);incomplete.push("body")}}
+  }catch(e){if(!e||!e.skip){console.warn("סריקת גוף הטקסט נכשלה",errNote(e));incomplete.push("body")}}
   ver.suggest=suggest;
   /* תווית בגרף או בתרשים עומדת לבדה, בלי משפט סביבה, ולכן סריקת הגוף — ששוקלת הקשר — אינה
      יכולה להציע אותה, וגם המודל כבוי לפעמים. תווית קצרה שכל מילה בה נראית כמו שם מוצעת
@@ -1522,7 +1531,7 @@ async function redactDocx(buf,subs,allow,opt){
         suggest.push({value:t,score:0,count:1,why:"שם בטקסט החלופי של תמונה",ctx:ctxHTML(b.text,0,b.text.length),part:partName(b.part)});
       }
     }
-  }catch(e){console.warn("סריקת התוויות נכשלה",e);incomplete.push("labels")}
+  }catch(e){console.warn("סריקת התוויות נכשלה",errNote(e));incomplete.push("labels")}
   ver.incomplete=incomplete;
   // ירוק רק כשאין דליפות, אין ממצאים פתוחים, ואין ערוץ שלא נותח
   ver.complete=ver.passed&&!remaining.length&&!ver.embedded.length&&
@@ -2409,9 +2418,9 @@ async function nerRun(blocks,onProgress){
     const {t,off}=parts[i];
     let res;
     try{res=await pipe(t,{ignore_labels:[]})}
-    catch(e){console.warn("קטע נכשל",e);failed++;continue}
+    catch(e){console.warn("קטע נכשל",errNote(e));failed++;continue}
     if(!Array.isArray(res))res=res?[res]:[];
-    if(!raw&&res.length)console.log("מבנה חיזוי גולמי:",JSON.stringify(res[0]));
+    if(!raw&&res.length)console.log("מבנה חיזוי גולמי:",Object.keys(res[0]||{}).join(","));
     raw+=res.length;
     withOff+=res.filter(r=>r.start!=null).length;
     nerAlign(t,res,off);
@@ -2820,7 +2829,14 @@ function restoreNames(txt,pairs,earlier,dateOpt){
   const moved=backDates(txt,took,days,dateOpt&&dateOpt.off,dateOpt&&dateOpt.today);
   let out="",at=0;
   for(const [s,e,t] of took.sort((a,b)=>a[0]-b[0])){out+=txt.slice(at,s)+t;at=e}
-  const left=leftOver(txt,took,{conflict,held,bad,reals,seen,partial,toks,dates:lone,wordOne,toksOnly,earlier});
+  // כינוי של אדם שה-AI כתב באות אחת אחרת («לנדא» של «לנדאו»): לכל מילה של כינוי, שלוש אותיות ומעלה, המילה האמיתית שבמקומה
+  const nearOf=new Map();
+  for(const [real,pseudo] of pairs) for(const [p,r] of nameParts(pseudo,real)){
+    const pw=String(p).split(/\s+/), rw=String(r).split(/\s+/);
+    if(pw.length!==rw.length)continue;
+    pw.forEach((w,i)=>{ const k=norm(w).trim(); if(k.length>=3&&!wordish(k,toks)&&!nearOf.has(k))nearOf.set(k,rw[i]); });
+  }
+  const left=leftOver(txt,took,{conflict,held,bad,reals,seen,partial,toks,dates:lone,wordOne,toksOnly,earlier,nearOf});
   // המקום של כל תאריך שזז בטקסט שחוזר: ההחלפות שלפניו משנות את האורך
   const shiftAt=p=>took.reduce((d,[s,e,t])=>e<=p?d+t.length-(e-s):d,0);
   const dates=moved.map(x=>({was:x.was,now:x.now,at:[[x.s+shiftAt(x.s),x.s+shiftAt(x.s)+x.now.length]]}));
@@ -2836,7 +2852,7 @@ function restoreNames(txt,pairs,earlier,dateOpt){
    ותאריך בדוי שנשאר (הציד של 11.10): בלי השנה שיצאה איתו ("4 ביולי" של "4.7.2027"), עם שנה שה-AI הוסיף ליום וחודש,
    או כסוף של טווח ("4-5.7.2027"). הוא אינו מוחזר, כי אין ודאות שזה הוא; עד כאן גם לא נאמר, והמסך כתב שלא נשאר דבר.
    tests/dateforms_t.js */
-function leftOver(txt,took,{conflict,held,bad,reals,seen,partial,toks,dates,wordOne,toksOnly,earlier}){
+function leftOver(txt,took,{conflict,held,bad,reals,seen,partial,toks,dates,wordOne,toksOnly,earlier,nearOf}){
   const marked=[], left=[];
   const hit=(s,e)=>took.some(t=>t[0]<e&&s<t[1])||marked.some(t=>t[0]<e&&s<t[1]);
   const add=(fake,real,s,e,from)=>{
@@ -2875,6 +2891,25 @@ function leftOver(txt,took,{conflict,held,bad,reals,seen,partial,toks,dates,word
     for(const rx of [dateRX(x.f,{range:true}),other])for(const m of txt.matchAll(rx)){
       const pre=((m.groups&&m.groups.pre)||"").length;
       add(x.p,x.r,m.index+pre,m.index+m[0].length,m.index);
+    }
+  }
+  /* כינוי שה-AI כתב באות אחת אחרת («לנדא» של «לנדאו», הביקורת החיצונית של 18.10, F12): הוא לא חזר, והמסך אמר שלא נשאר
+     בתשובה פרט בדוי. הוא נרשם כמו שנכתב, עם המילה האמיתית שבמקומו, ואינו מוחזר בניחוש. לא מילה רגילה, לא אחרי אות שימוש
+     שהיא חלק ממילה אחרת, ולא מה שכבר חזר או סומן (nearOf, restoreNames) */
+  // ועוד אות סופית במקום רגילה («פרצ» של «פרץ»), גם בשם של שלוש אותיות; והמילה גם בלי אות שימוש לפניה («ולנדא»)
+  const fin=x=>x.replace(/[ךםןףץ]/g,c=>({"ך":"כ","ם":"מ","ן":"נ","ף":"פ","ץ":"צ"})[c]);
+  if(nearOf&&nearOf.size)for(const m of txt.matchAll(/(?<![א-ת])[א-ת]{3,}(?![א-ת])/gu)){
+    const tok=m[0], cands=[[0,tok]];
+    for(let k=1;k<=2&&k<tok.length-2&&PFX.has(tok[k-1]);k++)cands.push([k,tok.slice(k)]);
+    let done=false;
+    for(const [k,c] of cands){
+      const w=norm(c).trim(); if(nearOf.has(w)||wordish(w,toks))continue;
+      for(const [sw,real] of nearOf){
+        const near=w.length>=4&&Math.abs(w.length-sw.length)<=1&&lev(w,sw)===1;
+        if(!near&&!(w!==sw&&fin(w)===fin(sw)))continue;
+        add(c,real,m.index+k,m.index+tok.length,m.index+k); done=true; break;
+      }
+      if(done)break;
     }
   }
   // המקומות בטקסט שחוזר: כל החזרה שלפני הפריט מזיזה אותו בהפרש האורכים (פריט לעולם אינו בתוך החזרה)

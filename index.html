@@ -16,7 +16,7 @@
      אין כאן 'unsafe-eval' ולא 'unsafe-inline': סקריפט שהוזרק לדף, או onerror של תמונה, לא ירוץ (הביקורת ההנדסית
      של 12.10, סעיף 4). 'wasm-unsafe-eval' הוא ל-WebAssembly של המודל. בתבנית אין מאפיין אירוע (onClick): הוא כתוב
      sc-camel-on-click, הצורה ששכבת ההרצה קוראת כ-onClick, כדי שאף דפדפן לא יפרש אותו כקוד שנחסם (Firefox דיווח על כל אחד). -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' blob: https://unpkg.com 'sha256-n0+wLToED3zsrfY9U5xP3ORaeNWBPlKBcS5X6QQgtv4=' 'sha256-1MEgMzsO9lRDSKkTzPEwwyZGmJcChQW3Yau3EKthdZM='; worker-src 'self' blob:; connect-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob:; object-src 'none'; base-uri 'self'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' blob: https://unpkg.com 'sha256-n0+wLToED3zsrfY9U5xP3ORaeNWBPlKBcS5X6QQgtv4=' 'sha256-OPdk01dj8X/Ev0W+uGQD74ODFgLb6bN+fC/44oNRaGo='; worker-src 'self' blob:; connect-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob:; object-src 'none'; base-uri 'self'; form-action 'none'">
 <script>/* ערכת הצבעים לפני הציור הראשון: בלי זה טעינה מחדש במצב לילה הבהבה ביום עד שהממשק עלה */try{var t=localStorage.getItem("redact-theme")||(matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");if(t==="dark")document.documentElement.classList.add("dark")}catch(e){}</script>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./icon.svg" type="image/svg+xml">
@@ -294,7 +294,7 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
 </div></div>
 <script>
 (function(){
-  console.log("אינקוגניטו — גרסה v76");
+  console.log("אינקוגניטו — גרסה v76.1");
   /* הכלי באתר צריך חיבור כדי להיפתח: בכל פתיחה נבדקת הכניסה לחשבון (דף האבטחה). עד 12.10 ההודעה כאן הבטיחה שבלי
      אינטרנט הכלי עובד, וכשלא היה חיבור היא הוצגה בדיוק אז (הנוסח שאושר, 12.10). בלי חיבור היא מוצגת מיד, ולא אחרי
      תשע שניות של «נטען…» */
@@ -347,8 +347,8 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
         console.log("עובד שירות: "+served);
         var el=document.getElementById("ver"); if(!el) return;
         if(chip===null) chip=el.innerHTML; else el.innerHTML=chip;
-        if(served==="v76") return;
-        el.innerHTML='גרסה v76 · <b style="color:var(--warn)">יש גרסה חדשה: רעננו עם Ctrl+Shift+R</b>';
+        if(served==="v76.1") return;
+        el.innerHTML='גרסה v76.1 · <b style="color:var(--warn)">יש גרסה חדשה: רעננו עם Ctrl+Shift+R</b>';
       });
       var ask=function(){ if(sw.controller) sw.controller.postMessage("version") };
       sw.ready.then(ask);
@@ -410,6 +410,9 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
       <div data-pw role="dialog" aria-modal="true" aria-labelledby="pw-t" style="width:min(420px,100%);background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:0 24px 60px rgba(0,0,0,.35)">
         <label id="pw-t" for="pw-in" style="display:block;margin:0 0 10px;font-size:15px;font-weight:500;line-height:1.5">{{ pwLabel }}</label>
         <input id="pw-in" data-pw-in type="password" autocomplete="new-password" dir="ltr" value="{{ pwValue }}" sc-camel-on-change="{{ onPwIn }}" sc-camel-on-key-down="{{ onPwKey }}" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:15px;background:var(--paper);color:var(--ink)">
+        <!-- בייצוא הסיסמה נכתבת פעמיים: טעות הקלדה נועלת את הקובץ לתמיד (החלטת הבעלים, 18.10) -->
+        <sc-if value="{{ pwTwice }}"><label for="pw-again" style="display:block;margin:12px 0 6px;font-size:13.5px;color:var(--ink2)">{{ pwAgainLabel }}</label>
+          <input id="pw-again" data-pw-again type="password" autocomplete="new-password" dir="ltr" value="{{ pwAgain }}" sc-camel-on-change="{{ onPwAgain }}" sc-camel-on-key-down="{{ onPwKey }}" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:15px;background:var(--paper);color:var(--ink)"></sc-if>
         <sc-if value="{{ pwErr }}"><p data-pw-err role="alert" style="margin:10px 0 0;font-size:13px;color:var(--bad)">{{ pwErr }}</p></sc-if>
         <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">
           <button type="button" sc-camel-on-click="{{ onPwCancel }}" style="padding:9px 16px;border-radius:10px;border:1px solid var(--line);font-size:13.5px;color:var(--ink2)">ביטול</button>
@@ -1410,7 +1413,7 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
 
 </div>
 </x-dc>
-<footer><nav data-foot aria-label="מידע ומסמכים משפטיים"><a href="https://inkognito.co.il/" target="_blank" rel="noopener">עמוד הבית</a><a href="https://inkognito.co.il/terms" target="_blank" rel="noopener">תנאי שימוש</a><a href="https://inkognito.co.il/privacy" target="_blank" rel="noopener">מדיניות פרטיות</a><a href="https://inkognito.co.il/accessibility" target="_blank" rel="noopener">הצהרת נגישות</a><a href="mailto:contact@inkognito.co.il">יצירת קשר</a></nav><div id="ver">גרסה v76</div></footer>
+<footer><nav data-foot aria-label="מידע ומסמכים משפטיים"><a href="https://inkognito.co.il/" target="_blank" rel="noopener">עמוד הבית</a><a href="https://inkognito.co.il/terms" target="_blank" rel="noopener">תנאי שימוש</a><a href="https://inkognito.co.il/privacy" target="_blank" rel="noopener">מדיניות פרטיות</a><a href="https://inkognito.co.il/accessibility" target="_blank" rel="noopener">הצהרת נגישות</a><a href="mailto:contact@inkognito.co.il">יצירת קשר</a></nav><div id="ver">גרסה v76.1</div></footer>
 <script type="text/x-dc" data-dc-script data-props="{&quot;docFont&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;serif&quot;,&quot;sans&quot;],&quot;default&quot;:&quot;serif&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;עיצוב&quot;},
 &quot;railWidth&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:340,&quot;max&quot;:500,&quot;step&quot;:4,&quot;default&quot;:404,&quot;unit&quot;:&quot;px&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;עיצוב&quot;}}"></script>
 </body>

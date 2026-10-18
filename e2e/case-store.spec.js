@@ -14,7 +14,10 @@ const profile = (name, real, fake, updated = "2026-09-01T09:00:00.000Z") => ({ v
   rules: [{ value: real, kind: "NAME", replacement: fake, auto: false, g: null }], allow: [], map: { [real]: fake }, removed: [], sent: {},
   styles: { num: "blank", date: "name" } });
 const PLAIN_CASE = profile("פלדמן נ׳ גרוס", "מיכאל פלדמן", "יואב כרמי");
-const PLAIN_LAST = profile("", "דפנה גרוס", "שירה אלון");
+/* A last profile is offered for 24 hours after its last change, and an older one is deleted (v76.1,
+   e2e/lastlist.spec.js), so the ones stored here were changed an hour ago. */
+const AN_HOUR_AGO = new Date(Date.now() - 3600e3).toISOString();
+const PLAIN_LAST = profile("", "דפנה גרוס", "שירה אלון", AN_HOUR_AGO);
 const ACCOUNT_CASE = profile("ברק נ׳ ברק", "עדי ברק", "נועה שגב");
 const LAST_CARD = "להמשיך עם רשימת השמות מהפעם הקודמת?";
 
@@ -181,7 +184,7 @@ test("with a case in use on the entry screen, an import stores its cases and lea
 test("a case whose name is taken stays as it is, the imported one gets the next free number, and a last profile already there stays", async ({ page }) => {
   await H.serveEngineWithStub(page);
   const mine = profile("לוי נ׳ לוי", "שרה לוי", "דנה רום"), mine2 = profile("לוי נ׳ לוי 2", "משה לוי", "עמית שור");
-  const myLast = profile("", "נגה פז", "הדס ים");
+  const myLast = profile("", "נגה פז", "הדס ים", AN_HOUR_AGO);
   await seed(page, { "redact-cases": { [mine.name]: mine, [mine2.name]: mine2 }, "redact-profile-last": myLast });
   await H.boot(page);
   const theirs = profile("לוי נ׳ לוי", "רינה לוי", "גילה נוי", "2026-09-07T09:00:00.000Z"), other = profile("אבן נ׳ אבן", "עוז אבן", "טל דור");
