@@ -57,7 +57,8 @@ const CANON={PLACE_CITY:["PLACE","יישוב"],PLACE_VENUE:["PLACE","מקום"],
  PHONE_TOLL:["PHONE","טלפון"],FAX:["PHONE","פקס"],EMAIL:["EMAIL",'דוא"ל'],
  ADDRESS:["ADDRESS","כתובת"],ADDRESS_STREET:["ADDRESS","כתובת"],
  NAME:["NAME","שם"],NAME_ANCHORED:["NAME","שם"]};
-function ckey(t,x){const f=(CANON[t]||[t])[0],v=norm(x).trim();
+// שני ערכים שההבדל ביניהם רק ניקוד הם אותו ערך, ומקבלים אותו כינוי (הביקורת החיצונית של 18.10, F7)
+function ckey(t,x){const f=(CANON[t]||[t])[0],v=unseen(norm(x)).trim();
   if(f==="ID")return "ID|"+v.replace(/\D/g,"");
   if(f==="PHONE")return "PHONE|"+v.replace(/\D/g,"").slice(-9);
   if(f==="EMAIL")return "EMAIL|"+v.toLowerCase();
@@ -333,14 +334,18 @@ class Engine{
   // התווים שבתוך הערך; סימני כיוון שלפניו ואחריו נשארים מחוצה לה, כדי שזוגות הבידוד יישארו שלמים.
   // addr: הטקסט הוא כתובת מפוענחת. שם בה מחובר ב-_ או ב-+ ("דנה_שגיא.pdf", "?q=דנה+שגיא"), ורק כללי הכתובת רצים.
   // more: שמות שתווית בשכן מעידה עליהם (labelNext), במיקומים של הטקסט המקורי; עוברים לטקסט שהקורא רואה
+  /* ניקוד שאחרי האות האחרונה של ממצא שייך לה, ונכנס להחלפה: עד כאן «מַרְגָּלִית לַנְדָּאוּ» יצא «… דהןּ», עם הדגש של
+     השם האמיתי על הכינוי (הביקורת החיצונית של 18.10, F7). סימני כיוון אינם ניקוד ונשארים מחוץ להחלפה */
   detect(text,addr,more){
+    // סימן מצטרף שהוא גם תו שאיש אינו רואה (מצרף הגרפמות, INVIS) נשאר מחוץ, כמו סימני הכיוון (tests/invisible_t.js)
+    const marks=hits=>{ for(const h of hits){ let e=h.e; while(e<text.length&&/\p{M}/u.test(text[e])&&!INVIS.test(text[e]))e++; if(e!==h.e){h.e=e; h.text=text.slice(h.s,e)} } return hits; };
     const q=squeeze(text);
-    if(!q) return this.detectSeen(text,addr,more&&more.map(h=>({...h})));
+    if(!q) return marks(this.detectSeen(text,addr,more&&more.map(h=>({...h}))));
     const seen=x=>seenAt(q,x);
     const m2=(more||[]).map(h=>{const s=seen(h.s),e=seen(h.e); return {...h,s,e,text:q.t.slice(s,e)}}).filter(h=>h.e>h.s);
     const hits=this.detectSeen(q.t,addr,m2);
     for(const h of hits){ h.s=q.pos[h.s]; h.e=q.pos[h.e-1]+1; h.text=text.slice(h.s,h.e); }
-    return hits;
+    return marks(hits);
   }
   detectSeen(text,addr,more){
     const n=norm(text),zones=[];
@@ -465,6 +470,24 @@ class Engine{
   sameSurname(real,fake){
     const k=surKeyOf(real), sp=splitFake(fake);
     if(!k||!sp||!sp.sur)return fake;
+    /* שם משפחה כפול («גלעדי-ורבר», הביקורת החיצונית של 18.10, F9): כל חלק מקבל את הבדוי של מי שנושא אותו לבדו, והכפול
+       מורכב מהם: «נועה גלעדי» ← «… לוי», «אורי גלעדי-ורבר» ← «… לוי-אזולאי», בכל סדר. עד כאן אח ואחות, בעל ואישה, קיבלו
+       שמות משפחה זרים. «בן-רביב» אינו כפול: «בן» הוא מילית של השם */
+    const free=s=>!!s&&!norm(s).split(/[\s\-־]+/).some(w=>this.forbidden.has(w));
+    const dbl=/^([^\s\-־]{3,})([-־])([^\s\-־]{3,})$/.exec(k);
+    if(dbl&&!SUR_PARTS.has(dbl[1])&&!SUR_PARTS.has(dbl[3])){
+      let sur=free(this.surOf.get(k))?this.surOf.get(k):null;
+      if(!sur){
+        const part=(p,dflt)=>{ const h=this.surOf.get(p); if(free(h))return h;
+          const f=dflt||(splitFake(fakeName(p,null,this.used,this.forbidden,this.firstish))||{}).sur; if(f)this.surOf.set(p,f); return f; };
+        const a=part(dbl[1],sp.sur), b=part(dbl[3],null);
+        if(!a||!b||a===b)return fake;
+        sur=a+dbl[2]+b; this.surOf.set(k,sur);
+      }
+      const out=sp.head.concat(sur).join(" ");
+      this.used.add(norm(out).trim());
+      return out;
+    }
     const had=this.surOf.get(k);
     if(had&&had!==sp.sur&&!norm(had).split(/\s+/).some(w=>this.forbidden.has(w))){
       const out=sp.head.concat(had).join(" ");
