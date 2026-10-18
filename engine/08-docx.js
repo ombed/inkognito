@@ -778,8 +778,17 @@ function residuePass(files,walked,subs,applied,dateOut){
   for(const s of subs)put(s.value,s.replacement||"[הוסר]",s.kind==="DATE");
   const vals=[...repOf.keys()].sort((a,b)=>b.length-a.length);
   const done=[];
+  // EMF: הערכים, וגם כל מילה של שם בן כמה מילים, כי תוכנה כותבת לפעמים כל מילה בפקודה משלה (emfNames)
+  const emfPairs=[];
+  for(const v of vals){
+    const r=String(repOf.get(v)); emfPairs.push([v,r,dateKey.has(v)]);
+    const vw=v.split(/\s+/), rw=r.split(/\s+/);
+    if(!dateKey.has(v)&&vw.length>1&&vw.length===rw.length)vw.forEach((w,i)=>{ if(w.length>=3&&!COMMON.has(norm(w)))emfPairs.push([w,rw[i],false]) });
+  }
   for(const f of files){
-    if(walked.has(f.name)||!f.name.endsWith(".xml")||f.name==="[Content_Types].xml"||f.name==="docProps/core.xml"||f.name==="docProps/app.xml")continue;
+    if(/\.emf$/i.test(f.name)){ const c=emfNames(f.data,emfPairs,dateOut); if(c){f.data=c;done.push(f.name)} continue; }
+    // SVG הוא XML: הטקסט שבו מוחלף כמו בכל חלק שלא נקרא (dropSvgCopies)
+    if(walked.has(f.name)||!(f.name.endsWith(".xml")||/\.svg$/i.test(f.name))||f.name==="[Content_Types].xml"||f.name==="docProps/core.xml"||f.name==="docProps/app.xml")continue;
     const o=TXT.decode(f.data); let s=o;
     for(const v of vals){
       const r=XESC(repOf.get(v)), d=dateOut&&dateKey.has(v);
@@ -789,6 +798,28 @@ function residuePass(files,walked,subs,applied,dateOut){
     if(s!==o){f.data=ENC.encode(s);done.push(f.name)}
   }
   return done}
+/* שמות שברשימה בטקסט של תמונת EMF (UTF-16, בכל פקודה, גם בעותק של EMF+), באותו אורך, כדי שאף מבנה בקובץ לא יזוז:
+   הכינוי מרופד ברווחים או מקוצר. לא בתוך מילה ארוכה יותר. מה שלא ברשימה נשאר, כמו כל טקסט בתמונה (הביקורת החיצונית של
+   18.10, F3). pairs: [ערך, כינוי, תאריך?] */
+function emfNames(u,pairs,dateOut){
+  let out=null;
+  const heb=c=>c>=0x05D0&&c<=0x05EA, at=(a,i)=>i>=0&&i+1<a.length?a[i]|(a[i+1]<<8):0;
+  for(const [v,r,d] of pairs){
+    if(v.length<2||!/[א-ת0-9]/.test(v))continue;
+    const fit=(r+" ".repeat(v.length)).slice(0,v.length), pat=new Uint8Array(2*v.length);
+    for(let i=0;i<v.length;i++){pat[2*i]=v.charCodeAt(i)&255; pat[2*i+1]=v.charCodeAt(i)>>8}
+    const a=out||u;
+    for(let i=a.indexOf(pat[0]);i>=0&&i+pat.length<=a.length;i=a.indexOf(pat[0],i+1)){
+      let k=1; while(k<pat.length&&a[i+k]===pat[k])k++;
+      if(k<pat.length||heb(at(a,i-2))||heb(at(a,i+pat.length)))continue;
+      if(!out)out=new Uint8Array(u);
+      for(let j=0;j<fit.length;j++){out[i+2*j]=fit.charCodeAt(j)&255; out[i+2*j+1]=fit.charCodeAt(j)>>8}
+      if(d&&dateOut)dateOut.push(fit.trim());
+      i+=pat.length-1;
+    }
+  }
+  return out;
+}
 
 // התאריך המלא הראשון שכתוב בטקסט, כ-YYYY-MM-DD, או null
 function isoDateIn(s){
@@ -866,10 +897,140 @@ function stripPng(u){
   if(p<u.length)changed=true;
   return changed?cat(out):null;
 }
+/* ועוד (הביקורת החיצונית של 18.10, F3): GIF, WebP, TIFF ו-EMF יצאו כמו שהם. GIF: יוצאות ההערות (Comment Extension)
+   ו-XMP. WebP: יוצאים EXIF ו-XMP, והדגלים שלהם בכותרת. TIFF: התגים שבהם טקסט (תיאור, מחבר, מצלמה, תוכנה, תאריך,
+   זכויות, XMP, IPTC) מתאפסים במקומם, וכך גם כל מה שבתת-התיקיות של EXIF ו-GPS; המבנה עצמו לא זז. EMF: התיאור שבכותרת
+   מתאפס (ושמות שברשימה בטקסט שבו מוחלפים ב-residuePass). מה שלא נקרא עד סופו נשאר כמו שהוא (null) */
+function stripGif(u){
+  const sig=String.fromCharCode(...u.subarray(0,6));
+  if(u.length<13||(sig!=="GIF89a"&&sig!=="GIF87a"))return null;
+  let p=13; if(u[10]&0x80)p+=3*(1<<((u[10]&7)+1));
+  if(p>u.length)return null;
+  const out=[u.subarray(0,p)]; let changed=false, ended=false;
+  // רצף של תת-בלוקים, עד בלוק באורך אפס; המקום שאחריו, או -1
+  const subs=q=>{while(q<u.length){const n=u[q++]; if(!n)return q; q+=n} return -1};
+  while(p<u.length){
+    const b=u[p];
+    if(b===0x3B){out.push(u.subarray(p,p+1)); p++; ended=true; break}
+    if(b===0x21){
+      const label=u[p+1], xmp=label===0xFF&&u[p+2]===11&&String.fromCharCode(...u.subarray(p+3,p+14))==="XMP DataXMP";
+      const q=subs(p+2); if(q<0)return null;
+      if(label===0xFE||xmp)changed=true; else out.push(u.subarray(p,q));
+      p=q; continue;
+    }
+    if(b===0x2C){
+      let q=p+10; if(q>u.length)return null; if(u[p+9]&0x80)q+=3*(1<<((u[p+9]&7)+1));
+      q=subs(q+1); if(q<0)return null;
+      out.push(u.subarray(p,q)); p=q; continue;
+    }
+    return null;
+  }
+  if(!ended)return null;
+  if(p<u.length)changed=true;
+  return changed?cat(out):null;
+}
+function stripWebp(u){
+  if(u.length<12||String.fromCharCode(...u.subarray(0,4))!=="RIFF"||String.fromCharCode(...u.subarray(8,12))!=="WEBP")return null;
+  const out=[]; let p=12, at=12, x=-1, changed=false;
+  while(p+8<=u.length){
+    const id=String.fromCharCode(...u.subarray(p,p+4)), len=u32(u,p+4,true), end=p+8+len+(len&1);
+    if(end>u.length)return null;
+    if(id==="EXIF"||id==="XMP ")changed=true;
+    else{ if(id==="VP8X")x=at; out.push(u.subarray(p,end)); at+=end-p; }
+    p=end;
+  }
+  if(p<u.length)changed=true;
+  if(!changed)return null;
+  const r=cat([u.subarray(0,12),...out]), size=r.length-8;
+  r[4]=size&255; r[5]=(size>>8)&255; r[6]=(size>>16)&255; r[7]=size>>>24;
+  if(x>=0)r[x+8]&=~0x0C;
+  return r;
+}
+const TIFF_TEXT=new Set([269,270,271,272,285,305,306,315,316,700,33432,33723,34377,37510,42016,42032,42033]);
+const TIFF_SIZE={1:1,2:1,3:2,4:4,5:8,6:1,7:1,8:2,9:4,10:8,11:4,12:8,13:4,16:8,17:8,18:8};
+function stripTiff(u){
+  const le=u[0]===0x49&&u[1]===0x49;
+  if(u.length<8||(!le&&!(u[0]===0x4D&&u[1]===0x4D))||u16(u,2,le)!==42)return null;
+  const out=new Uint8Array(u); let changed=false;
+  // all: כל הרשומות של התיקייה (תת-תיקייה של EXIF או GPS); אחרת רק התגים שבהם טקסט. false: לא נקרא עד סופו
+  const wipe=(ifd,all,depth)=>{
+    if(depth>4||ifd+2>u.length)return false;
+    const n=u16(u,ifd,le); if(ifd+2+12*n+4>u.length)return false;
+    for(let k=0;k<n;k++){
+      const e=ifd+2+12*k, tag=u16(u,e,le), type=u16(u,e+2,le), sz=(TIFF_SIZE[type]||1)*u32(u,e+4,le);
+      if(tag===34665||tag===34853){ if(!wipe(u32(u,e+8,le),true,depth+1))return false; continue; }
+      if(!all&&!TIFF_TEXT.has(tag))continue;
+      if(sz<=4)out.fill(0,e+8,e+12);
+      else{ const off=u32(u,e+8,le); if(off+sz>u.length)return false; out.fill(0,off,off+sz); }
+      changed=true;
+    }
+    return true;
+  };
+  let ifd=u32(u,4,le);
+  for(let page=0;ifd&&page<64;page++){
+    if(!wipe(ifd,false,0))return null;
+    ifd=u32(u,ifd+2+12*u16(u,ifd,le),le);
+  }
+  return changed?out:null;
+}
+function stripEmf(u){
+  if(u.length<88||u32(u,0,true)!==1||u32(u,40,true)!==0x464D4520)return null;
+  const n=u32(u,60,true), off=u32(u,64,true);
+  if(!n||off+2*n>u.length)return null;
+  const out=new Uint8Array(u); out.fill(0,off,off+2*n);
+  return out;
+}
 function stripImageMeta(name,u){
   if(/\.(?:jpe?g|jfif)$/i.test(name))return stripJpeg(u);
   if(/\.png$/i.test(name))return stripPng(u);
+  if(/\.gif$/i.test(name))return stripGif(u);
+  if(/\.webp$/i.test(name))return stripWebp(u);
+  if(/\.tiff?$/i.test(name))return stripTiff(u);
+  if(/\.emf$/i.test(name))return stripEmf(u);
   return null;
+}
+/* SVG (הביקורת החיצונית של 18.10, F3): הטקסט שבו כתוב כטקסט, הכותרת (title), התיאור (desc), התוויות (text) והמטא-נתונים,
+   ואיש מהם לא נקרא: «תרשים של …» יצא בקובץ כמו שהוא, והבדיקה האחרונה עברה. Word שומר כל SVG לצד עותק PNG שלו ומציג את
+   ה-SVG; כאן ה-SVG יוצא, וההפניה אליו (svgBlip) איתו, ו-Word מציג את ה-PNG, תמונה כמו כל תמונה אחרת במסמך. מחזיר את
+   החלקים שיצאו. SVG שיש אליו עוד הפניה נשאר, וממנו יוצאים כותרת, תיאור, מטא-נתונים והערות (cleanSvg); שמות שברשימה
+   בטקסט שלו מוחלפים ב-residuePass. tests/pictext_t.js */
+const SVG_EXT=/<(\w+):ext\b[^>]*\buri="\{96DAC541-7B7A-43D3-8B79-37D633B846F1\}"[^>]*>[\s\S]*?<\/\1:ext>/g;
+function partOf(from,target){
+  if(target.startsWith("/"))return target.slice(1);
+  const out=from.split("/").slice(0,-1);
+  for(const s of target.split("/")){ if(s==="..")out.pop(); else if(s&&s!==".")out.push(s); }
+  return out.join("/");
+}
+function dropSvgCopies(files){
+  const cut=new Set(), relsOf=n=>n.replace(/([^/]*)$/,"_rels/$1.rels");
+  for(const f of files){
+    if(!/\.xml$/.test(f.name))continue;
+    const s=TXT.decode(f.data); if(!s.includes("96DAC541"))continue;
+    const ids=[], t=s.replace(SVG_EXT,m=>{const r=/\bembed="([^"]+)"/.exec(m); if(r)ids.push(r[1]); return ""}).replace(/<(\w+):extLst>\s*<\/\1:extLst>/g,"");
+    if(t===s)continue;
+    f.data=ENC.encode(t);
+    const rf=files.find(x=>x.name===relsOf(f.name)); if(!rf)continue;
+    let rs=TXT.decode(rf.data);
+    for(const id of ids){
+      const m=new RegExp(`<Relationship\\b[^>]*\\bId="${esc(id)}"[^>]*/>`).exec(rs); if(!m)continue;
+      const tg=(/\bTarget="([^"]+)"/.exec(m[0])||[])[1];
+      rs=rs.replace(m[0],"");
+      if(tg&&!/TargetMode="External"/.test(m[0]))cut.add(partOf(f.name,tg));
+    }
+    rf.data=ENC.encode(rs);
+  }
+  // SVG שעוד חלק מפנה אליו נשאר
+  for(const rf of files.filter(x=>x.name.endsWith(".rels"))){
+    const from=rf.name.replace(/_rels\/([^/]*)\.rels$/,"$1"), rs=TXT.decode(rf.data);
+    for(const m of rs.matchAll(/<Relationship\b[^>]*>/g)){ const tg=(/\bTarget="([^"]+)"/.exec(m[0])||[])[1]; if(tg)cut.delete(partOf(from,tg)); }
+  }
+  return [...cut];
+}
+function cleanSvg(u){
+  const s=TXT.decode(u);
+  const t=s.replace(/<!--[\s\S]*?-->/g,"").replace(/<(\w+:)?(title|desc|metadata)\b[^>]*\/>/g,"").replace(/<((?:\w+:)?(?:title|desc|metadata))\b[^>]*>[\s\S]*?<\/\1>/g,"")
+    .replace(/\s(?:aria-label|xlink:title|aria-description)="[^"]*"/g,"");
+  return t===s?null:ENC.encode(t);
 }
 async function redactDocx(buf,subs,allow,opt){
   const files=await unzip(buf);
@@ -878,15 +1039,19 @@ async function redactDocx(buf,subs,allow,opt){
   const chunks=await inlineChunks(files,0);
   // קובץ מוטמע יוצא, ושורה במקומו (dropObjects)
   const objs=dropObjects(files); rep.embedded=objs.files;
+  // SVG שיש לו עותק PNG יוצא, ו-Word מציג את העותק (dropSvgCopies)
+  const svgs=dropSvgCopies(files); rep.svg=svgs.length;
   let keep=files.filter(f=>{
     // התמונה הממוזערת היא צילום של העמוד הראשון, עם כל מה שכתוב בו (ביקורת H10)
-    if(DROP.includes(f.name)||/(?:^|\/)customxml\//i.test(f.name)||f.name.startsWith("docProps/thumbnail.")||chunks.includes(f.name)||objs.gone.includes(f.name)){rep.dropped.push(f.name);return false}
+    if(DROP.includes(f.name)||/(?:^|\/)customxml\//i.test(f.name)||f.name.startsWith("docProps/thumbnail.")||chunks.includes(f.name)||objs.gone.includes(f.name)||svgs.includes(f.name)){rep.dropped.push(f.name);return false}
     return true});
   // הקישורים של חלק שהוסר (ההערות) הולכים איתו: בלעדיו נשארו בקובץ, יתומים (הציד של 11.10)
   {const gone=new Set(rep.dropped.map(n=>n.replace(/([^/]*)$/,"_rels/$1.rels")));keep=keep.filter(f=>!gone.has(f.name))}
   for(const f of keep){
     // תמונה: בלי מקום, מצלמה, תאריך ומחבר (stripImageMeta)
     if(/(?:^|\/)media\/[^/]+$/i.test(f.name)){ const c=stripImageMeta(f.name,f.data); if(c){ f.data=c; rep.img++; } }
+    // SVG שנשאר: בלי כותרת, תיאור, מטא-נתונים והערות (cleanSvg)
+    if(/\.svg$/i.test(f.name)){ const c=cleanSvg(f.data); if(c){ f.data=c; rep.img++; } }
     if(f.name.endsWith(".rels")||f.name==="[Content_Types].xml"){
       let s=TXT.decode(f.data);
       for(const d of rep.dropped){
