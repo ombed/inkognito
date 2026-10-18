@@ -200,9 +200,12 @@ class Component extends DCLogic {
       }
     };
     addEventListener("beforeunload", this._unload);
-    // דף שנסגר או נטען מחדש באמצע הקלדת שם התיק: רשימת התיקים נשמרת לפניו (persistProfile)
+    // דף שנסגר או נטען מחדש באמצע הקלדת שם התיק: רשימת התיקים נשמרת לפניו (persistProfile), לפני שהמסמך מסתיים
     this._caseOnHide = () => { clearTimeout(this._caseT); this.persistProfile(); };
     addEventListener("pagehide", this._caseOnHide);
+    // closing or leaving the page ends the document too (pagehide: also fires where unload does not)
+    this._hide=()=>this.docEnd("leave");
+    addEventListener("pagehide", this._hide);
     addEventListener("popstate", this._pop);
     // the document's history entry waits for a click or a key (canPush): it is pushed by the first one
     this._histNow = () => {
@@ -275,7 +278,7 @@ class Component extends DCLogic {
   }
   componentWillUnmount(){ document.removeEventListener("mousedown", this._docClick); document.removeEventListener("keydown", this._keys); document.removeEventListener("keyup", this._selKeys); removeEventListener("resize", this._resize);
     document.removeEventListener("selectionchange", this._selChange); clearTimeout(this._selT); document.removeEventListener("pointerdown", this._ptr, true); document.removeEventListener("pointerup", this._ptr, true);
-    removeEventListener("beforeunload", this._unload); removeEventListener("pagehide", this._caseOnHide); clearTimeout(this._caseT); removeEventListener("popstate", this._pop); document.removeEventListener("click", this._histNow, true); document.removeEventListener("keydown", this._histNow, true);
+    removeEventListener("beforeunload", this._unload); removeEventListener("pagehide", this._hide); removeEventListener("pagehide", this._caseOnHide); clearTimeout(this._caseT); removeEventListener("popstate", this._pop); document.removeEventListener("click", this._histNow, true); document.removeEventListener("keydown", this._histNow, true);
     removeEventListener("scroll", this._follow, true); removeEventListener("resize", this._follow); removeEventListener("animationend", this._follow, true); removeEventListener("transitionend", this._follow, true);
     removeEventListener("scroll", this._scNudge, {capture:true}); removeEventListener("resize", this._scNudge); if(this._scT) clearTimeout(this._scT); removeEventListener("storage", this._storage); document.removeEventListener("focusin", this._helpFocus); removeEventListener("error", this._pageErr); removeEventListener("unhandledrejection", this._pageErr);
     if(this._barObs) this._barObs.disconnect(); if(this._headObs) this._headObs.disconnect(); document.removeEventListener("focusin", this._focusKeep); document.removeEventListener("keydown", this._keyMark, true); }
@@ -1759,6 +1762,19 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     const n=this.pendingReview().blocking;
     if(n) this.setState({err:n===1?"הועתק, אבל פריט אחד עדיין בלי החלטה, והוא יגיע ל־AI כמו שהוא.":`הועתק, אבל ${n} פריטים עדיין בלי החלטה, והם יגיעו ל־AI כמו שהם.`});
   };
+  /* Two moments of a document, for the hosted service only: docSent (the redacted text was
+     copied or downloaded: the tool just did its job) and docEnd (a new document, or leaving the
+     page). Its cloud.js sets window.__inkHost, and nothing here sends anything. It gets the same
+     text-free exports the package carries (the log's and the leak report's guards run here),
+     and decides itself what to do. Without a host, as on GitHub Pages, this does nothing. */
+  toHost = (what, how) => {
+    const h=window.__inkHost; if(!h||typeof h[what]!=="function") return;
+    try{
+      const leaks=this.state.leaks.length&&window.PL?window.PL.leakReport(this.state.leaks,{version:this.log.v}):null;
+      h[what]({how, log:this.log.export(), leaks});
+    }catch(_){}
+  };
+  docEnd = (how) => this.toHost("docEnd", how);
   // חבילת בדיקה (PLAN-v18 Q9): יומן הסשן ודוח הדליפה בקובץ zip אחד, בלי טקסט מהמסמך.
   // עד v56 היא הכילה גם את המסמך הנקי ופתחה מייל. עכשיו רק הורדה: היא שולחת אותה בעצמה, ואת
   // המסמך בנפרד, רק כשהיא מחליטה.
@@ -1847,6 +1863,7 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     const s={...(this.state.sent||{})};
     for(const [real,fake] of Object.entries(this.currentMap())){ const a=s[real]||[]; if(fake&&!a.includes(fake)) s[real]=[...a,fake]; }
     this.setState({sent:s});
+    this.toHost("docSent", "sent");
   }
   sentAll(){
     const out={}, add=o=>{ for(const [r,a] of Object.entries(o||{})) for(const p of a||[]) (out[r]=out[r]||[]).includes(p)||out[r].push(p); };

@@ -144,7 +144,9 @@ for (const how of ["«מסמך חדש»", "the back buttons"]) {
    Only «מסמך חדש» called it, so the next document loaded through the back buttons (or the tour started over
    an open one) would drop the report and merge two documents in the log. The reset ends the document that
    was open, once, before its data is cleared. The public tool has no docEnd of its own: the stand-in here
-   is installed before the page loads, where the component finds it as this.docEnd. */
+   is installed before the page loads, where the component finds it as this.docEnd. The hosted branch has its
+   own docEnd, which hides that stand-in and hands the document to window.__inkHost.docEnd (cloud.js on the
+   site), so a stand-in __inkHost records those calls, reading the ending document from the test hook. */
 async function fakeDocEnd(page) {
   await page.addInitScript(() => {
     window.__ends = [];
@@ -152,6 +154,7 @@ async function fakeDocEnd(page) {
       configurable: true, writable: true, enumerable: false,
       value: function (how) { window.__ends.push({ how, name: this.state.name, res: !!this.state.res }); },
     });
+    window.__inkHost = { docEnd: (p) => { const s = (window.__pib && window.__pib.state()) || {}; window.__ends.push({ how: p.how, name: s.name, res: !!s.res }); } };
   });
 }
 const ends = (page) => page.evaluate(() => window.__ends);
