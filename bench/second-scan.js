@@ -1,4 +1,4 @@
-/* The second scan (secondScan, engine/08-docx.js; the owner's decision of 12.10) on the synthetic corpus: how often it
+/* The second scan (secondScan, engine/08-08-checks.js; the owner's decision of 12.10) on the synthetic corpus: how often it
    catches a detail the cleaning left, and how often it raises a false alarm. The owner's bar before it ships: about one
    false alarm per document at most. Runs the chain as the benchmark does (no model, every suggestion accepted), then
    compares each finding with the key: a finding inside a detail that must be replaced is a catch; anything else is a

@@ -27,7 +27,7 @@ const pv = version("pdfjs-dist");
 for (const f of ["pdf.min.mjs", "pdf.worker.min.mjs"])
   ok(same(`vendor/pdfjs-${pv}/${f}`, `node_modules/pdfjs-dist/build/${f}`), `vendor/pdfjs-${pv}/${f} is the package's file`);
 
-const eng = read("engine/08-docx.js").toString();
+const eng = read("redact-engine.js").toString();
 const ORT_V = (eng.match(/const ORT_V="([^"]+)"/) || [])[1];
 ok(!!ORT_V && read(`vendor/transformers-${tv}.min.js`).toString().includes('"' + ORT_V + '"'), "the engine's runtime version " + ORT_V + " is the one bundled in transformers.js");
 const LOADERS = {

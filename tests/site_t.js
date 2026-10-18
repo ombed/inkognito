@@ -100,7 +100,7 @@ if (/data-icon="/.test(html)) {
   const named = new Set();
   for (const f of SITE_FILES.filter((x) => /\.m?js$/.test(x) && !x.startsWith("vendor/")))
     for (const m of read(f).matchAll(/["'`]\.\/(vendor\/[^"'`$]+)["'`]/g)) if (/\.m?js$/.test(m[1])) named.add(m[1]);
-  const eng = read("engine/08-docx.js"), v = (eng.match(/const ORT_V="([^"]+)"/) || [])[1];
+  const eng = read("redact-engine.js"), v = (eng.match(/const ORT_V="([^"]+)"/) || [])[1];
   for (const k of Object.keys(JSON.parse("{" + (eng.match(/const ORT_WASM=\{([^}]*)\}/) || ["", ""])[1] + "}"))) named.add("vendor/ort-" + v + "/" + k + ".mjs");
   for (const f of named) ok("a runtime file loads " + f + " but the site does not ship it", listed.has(f));
   for (const f of SITE_FILES.filter((x) => x.startsWith("vendor/"))) ok("the site ships " + f + " but nothing loads it", named.has(f));
