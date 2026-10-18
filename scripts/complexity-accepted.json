@@ -1,0 +1,4 @@
+{
+ "note": "Rises the complexity guard lets through, each function named with a reason written by hand, a sentence (scripts/complexity.js --check). For a change that must make a function more complex, such as a leak fix that needs one more branch. Empty it once the baseline on main has moved on: the guard reports entries that match nothing as stale.",
+ "accepted": []
+}
