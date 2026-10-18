@@ -11,8 +11,10 @@
      the engine told the new part names (partNofM: a different split never reuses a cached
      name). Joined, they are the same bytes: the page checks the SHA-256. The repository's model
      files and the public tool are untouched;
-   - _headers: no framing, no sniffing, the app kept out of search engines, and the pages marked
-     no-transform so that Cloudflare adds none of its own scripts to them;
+   - _headers: no framing, no sniffing, every later visit over HTTPS for a year (HSTS, for this address
+     only: other names under the domain are not told; the outside review of 18.10, F13), the app kept
+     out of search engines, and the pages marked no-transform so that Cloudflare adds none of its own
+     scripts to them;
    - _routes.json: the gate runs in front of every request except the site's own public files,
      each named exactly (no pattern an encoded path could slip into). Exact names also keep
      the landing page off the daily Functions quota.
@@ -44,6 +46,7 @@ const HEADERS_NOW = `/*
   X-Frame-Options: DENY
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()
+  Strict-Transport-Security: max-age=31536000
 ${LAUNCHED ? "" : "  X-Robots-Tag: noindex\n"}
 /app/*
   X-Robots-Tag: noindex

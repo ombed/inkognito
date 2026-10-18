@@ -2,14 +2,23 @@ name: hosted-build
 
 # The hosted site, built by GitHub from this branch: every file's SHA-256 is published with the run, and the build is
 # attested (built by this workflow, from this commit), so what inkognito.co.il serves can be checked against the
-# repository, and a firm can check it too (the engineering audit, item 17: today the site is built and deployed from
-# the owner's computer). Notes plan C3, first step: deploys still run from the owner's computer; the build is
-# reproducible (no clock, no randomness, LF everywhere by .gitattributes), so a file served live has one of these
-# hashes, or it is not what the repository holds.
+# repository, and a firm can check it too (the engineering audit, item 17). The build is reproducible (no clock, no
+# randomness, LF everywhere by .gitattributes), so a file served live has one of these hashes, or it is not what the
+# repository holds.
+#
+# Since 18.10 GitHub also deploys (the outside review of 18.10: "85 releases in 40 days, deployed from a laptop"): a
+# tag ink/vNN pushed on this branch deploys that commit, probes the live site and publishes the tag's GitHub Release
+# (docs/RELEASING.md). Run by hand with a tag, it deploys that tag again: a rollback that rebuilds exactly what the
+# repository holds (docs/ROLLBACK.md).
 on:
   push:
     branches: [inkognito]
+    tags: ["ink/v*"]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "A release tag (ink/vNN) to deploy again"
+        required: false
 
 permissions:
   contents: read
@@ -18,11 +27,12 @@ permissions:
 
 jobs:
   build:
+    if: github.event_name == 'push' && github.ref_type == 'branch'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
           cache: npm
@@ -35,11 +45,79 @@ jobs:
           echo "### The hosted build of ${GITHUB_SHA::7}: $(wc -l < dist-sha256.txt) files" >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"; grep -E ' \./(index|app/index|app/redact-engine)\.(html|js)$' dist-sha256.txt >> "$GITHUB_STEP_SUMMARY"; echo '```' >> "$GITHUB_STEP_SUMMARY"
       - name: Attest the build (who built it, from which commit)
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0
         with:
           subject-path: dist-sha256.txt
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: hosted-dist-sha256
           path: dist-sha256.txt
           retention-days: 90
+
+  # The Cloudflare token is a secret of the "production" environment, which only release tags may use (its
+  # deployment rule), and only the owner may create those tags (the tag ruleset).
+  deploy:
+    if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/ink/v')) || (github.event_name == 'workflow_dispatch' && inputs.tag != '')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    env:
+      TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: refs/tags/${{ env.TAG }}
+          fetch-depth: 0
+      - name: The tag is a release tag, on this branch
+        run: |
+          case "$TAG" in ink/v*) ;; *) echo "::error::$TAG is not a release tag (ink/vNN)"; exit 1 ;; esac
+          git fetch --no-tags origin inkognito
+          git merge-base --is-ancestor HEAD FETCH_HEAD || { echo "::error::$TAG is not a commit of the inkognito branch"; exit 1; }
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Build the hosted site
+        run: npm run -s build:hosted
+      - name: The SHA-256 of every file it serves
+        run: (cd dist && find . -type f -print0 | sort -z | xargs -0 sha256sum) > dist-sha256.txt
+      - name: Attest the build (who built it, from which commit)
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0
+        with:
+          subject-path: dist-sha256.txt
+      - name: Deploy to Cloudflare Pages
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::error::The production environment has no CLOUDFLARE_API_TOKEN or CLOUDFLARE_ACCOUNT_ID (docs/RELEASING.md)"
+            exit 1
+          fi
+          npx --yes wrangler@4.147.0 pages deploy dist --project-name=inkognito --branch=main --commit-hash="$(git rev-parse HEAD)" --commit-message="$TAG"
+      # a tag from before 18.10 has no probes of its own: then they are skipped, and said to be
+      - name: The live site serves this version
+        run: |
+          if [ -f scripts/probe-live.js ]; then node scripts/probe-live.js --version="${TAG#ink/}" --wait=180
+          else echo "::warning::$TAG predates scripts/probe-live.js: check the live site by hand"; fi
+      - name: The live page's security policy
+        run: |
+          if [ -f scripts/probe-csp.js ]; then npx playwright install --with-deps chromium && node scripts/probe-csp.js
+          else echo "::warning::$TAG predates scripts/probe-csp.js: check the policy by hand"; fi
+      - name: The GitHub Release, with the notes from CHANGELOG.md
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node scripts/release-notes.js "${TAG#ink/}" > notes.md
+          gh release create "$TAG" --title "$TAG" --notes-file notes.md --verify-tag
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: deployed-dist-sha256
+          path: dist-sha256.txt
+          retention-days: 400

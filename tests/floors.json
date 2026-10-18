@@ -56,6 +56,7 @@
  "db_t.js": 165,
  "appgate_t.js": 160,
  "hosted_t.js": 203,
+ "releasenotes_t.js": 6,
  "mail_t.js": 52,
  "landing_t.js": 256,
  "casekey_t.js": 24,

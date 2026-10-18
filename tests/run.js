@@ -36,6 +36,8 @@ const SUITES = [
   "appgate_t.js",
   // the hosted build (scripts/build-hosted.js): site at the root, the tool under /app/, the model under 25 MiB
   "hosted_t.js",
+  // the notes the deploy job publishes with each release (scripts/release-notes.js, hosted-build.yml)
+  "releasenotes_t.js",
   // the sign-in emails (supabase/templates/): a whole document, links only through RedirectTo, nothing spam-like
   "mail_t.js",
   // the site's own pages as one set (site/): policy, no third parties, one contact address
