@@ -5,7 +5,7 @@
    5c78e9fa-c2e2-4771-93ff-7f400a12f7ba), public data. The file holds
    every locality name as the engine's GAZ list. The engine uses only the
    names of two words or more (a hyphenated name counts as several), in every
-   usual spelling (placeIndex): findPlaces in engine/06-model.js skips every
+   usual spelling (placeIndex): findPlaces in engine/06-detect-4-places.js skips every
    one-word entry, neither replacing nor flagging it, because on real
    documents they were almost all ordinary words (docs/measurements.md). This
    replaced the homograph-flagging rule of PLAN-v18 Q10. Names already in
@@ -21,7 +21,7 @@ const j = JSON.parse(fs.readFileSync(src, "utf8"));
 const recs = j.result ? j.result.records : j;
 
 // the coordinate list the engine already carries
-const model = fs.readFileSync(path.join(ROOT, "engine", "06-model.js"), "utf8");
+const model = fs.readFileSync(path.join(ROOT, "engine", "06-detect-4-places.js"), "utf8");
 const placesLine = model.split(/\r?\n/).find((l) => l.startsWith("const PLACES=["));
 const have = new Set([...placesLine.matchAll(/\["([^"]+)",/g)].map((m) => m[1]));
 
@@ -38,11 +38,11 @@ const list = [...names].sort((a, b) => a.localeCompare(b, "he"));
 const out = `/* ══════════ מאגר יישובים ══════════
    ${list.length} שמות יישובים מרשימת הלמ"ס (data.gov.il), בלי אלה שכבר ב-PLACES עם
    קואורדינטות. נבנה ב-scripts/build-gazetteer.js; לא לערוך ביד. הרשימה מלאה, אבל
-   findPlaces (06-model.js) משתמש רק בשמות בני שתי מילים ומעלה; שם בן מילה אחת
+   findPlaces (06-detect-4-places.js) משתמש רק בשמות בני שתי מילים ומעלה; שם בן מילה אחת
    מכאן לא נתפס כלל, ושם במקף ("מודיעין-מכבים-רעות") הוא שם של כמה מילים. הנימוק
    והכלל המלא — שם. */
 const GAZ=${JSON.stringify(list)};
-// רק שמות של שתי מילים ומעלה (שם במקף הוא כזה), בכל כתיב, ובלי שם שכבר ב-PLACES בכתיב אחר (06-model.js)
+// רק שמות של שתי מילים ומעלה (שם במקף הוא כזה), בכל כתיב, ובלי שם שכבר ב-PLACES בכתיב אחר (06-detect-4-places.js)
 const GAZ_IX=placeIndex(GAZ.filter(n=>/[\\s-]/.test(n)),PLACE_IX.keys);
 const GAZ_RX=GAZ_IX.rx;
 `;

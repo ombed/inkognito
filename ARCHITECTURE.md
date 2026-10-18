@@ -12,7 +12,7 @@ defined in [CONTEXT.md](CONTEXT.md).
 flowchart TD
   A["A Word file, a PDF or pasted text"] --> B["One Word file<br/>pdf-text.js, text-to-docx.js"]
   B --> C["Its text, part by part<br/>readBlocks: 08-03-parts, 08-01-word-text"]
-  C --> D["What may identify someone<br/>discover 08-09, bodyNames 05, the patterns and the model 06-model, 08-10"]
+  C --> D["What may identify someone<br/>discover 08-09, bodyNames 05, the patterns 06-detect-2, the model 08-10 and 06-detect-1"]
   D --> E["The list: the person decides<br/>page-component.js"]
   E --> F["The cleaned file<br/>redactDocx 08-06, with the parts 08-03, pictures 08-05, links 08-02 and the text 07-engine, 08-04"]
   F --> G["The checks on the finished file<br/>verify and the second scan, 08-08"]
@@ -38,9 +38,10 @@ Each suite runs alone with `node tests/<file>`; all of them with `node tests/run
 | The pipeline that writes the cleaned file | `engine/08-06-redact-docx.js` | `e2e.js`, `chain_t`, `passes_t`; `bench/golden.js`, `bench/lock.js` |
 | The checks on the finished file | `engine/08-08-checks.js` | `secondscan_t`, `failopen_t` |
 | Finding names without the model | `engine/05-bodynames.js`, `08-09-discover.js`, `05-common.js` | `slots_t`, `slots2_t`, `slots3_t`, `common_t`, `orgs_t` |
-| Numbers and identifying details | `engine/06-model.js` (the patterns), `07-engine.js` | `numbers_t`, `forms_t`, `omit_t` |
-| The model, and cleaning what it says | `engine/08-10-model-runtime.js`, `06-model.js` | `ner_t`, `readers_t`, `diag_t`, `tok_t` |
-| Places | `engine/06-model.js`, `07-gazetteer.js`, `06-atlas-tags.js` | `places_t`, `towns_t`, `atlas_t` |
+| Numbers and identifying details | `engine/06-detect-2-patterns.js`, `07-engine.js` | `numbers_t`, `forms_t`, `omit_t` |
+| The model, and cleaning what it says | `engine/08-10-model-runtime.js`, `06-detect-1-model-output.js` | `ner_t`, `readers_t`, `diag_t`, `tok_t` |
+| Names after a label or a title | `engine/06-detect-3-anchored-names.js` | `slots_t`, `slots2_t`, `slots3_t`, `latin_t` |
+| Places | `engine/06-detect-4-places.js`, `07-gazetteer.js`, `06-atlas-tags.js` | `places_t`, `towns_t`, `atlas_t` |
 | Dates | `engine/02-hebrew.js`, `03-dates.js` | `dates_t`, `datewords_t`, `dateforms_t` |
 | Citations of other cases | `engine/07-cite.js` | `cite_t` |
 | Invented names | `engine/03-fakenames.js` | `aliaskey_t`, `surname_t`, `forbidden_t` |
@@ -51,9 +52,10 @@ Each suite runs alone with `node tests/<file>`; all of them with `node tests/run
 | Saved cases | `page-component.js`, `page-logic.js` | `profile_t`, `casekey_t`, `lockfile_t`, `e2e/case-store.spec.js`, `e2e/lastlist.spec.js` |
 | What a session report may carry | `page-logic.js` | `pagelogic_t`, `logreport_t`, `console_t` |
 
-`engine/06-model.js` still holds four things (the patterns, cleaning the model's output, names after a label,
-places); splitting it by concept is the next step, as the Word section (the files `08-01` to `08-13`) was
-split on 18.10.
+The detection layer (`06-detect-1` to `06-detect-4`) and the Word section (`08-01` to `08-13`) were split by
+concept on 18.10, with `redact-engine.js` the same byte for byte. What still ties the files together is in
+the last section: twelve of them reach one another in a cycle, mostly through word lists, each declared in
+the file that used it first. Moving those lists into a place of their own is the next step.
 
 ## What the tool promises, and what guards each promise
 
@@ -101,31 +103,34 @@ differs from the code.
 |---|---|---|
 | `00-head.js` | none | 08-03-parts, 08-06-redact-docx, 08-08-checks, 08-10-model-runtime, 08-13-exports |
 | `01-xml.js` | none | 08-01-word-text, 08-02-links, 08-03-parts, 08-04-runs, 08-05-pictures, 08-06-redact-docx, 08-13-exports |
-| `02-hebrew.js` | 03-dates (4), 06-model (2), 03-fakenames (1) | 03-dates, 03-fakenames, 04-nearmiss, 05-bodynames, 06-model, 07-cite, 07-engine, 08-01-word-text, 08-02-links, 08-04-runs, 08-05-pictures, 08-06-redact-docx, 08-07-report-text, 08-08-checks, 08-09-discover, 08-10-model-runtime, 08-11-entries, 08-12-restore, 08-13-exports |
-| `03-dates.js` | 02-hebrew (2) | 02-hebrew, 06-model, 08-12-restore |
-| `03-fakenames.js` | 06-model (3), 05-bodynames (2), 02-hebrew (1) | 02-hebrew, 05-bodynames, 06-model, 07-engine, 08-06-redact-docx, 08-08-checks, 08-10-model-runtime, 08-11-entries, 08-12-restore, 08-13-exports |
-| `04-nearmiss.js` | 06-model (2), 08-07-report-text (2), 02-hebrew (1), 05-bodynames (1) | 05-bodynames, 06-model, 07-engine, 08-06-redact-docx, 08-08-checks, 08-12-restore, 08-13-exports |
-| `05-bodynames.js` | 06-model (9), 03-fakenames (5), 08-07-report-text (2), 02-hebrew (1), 04-nearmiss (1), 05-common (1), 08-11-entries (1) | 03-fakenames, 04-nearmiss, 06-model, 07-cite, 07-engine, 08-04-runs, 08-06-redact-docx, 08-09-discover, 08-11-entries, 08-12-restore, 08-13-exports |
+| `02-hebrew.js` | 03-dates (4), 03-fakenames (1), 06-detect-1-model-output (1), 06-detect-4-places (1) | 03-dates, 03-fakenames, 04-nearmiss, 05-bodynames, 06-detect-1-model-output, 06-detect-2-patterns, 06-detect-3-anchored-names, 06-detect-4-places, 07-cite, 07-engine, 08-01-word-text, 08-02-links, 08-04-runs, 08-05-pictures, 08-06-redact-docx, 08-07-report-text, 08-08-checks, 08-09-discover, 08-10-model-runtime, 08-11-entries, 08-12-restore, 08-13-exports |
+| `03-dates.js` | 02-hebrew (2) | 02-hebrew, 06-detect-2-patterns, 08-12-restore |
+| `03-fakenames.js` | 05-bodynames (2), 02-hebrew (1), 06-detect-1-model-output (1), 06-detect-3-anchored-names (1), 06-detect-4-places (1) | 02-hebrew, 05-bodynames, 06-detect-1-model-output, 06-detect-3-anchored-names, 06-detect-4-places, 07-engine, 08-06-redact-docx, 08-08-checks, 08-10-model-runtime, 08-11-entries, 08-12-restore, 08-13-exports |
+| `04-nearmiss.js` | 06-detect-3-anchored-names (2), 08-07-report-text (2), 02-hebrew (1), 05-bodynames (1) | 05-bodynames, 06-detect-1-model-output, 06-detect-4-places, 07-engine, 08-06-redact-docx, 08-08-checks, 08-12-restore, 08-13-exports |
+| `05-bodynames.js` | 03-fakenames (5), 06-detect-1-model-output (4), 06-detect-3-anchored-names (3), 06-detect-4-places (2), 08-07-report-text (2), 02-hebrew (1), 04-nearmiss (1), 05-common (1), 08-11-entries (1) | 03-fakenames, 04-nearmiss, 06-detect-1-model-output, 06-detect-3-anchored-names, 06-detect-4-places, 07-cite, 07-engine, 08-04-runs, 08-06-redact-docx, 08-09-discover, 08-11-entries, 08-12-restore, 08-13-exports |
 | `05-common.js` | none | 05-bodynames |
-| `06-atlas-tags.js` | none | 06-model, 08-13-exports |
-| `06-model.js` | 02-hebrew (13), 03-fakenames (10), 05-bodynames (6), 03-dates (5), 06-atlas-tags (2), 07-gazetteer (2), 04-nearmiss (1), 08-11-entries (1) | 02-hebrew, 03-fakenames, 04-nearmiss, 05-bodynames, 07-cite, 07-engine, 07-gazetteer, 08-06-redact-docx, 08-08-checks, 08-09-discover, 08-10-model-runtime, 08-11-entries, 08-12-restore, 08-13-exports |
-| `07-cite.js` | 06-model (4), 02-hebrew (1), 05-bodynames (1) | 07-engine, 08-06-redact-docx, 08-08-checks, 08-13-exports |
-| `07-engine.js` | 06-model (17), 02-hebrew (15), 03-fakenames (7), 05-bodynames (3), 04-nearmiss (2), 07-cite (1) | 08-02-links, 08-04-runs, 08-06-redact-docx, 08-08-checks, 08-12-restore, 08-13-exports |
-| `07-gazetteer.js` | 06-model (2) | 06-model, 08-12-restore |
+| `06-atlas-tags.js` | none | 06-detect-4-places, 08-13-exports |
+| `06-detect-1-model-output.js` | 03-fakenames (7), 02-hebrew (4), 06-detect-3-anchored-names (4), 05-bodynames (3), 04-nearmiss (1), 06-detect-2-patterns (1), 06-detect-4-places (1), 08-11-entries (1) | 02-hebrew, 03-fakenames, 05-bodynames, 06-detect-3-anchored-names, 06-detect-4-places, 07-cite, 07-engine, 08-06-redact-docx, 08-08-checks, 08-09-discover, 08-10-model-runtime, 08-11-entries, 08-12-restore, 08-13-exports |
+| `06-detect-2-patterns.js` | 02-hebrew (9), 03-dates (5), 06-detect-4-places (1) | 06-detect-1-model-output, 07-cite, 07-engine, 08-06-redact-docx, 08-08-checks, 08-12-restore, 08-13-exports |
+| `06-detect-3-anchored-names.js` | 03-fakenames (5), 05-bodynames (5), 02-hebrew (3), 06-detect-1-model-output (3), 06-detect-4-places (1), 08-11-entries (1) | 03-fakenames, 04-nearmiss, 05-bodynames, 06-detect-1-model-output, 06-detect-4-places, 07-cite, 07-engine, 08-06-redact-docx, 08-08-checks, 08-09-discover, 08-12-restore, 08-13-exports |
+| `06-detect-4-places.js` | 02-hebrew (4), 06-detect-3-anchored-names (3), 03-fakenames (2), 06-atlas-tags (2), 06-detect-1-model-output (2), 07-gazetteer (2), 04-nearmiss (1), 05-bodynames (1) | 02-hebrew, 03-fakenames, 05-bodynames, 06-detect-1-model-output, 06-detect-2-patterns, 06-detect-3-anchored-names, 07-cite, 07-engine, 07-gazetteer, 08-06-redact-docx, 08-08-checks, 08-09-discover, 08-10-model-runtime, 08-12-restore, 08-13-exports |
+| `07-cite.js` | 02-hebrew (1), 05-bodynames (1), 06-detect-1-model-output (1), 06-detect-2-patterns (1), 06-detect-3-anchored-names (1), 06-detect-4-places (1) | 07-engine, 08-06-redact-docx, 08-08-checks, 08-13-exports |
+| `07-engine.js` | 02-hebrew (15), 03-fakenames (7), 06-detect-4-places (7), 06-detect-3-anchored-names (6), 05-bodynames (3), 04-nearmiss (2), 06-detect-1-model-output (2), 06-detect-2-patterns (2), 07-cite (1) | 08-02-links, 08-04-runs, 08-06-redact-docx, 08-08-checks, 08-12-restore, 08-13-exports |
+| `07-gazetteer.js` | 06-detect-4-places (2) | 06-detect-4-places, 08-12-restore |
 | `08-01-word-text.js` | 02-hebrew (3), 01-xml (1) | 08-02-links, 08-03-parts, 08-04-runs, 08-06-redact-docx, 08-09-discover, 08-13-exports |
 | `08-02-links.js` | 02-hebrew (4), 01-xml (2), 08-01-word-text (2), 07-engine (1), 08-04-runs (1), 08-08-checks (1) | 08-03-parts, 08-06-redact-docx |
 | `08-03-parts.js` | 01-xml (7), 08-01-word-text (4), 08-04-runs (3), 08-02-links (2), 00-head (1) | 08-06-redact-docx, 08-13-exports |
 | `08-04-runs.js` | 01-xml (4), 02-hebrew (2), 05-bodynames (1), 07-engine (1), 08-01-word-text (1), 08-05-pictures (1) | 08-02-links, 08-03-parts, 08-06-redact-docx, 08-10-model-runtime, 08-13-exports |
 | `08-05-pictures.js` | 01-xml (2), 02-hebrew (2) | 08-04-runs, 08-06-redact-docx, 08-13-exports |
-| `08-06-redact-docx.js` | 06-model (10), 01-xml (7), 02-hebrew (7), 08-04-runs (7), 08-01-word-text (6), 08-02-links (6), 05-bodynames (4), 07-cite (4), 08-03-parts (4), 08-05-pictures (4), 07-engine (3), 00-head (2), 03-fakenames (2), 04-nearmiss (2), 08-07-report-text (2), 08-08-checks (2), 08-09-discover (1) | 08-13-exports |
+| `08-06-redact-docx.js` | 01-xml (7), 02-hebrew (7), 08-04-runs (7), 08-01-word-text (6), 08-02-links (6), 06-detect-4-places (5), 05-bodynames (4), 07-cite (4), 08-03-parts (4), 08-05-pictures (4), 07-engine (3), 00-head (2), 03-fakenames (2), 04-nearmiss (2), 06-detect-1-model-output (2), 06-detect-3-anchored-names (2), 08-07-report-text (2), 08-08-checks (2), 06-detect-2-patterns (1), 08-09-discover (1) | 08-13-exports |
 | `08-07-report-text.js` | 02-hebrew (4) | 04-nearmiss, 05-bodynames, 08-06-redact-docx, 08-09-discover, 08-13-exports |
-| `08-08-checks.js` | 06-model (8), 02-hebrew (4), 07-engine (2), 00-head (1), 03-fakenames (1), 04-nearmiss (1), 07-cite (1), 08-12-restore (1) | 08-02-links, 08-06-redact-docx, 08-13-exports |
-| `08-09-discover.js` | 06-model (10), 02-hebrew (5), 05-bodynames (3), 08-01-word-text (1), 08-07-report-text (1), 08-11-entries (1) | 08-06-redact-docx, 08-13-exports |
-| `08-10-model-runtime.js` | 06-model (4), 02-hebrew (3), 03-fakenames (3), 00-head (1), 08-04-runs (1), 08-11-entries (1) | 08-13-exports |
-| `08-11-entries.js` | 03-fakenames (4), 02-hebrew (1), 05-bodynames (1), 06-model (1) | 05-bodynames, 06-model, 08-09-discover, 08-10-model-runtime, 08-13-exports |
-| `08-12-restore.js` | 03-fakenames (8), 06-model (7), 02-hebrew (6), 03-dates (3), 05-bodynames (2), 04-nearmiss (1), 07-engine (1), 07-gazetteer (1) | 08-08-checks, 08-13-exports |
-| `08-13-exports.js` | 06-model (15), 02-hebrew (14), 08-10-model-runtime (12), 03-fakenames (10), 05-bodynames (6), 07-cite (6), 07-engine (6), 01-xml (5), 04-nearmiss (5), 08-11-entries (4), 00-head (3), 06-atlas-tags (3), 08-03-parts (3), 08-07-report-text (3), 08-12-restore (3), 08-01-word-text (2), 08-04-runs (2), 08-08-checks (2), 08-05-pictures (1), 08-06-redact-docx (1), 08-09-discover (1) | none |
+| `08-08-checks.js` | 02-hebrew (4), 06-detect-4-places (3), 06-detect-2-patterns (2), 06-detect-3-anchored-names (2), 07-engine (2), 00-head (1), 03-fakenames (1), 04-nearmiss (1), 06-detect-1-model-output (1), 07-cite (1), 08-12-restore (1) | 08-02-links, 08-06-redact-docx, 08-13-exports |
+| `08-09-discover.js` | 06-detect-3-anchored-names (7), 02-hebrew (5), 05-bodynames (3), 06-detect-1-model-output (2), 06-detect-4-places (1), 08-01-word-text (1), 08-07-report-text (1), 08-11-entries (1) | 08-06-redact-docx, 08-13-exports |
+| `08-10-model-runtime.js` | 02-hebrew (3), 03-fakenames (3), 06-detect-1-model-output (3), 00-head (1), 06-detect-4-places (1), 08-04-runs (1), 08-11-entries (1) | 08-13-exports |
+| `08-11-entries.js` | 03-fakenames (4), 02-hebrew (1), 05-bodynames (1), 06-detect-1-model-output (1) | 05-bodynames, 06-detect-1-model-output, 06-detect-3-anchored-names, 08-09-discover, 08-10-model-runtime, 08-13-exports |
+| `08-12-restore.js` | 03-fakenames (8), 02-hebrew (6), 03-dates (3), 06-detect-4-places (3), 05-bodynames (2), 06-detect-3-anchored-names (2), 04-nearmiss (1), 06-detect-1-model-output (1), 06-detect-2-patterns (1), 07-engine (1), 07-gazetteer (1) | 08-08-checks, 08-13-exports |
+| `08-13-exports.js` | 02-hebrew (14), 08-10-model-runtime (12), 03-fakenames (10), 06-detect-4-places (8), 05-bodynames (6), 07-cite (6), 07-engine (6), 01-xml (5), 04-nearmiss (5), 06-detect-1-model-output (4), 08-11-entries (4), 00-head (3), 06-atlas-tags (3), 08-03-parts (3), 08-07-report-text (3), 08-12-restore (3), 06-detect-2-patterns (2), 08-01-word-text (2), 08-04-runs (2), 08-08-checks (2), 06-detect-3-anchored-names (1), 08-05-pictures (1), 08-06-redact-docx (1), 08-09-discover (1) | none |
 
-These 9 files reach one another in a cycle: `02-hebrew`, `03-dates`, `03-fakenames`, `04-nearmiss`, `05-bodynames`, `06-model`, `07-gazetteer`, `08-07-report-text`, `08-11-entries`.
+These 12 files reach one another in a cycle: `02-hebrew`, `03-dates`, `03-fakenames`, `04-nearmiss`, `05-bodynames`, `06-detect-1-model-output`, `06-detect-2-patterns`, `06-detect-3-anchored-names`, `06-detect-4-places`, `07-gazetteer`, `08-07-report-text`, `08-11-entries`.
 
 <!-- engine-map:end -->
