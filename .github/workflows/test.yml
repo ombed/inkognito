@@ -15,19 +15,22 @@ on:
     branches: [main]
 
 jobs:
+  # The Node side: lint, the suites, the type checks, the benchmark and what holds it. The browser tests run
+  # beside it, in their own job below (18.10: together they used 15 of this job's 20 minutes).
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
-      - name: Node suites and browser checks
-        run: npm test
+      - name: Lint
+        run: npx eslint .
+      - name: Node suites
+        run: node tests/run.js
       # The files that have joined the type checks (tsconfig.check.json; engine/globals.d.ts names what the engine's
       # sections share): page-logic.js and engine/03-fakenames.js since 12.10, more one at a time (the audit, item 14)
       - name: Type checks
@@ -70,7 +73,23 @@ jobs:
       - name: The benchmark table is the fresh one
         if: always()
         run: git diff --exit-code -- bench/results-no-model.md
-      - uses: actions/upload-artifact@v4
+
+  # The browser tests: the real page in Chrome (playwright.config.js). WebKit and Firefox run before a release
+  # (docs/RELEASING.md).
+  browsers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Browser tests
+        run: npx playwright test
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: failure()
         with:
           name: playwright-report
@@ -83,8 +102,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
           cache: npm
@@ -119,7 +138,7 @@ jobs:
       - name: The second scan, and the figures README quotes from it
         if: always()
         run: node bench/second-scan.js --claims README.md
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
           name: bench-model
@@ -138,8 +157,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
           cache: npm
