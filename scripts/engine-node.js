@@ -119,9 +119,33 @@ function load(o) {
     fs.renameSync(tmp, file);
   }
   const E = require(file);
+  if (process.env.LOCK_RECORD && !E.__recording) recordInto(E, process.env.LOCK_RECORD);
   return Object.assign(E, { load, SWAPPABLE, SWAPPABLE_METHODS });
+}
+
+/* LOCK_RECORD=<folder>: every document a caller hands to redactDocx is written there with the choices it came
+   with (bench/lock.js --suites runs the Node suites this way, then gives each document to two engines). Sets and
+   Maps are tagged so they come back as they were; a document whose choices hold a function cannot be given
+   again, and the lock counts it as skipped. */
+const tagged = (k, v) => v instanceof Set ? { "@set": [...v] } : v instanceof Map ? { "@map": [...v] } : typeof v === "function" ? { "@fn": true } : v;
+const untagged = (k, v) => v && typeof v === "object" && !Array.isArray(v) ? ("@set" in v ? new Set(v["@set"]) : "@map" in v ? new Map(v["@map"]) : v) : v;
+function recordInto(E, dir) {
+  const real = E.redactDocx;
+  fs.mkdirSync(dir, { recursive: true });
+  E.redactDocx = function (buf, subs, allow, opt) {
+    try {
+      const bytes = Buffer.from(buf instanceof ArrayBuffer ? new Uint8Array(buf) : buf);
+      const text = JSON.stringify({ docx: bytes.toString("base64"), subs, allow, opt }, tagged);
+      const out = path.join(dir, crypto.createHash("sha1").update(text).digest("hex").slice(0, 20) + ".json");
+      if (!fs.existsSync(out)) fs.writeFileSync(out, text);
+    } catch (_) { /* a document that cannot be written is not given again; the suite runs on */ }
+    return real.apply(this, arguments);
+  };
+  E.__recording = true;
 }
 
 module.exports = load();
 module.exports.topNames = topNames;
 module.exports.commonjs = commonjs;
+module.exports.tagged = tagged;
+module.exports.untagged = untagged;

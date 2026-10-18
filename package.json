@@ -20,6 +20,7 @@
     "bench": "node bench/generate.js && node bench/run.js",
     "bench:nomodel": "node bench/generate.js && node bench/run.js --no-model",
     "bench:protocol": "node bench/protocol.js",
+    "lock": "node bench/lock.js",
     "check:types": "npx --yes -p typescript@5.6.3 tsc -p tsconfig.check.json",
     "gate": "node bench/gate.js",
     "bump": "node scripts/bump.js",
