@@ -32,7 +32,7 @@ const { mkzip } = require("./mkzip.js");
 let pass = 0, fail = 0;
 const ok = (c, m) => { c ? pass++ : (fail++, console.log("  ✗ " + m)); };
 
-// the page's options (index.html opts()): identifying details deleted, a name after a label flagged
+// the page's options (page-component.js opts()): identifying details deleted, a name after a label flagged
 const ON = new Set(C.PAT.filter((p) => p.on).map((p) => p.n)); ON.add("PLACES");
 const FLAG = new Set(C.PAT.filter((p) => !p.on).map((p) => p.n)); FLAG.add("NAME_ANCHORED");
 const OPT = { on: ON, flag: FLAG, mode: "real", near: true, body: true, prefixes: "normal", styles: { "*": "blank", DATE: "name" } };
@@ -49,7 +49,7 @@ const docx = (items) => mkzip([
     items.map((x) => (typeof x === "string" ? P(x) : TBL(x.table))).join("") + "</w:body></w:document>" },
 ]);
 
-/* What she is asked about, as the page builds it (index.html showPeople): a high-confidence name of two words
+/* What she is asked about, as the page builds it (page-component.js showPeople): a high-confidence name of two words
    or more, or a repeated speaker, fills «מי בתיק» by itself; the rest of what discover found is proposed when it
    has two words or more, is a speaker, or repeats; and with nothing on the list the review flags every name the
    anchors found, so the bar is not green until she decides. */

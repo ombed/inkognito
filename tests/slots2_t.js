@@ -28,7 +28,7 @@ const { mkzip } = require("./mkzip.js");
 let pass = 0, fail = 0;
 const ok = (c, m) => { c ? pass++ : (fail++, console.log("  ✗ " + m)); };
 
-// the page's options (index.html opts()), as in slots_t.js
+// the page's options (page-component.js opts()), as in slots_t.js
 const ON = new Set(C.PAT.filter((p) => p.on).map((p) => p.n)); ON.add("PLACES");
 const FLAG = new Set(C.PAT.filter((p) => !p.on).map((p) => p.n)); FLAG.add("NAME_ANCHORED");
 const OPT = { on: ON, flag: FLAG, mode: "real", near: true, body: true, prefixes: "normal", styles: { "*": "blank", DATE: "name" } };
@@ -47,7 +47,7 @@ const docx = (items) => mkzip([
 // one paragraph whose lines are joined by soft breaks (<w:br/>), as a printed e-mail header often is
 const BR = (...lines) => ({ raw: "<w:p>" + lines.map((t, i) => `<w:r>${i ? "<w:br/>" : ""}<w:t xml:space="preserve">${esc(t)}</w:t></w:r>`).join("") + "</w:p>" });
 
-// the page's rule for «מי בתיק» (index.html showPeople), as slots_t.js mirrors it
+// the page's rule for «מי בתיק» (page-component.js showPeople), as slots_t.js mirrors it
 function autoList(cands) {
   const dt = new Set(cands.flatMap((c) => c.value.split(/\s+/)));
   return cands.filter((c) => {

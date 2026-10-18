@@ -32,7 +32,7 @@ const ok = (c, m) => { c ? pass++ : (fail++, console.log("  ✗ " + m)); };
 const NAME = "דנה שגיא", REP = "יעל כהן", SUBS = [{ value: NAME, kind: "NAME", replacement: REP }];
 const ID = "123456782"; // nine digits with a valid check digit
 const enc = encodeURIComponent;
-// the page's own defaults (index.html opts()): numbers deleted, dates shifted, every rule as shipped
+// the page's own defaults (page-component.js opts()): numbers deleted, dates shifted, every rule as shipped
 const ON = new Set(E.PAT.filter((p) => p.on).map((p) => p.n).concat("PLACES"));
 const FLAG = new Set(E.PAT.filter((p) => !p.on).map((p) => p.n).concat("NAME_ANCHORED"));
 const OPT = { on: ON, flag: FLAG, mode: "real", near: true, body: true, prefixes: "normal", styles: { "*": "blank", DATE: "name" } };

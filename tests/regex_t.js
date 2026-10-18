@@ -29,7 +29,9 @@ const fs = require("fs");
 const path = require("path");
 const ROOT = path.join(__dirname, "..");
 
-const FILES = ["redact-engine.js", "page-logic.js", "pdf-text.js", "text-to-docx.js", "sw.js", "index.html"]
+// every file the page ships (tests/shipped.js; page-component.js was missing from a hand-kept list from 13.10 to
+// 18.10) and the worker
+const FILES = [...new Set([...require("./shipped.js")(ROOT).filter((f) => /\.(js|html)$/.test(f)), "sw.js"])]
   .concat(fs.readdirSync(path.join(ROOT, "engine")).filter((f) => f.endsWith(".js")).map((f) => "engine/" + f))
   // the tools that turn her reports into reproductions are not shipped, but a lost backslash there
   // rebuilds the wrong document (bench/from-leak.js read "digits(9)" with (d+) until 2026-09-23)
