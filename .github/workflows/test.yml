@@ -65,6 +65,11 @@ jobs:
       - name: Complexity guard
         if: always()
         run: node scripts/complexity.js --check
+      # The committed table is the one this run wrote (18.10): it holds no date and no timings (bench/run.js), so a
+      # change that moves a figure commits the table with it, and README's link to the benchmark stays true
+      - name: The benchmark table is the fresh one
+        if: always()
+        run: git diff --exit-code -- bench/results-no-model.md
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -109,6 +114,11 @@ jobs:
         run: |
           npm run -s bench:protocol -- --json bench/protocol-result.json
           node bench/protocol-claims.js bench/protocol-result.json
+      # README's second-scan figures, measured the same way (bench/second-scan.js; the outside review of 18.10 found
+      # 28 there where the measurement was 27)
+      - name: The second scan, and the figures README quotes from it
+        if: always()
+        run: node bench/second-scan.js --claims README.md
       - uses: actions/upload-artifact@v4
         if: always()
         with:

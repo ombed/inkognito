@@ -18,9 +18,13 @@ const PRIVATE = require("./private.js");
 const NO_MODEL = process.argv.includes("--no-model");
 const B = makeBench(E);
 
+/* The tables hold no date and no timings, so a run that changes nothing writes the same file, and CI checks that
+   the committed results-no-model.md is the one a fresh run writes (the outside review of 18.10 found the committed
+   tables older than the code: every run rewrote the timings, so nobody committed them). Timings stay in
+   results*.json and in the console line. */
 function report(title, docs, rows, unlisted, perDoc, meta) {
   const out = [];
-  out.push(`# ${title}${NO_MODEL ? " (no model)" : ""}`, "", `${docs.length} documents, ${rows.length} keyed entities: ${rows.filter((r) => r.found !== null).length} identifying details the tool must replace, and ${rows.filter((r) => r.found === null).length} traps and public bodies it must leave alone. Model ${NO_MODEL ? "off" : "on (q8, same artifact as the browser)"}. Generated ${new Date().toISOString().slice(0, 10)}.`, "");
+  out.push(`# ${title}${NO_MODEL ? " (no model)" : ""}`, "", `${docs.length} documents, ${rows.length} keyed entities: ${rows.filter((r) => r.found !== null).length} identifying details the tool must replace, and ${rows.filter((r) => r.found === null).length} traps and public bodies it must leave alone. Model ${NO_MODEL ? "off" : "on (q8, same artifact as the browser)"}.`, "");
   out.push("## Per category", "", B.table(rows, "cat", "category", meta), "");
   out.push("## Per genre", "", B.table(rows, "genre", "genre", meta), "");
   const unl = {}; for (const u of unlisted) (unl[u.genre] = unl[u.genre] || []).push(u);
@@ -32,8 +36,8 @@ function report(title, docs, rows, unlisted, perDoc, meta) {
   for (const r of rows.filter((r) => r.found === false || r.leaked)) out.push(`- ${r.doc} · ${meta.categories[r.cat] || r.cat} · ${r.canonical}: ${r.found === false ? "missed" : "found via " + r.via.join("+") + " as «" + r.matched.join("», «") + "»"}${r.leaked ? ", **leaked**: " + r.leakedSurfaces.join(", ") : ""}`);
   out.push("", "## Traps and public bodies touched", "");
   for (const r of rows.filter((r) => r.found === null && r.fp)) out.push(`- ${r.doc} · ${meta.categories[r.cat] || r.cat} · ${r.canonical}: ${r.matched.length ? "suggested as «" + r.matched.join("», «") + "»" : ""}${r.leakedSurfaces.length ? (r.matched.length ? "; " : "") + r.leakedSurfaces.join(", ") : ""}`);
-  out.push("", "## Timing", "", "| doc | genre | ms | rules confirmed | unlisted |", "|---|---|---|---|---|");
-  for (const d of perDoc) out.push(`| ${d.id} | ${d.genre} | ${d.ms} | ${d.rules} | ${d.unlisted} |`);
+  out.push("", "## Per document", "", "| doc | genre | rules confirmed | unlisted |", "|---|---|---|---|");
+  for (const d of perDoc) out.push(`| ${d.id} | ${d.genre} | ${d.rules} | ${d.unlisted} |`);
   return out.join("\n") + "\n";
 }
 
