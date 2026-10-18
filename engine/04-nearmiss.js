@@ -23,9 +23,14 @@ function near1(a,b){
 const WEAK=new Set(["א","ה","ו","י"]);
 // מילה: אותיות, וסימנים פנימיים רק כשאות אחריהם; גרש בסוף נשאר (ברקוביץ'). מירכאה שסוגרת
 // ציטוט ("אלונים") אינה חלק מהמילה — אחרת נוצר ערך נוסף «אלונים"» עם כרטיס משלו.
-const WRX=/[\u0590-\u05ff](?:['"\u05f3\u05f4-]?[\u0590-\u05ff])*['\u05f3]?/gu;
+// תו שאיש אינו רואה וסימן ניקוד הם \u0000 אחרי norm, והם בתוך המילה, לא גבול שלה: «ברזניצקי» עם רווח ברוחב אפס אחרי הנו"ן
+// היא מילה אחת לקורא, והייתה כאן שתיים, «ברזנ» ו«יצקי», ושם המשפחה יצא ל-AI תחת פס ירוק (ביקורת 18.10, F1).
+// המילה שחוזרת היא בלי התווים האלה (wordsOf); המיקומים הם של הטקסט עצמו. tests/readers_t.js
+const WRX=/[\u0590-\u05ff](?:['"\u05f3\u05f4-]?\u0000*[\u0590-\u05ff])*['\u05f3]?/gu;
+const unseen=w=>w.replace(/\u0000/g,"");
 function words(t){const o=[];WRX.lastIndex=0;let m;
-  while((m=WRX.exec(t)))o.push({w:m[0],s:m.index,e:m.index+m[0].length});return o}
+  while((m=WRX.exec(t)))o.push({w:unseen(m[0]),s:m.index,e:m.index+m[0].length});return o}
+function wordsOf(t){return (String(t).match(WRX)||[]).map(unseen)}
 /* למה שני שמות ברשימה עשויים להיות אותו אדם (Q12 בגרסה 2). האותות, כל אחד בשמו:
    כתיב מלא מול חסר או אות דומה במילה אחת ("שלוה"/"שלווה"), מקף מול רווח או
    סדר מילים שונה, שם פרטי לבדו מול השם המלא, שם משפחה לבדו מול השם המלא,
@@ -66,7 +71,7 @@ function findNear(blocks,targets,banned){
   const byK={}; for(const t of tg)(byK[t.words]=byK[t.words]||[]).push(t);
   const out=[],seen=new Set();
   const docTok=new Set();
-  for(const blk of blocks)for(const w of (norm(blk.text).match(WRX)||[]))docTok.add(w);
+  for(const blk of blocks)for(const w of wordsOf(norm(blk.text)))docTok.add(w);
   for(const blk of blocks){
     const n=norm(blk.text), tk=words(n);
     if(!tk.length)continue;

@@ -79,8 +79,7 @@ const COMMON=new Set(("ילד ילדה ילדים ילדות אם אב אמא א
  "ולא ואם וגם וכן ומה וזה וכל ואת ואני ואנחנו לכן ממה במה כמה למה "+
  "מזה בזה לזה מכל בכל לכל ככה כשה כדי מאז ומאז ולכן ואז ואילו "+
  "אב אם בן בת אח אחות עד עדה ילד ילדה נער נערה גיל שם כתובת טלפון").split(/\s+/));
-function tokall(t){const o=[];WRX.lastIndex=0;let m;
-  while((m=WRX.exec(t)))o.push({w:m[0],s:m.index,e:m.index+m[0].length});return o}
+const tokall=words;
 function stems(w){
   const o=[w];
   if(PFX.has(w[0]))o.push(w.slice(1));

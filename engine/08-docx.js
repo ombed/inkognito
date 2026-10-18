@@ -1023,7 +1023,7 @@ async function redactDocx(buf,subs,allow,opt){
   // לשני אנשים במסמך לא מוחלף אלא מסומן לבדיקה.
   const partOf=new Map();
   const docTokAll=new Set();
-  for(const b of ORIG)for(const w of (norm(b.text).match(WRX)||[]))docTokAll.add(w);
+  for(const b of ORIG)for(const w of wordsOf(norm(b.text)))docTokAll.add(w);
   // "בחיים" הוא המילה, לא הבן אדם. חלק של שם שהוא גם מילה, או שמופיע
   // במסמך עם ה' הידיעה, מוחלף רק כשהוא עומד לבד — בלי אותיות שימוש —
   // ומסומן לבדיקה.
@@ -1446,14 +1446,17 @@ function secondScan(preview,allow,subs,citeKeys){
   /* מילה של שם מהרשימה שנשארה לבדה («הורוביץ» ששם המשפחה שלו הוחלף רק בתוך השם המלא), או שונה ממנה באות אחת
      («בושקילה» של «בוסקילה»): הבדיקה האחרונה מחפשת את הערך כולו, ולא אותן */
   const listed=new Set(), particle=new Set(PART.split("|"));
-  for(const r of subs||[]) if((r.kind||"NAME")==="NAME") for(const w of norm(String(r.value||"")).split(/\s+/)) if(w.length>=3&&plain(w)&&!particle.has(w)) listed.add(w);
+  for(const r of subs||[]) if((r.kind||"NAME")==="NAME") for(const w of unseen(norm(String(r.value||""))).split(/\s+/)) if(w.length>=3&&plain(w)&&!particle.has(w)) listed.add(w);
   // שונה באות אחת: רק במילה של חמש אותיות לפחות. במילה קצרה יותר כמעט כל מילה רגילה רחוקה אות אחת משם («מוכן»)
   const near=w=>{ if(w.length<5)return false; for(const x of listed) if(x.length>=5&&Math.abs(x.length-w.length)<=1&&lev(w,x)<=1)return true; return false; };
   // סיומת של שם משפחה, בלי ‎-ייב ו־‎-סקה, שהן גם סיומות של מילים רגילות («התחייב», «הפסקה», «עסקה»)
   const SUR_END=/(?:וביץ|ביץ|סקי|ברג|בורג|שטיין|שטין|צקי)$/;
   const nameOk=x=>!!x&&plain(x)&&(KNOWN_FIRST.has(x)||listed.has(x)||near(x)||(x.length>=5&&SUR_END.test(x)));
+  /* הבדיקה קוראת את מה שאדם קורא (ביקורת 18.10, F1): בלי התווים שאיש אינו רואה (squeeze), והסימונים עוברים למקומם
+     בטקסט הזה. קודם «ברזניצקי» עם רווח ברוחב אפס אחרי הנו"ן נקראה «ברזנ» ו«יצקי», ושם המשפחה שנשאר לא הועלה. tests/readers_t.js */
   for(const b of preview||[]){
-    const t=String(b.text||""), nt=norm(t), marks=(b.marks||[]).concat(citeSpansIn(nt,citeKeys).map(([s,e])=>({s,e})));
+    const t0=String(b.text||""), q=squeeze(t0), t=q?q.t:t0, nt=norm(t), at=x=>q?seenAt(q,x):x;
+    const marks=(b.marks||[]).map(m=>({s:at(m.s),e:at(m.e)})).concat(citeSpansIn(nt,citeKeys).map(([s,e])=>({s,e})));
     const inMark=(s,e)=>marks.some(m=>m.s<e&&s<m.e);
     // label: התווית של סוג הפרט, כמו בממצא רגיל, כדי ש«להחליף» יוסיף לרשימה את הסוג הנכון
     const push=(kind,pat,label,s,e)=>{
@@ -1469,13 +1472,14 @@ function secondScan(preview,allow,subs,citeKeys){
         if(!inMark(s,e))push("number",p.n,p.l,s,e);
       }
     }
-    for(const m of nt.matchAll(/(?<![א-ת'"׳״])[א-ת]{2,}(?![א-ת'"׳״])/gu)){
-      const w=m[0], s=m.index, e=s+w.length;
+    // ניקוד הוא \u0000 אחרי norm, והוא בתוך המילה, לא גבול שלה
+    for(const m of nt.matchAll(/(?<![א-ת'"׳״]\u0000*)[א-ת](?:\u0000*[א-ת])+(?!\u0000*[א-ת'"׳״])/gu)){
+      const w=unseen(m[0]), s=m.index, e=s+m[0].length;
       if(inMark(s,e))continue;
       // מילה שהיא עצמה שם מוכר או מהרשימה נלקחת כולה («הורוביץ», שה' שלו אינה אות שימוש); אחרת קודם בלי אות השימוש
       const whole=plain(w)&&(KNOWN_FIRST.has(w)||listed.has(w)), stem=w.length>3&&PFX.has(w[0])?w.slice(1):null;
       if(whole)push("name","NAME","שם",s,e);
-      else if(stem&&nameOk(stem)&&!wordish(w))push("name","NAME","שם",s+1,e);
+      else if(stem&&nameOk(stem)&&!wordish(w))push("name","NAME","שם",s+1+m[0].slice(1).search(/[א-ת]/),e);
       else if(nameOk(w))push("name","NAME","שם",s,e);
     }
   }
@@ -1484,7 +1488,7 @@ function secondScan(preview,allow,subs,citeKeys){
 async function verify(buf,secrets,dates,fakes,placeSecrets){
   const files=await unzip(buf);
   const uniq2=a=>[...new Set((a||[]).filter(s=>s&&s.trim().length>=2))].map(s=>[s,norm(s)]);
-  const sec=uniq2(secrets).map(([o,nv])=>[o,nv,secretTest(nv)]), dsec=uniq2(dates).map(([o,nv])=>[o,nv.replace(/\u0000/g,"")]);
+  const sec=uniq2(secrets).map(([o,nv])=>{const v=unseen(nv); return [o,v,secretTest(v)]}), dsec=uniq2(dates).map(([o,nv])=>[o,nv.replace(/\u0000/g,"")]);
   const dateRX=nv=>new RegExp((/^\d/.test(nv)?"(?<!\\d)":"")+esc(nv)+(/\d$/.test(nv)?"(?!\\d)":""),"gu");
   const dateHits=(t,nv)=>{let c=0; for(const m of t.matchAll(dateRX(nv)))if(!notDateAt(t,m.index,m.index+m[0].length))c++; return c};
   const ps=new Set((placeSecrets||[]).map(s=>norm(s).trim()).filter(Boolean));
@@ -1508,7 +1512,8 @@ async function verify(buf,secrets,dates,fakes,placeSecrets){
         // וגם כמו שדפדפן קורא כתובת: "%D7%93" הוא "ד". שם מקודד ביעד של קישור עבר את הבדיקה (הציד של 11.10)
         if(/%[0-9A-Fa-f]{2}/.test(raw)){const d=pctPlain(raw);t+="\n"+d+"\n"+d.replace(/[+_]/g," ")}
       }
-      const nt=norm(t), nd=norm(dv).replace(/\u0000/g,"");
+      // הבדיקה קוראת כמו אדם: תו שאיש אינו רואה או ניקוד בתוך שם שנשאר אינו מסתיר אותו (ביקורת 18.10, F1), כמו בתאריכים
+      const nt=unseen(norm(t)), nd=norm(dv).replace(/\u0000/g,"");
       for(const [o,nv,has] of sec){
         if(!nv)continue;
         if(has(nt))leaks.push({value:o,part:f.name});
@@ -1518,7 +1523,7 @@ async function verify(buf,secrets,dates,fakes,placeSecrets){
         const c=dateHits(nd,nv); if(!c)continue;
         const d=dateIn.get(o)||{n:0,parts:[]}; d.n+=c; d.parts.push(f.name); dateIn.set(o,d);
       }
-      if(ps.size&&[...ps].some(p=>nt.includes(p.split(" ")[0]))){
+      if(ps.size&&[...ps].some(p=>nt.includes(unseen(p.split(" ")[0])))){
         const nr=norm(seenText(read.replace(/_/g," "))), all=placeScan(nr);
         for(const x of all) if(ps.has(x.name)&&placeSure(nr,x,all)) leaks.push({value:x.name,part:f.name});
       }
@@ -1632,9 +1637,12 @@ function discover(blocks){
   // discover החזיר אפס מועמדים. פסקה קצרה בלי פיסוק בסוף, שאחריה פסקה של ממש, היא דובר.
   const extra=[];
   for(let bi=0;bi<blocks.length;bi++){
-    const rawLine=(blocks[bi].text||"").trim();
+    /* השורה כמו שאדם קורא אותה (squeeze), והמקום חוזר לטקסט עצמו. ל-\s של JavaScript, BOM הוא רווח: דובר ששמו
+       עם BOM באמצעו נקרא שתי מילים בנות שתי אותיות, ונשאר (ביקורת 18.10, F1; bench/invisible.js) */
+    const q0=squeeze(blocks[bi].text||""), line=q0?q0.t:(blocks[bi].text||"");
+    const rawLine=line.trim();
     const t=trimEdges(rawLine), w=t.split(/\s+/).filter(Boolean);
-    const nxt=blocks[bi+1]&&trimEdges(blocks[bi+1].text||"");
+    const nxt=blocks[bi+1]&&trimEdges(seenText(blocks[bi+1].text||""));
     // הפיסוק נבדק על השורה הגולמית: trimEdges מסיר נקודה בסוף, ואז "לא." נראה
     // כמו "לא" — שורה בת מילה אחת בלי פיסוק, כלומר שורת דובר. על תמלול של שיחה
     // זה נותן הצעות כמו "וואי", "אההה", "תגידי", "לא.".
@@ -1658,8 +1666,9 @@ function discover(blocks){
     {const cw=c.split(/\s+/); if(cw.length===3&&/^ו-?[א-ת]{2}/.test(cw[1]))continue;}
     if(c.split(/\s+/).some(x=>/(?:ים|ות|יים|יות)$/.test(norm(x))&&!KNOWN_FIRST.has(norm(x))))continue;
     if(c.split(/\s+/).some(x=>/^של[ךכםןנהוי]?$/.test(norm(x))))continue;
-    const s0=blocks[bi].text.indexOf(c); if(s0<0)continue;
-    extra.push({b:blocks[bi],h:{text:c,s:s0,e:s0+c.length,why:"פסקה שכולה שם, ואחריה דיבור",anchor:"speakerline",g:null,role:null}});
+    const s0=line.indexOf(c); if(s0<0)continue;
+    const [os,oe]=q0?[q0.pos[s0],q0.pos[s0+c.length-1]+1]:[s0,s0+c.length];
+    extra.push({b:blocks[bi],h:{text:c,s:os,e:oe,why:"פסקה שכולה שם, ואחריה דיבור",anchor:"speakerline",g:null,role:null}});
   }
   for(const {b,h} of extra){
     const r=found[h.text]||(found[h.text]={count:0,why:new Set(),conf:"medium",ctx:"",role:null,g:null,gf:0,gm:0});
@@ -2201,9 +2210,18 @@ async function foldEvidence(pipe,out,text){
     o.fold=fold; o.foldWhy=why.join(",");
   }
 }
+/* מה שהמודל קורא: הבלוקים כטקסט אחד, כמו שאדם קורא אותו, בלי התווים שאיש אינו רואה (squeeze). המודל קרא את הטקסט
+   עם התווים, ושם שתו כזה בתוכו («ברזניצקי» עם רווח ברוחב אפס, «אוריאל» עם BOM) נקרא שתי מילים ולא יושר לטקסט, והשם יצא ל-AI תחת פס ירוק
+   (ביקורת 18.10, F1, F4). הערכים שהמודל מוצא הם כמו שהם נקראים, והרשימה מוצאת אותם גם עם התו (tests/invisible_t.js).
+   back: קטע בטקסט הזה ← הקטע בטקסט המחובר של הבלוקים, שבו דוח הדליפה קורא את nerLast. bench/lib.js קורא אותו טקסט.
+   tests/readers_t.js */
+function nerText(blocks){
+  const doc=blocks.map(b=>b.text).join("\n"), q=squeeze(doc);
+  return {text:q?q.t:doc, back:q?(s,e)=>[q.pos[s],q.pos[e-1]+1]:(s,e)=>[s,e]};
+}
 async function nerRun(blocks,onProgress){
   const pipe=await nerLoad();
-  const text=blocks.map(b=>b.text).join("\n");
+  const {text,back}=nerText(blocks);
   const parts=nerChunks(text);
   const ents=[]; let raw=0,withOff=0,failed=0;
   for(let i=0;i<parts.length;i++){
@@ -2226,7 +2244,7 @@ async function nerRun(blocks,onProgress){
      אותה משפחה). מודל שלא קרא אף קטע נכשל, כדי שהמסך יציג כישלון ולא רשימה ריקה; מודל שקרא
      חלק מוסר כמה קטעים לא נקראו, והמסך אומר זאת. */
   if(parts.length&&failed===parts.length)throw new Error("המודל לא הצליח לקרוא אף קטע מהמסמך");
-  NER_LAST=ents.map(e=>({type:e.type,score:e.score,s:e.s,e:e.e}));
+  NER_LAST=ents.map(x=>{const [s,e]=back(x.s,x.e); return {type:x.type,score:x.score,s,e}});
   const out=nerClean(ents,text);
   out.chunks=parts.length; out.failedChunks=failed;
   await foldEvidence(pipe,out,text);
@@ -2536,7 +2554,7 @@ function restoreNames(txt,pairs,earlier,dateOpt){
   const hits=new Map();
   // המילים של התשובה, לבדיקה אם חלק של שם הוא גם מילה בה ("הכהן", גם אחרי אות שימוש: "והכהן")
   const toks=new Set();
-  for(const w of norm(txt).match(WRX)||[]){toks.add(w);const h=/^[וכלבמש]{1,3}(ה.+)$/.exec(w);if(h)toks.add(h[1])}
+  for(const w of wordsOf(norm(txt))){toks.add(w);const h=/^[וכלבמש]{1,3}(ה.+)$/.exec(w);if(h)toks.add(h[1])}
   /* מילה שהיא גם מילה רגילה, לפי הרשימות, לפי מאגר הכינויים עצמו (WORDISH: «דנה», «מלמד», «פרץ», «מירב», שבחר בהם מקרה
      שנשמר לפני v73.6) או לפי התשובה הזאת */
   const rwordy=k=>wordish(k,toks)||WORDISH.has(k);
@@ -2694,6 +2712,6 @@ export {nerLast, hiddenPart, nerForget, VRB, COMMON, KNOWN_FIRST, NW, NWE, crc32
   findNear, mergeSignals, fakeDate, parseDate, foldEvidence, tokPieces, namePosition, nerReset, nameish, bodyNames, nerChunks, nerClean, PAT, WHYP, KINDS, KINDLBL, CANON, ckey,
   resolve, Engine, flatten, acceptTracked, stripComments, redactDocx, partName, ctxHTML, verify,
   discover, PLACES, PLACE_BY, geoMap, geoNames, placesFound, examplesOf, findPlaces, fakePlace,
-  atlasTags, atlasDiff, atlasPenalty, placeKind, nerEnv, nerCached, nerPersist, nerLoad, nerRun,
+  atlasTags, atlasDiff, atlasPenalty, placeKind, nerEnv, nerCached, nerPersist, nerLoad, nerText, nerRun,
   TITLE_RX, ORG_RX, likelyOrg, cleanEntry, trimEdges, pseudoRX, restoreNames, restorePairs, STOP, gender, origin, readBlocks, isTextPart, setAliasKey, hmac32, stripImageMeta, secondScan, OBJ_NOTE,
   citeSpans, citeKept, citeKey, citeSpansIn, citeOnly, citeListKeys, ORG_TAIL, commonWord, worthAsking};

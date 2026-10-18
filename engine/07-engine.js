@@ -197,7 +197,7 @@ class Engine{
     /* וגם המילה בלי גרש בסופה («ברקוביץ׳» ← «ברקוביץ») ובלי אות שימוש בתחילתה («וברקוביץ» ← «ברקוביץ»): שם בדוי שהוא
        מילה אמיתית של המסמך בצורה אחרת הוא אותה מלכודת (12.10: «ברקוביץ», שם משפחה בדוי מהמאגר, נבחר לאדם אחר במסמך שבו
        «יואב ברקוביץ׳» אמיתי; בבדיקת הדפדפן של v73.13, אחד למאה מפתחות). tests/forbidden_t.js */
-    if(docText)for(const w of (norm(docText).match(WRX)||[])){
+    if(docText)for(const w of wordsOf(norm(docText))){
       this.forbidden.add(w);
       const bare=w.replace(/['"]+$/,"");
       if(bare!==w&&bare.length>1)this.forbidden.add(bare);
@@ -336,8 +336,7 @@ class Engine{
   detect(text,addr,more){
     const q=squeeze(text);
     if(!q) return this.detectSeen(text,addr,more&&more.map(h=>({...h})));
-    // כמה תווים נראים יש לפני המקום x בטקסט המקורי: זה המקום שלו בטקסט שבלי התווים
-    const seen=x=>{let lo=0,hi=q.pos.length; while(lo<hi){const m=(lo+hi)>>1; if(q.pos[m]<x)lo=m+1; else hi=m} return lo};
+    const seen=x=>seenAt(q,x);
     const m2=(more||[]).map(h=>{const s=seen(h.s),e=seen(h.e); return {...h,s,e,text:q.t.slice(s,e)}}).filter(h=>h.e>h.s);
     const hits=this.detectSeen(q.t,addr,m2);
     for(const h of hits){ h.s=q.pos[h.s]; h.e=q.pos[h.e-1]+1; h.text=text.slice(h.s,h.e); }
