@@ -84,11 +84,12 @@ function makeBench(E, opt) {
   const wordIn = (hay, needle) => needle.length >= 3 && new RegExp("(^|[^א-ת])[בהולמכש]?" + rx(needle) + "(?![א-ת])").test(hay);
   const hit = (a, b) => a === b || wordIn(a, b) || wordIn(b, a);
 
-  // mirrors nerRun: chunk, run, align, group, clean. rawOut, when given,
-  // receives the grouped spans before cleaning, for the span studies.
+  // mirrors nerRun: chunk, run, align, group, clean, on the text nerRun reads (nerText: without the
+  // characters nobody sees). rawOut, when given, receives the grouped spans before cleaning, for the
+  // span studies, with their offsets in that text.
   async function modelSuggest(pipe, blocks, rawOut) {
     if (!pipe) return [];
-    const text = blocks.map((b) => b.text).join("\n");
+    const { text } = E.nerText(blocks);
     const ents = [];
     for (const { t, off } of E.nerChunks(text)) {
       let res = await pipe(t, { ignore_labels: [] });
@@ -160,7 +161,7 @@ function makeBench(E, opt) {
     const out = norm(await fileText(r2.blob));
     const applied = new Set([...r1.applied, ...r2.applied].map((a) => norm(a.base || a.value)));
     // second: the scan of the result itself, without the list (secondScan, 12.10)
-    return { surfaced, applied, near, out, rules: rules2.length, why, model, text: blocks.map((b) => b.text).join("\n"), second: r2.second || [] };
+    return { surfaced, applied, near, out, rules: rules2.length, why, model, text: blocks.map((b) => b.text).join("\n"), second: r2.second || [], passed: r2.verification.passed };
   }
 
   function scoreDoc(doc, res) {

@@ -11,6 +11,7 @@ Re-run after every detection change; compare `results.md` in the diff.
     node bench/sweep.js --only=min   # re-run one tunable; the other sections of sweep.md are kept
     node bench/spans.js      # characterise the model's span boundaries against the key, write spans.md
     node bench/from-leak.js report.json   # rebuild a document from a leak report and run the chain on it
+    node bench/invisible.js  # a zero-width space, a BOM or a soft hyphen inside every mention of each person; counts who is left (--no-model, --list)
 
 ## What makes it honest
 

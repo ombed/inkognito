@@ -83,7 +83,7 @@ function nerClean(ents,text,opt){
   // 0.7 נקבע בהרגשה. הסריקה (bench/sweep.md) על 30 מסמכים: 0.6 נותן דליפה אחת פחות
   // מ-0.7 בלי הצעה עודפת נוספת; 0.3–0.5 כמו 0.6; 0.9 מכפיל את הדליפות.
   const min=(opt&&opt.min)||0.6;
-  const tok=new Set((norm(text).match(WRX)||[]));
+  const tok=new Set(wordsOf(norm(text)));
   const seen=new Map();
   for(const e of ents){
     if(!NER_KIND[e.type]||e.score<min)continue;
@@ -1260,7 +1260,7 @@ const placeCond=nm=>TOWNWORD.has(nm)||!!IDIOM[nm];
 const placeOwn=nm=>!!PLACE_BY[nm]&&!(nm.length<=3||AMBIG.has(nm)||TOWNWORD.has(nm));
 function findPlaces(text){
   const n=norm(text),out=[],seen=new Set();
-  const docTokP=new Set(n.match(WRX)||[]);
+  const docTokP=new Set(wordsOf(n));
   const all=placeScan(n);
   for(const x of all){
     const nm=x.name, k=x.s+":"+x.e; seen.add(k);
