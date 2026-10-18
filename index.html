@@ -962,8 +962,10 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
         <span>הם מסומנים בתשובה. כדאי לתקן אותם ביד לפני שמשתמשים בה.</span>
         <ul style="margin:6px 0 0;padding-inline-start:18px;color:var(--ink)"><sc-for list="{{ rvLeftItems }}" as="x" hint-placeholder-count="2"><li>{{ x.t }}</li></sc-for></ul>
       </div></sc-if>
-      <sc-if value="{{ rvDatesOn }}"><div data-rv-dates key="{{ rvKey }}" style="margin:0 0 10px;padding:11px 14px;border-radius:10px;background:var(--accent-soft);color:var(--ink);font-size:13px;line-height:1.6">
-        <ul style="margin:0;padding-inline-start:18px"><sc-for list="{{ rvDateItems }}" as="x" hint-placeholder-count="1"><li>{{ x.t }}</li></sc-for></ul>
+      <!-- תאריך שזז אחורה: בשני הערכים, ובהקשה למה שה-AI כתב (החלטת הבעלים, 18.10). כתום, כמו כל מה שכדאי לבדוק לפני ההעתקה -->
+      <sc-if value="{{ rvDatesOn }}"><div data-rv-dates key="{{ rvKey }}" style="margin:0 0 10px;padding:11px 14px;border-radius:10px;background:var(--warn-soft);color:var(--warn);font-size:13px;line-height:1.6">
+        <b style="display:block;font-weight:600">{{ rvDatesHead }}</b>
+        <ul style="margin:6px 0 0;padding-inline-start:18px;color:var(--ink)"><sc-for list="{{ rvDateItems }}" as="x" hint-placeholder-count="1"><li style="margin-bottom:4px"><span data-rv-date-note>{{ x.t }}</span> <button data-rv-date-toggle sc-camel-on-click="{{ x.onToggle }}" style="padding:3px 10px;border-radius:8px;border:1px solid var(--line);background:var(--panel);font-size:12.5px;font-weight:500;white-space:nowrap" style-hover="background:var(--panel2)">{{ x.btn }}</button></li></sc-for></ul>
       </div></sc-if>
       <sc-if value="{{ rvLeftNone }}"><p data-rv-left-none key="{{ rvKey }}" style="margin:0 0 10px;font-size:13px;color:var(--ink2)">לא נמצא בתשובה פרט בדוי שלא הוחזר.</p></sc-if></sc-if></div><!-- השגיאה והתוצאה נאמרות לקורא מסך: אזור המצב כבר במסך כשהתוצאה מגיעה (בדיקה חיה, 6.10), וכל החזרה מעלה אותן כאלמנט חדש (rvKey), כך שגם תוצאה או שגיאה זהות לקודמות נאמרות שוב (הביקורת של 6.10) -->
     <sc-if value="{{ rvOut }}">

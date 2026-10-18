@@ -2373,6 +2373,13 @@ function dateRX(f,o){
     body=D+"(?<sep>[./-])"+S+"?"+M+"\\k<sep>"+S+"?(?:"+Y+"|"+YY+")|"+Y+"-"+M+"-"+D+"|"+D+S+"+"+CONN+MON+YC+Y+"|"+
       EN+S+"*"+D+"(?:st|nd|rd|th)?,?"+S+"+"+Y+"|"+D+"(?:st|nd|rd|th)?"+S+"+(?:of"+S+"+)?"+EN+",?"+S+"+"+Y;
   }
+  // יום או שנה במילים, ותאריך בלוח העברי (03-dates.js): ה-AI כותב תאריך כזה בספרות, או במילים בכתיב אחר, ואת העברי בלי ב
+  // או בלי ה' של האלפים. בלי זה התאריך המוזז נשאר בתשובה (הביקורת החיצונית של 18.10, F2)
+  if(!o.anyYear){
+    if(f.d==null)body+="|(?<![0-9]"+S+"*)"+MON+YC+yearWordsRX(f.y);
+    else if(f.y==null)body+="|"+dayWordsRX(f.d)+S+"+"+CONN+MON+"(?!"+YC+"(?:[0-9]|אלף))";
+    else body+="|"+dayWordsRX(f.d)+S+"+"+CONN+MON+YC+"(?:"+Y+"|"+yearWordsRX(f.y)+")|"+z(f.d)+S+"+"+CONN+MON+YC+yearWordsRX(f.y)+"|"+hebDateRX(f);
+  }
   return new RegExp((o.range?"":NOT_RANGE_END)+"(?<!["+B+"])(?<pre>(?:"+PRE_SEQ.join("|")+")[-\u05be]?)?(?:"+body+")(?!["+B+"])","giu");
 }
 /* כינוי של תאריך בכתיב שיצא: לא מתוך תאריך ארוך יותר ("27.4" של "27.4.2026", "אפריל 2026" של "27 באפריל 2026"),
@@ -2465,9 +2472,11 @@ function lev(a,b){
    תאריך אחר בתשובה, עד שנה לפני או אחרי התאריכים שהכלי כתב, זז אחורה באותה הזזה ומסומן לבדיקה; תאריך רחוק יותר (חוק
    משנת 1962) נשאר כמו שנכתב, וכך גם תאריך שהוא תאריך אמיתי מהרשימה (היא כתבה אותו בשאלה). ההזזה: של המסמך הפתוח
    (off, בימים), או זו שכל זוגות התאריכים הידועים מסכימים עליה; בלי הזזה אחת ודאית (תיק של כמה מסמכים) כלום לא זז.
-   known: [{f, t}], חלקי התאריך הבדוי והאמיתי. מוסיף ל-took ומחזיר את מה שזז. tests/dateback_t.js */
+   known: [{f, t}], חלקי התאריך הבדוי והאמיתי. מוסיף ל-took ומחזיר את מה שזז. tests/dateback_t.js
+   today: היום, {d, m, y}. הוא אף פעם לא זז (החלטת הבעלים, 18.10): «היום, 18.10.2026» שה-AI כתב הוא היום שלה, לא
+   תאריך שחושב מהמסמך */
 const dayNum=p=>p&&p.d!=null&&p.m?Date.UTC(p.y??dateRefYear(p),p.m-1,p.d)/864e5:null;
-function backDates(txt,took,known,off){
+function backDates(txt,took,known,off,today){
   const fakes=known.map(x=>dayNum(x.f)).filter(Number.isFinite);
   if(!Number.isInteger(off)||!off){
     const offs=new Set(known.map(x=>dayNum(x.f)-dayNum(x.t)).filter(Number.isFinite));
@@ -2488,7 +2497,7 @@ function backDates(txt,took,known,off){
     // קצה של טווח («4-23.12.2026», «23.12-4.1»): לא מחזירים חצי טווח, כמו בתאריכים שהכלי כתב
     if(/[0-9][\s\u00a0]?[-–—־][\s\u00a0]?$/.test(NT.slice(Math.max(0,s-4),s))||/^[\s\u00a0]?[-–—־][\s\u00a0]?[0-9]/.test(NT.slice(e,e+4)))continue;
     const raw=txt.slice(s,e), p=parseDate(raw), n=dayNum(p);
-    if(n==null||n<lo||n>hi||realDays.has(n)||fakeDM.has(p.d+"."+p.m))continue;
+    if(n==null||n<lo||n>hi||realDays.has(n)||fakeDM.has(p.d+"."+p.m)||(p.y!=null&&n===dayNum(today)))continue;
     const now=fakeDate(raw,-off); if(!now||now===raw)continue;
     took.push([s,e,now]); out.push({s,e,was:raw,now});
   }
@@ -2627,7 +2636,7 @@ function restoreNames(txt,pairs,earlier,dateOpt){
     else if(!(WORDLIKE.has(kk)||COMMON.has(kk)||STOP.has(kk)||VRB.has(kk)))toksOnly.set(k,v);
   }
   // תאריכים שה-AI חישב מתאריכים מוזזים: זזים אחורה ומסומנים (backDates)
-  const moved=backDates(txt,took,days,dateOpt&&dateOpt.off);
+  const moved=backDates(txt,took,days,dateOpt&&dateOpt.off,dateOpt&&dateOpt.today);
   let out="",at=0;
   for(const [s,e,t] of took.sort((a,b)=>a[0]-b[0])){out+=txt.slice(at,s)+t;at=e}
   const left=leftOver(txt,took,{conflict,held,bad,reals,seen,partial,toks,dates:lone,wordOne,toksOnly,earlier});
