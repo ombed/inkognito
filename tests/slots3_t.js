@@ -42,7 +42,7 @@ const docx = (items) => mkzip([
   { name: "word/document.xml", body: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' +
     items.map((x) => (typeof x === "string" ? P(x) : x.raw ? x.raw : TBL(x.table))).join("") + "</w:body></w:document>" },
 ]);
-// the page's rules for «מי בתיק» (as tests/slots_t.js mirrors index.html showPeople)
+// the page's rules for «מי בתיק» (as tests/slots_t.js mirrors page-component.js showPeople)
 function autoList(cands) {
   const dt = new Set(cands.flatMap((c) => c.value.split(/\s+/)));
   return cands.filter((c) => {

@@ -82,12 +82,12 @@ function docx(o) {
   return mkzip(files);
 }
 
-// the page's options (index.html opts()), with the place list on
+// the page's options (page-component.js opts()), with the place list on
 const optsOf = (E, extra) => ({ on: new Set(E.PAT.filter((p) => p.on).map((p) => p.n).concat("PLACES")), flag: new Set(E.PAT.filter((p) => !p.on).map((p) => p.n).concat("NAME_ANCHORED")),
   mode: "real", near: true, body: true, prefixes: "normal", styles: { "*": "blank", DATE: "name" }, ...(extra || {}) });
-// the text «העתקה ל־AI» copies (index.html redactedText)
+// the text «העתקה ל־AI» copies (page-component.js redactedText)
 const copyOf = (E, res) => res.preview.filter((b) => !E.hiddenPart(b.part)).map((b) => b.text).join("\n").replace(/\n{3,}/g, "\n\n").trim();
-// the bar (index.html): red when the final check failed, green only when nothing is open
+// the bar (page-component.js): red when the final check failed, green only when nothing is open
 const bar = (v) => !v.passed ? "red" : v.complete ? "green" : "open";
 
 // every part of the file she downloads, as text
