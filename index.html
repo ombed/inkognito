@@ -16,7 +16,7 @@
      אין כאן 'unsafe-eval' ולא 'unsafe-inline': סקריפט שהוזרק לדף, או onerror של תמונה, לא ירוץ (הביקורת ההנדסית
      של 12.10, סעיף 4). 'wasm-unsafe-eval' הוא ל-WebAssembly של המודל. בתבנית אין מאפיין אירוע (onClick): הוא כתוב
      sc-camel-on-click, הצורה ששכבת ההרצה קוראת כ-onClick, כדי שאף דפדפן לא יפרש אותו כקוד שנחסם (Firefox דיווח על כל אחד). -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' blob: https://unpkg.com 'sha256-n0+wLToED3zsrfY9U5xP3ORaeNWBPlKBcS5X6QQgtv4=' 'sha256-5UsWhE9Fsokh7Pn1f73HbaEqXpqZRIPvAVHonuEPTpw='; worker-src 'self' blob:; connect-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob:; object-src 'none'; base-uri 'self'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' blob: https://unpkg.com 'sha256-n0+wLToED3zsrfY9U5xP3ORaeNWBPlKBcS5X6QQgtv4=' 'sha256-1MEgMzsO9lRDSKkTzPEwwyZGmJcChQW3Yau3EKthdZM='; worker-src 'self' blob:; connect-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob:; object-src 'none'; base-uri 'self'; form-action 'none'">
 <script>/* ערכת הצבעים לפני הציור הראשון: בלי זה טעינה מחדש במצב לילה הבהבה ביום עד שהממשק עלה */try{var t=localStorage.getItem("redact-theme")||(matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");if(t==="dark")document.documentElement.classList.add("dark")}catch(e){}</script>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./icon.svg" type="image/svg+xml">
@@ -294,7 +294,7 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
 </div></div>
 <script>
 (function(){
-  console.log("אינקוגניטו — גרסה v75.2");
+  console.log("אינקוגניטו — גרסה v76");
   /* הכלי באתר צריך חיבור כדי להיפתח: בכל פתיחה נבדקת הכניסה לחשבון (דף האבטחה). עד 12.10 ההודעה כאן הבטיחה שבלי
      אינטרנט הכלי עובד, וכשלא היה חיבור היא הוצגה בדיוק אז (הנוסח שאושר, 12.10). בלי חיבור היא מוצגת מיד, ולא אחרי
      תשע שניות של «נטען…» */
@@ -347,8 +347,8 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
         console.log("עובד שירות: "+served);
         var el=document.getElementById("ver"); if(!el) return;
         if(chip===null) chip=el.innerHTML; else el.innerHTML=chip;
-        if(served==="v75.2") return;
-        el.innerHTML='גרסה v75.2 · <b style="color:var(--warn)">יש גרסה חדשה: רעננו עם Ctrl+Shift+R</b>';
+        if(served==="v76") return;
+        el.innerHTML='גרסה v76 · <b style="color:var(--warn)">יש גרסה חדשה: רעננו עם Ctrl+Shift+R</b>';
       });
       var ask=function(){ if(sw.controller) sw.controller.postMessage("version") };
       sw.ready.then(ask);
@@ -962,8 +962,10 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
         <span>הם מסומנים בתשובה. כדאי לתקן אותם ביד לפני שמשתמשים בה.</span>
         <ul style="margin:6px 0 0;padding-inline-start:18px;color:var(--ink)"><sc-for list="{{ rvLeftItems }}" as="x" hint-placeholder-count="2"><li>{{ x.t }}</li></sc-for></ul>
       </div></sc-if>
-      <sc-if value="{{ rvDatesOn }}"><div data-rv-dates key="{{ rvKey }}" style="margin:0 0 10px;padding:11px 14px;border-radius:10px;background:var(--accent-soft);color:var(--ink);font-size:13px;line-height:1.6">
-        <ul style="margin:0;padding-inline-start:18px"><sc-for list="{{ rvDateItems }}" as="x" hint-placeholder-count="1"><li>{{ x.t }}</li></sc-for></ul>
+      <!-- תאריך שזז אחורה: בשני הערכים, ובהקשה למה שה-AI כתב (החלטת הבעלים, 18.10). כתום, כמו כל מה שכדאי לבדוק לפני ההעתקה -->
+      <sc-if value="{{ rvDatesOn }}"><div data-rv-dates key="{{ rvKey }}" style="margin:0 0 10px;padding:11px 14px;border-radius:10px;background:var(--warn-soft);color:var(--warn);font-size:13px;line-height:1.6">
+        <b style="display:block;font-weight:600">{{ rvDatesHead }}</b>
+        <ul style="margin:6px 0 0;padding-inline-start:18px;color:var(--ink)"><sc-for list="{{ rvDateItems }}" as="x" hint-placeholder-count="1"><li style="margin-bottom:4px"><span data-rv-date-note>{{ x.t }}</span> <button data-rv-date-toggle sc-camel-on-click="{{ x.onToggle }}" style="padding:3px 10px;border-radius:8px;border:1px solid var(--line);background:var(--panel);font-size:12.5px;font-weight:500;white-space:nowrap" style-hover="background:var(--panel2)">{{ x.btn }}</button></li></sc-for></ul>
       </div></sc-if>
       <sc-if value="{{ rvLeftNone }}"><p data-rv-left-none key="{{ rvKey }}" style="margin:0 0 10px;font-size:13px;color:var(--ink2)">לא נמצא בתשובה פרט בדוי שלא הוחזר.</p></sc-if></sc-if></div><!-- השגיאה והתוצאה נאמרות לקורא מסך: אזור המצב כבר במסך כשהתוצאה מגיעה (בדיקה חיה, 6.10), וכל החזרה מעלה אותן כאלמנט חדש (rvKey), כך שגם תוצאה או שגיאה זהות לקודמות נאמרות שוב (הביקורת של 6.10) -->
     <sc-if value="{{ rvOut }}">
@@ -1408,7 +1410,7 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
 
 </div>
 </x-dc>
-<footer><nav data-foot aria-label="מידע ומסמכים משפטיים"><a href="https://inkognito.co.il/" target="_blank" rel="noopener">עמוד הבית</a><a href="https://inkognito.co.il/terms" target="_blank" rel="noopener">תנאי שימוש</a><a href="https://inkognito.co.il/privacy" target="_blank" rel="noopener">מדיניות פרטיות</a><a href="https://inkognito.co.il/accessibility" target="_blank" rel="noopener">הצהרת נגישות</a><a href="mailto:contact@inkognito.co.il">יצירת קשר</a></nav><div id="ver">גרסה v75.2</div></footer>
+<footer><nav data-foot aria-label="מידע ומסמכים משפטיים"><a href="https://inkognito.co.il/" target="_blank" rel="noopener">עמוד הבית</a><a href="https://inkognito.co.il/terms" target="_blank" rel="noopener">תנאי שימוש</a><a href="https://inkognito.co.il/privacy" target="_blank" rel="noopener">מדיניות פרטיות</a><a href="https://inkognito.co.il/accessibility" target="_blank" rel="noopener">הצהרת נגישות</a><a href="mailto:contact@inkognito.co.il">יצירת קשר</a></nav><div id="ver">גרסה v76</div></footer>
 <script type="text/x-dc" data-dc-script data-props="{&quot;docFont&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;serif&quot;,&quot;sans&quot;],&quot;default&quot;:&quot;serif&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;עיצוב&quot;},
 &quot;railWidth&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:340,&quot;max&quot;:500,&quot;step&quot;:4,&quot;default&quot;:404,&quot;unit&quot;:&quot;px&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;עיצוב&quot;}}"></script>
 </body>

@@ -154,6 +154,9 @@ function parseDate(s){
     p={d:null,m:dateMonth(m[1]),y:+m[3],form:"mwords",yc:m[2],...style(m[1])};
   else if((m=/^(\d{1,2})([./-])(\d{4})$/.exec(t)))
     p={d:null,m:+m[1],y:+m[3],form:"mnum",sep:m[2],pm:lead(m[1])};
+  // יום או שנה במילים, ותאריך בלוח העברי (03-dates.js, הביקורת החיצונית של 18.10, F2)
+  else if((p=parseWordsDate(t)))Object.assign(p,style(p.mtok));
+  else if((p=parseHebDate(t,raw)))return p;
   if(!p||p.m<1||p.m>12)return null;
   if(p.d==null)return p;
   if(p.d<1||p.d>31)return null;
@@ -172,6 +175,8 @@ function fakeDate(s,offDays){
   const p=parseDate(s);
   if(!p)return null;
   const {d,m:mo,y}=shiftDate(p,offDays|0), z=(n,pad)=>pad&&n<10?"0"+n:String(n);
+  if(p.form==="heb")return writeHebDate({d,m:mo,y},p.h);
+  if(p.form==="wday"||p.form==="wmy")return writeWordsDate(p,d,mo,y,monthWord(mo,p));
   if(p.form==="mwords")return monthWord(mo,p)+p.yc+y;
   if(p.form==="mnum")return z(mo,p.pm)+p.sep+y;
   if(p.form==="iso")return `${y}-${z(mo,p.pm)}-${z(d,p.pd)}`;
