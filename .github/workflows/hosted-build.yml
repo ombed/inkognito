@@ -27,7 +27,7 @@ permissions:
 
 jobs:
   build:
-    if: github.event_name == 'push' && github.ref_type == 'branch'
+    if: github.ref_type == 'branch' && (github.event_name == 'push' || inputs.tag == '')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -54,13 +54,18 @@ jobs:
           path: dist-sha256.txt
           retention-days: 90
 
-  # The Cloudflare token is a secret of the "production" environment, which only release tags may use (its
-  # deployment rule), and only the owner may create those tags (the tag ruleset).
+  # The Cloudflare token is a secret of the "production" environment, which only release tags and this branch
+  # may use (its deployment rules: the branch is where a by-hand rollback runs from), and only the owner may
+  # create release tags (the tag ruleset). Whatever starts it, this job deploys a release tag of this branch.
   deploy:
     if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/ink/v')) || (github.event_name == 'workflow_dispatch' && inputs.tag != '')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: production
+    # one deploy at a time; a second waits for the first instead of racing it
+    concurrency:
+      group: production-deploy
+      cancel-in-progress: false
     permissions:
       contents: write
       id-token: write
@@ -103,19 +108,20 @@ jobs:
       # a tag from before 18.10 has no probes of its own: then they are skipped, and said to be
       - name: The live site serves this version
         run: |
-          if [ -f scripts/probe-live.js ]; then node scripts/probe-live.js --version="${TAG#ink/}" --wait=180
+          if [ -f scripts/probe-live.js ]; then node scripts/probe-live.js --version="${TAG#ink/}" --dist=dist --wait=180
           else echo "::warning::$TAG predates scripts/probe-live.js: check the live site by hand"; fi
       - name: The live page's security policy
         run: |
           if [ -f scripts/probe-csp.js ]; then npx playwright install --with-deps chromium && node scripts/probe-csp.js
           else echo "::warning::$TAG predates scripts/probe-csp.js: check the policy by hand"; fi
+      # with the SHA-256 of every file it serves, so anyone can check the site against it after the run's copy expires
       - name: The GitHub Release, with the notes from CHANGELOG.md
         if: github.event_name == 'push'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           node scripts/release-notes.js "${TAG#ink/}" > notes.md
-          gh release create "$TAG" --title "$TAG" --notes-file notes.md --verify-tag
+          gh release create "$TAG" dist-sha256.txt --title "$TAG" --notes-file notes.md --verify-tag
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: deployed-dist-sha256
