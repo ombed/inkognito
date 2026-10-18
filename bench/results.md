@@ -1,6 +1,6 @@
 # Benchmark results
 
-43 documents, 335 keyed entities: 272 identifying details the tool must replace, and 63 traps and public bodies it must leave alone. Model on (q8, same artifact as the browser). Generated 2026-10-11.
+43 documents, 335 keyed entities: 272 identifying details the tool must replace, and 63 traps and public bodies it must leave alone. Model on (q8, same artifact as the browser). Generated 2026-10-18.
 
 ## Per category
 
@@ -76,16 +76,16 @@
 | interview | 11 | 0 | 0 | 0 |
 | structure | 14 | 1 | 1 | 0 |
 
-## Unlisted suggestions (match nothing in the key; one tap each) — 33 in total
+## Unlisted suggestions (match nothing in the key; one tap each) — 30 in total
 
 Counted, not optimised for: the list is read, accept-all is not how the tool is used.
 
-- **meeting** (3, 2 applied): בקבוצה [discover; מופיע אחרי מילת תפקיד טיפולית או חינוכית] **applied** · גן [model+flagged] · נוער [suggest] **applied**
+- **meeting** (2, 1 applied): בקבוצה [discover; מופיע אחרי מילת תפקיד טיפולית או חינוכית] **applied** · גן [model+flagged]
 - **filing** (6, 6 applied): נישאו [discover; מופיע אחרי מילת תפקיד בגוף הטקסט] **applied** · ירושלים [model] **applied** · ומצא סימני [discover; מופיע אחרי מילת תפקיד בגוף הטקסט] **applied** · תצהיר [discover; פסקה שכולה שם, ואחריה דיבור] **applied** · תצהירי [near+flagged] **applied** · עלי [flagged] **applied**
 - **transcript** (3, 3 applied): במרפאת עין [suggest] **applied** · הראשון [discover; מופיע אחרי תואר] **applied** · יו"ר [discover; פותח תור דיבור בתמלול] **applied**
 - **welfare** (1, 1 applied): לסדרי [discover; מופיע אחרי מילת תפקיד טיפולית או חינוכית] **applied**
-- **medical** (6, 6 applied): המטופלת [discover; פותח תור דיבור בתמלול] **applied** · חתימה [discover; פותח תור דיבור בתמלול] **applied** · מחלקת [model] **applied** · הנבדק [discover; פותח תור דיבור בתמלול] **applied** · חתימה [discover; פותח תור דיבור בתמלול] **applied** · קלינית [suggest] **applied**
-- **police** (3, 3 applied): ראיתי רכב [suggest] **applied** · המתלוננת [discover; פותח תור דיבור בתמלול] **applied** · תחנת גבעת [model] **applied**
+- **medical** (5, 5 applied): המטופלת [discover; פותח תור דיבור בתמלול] **applied** · חתימה [discover; פותח תור דיבור בתמלול] **applied** · מחלקת [model] **applied** · הנבדק [discover; פותח תור דיבור בתמלול] **applied** · חתימה [discover; פותח תור דיבור בתמלול] **applied**
+- **police** (2, 2 applied): המתלוננת [discover; פותח תור דיבור בתמלול] **applied** · תחנת גבעת [model] **applied**
 - **bank** (2, 2 applied): החשבון [discover; פותח תור דיבור בתמלול] **applied** · יתרה לסוף התקופה [discover; פותח תור דיבור בתמלול] **applied**
 - **chat** (1, 1 applied): בגן [discover; מופיע אחרי מילת תפקיד טיפולית או חינוכית] **applied**
 - **position** (1, 1 applied): הבהרה [discover; פותח תור דיבור בתמלול] **applied**
@@ -108,46 +108,46 @@ Counted, not optimised for: the list is read, accept-all is not how the tool is 
 
 | doc | genre | ms | rules confirmed | unlisted |
 |---|---|---|---|---|
-| m1 | meeting | 275 | 9 | 1 |
-| m2 | meeting | 178 | 11 | 1 |
-| m3 | meeting | 110 | 7 | 0 |
-| m4 | meeting | 122 | 9 | 1 |
-| f1 | filing | 176 | 14 | 2 |
-| f2 | filing | 171 | 15 | 1 |
-| f3 | filing | 117 | 8 | 0 |
-| f4 | filing | 135 | 11 | 3 |
-| t1 | transcript | 101 | 7 | 0 |
-| t2 | transcript | 116 | 13 | 1 |
-| t3 | transcript | 114 | 11 | 1 |
-| t4 | transcript | 105 | 12 | 1 |
-| w1 | welfare | 80 | 4 | 0 |
-| w2 | welfare | 74 | 5 | 0 |
-| w3 | welfare | 81 | 6 | 0 |
-| w4 | welfare | 101 | 5 | 1 |
-| h1 | medical | 90 | 6 | 2 |
-| h2 | medical | 95 | 5 | 1 |
-| h3 | medical | 92 | 7 | 3 |
-| p1 | police | 81 | 5 | 1 |
-| p2 | police | 81 | 4 | 2 |
-| p3 | police | 67 | 2 | 0 |
-| p4 | police | 72 | 3 | 0 |
-| b1 | bank | 76 | 5 | 2 |
-| b2 | bank | 71 | 2 | 0 |
-| b3 | bank | 55 | 2 | 0 |
-| c1 | chat | 92 | 4 | 0 |
-| c2 | chat | 84 | 5 | 1 |
-| c3 | chat | 84 | 2 | 0 |
-| c4 | chat | 122 | 4 | 0 |
-| x1 | position | 120 | 7 | 1 |
-| x2 | position | 85 | 5 | 0 |
-| x3 | position | 74 | 5 | 0 |
-| a1 | audio | 79 | 7 | 0 |
-| a2 | audio | 140 | 7 | 0 |
-| a3 | audio | 114 | 8 | 1 |
-| a4 | audio | 63 | 6 | 0 |
-| v1 | interview | 79 | 3 | 0 |
-| v2 | interview | 86 | 5 | 0 |
-| v3 | interview | 54 | 3 | 0 |
-| s1 | structure | 84 | 4 | 2 |
-| s2 | structure | 80 | 5 | 2 |
-| s3 | structure | 95 | 5 | 2 |
+| m1 | meeting | 204 | 9 | 1 |
+| m2 | meeting | 104 | 11 | 1 |
+| m3 | meeting | 65 | 6 | 0 |
+| m4 | meeting | 107 | 8 | 0 |
+| f1 | filing | 131 | 14 | 2 |
+| f2 | filing | 130 | 13 | 1 |
+| f3 | filing | 102 | 8 | 0 |
+| f4 | filing | 112 | 11 | 3 |
+| t1 | transcript | 89 | 7 | 0 |
+| t2 | transcript | 90 | 13 | 1 |
+| t3 | transcript | 102 | 11 | 1 |
+| t4 | transcript | 91 | 11 | 1 |
+| w1 | welfare | 64 | 4 | 0 |
+| w2 | welfare | 64 | 5 | 0 |
+| w3 | welfare | 74 | 5 | 0 |
+| w4 | welfare | 75 | 5 | 1 |
+| h1 | medical | 77 | 6 | 2 |
+| h2 | medical | 68 | 5 | 1 |
+| h3 | medical | 80 | 6 | 2 |
+| p1 | police | 68 | 4 | 0 |
+| p2 | police | 64 | 4 | 2 |
+| p3 | police | 75 | 2 | 0 |
+| p4 | police | 61 | 3 | 0 |
+| b1 | bank | 64 | 5 | 2 |
+| b2 | bank | 42 | 2 | 0 |
+| b3 | bank | 51 | 2 | 0 |
+| c1 | chat | 57 | 4 | 0 |
+| c2 | chat | 66 | 5 | 1 |
+| c3 | chat | 66 | 2 | 0 |
+| c4 | chat | 66 | 4 | 0 |
+| x1 | position | 103 | 7 | 1 |
+| x2 | position | 73 | 5 | 0 |
+| x3 | position | 72 | 5 | 0 |
+| a1 | audio | 80 | 7 | 0 |
+| a2 | audio | 75 | 7 | 0 |
+| a3 | audio | 66 | 7 | 1 |
+| a4 | audio | 59 | 6 | 0 |
+| v1 | interview | 82 | 3 | 0 |
+| v2 | interview | 76 | 5 | 0 |
+| v3 | interview | 61 | 3 | 0 |
+| s1 | structure | 86 | 4 | 2 |
+| s2 | structure | 87 | 5 | 2 |
+| s3 | structure | 92 | 5 | 2 |

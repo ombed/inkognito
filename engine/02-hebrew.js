@@ -28,6 +28,8 @@ function squeeze(t){
   for(let i=0;i<t.length;i++){ if(INVIS.test(t[i]))continue; o+=t[i]; pos.push(i); }
   return {t:o,pos};
 }
+// המקום x בטקסט המקורי ← המקום שלו בטקסט שבלי התווים (q של squeeze): כמה תווים נראים יש לפניו
+function seenAt(q,x){let lo=0,hi=q.pos.length; while(lo<hi){const m=(lo+hi)>>1; if(q.pos[m]<x)lo=m+1; else hi=m} return lo}
 /* גבול מילה. גרש וגרשיים הם חלק ממילה רק כשהם צמודים לאות משני צדדיהם (עו"ד, ג'ורג') או
    אחרי אות בסוף מילה (ברקוביץ'). מירכאה שפותחת מילה אחרי רווח היא פיסוק: עד כאן ה-" שלפני
    "אלונים" נחשבה חלק מהמילה, ושם במירכאות לא נמצא ולא הוחלף בכלל — דליפה שקטה. אות שימוש אחת

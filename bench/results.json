@@ -304,13 +304,12 @@
    "fp": 0,
    "via": [
     "model",
-    "flagged",
     "applied"
    ],
    "matched": [
     "מורן רוזנטל",
-    "רוזנטל",
-    "מורן"
+    "מורן",
+    "רוזנטל"
    ],
    "leakedSurfaces": []
   },
@@ -324,13 +323,12 @@
    "fp": 0,
    "via": [
     "model",
-    "flagged",
     "applied"
    ],
    "matched": [
     "ונמרוד רוזנטל",
-    "רוזנטל",
-    "מורן רוזנטל"
+    "מורן רוזנטל",
+    "רוזנטל"
    ],
    "leakedSurfaces": []
   },
@@ -798,13 +796,12 @@
    "fp": 0,
    "via": [
     "model",
-    "flagged",
     "applied"
    ],
    "matched": [
     "שחר גולן",
-    "גולן",
-    "שחר"
+    "שחר",
+    "גולן"
    ],
    "leakedSurfaces": []
   },
@@ -819,7 +816,6 @@
    "via": [
     "discover",
     "model",
-    "flagged",
     "applied"
    ],
    "matched": [
@@ -839,14 +835,13 @@
    "via": [
     "discover",
     "model",
-    "flagged",
     "applied"
    ],
    "matched": [
     "נמרוד רוזנטל",
-    "רוזנטל",
     "מורן רוזנטל",
-    "ורוזנטל נשואים"
+    "ורוזנטל נשואים",
+    "רוזנטל"
    ],
    "leakedSurfaces": []
   },
@@ -861,13 +856,12 @@
    "via": [
     "discover",
     "model",
-    "flagged",
     "applied"
    ],
    "matched": [
     "נתנאל גולן",
-    "גולן",
-    "שחר גולן"
+    "שחר גולן",
+    "גולן"
    ],
    "leakedSurfaces": []
   },
@@ -1926,7 +1920,6 @@
    "via": [
     "discover",
     "model",
-    "flagged",
     "applied"
    ],
    "matched": [
@@ -1947,13 +1940,12 @@
    "via": [
     "discover",
     "model",
-    "flagged",
     "applied"
    ],
    "matched": [
     "נמרוד רוזנטל",
-    "רוזנטל",
-    "מורן רוזנטל"
+    "מורן רוזנטל",
+    "רוזנטל"
    ],
    "leakedSurfaces": []
   },
@@ -2376,13 +2368,12 @@
    "fp": 0,
    "via": [
     "model",
-    "flagged",
     "applied"
    ],
    "matched": [
     "סלים מנסור",
-    "מנסור",
-    "סלים"
+    "סלים",
+    "מנסור"
    ],
    "leakedSurfaces": []
   },
@@ -2396,13 +2387,12 @@
    "fp": 0,
    "via": [
     "model",
-    "flagged",
     "applied"
    ],
    "matched": [
     "וחנין מנסור",
-    "מנסור",
-    "סלים מנסור"
+    "סלים מנסור",
+    "מנסור"
    ],
    "leakedSurfaces": []
   },
@@ -3991,7 +3981,6 @@
    "leaked": false,
    "fp": 0,
    "via": [
-    "suggest",
     "flagged",
     "applied"
    ],
@@ -4905,13 +4894,12 @@
    "fp": 0,
    "via": [
     "model",
-    "flagged",
     "applied"
    ],
    "matched": [
     "יונס אגבריה",
-    "אגבריה",
-    "יונס"
+    "יונס",
+    "אגבריה"
    ],
    "leakedSurfaces": []
   },
@@ -4925,13 +4913,12 @@
    "fp": 0,
    "via": [
     "model",
-    "flagged",
     "applied"
    ],
    "matched": [
     "וסוהא אגבריה",
-    "אגבריה",
-    "יונס אגבריה"
+    "יונס אגבריה",
+    "אגבריה"
    ],
    "leakedSurfaces": []
   },
@@ -5545,16 +5532,6 @@
    "applied": false
   },
   {
-   "doc": "m4",
-   "genre": "meeting",
-   "value": "נוער",
-   "sources": [
-    "suggest"
-   ],
-   "why": "",
-   "applied": true
-  },
-  {
    "doc": "f1",
    "genre": "filing",
    "value": "נישאו",
@@ -5706,26 +5683,6 @@
    "applied": true
   },
   {
-   "doc": "h3",
-   "genre": "medical",
-   "value": "קלינית",
-   "sources": [
-    "suggest"
-   ],
-   "why": "",
-   "applied": true
-  },
-  {
-   "doc": "p1",
-   "genre": "police",
-   "value": "ראיתי רכב",
-   "sources": [
-    "suggest"
-   ],
-   "why": "",
-   "applied": true
-  },
-  {
    "doc": "p2",
    "genre": "police",
    "value": "המתלוננת",
@@ -5860,301 +5817,301 @@
   {
    "id": "m1",
    "genre": "meeting",
-   "ms": 275,
+   "ms": 204,
    "rules": 9,
    "unlisted": 1
   },
   {
    "id": "m2",
    "genre": "meeting",
-   "ms": 178,
+   "ms": 104,
    "rules": 11,
    "unlisted": 1
   },
   {
    "id": "m3",
    "genre": "meeting",
-   "ms": 110,
-   "rules": 7,
+   "ms": 65,
+   "rules": 6,
    "unlisted": 0
   },
   {
    "id": "m4",
    "genre": "meeting",
-   "ms": 122,
-   "rules": 9,
-   "unlisted": 1
+   "ms": 107,
+   "rules": 8,
+   "unlisted": 0
   },
   {
    "id": "f1",
    "genre": "filing",
-   "ms": 176,
+   "ms": 131,
    "rules": 14,
    "unlisted": 2
   },
   {
    "id": "f2",
    "genre": "filing",
-   "ms": 171,
-   "rules": 15,
+   "ms": 130,
+   "rules": 13,
    "unlisted": 1
   },
   {
    "id": "f3",
    "genre": "filing",
-   "ms": 117,
+   "ms": 102,
    "rules": 8,
    "unlisted": 0
   },
   {
    "id": "f4",
    "genre": "filing",
-   "ms": 135,
+   "ms": 112,
    "rules": 11,
    "unlisted": 3
   },
   {
    "id": "t1",
    "genre": "transcript",
-   "ms": 101,
+   "ms": 89,
    "rules": 7,
    "unlisted": 0
   },
   {
    "id": "t2",
    "genre": "transcript",
-   "ms": 116,
+   "ms": 90,
    "rules": 13,
    "unlisted": 1
   },
   {
    "id": "t3",
    "genre": "transcript",
-   "ms": 114,
+   "ms": 102,
    "rules": 11,
    "unlisted": 1
   },
   {
    "id": "t4",
    "genre": "transcript",
-   "ms": 105,
-   "rules": 12,
+   "ms": 91,
+   "rules": 11,
    "unlisted": 1
   },
   {
    "id": "w1",
    "genre": "welfare",
-   "ms": 80,
+   "ms": 64,
    "rules": 4,
    "unlisted": 0
   },
   {
    "id": "w2",
    "genre": "welfare",
-   "ms": 74,
+   "ms": 64,
    "rules": 5,
    "unlisted": 0
   },
   {
    "id": "w3",
    "genre": "welfare",
-   "ms": 81,
-   "rules": 6,
+   "ms": 74,
+   "rules": 5,
    "unlisted": 0
   },
   {
    "id": "w4",
    "genre": "welfare",
-   "ms": 101,
+   "ms": 75,
    "rules": 5,
    "unlisted": 1
   },
   {
    "id": "h1",
    "genre": "medical",
-   "ms": 90,
+   "ms": 77,
    "rules": 6,
    "unlisted": 2
   },
   {
    "id": "h2",
    "genre": "medical",
-   "ms": 95,
+   "ms": 68,
    "rules": 5,
    "unlisted": 1
   },
   {
    "id": "h3",
    "genre": "medical",
-   "ms": 92,
-   "rules": 7,
-   "unlisted": 3
+   "ms": 80,
+   "rules": 6,
+   "unlisted": 2
   },
   {
    "id": "p1",
    "genre": "police",
-   "ms": 81,
-   "rules": 5,
-   "unlisted": 1
+   "ms": 68,
+   "rules": 4,
+   "unlisted": 0
   },
   {
    "id": "p2",
    "genre": "police",
-   "ms": 81,
+   "ms": 64,
    "rules": 4,
    "unlisted": 2
   },
   {
    "id": "p3",
    "genre": "police",
-   "ms": 67,
+   "ms": 75,
    "rules": 2,
    "unlisted": 0
   },
   {
    "id": "p4",
    "genre": "police",
-   "ms": 72,
+   "ms": 61,
    "rules": 3,
    "unlisted": 0
   },
   {
    "id": "b1",
    "genre": "bank",
-   "ms": 76,
+   "ms": 64,
    "rules": 5,
    "unlisted": 2
   },
   {
    "id": "b2",
    "genre": "bank",
-   "ms": 71,
+   "ms": 42,
    "rules": 2,
    "unlisted": 0
   },
   {
    "id": "b3",
    "genre": "bank",
-   "ms": 55,
+   "ms": 51,
    "rules": 2,
    "unlisted": 0
   },
   {
    "id": "c1",
    "genre": "chat",
-   "ms": 92,
+   "ms": 57,
    "rules": 4,
    "unlisted": 0
   },
   {
    "id": "c2",
    "genre": "chat",
-   "ms": 84,
+   "ms": 66,
    "rules": 5,
    "unlisted": 1
   },
   {
    "id": "c3",
    "genre": "chat",
-   "ms": 84,
+   "ms": 66,
    "rules": 2,
    "unlisted": 0
   },
   {
    "id": "c4",
    "genre": "chat",
-   "ms": 122,
+   "ms": 66,
    "rules": 4,
    "unlisted": 0
   },
   {
    "id": "x1",
    "genre": "position",
-   "ms": 120,
+   "ms": 103,
    "rules": 7,
    "unlisted": 1
   },
   {
    "id": "x2",
    "genre": "position",
-   "ms": 85,
+   "ms": 73,
    "rules": 5,
    "unlisted": 0
   },
   {
    "id": "x3",
    "genre": "position",
-   "ms": 74,
+   "ms": 72,
    "rules": 5,
    "unlisted": 0
   },
   {
    "id": "a1",
    "genre": "audio",
-   "ms": 79,
+   "ms": 80,
    "rules": 7,
    "unlisted": 0
   },
   {
    "id": "a2",
    "genre": "audio",
-   "ms": 140,
+   "ms": 75,
    "rules": 7,
    "unlisted": 0
   },
   {
    "id": "a3",
    "genre": "audio",
-   "ms": 114,
-   "rules": 8,
+   "ms": 66,
+   "rules": 7,
    "unlisted": 1
   },
   {
    "id": "a4",
    "genre": "audio",
-   "ms": 63,
+   "ms": 59,
    "rules": 6,
    "unlisted": 0
   },
   {
    "id": "v1",
    "genre": "interview",
-   "ms": 79,
+   "ms": 82,
    "rules": 3,
    "unlisted": 0
   },
   {
    "id": "v2",
    "genre": "interview",
-   "ms": 86,
+   "ms": 76,
    "rules": 5,
    "unlisted": 0
   },
   {
    "id": "v3",
    "genre": "interview",
-   "ms": 54,
+   "ms": 61,
    "rules": 3,
    "unlisted": 0
   },
   {
    "id": "s1",
    "genre": "structure",
-   "ms": 84,
+   "ms": 86,
    "rules": 4,
    "unlisted": 2
   },
   {
    "id": "s2",
    "genre": "structure",
-   "ms": 80,
+   "ms": 87,
    "rules": 5,
    "unlisted": 2
   },
   {
    "id": "s3",
    "genre": "structure",
-   "ms": 95,
+   "ms": 92,
    "rules": 5,
    "unlisted": 2
   }
