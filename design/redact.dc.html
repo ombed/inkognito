@@ -3165,8 +3165,10 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
      רק 24 שעות מהעדכון האחרון; אחר כך הוא נמחק מהדפדפן בקריאה הבאה (החלטת הבעלים, 18.10; הביקורת החיצונית, F5). תיק
      ששמרה נשאר ברשימת התיקים. בלי זמן עדכון הוא ישן. e2e/lastlist.spec.js */
   static LAST_TTL=24*3600e3;
-  readLast(){
+  // stored: הרשימה כמו שהיא בדפדפן, בלי בדיקה ובלי מחיקה, כדי ש-persistProfile ישווה אליה
+  readLast(stored){
     try{ const k=this.caseKey("redact-profile-last"), p=JSON.parse(localStorage.getItem(k)||"null");
+      if(stored)return p;
       const at=p&&Date.parse(p.updated||"");
       if(p&&!(at>Date.now()-this.constructor.LAST_TTL)){ localStorage.removeItem(k); return null; }
       return this.constructor.profileOk(p)&&p.rules.length?p:null; }catch(_){ return null; }
@@ -3510,7 +3512,13 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     if(!this.state.res) return;
     if(!this.state.rules.length&&!(this.state.allow||[]).length&&!this.removedNow().length) return;
     const prof=this.profileObj();
-    try{ localStorage.setItem(this.caseKey("redact-profile-last"), JSON.stringify(prof)); }catch(_){}
+    /* 24 השעות של הרשימה האחרונה נספרות מהשינוי האחרון שלה (readLast): כתיבה שלה בלי שינוי, כשיוצאים מהדף או מרעננים
+       אותו, שומרת את הזמן שלה. אחרת לשונית פתוחה האריכה אותה בלי סוף (e2e/lastlist.spec.js) */
+    // ואחרי 24 השעות, רשימה שלא השתנתה אינה נכתבת שוב: היא נמחקת
+    try{ const k=this.caseKey("redact-profile-last"), old=this.readLast(true);
+      const body=p=>JSON.stringify({...p, created:0, updated:0}), same=!!old&&!!old.updated&&body(old)===body(prof);
+      if(same&&!(Date.parse(old.updated)>Date.now()-this.constructor.LAST_TTL)) localStorage.removeItem(k);
+      else{ if(same) prof.updated=old.updated; localStorage.setItem(k, JSON.stringify(prof)); } }catch(_){}
     if(onlyLast) return;
     const was=this._caseSaved;
     if(how==="typing"&&prof.name&&!(was&&was.name===prof.name)&&this.readCases().some(c=>c.name===prof.name)) return;
