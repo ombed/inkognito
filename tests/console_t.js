@@ -20,15 +20,7 @@ const zlib = require("zlib"), fs = require("fs"), path = require("path");
 global.__deflate = (b) => new Uint8Array(zlib.deflateRawSync(Buffer.from(b)));
 global.__inflate = (b) => new Uint8Array(zlib.inflateRawSync(Buffer.from(b)));
 const HERE = __dirname;
-const js = fs.readFileSync(path.join(HERE, "app.html"), "utf8").split("<script>")[1].split("</script>")[0]
-  .replace('const inflate=u8=>pipe(u8,DecompressionStream,"deflate-raw");', "const inflate=async u8=>global.__inflate(u8);")
-  .replace('const deflate=u8=>pipe(u8,CompressionStream,"deflate-raw");', "const deflate=async u8=>global.__deflate(u8);");
-const cut = js.indexOf("/* ══════════════════════════ ממשק ══════════════════════════ */");
-const a = js.indexOf("function pseudoRX(p){"), b = js.indexOf("function livePairs(){");
-fs.writeFileSync(path.join(HERE, "console-core.js"), js.slice(0, cut) + "\n" + js.slice(a, b) +
-  "\nmodule.exports={redactDocx,nerRun,readBlocks,PAT,break:(k,f)=>{" +
-  "if(k==='bodyNames')bodyNames=f;else if(k==='nameish')nameish=f;else if(k==='nerLoad')nerLoad=f;else throw new Error(k)}};\n");
-const E = require("./console-core.js");
+const E = require("./core.js");
 const { mkzip } = require("./mkzip.js");
 const { P, R, NS, base } = require("./structure-lib.js");
 // the document opens with a name (structure-lib's doc() opens with a title of its own)
@@ -54,7 +46,7 @@ const quoted = (out) => WORDS.filter((w) => out.includes(w));
 (async () => {
   console.log("\n— the model's run prints counts, never a word —");
   {
-    E.break("nerLoad", async () => model);
+    E.swap("nerLoad", async () => model);
     const out = await printed(async () => E.nerRun(await E.readBlocks(zipOf().slice(0))));
     ok(out.length > 0, "something is printed (the counts)");
     ok(!quoted(out).length, "no word of the document: " + quoted(out).join(", "));
@@ -63,18 +55,18 @@ const quoted = (out) => WORDS.filter((w) => out.includes(w));
   console.log("\n— a layer that fails says that it failed and where, not what it was reading —");
   const quoting = () => { throw new Error("נכשל על: " + LINES.join(" | ")); };
   {
-    E.break("nerLoad", async () => async (t) => { throw new Error("chunk failed: " + t); });
+    E.swap("nerLoad", async () => async (t) => { throw new Error("chunk failed: " + t); });
     const out = await printed(async () => E.nerRun(await E.readBlocks(zipOf().slice(0))));
     ok(!quoted(out).length, "a model chunk that fails: " + quoted(out).join(", "));
   }
   {
-    E.break("bodyNames", quoting);
+    E.swap("bodyNames", quoting);
     const out = await printed(() => E.redactDocx(zipOf(), [], [], OPT));
     ok(/סריקת גוף הטקסט נכשלה/.test(out), "the body scan's failure is still said");
     ok(!quoted(out).length, "the body scan that fails: " + quoted(out).join(", "));
   }
   {
-    E.break("nameish", quoting);
+    E.swap("nameish", quoting);
     const out = await printed(() => E.redactDocx(zipOf(), [], [], OPT));
     ok(!quoted(out).length, "the label scan that fails: " + quoted(out).join(", "));
   }

@@ -5,9 +5,12 @@
 
 ## סוללות Node
 
-`tests/build-fixtures.js` בונה מ-`redact-engine.js` את `app.html` ו-`core.js`
-שהסוללות מצפות להם (הן נכתבו מול גרסה וונילה בקובץ אחד), ואז
-`tests/run.js` מריץ את הרשימה. המנוע הנבדק הוא תמיד זה שב-repo.
+`tests/build-fixtures.js` בונה מ-`redact-engine.js` את `core.js`, שורה אחת שמעבירה
+ל-`scripts/engine-node.js`, הדרך היחידה שבה Node טוען את המנוע (הסוללות, המדד והסקריפטים), ואת
+`app.html` לשתי הסוללות שמריצות אותו ב-jsdom כמו דפדפן (`tok_t.js`, `diag_t.js`). ואז
+`tests/run.js` מריץ את הרשימה. המנוע הנבדק הוא תמיד זה שב-repo. סוללה שמחליפה חלק
+במנוע כדי לראות מה קורה כשהוא נכשל עושה זאת ב-`E.swap(name, value)`, ורק לשמות שברשימה
+`SWAPPABLE` שם; `tests/enginenode_t.js` בודק שאפשר עדיין להחליף כל אחד מהם.
 
 | קובץ | מה נבדק |
 |---|---|

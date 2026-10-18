@@ -20,16 +20,7 @@ const zlib = require("zlib"), fs = require("fs"), path = require("path");
 global.__deflate = (b) => new Uint8Array(zlib.deflateRawSync(Buffer.from(b)));
 global.__inflate = (b) => new Uint8Array(zlib.inflateRawSync(Buffer.from(b)));
 const HERE = __dirname;
-const js = fs.readFileSync(path.join(HERE, "app.html"), "utf8").split("<script>")[1].split("</script>")[0]
-  .replace('const inflate=u8=>pipe(u8,DecompressionStream,"deflate-raw");', "const inflate=async u8=>global.__inflate(u8);")
-  .replace('const deflate=u8=>pipe(u8,CompressionStream,"deflate-raw");', "const deflate=async u8=>global.__deflate(u8);");
-const cut = js.indexOf("/* ══════════════════════════ ממשק ══════════════════════════ */");
-const a = js.indexOf("function pseudoRX(p){"), b = js.indexOf("function livePairs(){");
-fs.writeFileSync(path.join(HERE, "datewords-core.js"), js.slice(0, cut) + "\n" + js.slice(a, b) +
-  // the internals by typeof, so that on an engine without them the checks fail one by one instead of the load
-  "\nmodule.exports={parseDate,fakeDate,restoreNames,redactDocx,PAT," + ["hebToRD", "rdToHeb", "gregToRD", "rdToGreg", "DAYW", "YEARW", "numWords", "yearWords"]
-    .map((k) => `${k}:typeof ${k}==="undefined"?undefined:${k}`).join(",") + "};\n");
-const E = require("./datewords-core.js");
+const E = require("./core.js");
 const { mkzip } = require("./mkzip.js");
 const { P, R, doc, base } = require("./structure-lib.js");
 
