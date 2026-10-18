@@ -59,6 +59,12 @@ jobs:
       - name: Output against bench/golden
         if: always()
         run: node bench/golden.js
+      # The complexity guard (18.10): against the baseline at the same commit as the gates, no function above 12
+      # gets more complex, the total above 12 does not rise, nesting does not deepen and no file leaves the type
+      # checks (scripts/complexity.js; a rise it lets through is named, with a reason, in complexity-accepted.json)
+      - name: Complexity guard
+        if: always()
+        run: node scripts/complexity.js --check
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
