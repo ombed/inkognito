@@ -337,7 +337,8 @@ class Engine{
   /* ניקוד שאחרי האות האחרונה של ממצא שייך לה, ונכנס להחלפה: עד כאן «מַרְגָּלִית לַנְדָּאוּ» יצא «… דהןּ», עם הדגש של
      השם האמיתי על הכינוי (הביקורת החיצונית של 18.10, F7). סימני כיוון אינם ניקוד ונשארים מחוץ להחלפה */
   detect(text,addr,more){
-    const marks=hits=>{ for(const h of hits){ let e=h.e; while(e<text.length&&/\p{M}/u.test(text[e]))e++; if(e!==h.e){h.e=e; h.text=text.slice(h.s,e)} } return hits; };
+    // סימן מצטרף שהוא גם תו שאיש אינו רואה (מצרף הגרפמות, INVIS) נשאר מחוץ, כמו סימני הכיוון (tests/invisible_t.js)
+    const marks=hits=>{ for(const h of hits){ let e=h.e; while(e<text.length&&/\p{M}/u.test(text[e])&&!INVIS.test(text[e]))e++; if(e!==h.e){h.e=e; h.text=text.slice(h.s,e)} } return hits; };
     const q=squeeze(text);
     if(!q) return marks(this.detectSeen(text,addr,more&&more.map(h=>({...h}))));
     const seen=x=>seenAt(q,x);
