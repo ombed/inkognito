@@ -242,7 +242,7 @@ try {
      still carries them. */
   const patterns = blocks.map((b) => b.p);
   ok(new Set(patterns).size === patterns.length, "no pattern has two rules in _headers (" + patterns.length + " rules)");
-  ok(every.length === 1 && ["X-Content-Type-Options: nosniff", "X-Frame-Options: DENY", "Referrer-Policy: strict-origin-when-cross-origin", "Permissions-Policy: camera=(), microphone=(), geolocation=()"].every((x) => every[0].lines.includes(x)), "the rule for every address carries the security headers");
+  ok(every.length === 1 && ["X-Content-Type-Options: nosniff", "X-Frame-Options: DENY", "Referrer-Policy: strict-origin-when-cross-origin", "Permissions-Policy: camera=(), microphone=(), geolocation=()", "Strict-Transport-Security: max-age=31536000"].every((x) => every[0].lines.includes(x)), "the rule for every address carries the security headers, HSTS among them");
   // a crawler must be allowed to fetch a page to read its noindex: robots.txt blocks none of them (5.10)
   const disallow = read("robots.txt").split("\n").map((l) => (l.match(/^Disallow:\s*(\S+)/i) || [])[1]).filter(Boolean);
   const noindexPages = files.filter((f) => /^[^/]+\.html$/.test(f) && /<meta name="robots" content="[^"]*noindex/.test(read(f)));
