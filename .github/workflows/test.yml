@@ -128,3 +128,40 @@ jobs:
             bench/results.md
             bench/protocol-result.json
           retention-days: 14
+
+  # The result lock (18.10): this commit's engine against the base's, on the synthetic corpus and on every document
+  # the Node suites build, comparing every field of the results and every byte of the output files (bench/lock.js).
+  # It blocks a PR whose description ticks "No behaviour change"; on any other change it reports, since a fix or a
+  # feature is meant to change results. The description reaches the step as an environment variable, never as text
+  # inside the script, so nothing written in it can run.
+  lock:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: The baseline's commit (the PR's base, or main before this push)
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if [ "$EVENT" = "pull_request" ]; then
+            git fetch --no-tags --depth=1 origin "$BASE_REF"
+            echo "GATE_BASE_REF=$(git rev-parse FETCH_HEAD)" >> "$GITHUB_ENV"
+          elif git fetch --no-tags --depth=1 origin "$BEFORE"; then
+            echo "GATE_BASE_REF=$(git rev-parse FETCH_HEAD)" >> "$GITHUB_ENV"
+          fi
+      - name: Result lock
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          if printf '%s\n' "$PR_BODY" | grep -qiE '^\s*[-*]\s*\[x\]\s*No behaviour change'; then
+            node bench/lock.js --suites
+          else
+            node bench/lock.js --suites || echo "::notice::The result lock found differences. This change does not say it keeps behaviour, so they are reported, not blocking."
+          fi

@@ -116,3 +116,26 @@ baseline (outside review, 12.10). A change that is meant to make an entity worse
 names it in `gate-accepted.json` with a reason, a sentence, and updates the
 baseline in the same change; once that is on main, the entry matches nothing and
 the gate reports it as stale, to be removed.
+
+## The result lock
+
+`lock.js` runs the engine at a base commit and the engine in the working tree side
+by side, on the same documents with the same choices, and compares everything a
+person or the page could see: every field of `redactDocx`'s result (what was
+replaced and flagged, the preview, the final check and the second scan, the map,
+the date offset), every part of the output file byte for byte, and for the corpus
+also what the reader and `discover` found and the restore. The golden outputs keep
+only the redacted text, and the gate counts entities; a change that moves code
+without meaning to change behaviour proves it here.
+
+    npm run lock                          # against main: the corpus, 4 sets of choices
+    node bench/lock.js --base=<ref>       # against another commit
+    node bench/lock.js --suites           # also every document the Node suites build
+    node bench/lock.js --self             # against itself: the lock sees no noise
+
+`--suites` runs `tests/run.js` with `LOCK_RECORD` set, so the loader writes every
+document a suite hands to `redactDocx`, and gives each to both engines: about 1,700
+documents built to test pictures, links, fields and the other parts the corpus does
+not have. In CI the `lock` job runs it against the PR's base. It blocks a PR that
+ticks "No behaviour change" in its description, and only reports on any other,
+since a fix or a feature is meant to change results.

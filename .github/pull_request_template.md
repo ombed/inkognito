@@ -8,6 +8,13 @@
 - [ ] Bug fix
 - [ ] Not a bug fix (feature, docs, tests, release)
 
+## Behaviour
+
+<!-- Tick when the change is meant to alter nothing the tool does, such as moving code. The "lock" check then
+     compares this engine with the base's on the corpus and on every document the Node suites build
+     (bench/lock.js --suites) and fails on any difference. Leave it empty for a fix or a feature. -->
+- [ ] No behaviour change
+
 ## For a bug fix: the class, not the instance
 
 <!-- docs/QUALITY-PLAN.md, layer 6. A bug a user found is one member of a class.
