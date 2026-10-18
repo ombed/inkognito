@@ -410,6 +410,9 @@ textarea[dir=auto]:placeholder-shown,input[dir=auto]:placeholder-shown{direction
       <div data-pw role="dialog" aria-modal="true" aria-labelledby="pw-t" style="width:min(420px,100%);background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:0 24px 60px rgba(0,0,0,.35)">
         <label id="pw-t" for="pw-in" style="display:block;margin:0 0 10px;font-size:15px;font-weight:500;line-height:1.5">{{ pwLabel }}</label>
         <input id="pw-in" data-pw-in type="password" autocomplete="new-password" dir="ltr" value="{{ pwValue }}" sc-camel-on-change="{{ onPwIn }}" sc-camel-on-key-down="{{ onPwKey }}" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:15px;background:var(--paper);color:var(--ink)">
+        <!-- בייצוא הסיסמה נכתבת פעמיים: טעות הקלדה נועלת את הקובץ לתמיד (החלטת הבעלים, 18.10) -->
+        <sc-if value="{{ pwTwice }}"><label for="pw-again" style="display:block;margin:12px 0 6px;font-size:13.5px;color:var(--ink2)">{{ pwAgainLabel }}</label>
+          <input id="pw-again" data-pw-again type="password" autocomplete="new-password" dir="ltr" value="{{ pwAgain }}" sc-camel-on-change="{{ onPwAgain }}" sc-camel-on-key-down="{{ onPwKey }}" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:15px;background:var(--paper);color:var(--ink)"></sc-if>
         <sc-if value="{{ pwErr }}"><p data-pw-err role="alert" style="margin:10px 0 0;font-size:13px;color:var(--bad)">{{ pwErr }}</p></sc-if>
         <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">
           <button type="button" sc-camel-on-click="{{ onPwCancel }}" style="padding:9px 16px;border-radius:10px;border:1px solid var(--line);font-size:13.5px;color:var(--ink2)">ביטול</button>

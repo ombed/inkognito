@@ -1933,9 +1933,14 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     try{ const m=JSON.parse(localStorage.getItem(this.caseKey("redact-cases"))||"{}");
       return Object.values(m).filter(p=>this.constructor.profileOk(p,true)).sort((a,b)=>String(b.updated||"").localeCompare(String(a.updated||""))); }catch(_){ return []; }
   }
-  // הפרופיל האחרון, כשהמסך יכול להציג אותו (profileOk) ויש בו ערכים
+  /* הפרופיל האחרון, כשהמסך יכול להציג אותו (profileOk) ויש בו ערכים. הוא נשמר אחרי כל מסמך בלי שלחצה «שמירה», ולכן
+     רק 24 שעות מהעדכון האחרון; אחר כך הוא נמחק מהדפדפן בקריאה הבאה (החלטת הבעלים, 18.10; הביקורת החיצונית, F5). תיק
+     ששמרה נשאר ברשימת התיקים. בלי זמן עדכון הוא ישן. e2e/lastlist.spec.js */
+  static LAST_TTL=24*3600e3;
   readLast(){
-    try{ const p=JSON.parse(localStorage.getItem(this.caseKey("redact-profile-last"))||"null");
+    try{ const k=this.caseKey("redact-profile-last"), p=JSON.parse(localStorage.getItem(k)||"null");
+      const at=p&&Date.parse(p.updated||"");
+      if(p&&!(at>Date.now()-this.constructor.LAST_TTL)){ localStorage.removeItem(k); return null; }
       return this.constructor.profileOk(p)&&p.rules.length?p:null; }catch(_){ return null; }
   }
   writeCase(prof){
@@ -2296,13 +2301,21 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
   /* קובץ תיק עם סיסמה (החלטת הבעלים, 12.10, «A», הנוסח אושר; הביקורת ההנדסית): «ייצוא לקובץ» שואל סיסמה, והקובץ שיורד
      מוצפן (PL.lockJSON). ייבוא של קובץ כזה שואל אותה (onProfFile). קובץ רגיל, מלפני 12.10 או מהכתובת הישנה, נקלט כמו קודם.
      e2e/lockfile.spec.js */
-  static PW_EXPORT="סיסמה לקובץ התיקים (צריך אותה כדי לייבא אותו):";
+  /* ועוד (החלטת הבעלים והנוסח, 18.10; הביקורת החיצונית, F11): סיסמה של שמונה תווים לפחות, פעמיים, כי טעות הקלדה בייצוא
+     נועלת את הקובץ לתמיד; ושם הקובץ לפי התאריך, לא לפי התיק, ששמו הוא לא פעם שם הלקוח. השם נשאר בתוך הקובץ המוצפן */
+  static PW_EXPORT="סיסמה לקובץ התיקים, לפחות 8 תווים. צריך אותה כדי לייבא אותו:";
+  static PW_AGAIN="שוב, לבדיקה:";
+  static PW_SHORT="הסיסמה קצרה מ-8 תווים.";
+  static PW_DIFF="שתי הסיסמאות שונות.";
   static PW_IMPORT="הקובץ מוגן בסיסמה. סיסמה:";
   static PW_BAD="הסיסמה לא נכונה, או שהקובץ פגום.";
-  pwOpen(mode){ this.setState({pw:{mode, value:"", err:"", busy:false}}, ()=>{ const el=document.querySelector("[data-pw-in]"); if(el) el.focus(); }); }
+  pwOpen(mode){ this.setState({pw:{mode, value:"", again:"", err:"", busy:false}}, ()=>{ const el=document.querySelector("[data-pw-in]"); if(el) el.focus(); }); }
   pwCancel = () => { this._pwFile=null; this.setState({pw:null}); };
   pwSubmit = async () => {
     const S=this.state, pw=S.pw; if(!pw||pw.busy||!pw.value) return;
+    if(pw.mode==="export"&&(pw.value.length<8||pw.value!==pw.again)){
+      this.setState({pw:{...pw, err:pw.value.length<8?this.constructor.PW_SHORT:this.constructor.PW_DIFF}}); return;
+    }
     this.setState({pw:{...pw, busy:true, err:""}});
     if(pw.mode==="export"){
       const locked=await window.PL.lockJSON(this.profileObj(), pw.value);
@@ -2319,7 +2332,7 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
   saveProfileFile = (prof) => {
     const blob=new Blob([JSON.stringify(prof,null,1)],{type:"application/json"});
     const u=URL.createObjectURL(blob), a=document.createElement("a");
-    const name=(this.state.caseName?"תיק-"+this.state.caseName.replace(/[\\/:*?"<>|]+/g," ").trim():"רשימת-שמות")+".json";
+    const d=new Date(), z=n=>String(n).padStart(2,"0"), name=`תיק-מוצפן-${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}.json`;
     a.href=u; a.download=name;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(()=>URL.revokeObjectURL(u), 4000);
@@ -3008,7 +3021,9 @@ const KIND_NAME={NAME:"אדם", ORG:"גוף", PLACE:"מקום"};
       onLoadProf:this.loadProfileClick, onSaveProf:this.saveProfile, onImportCases:this.importCasesClick,
       pwOn:!!S.pw, pwLabel:S.pw?(S.pw.mode==="export"?this.constructor.PW_EXPORT:this.constructor.PW_IMPORT):"",
       pwValue:S.pw?S.pw.value:"", pwErr:S.pw?S.pw.err:"", pwOk:S.pw&&S.pw.mode==="export"?"ייצוא לקובץ":"ייבוא מקובץ",
-      pwOkOff:!S.pw||!S.pw.value||!!S.pw.busy,
+      pwTwice:!!S.pw&&S.pw.mode==="export", pwAgainLabel:this.constructor.PW_AGAIN, pwAgain:S.pw?S.pw.again||"":"",
+      onPwAgain:e=>{ const p=this.state.pw; if(p) this.setState({pw:{...p, again:e.target.value, err:""}}); },
+      pwOkOff:!S.pw||!S.pw.value||(S.pw.mode==="export"&&!S.pw.again)||!!S.pw.busy,
       onPwIn:e=>{ const p=this.state.pw; if(p) this.setState({pw:{...p, value:e.target.value, err:""}}); },
       onPwKey:e=>{ if(e.key==="Enter"){ e.preventDefault(); this.pwSubmit(); } else if(e.key==="Escape"){ e.preventDefault(); this.pwCancel(); } },
       onPwOk:this.pwSubmit, onPwCancel:this.pwCancel,
