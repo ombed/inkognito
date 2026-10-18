@@ -2430,7 +2430,9 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
     }
     // תאריך שה-AI חישב מתאריך מוזז זז אחורה בהזזה של המסמך הפתוח (backDates; החלטת הבעלים, 12.10). תיק שנטען להחזרה
     // בלבד: ההזזה נלמדת מזוגות התאריכים שלו, אם יש אחת ודאית
-    const r=E.restoreNames(S.rvIn, pairs, earlier, {off: rvP?undefined:(S.res&&S.res.dateOff)});
+    // היום אף פעם לא זז (החלטת הבעלים, 18.10): «היום, …» שה-AI כתב הוא היום שלה
+    const now=new Date();
+    const r=E.restoreNames(S.rvIn, pairs, earlier, {off: rvP?undefined:(S.res&&S.res.dateOff), today:{d:now.getDate(), m:now.getMonth()+1, y:now.getFullYear()}});
     // ההחזרה בסיור היא של המסמך לדוגמה: ביומן נרשם הסיור עצמו
     if(!S.tour) this.log.add("restore",{count:r.count, left:(r.left||[]).length, dates:(r.dates||[]).length});
     // כינוי שמשותף ליותר מאדם אחד אינו "לא נמצא" — הוא נמצא ולא הוחזר, וזה מה שנאמר (M3)
@@ -2445,8 +2447,29 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
         if(t&&T[t.i]&&T[t.i].restore&&this.state.rvOut) this.setState({tour:{...t, i:t.i+1}}); });
   };
   // שורה ברשימת מה שנשאר בתשובה: «בדוי» במקום «אמיתי», וכמה פעמים כשיותר מפעם אחת; כינוי של יותר מאדם אחד — בלי אמיתי
-  // החלטת הבעלים, 12.10 («A», בנוסח שהוצג): תאריך בתשובה שזז אחורה כי ה-AI חישב אותו מתאריך מוזז
-  static DATE_BACK="תאריך שה-AI חישב מתאריך מוזז, והוחזר בהתאם. כדאי לבדוק.";
+  /* תאריך בתשובה שזז אחורה כי ה-AI חישב אותו, כנראה, מתאריך מוזז (החלטת הבעלים, 12.10, «A»). מ-18.10 (הביקורת החיצונית,
+     F2; החלטת הבעלים) הוא מוצג בשני הערכים, ובהקשה אחת חוזר למה שה-AI כתב: תאריך אמיתי שה-AI הוסיף (חוק, היום) אינו
+     מחושב, וההזזה שלו שגויה. הטקסט שמועתק הוא מה שמוצג */
+  dateNote(x){
+    return x.kept?`נשאר «${x.was}», כמו שה-AI כתב. אם הוא חישב אותו מתאריך במסמך, התאריך האמיתי הוא «${x.now}».`
+      :`ה-AI כתב «${x.was}». אם הוא חישב אותו מתאריך במסמך, התאריך האמיתי הוא «${x.now}», וכך הוחזר.`;
+  }
+  dateBtn(x){ return x.kept?"להזיז אחורה":"להשאיר כמו שה-AI כתב"; }
+  // בהקשה: למה שה-AI כתב, ובהקשה נוספת שוב אחורה. כל מיקום שאחרי התאריך זז באורך שהשתנה
+  rvDateToggle(i){
+    const S=this.state, copy=a=>(a||[]).map(x=>({...x, at:x.at.map(p=>[...p])})), ds=copy(S.rvDates), left=copy(S.rvLeft), x=ds[i];
+    if(!x) return;
+    const put=x.kept?x.now:x.was;
+    let t=S.rvOut||"";
+    for(const sp of [...x.at].sort((a,b)=>b[0]-a[0])){
+      const [s,e]=sp, d=put.length-(e-s);
+      t=t.slice(0,s)+put+t.slice(e);
+      for(const y of [...ds,...left]) for(const p of y.at) if(p!==sp&&p[0]>=e){p[0]+=d; p[1]+=d}
+      sp[1]=s+put.length;
+    }
+    x.kept=!x.kept;
+    this.setState({rvOut:t, rvDates:ds, rvLeft:left});
+  }
   leftLine(x){
     const n=x.at.length;
     // שם בדוי של מסמך קודם בסשן: האמיתי אינו ידוע כאן, והשם מסומן כמו שהוא
@@ -2457,7 +2480,7 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
   rvSegs(){
     const S=this.state, t=S.rvOut||"", at=[];
     for(const x of S.rvLeft||[]) for(const [s,e] of x.at) at.push([s,e,this.leftLine(x),false]);
-    for(const x of S.rvDates||[]) for(const [s,e] of x.at) at.push([s,e,this.constructor.DATE_BACK,true]);
+    for(const x of S.rvDates||[]) for(const [s,e] of x.at) at.push([s,e,this.dateNote(x),true]);
     at.sort((a,b)=>a[0]-b[0]);
     const out=[]; let i=0;
     for(const [s,e,title,date] of at){ if(s<i) continue; if(s>i) out.push({t:t.slice(i,s), plain:true}); out.push({t:t.slice(s,e), mark:!date, date, title}); i=e; }
@@ -2898,7 +2921,8 @@ const KIND_NAME={NAME:"אדם", ORG:"גוף", PLACE:"מקום"};
       rvLeftHead:(n=>n===1?"נשאר בתשובה פרט בדוי אחד":"נשארו בתשובה "+n+" פרטים בדויים")((S.rvLeft||[]).length),
       rvLeftItems:(S.rvLeft||[]).map(x=>({t:this.leftLine(x)})),
       rvDatesOn:!!S.rvOut&&(S.rvDates||[]).length>0,
-      rvDateItems:(S.rvDates||[]).map(x=>({t:"«"+x.now+"»: "+this.constructor.DATE_BACK})),
+      rvDatesHead:(n=>n===1?"תאריך אחד בתשובה הוזז אחורה":n+" תאריכים בתשובה הוזזו אחורה")((S.rvDates||[]).length),
+      rvDateItems:(S.rvDates||[]).map((x,i)=>({t:this.dateNote(x), btn:this.dateBtn(x), onToggle:()=>this.rvDateToggle(i)})),
       rvParas:this.rvParas(),
       // «חזרה למסמך» גם מתחת לתוצאה, כשיש מסמך לחזור אליו; בכפתור העליון בלי מסמך כתוב «לבחירת מסמך»
       rvBackOn:back.to==="work"&&!S.tour,

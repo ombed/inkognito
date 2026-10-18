@@ -56,5 +56,24 @@ console.log("\n— the offset: the open document's, or one all the known dates a
   const open = C.restoreNames(ans, twoDocs, [], { off: 42 });
   ok(open.text.endsWith("עד 26.4.2026.") && open.dates.length === 1, "with the open document's offset, it moves by that one");
 }
+console.log("\n— today's date is never moved (the owner's decision, 18.10) —");
+{
+  const ans = "ב-23.4.2026 הוגשה הבקשה. היום, 7.6.2026, טרם התקבלה תשובה.";
+  const r = C.restoreNames(ans, PAIRS, [], { off: 42, today: { d: 7, m: 6, y: 2026 } });
+  ok(r.text.includes("היום, 7.6.2026,") && !r.dates.length, "the AI's «today» stays: " + r.text);
+  const other = C.restoreNames(ans, PAIRS, [], { off: 42, today: { d: 8, m: 6, y: 2026 } });
+  ok(other.text.includes("היום, 26.4.2026,") && other.dates.length === 1, "any other day still moves, marked: " + other.text);
+}
+
+console.log("\n— a date the AI computed in words or in the Hebrew calendar moves back in its own form (review 18.10, F2) —");
+{
+  const words = C.restoreNames("ב-23.4.2026 הוגשה הבקשה. המועד: שבעה ביוני אלפיים עשרים ושש.", PAIRS, [], { off: 42 });
+  ok(words.text.endsWith("המועד: עשרים ושישה באפריל אלפיים עשרים ושש.") && words.dates.length === 1 && words.dates[0].was === "שבעה ביוני אלפיים עשרים ושש",
+    "in words: " + words.text + " " + JSON.stringify(words.dates));
+  // 7.6.2026 is כ"ב בסיוון תשפ"ו; 42 days before, 26.4.2026, is ט' באייר תשפ"ו
+  const heb = C.restoreNames("ב-23.4.2026 הוגשה הבקשה. המועד: כ\"ב בסיוון תשפ\"ו.", PAIRS, [], { off: 42 });
+  ok(heb.text.endsWith("המועד: ט' באייר תשפ\"ו.") && heb.dates.length === 1, "in the Hebrew calendar: " + heb.text);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exitCode = fail ? 1 : 0;

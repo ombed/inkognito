@@ -270,6 +270,9 @@ function parseDate(s){
     p={d:null,m:dateMonth(m[1]),y:+m[3],form:"mwords",yc:m[2],...style(m[1])};
   else if((m=/^(\d{1,2})([./-])(\d{4})$/.exec(t)))
     p={d:null,m:+m[1],y:+m[3],form:"mnum",sep:m[2],pm:lead(m[1])};
+  // יום או שנה במילים, ותאריך בלוח העברי (03-dates.js, הביקורת החיצונית של 18.10, F2)
+  else if((p=parseWordsDate(t)))Object.assign(p,style(p.mtok));
+  else if((p=parseHebDate(t,raw)))return p;
   if(!p||p.m<1||p.m>12)return null;
   if(p.d==null)return p;
   if(p.d<1||p.d>31)return null;
@@ -288,6 +291,8 @@ function fakeDate(s,offDays){
   const p=parseDate(s);
   if(!p)return null;
   const {d,m:mo,y}=shiftDate(p,offDays|0), z=(n,pad)=>pad&&n<10?"0"+n:String(n);
+  if(p.form==="heb")return writeHebDate({d,m:mo,y},p.h);
+  if(p.form==="wday"||p.form==="wmy")return writeWordsDate(p,d,mo,y,monthWord(mo,p));
   if(p.form==="mwords")return monthWord(mo,p)+p.yc+y;
   if(p.form==="mnum")return z(mo,p.pm)+p.sep+y;
   if(p.form==="iso")return `${y}-${z(mo,p.pm)}-${z(d,p.pd)}`;
@@ -325,6 +330,192 @@ function hord(n){
   if(r===15)out+="טו"; else if(r===16)out+="טז";
   else {out+=G_TEN[Math.floor(r/10)]; out+=G_ONE[r%10];}
   return out.length>1 ? out.slice(0,-1)+'"'+out.slice(-1) : out+"׳";
+}
+/* ══════════ תאריכים במילים ובלוח העברי ══════════ */
+/* תאריך שנכתב במילים («שנים עשר ביוני אלפיים עשרים וחמש», «14 בפברואר אלפיים עשרים וחמש») או בלוח העברי («כ"ג בתשרי
+   תשפ"ה») לא זוהה ולא זז, והגיע ל-AI כמו שהוא. לצד אותו תאריך בספרות, שזז, הוא חשף את ההזזה של כל המסמך; ו-AI שחישב
+   ממנו מועד קיבל מועד אמיתי, שההחזרה הזיזה אחורה כאילו חושב מתאריך מוזז (הביקורת החיצונית של 18.10, F2). כאן: המספרים
+   במילים (יום, 1 עד 31, בזכר ובנקבה; שנה, 1900 עד 2099) והלוח העברי (ההמרה אליו וממנו והכתיב שלו באותיות). parseDate
+   קורא בעזרתם, ו-fakeDate כותב את התאריך המוזז באותו כתיב. tests/datewords_t.js */
+
+// היחידות והעשרות בכתיב התקני, שבו התאריך המוזז נכתב
+const NUMW_M=["","אחד","שניים","שלושה","ארבעה","חמישה","שישה","שבעה","שמונה","תשעה"];
+const NUMW_F=["","אחת","שתיים","שלוש","ארבע","חמש","שש","שבע","שמונה","תשע"];
+const NUMW_TEEN_M=["עשרה","אחד עשר","שנים עשר","שלושה עשר","ארבעה עשר","חמישה עשר","שישה עשר","שבעה עשר","שמונה עשר","תשעה עשר"];
+const NUMW_TEEN_F=["עשר","אחת עשרה","שתים עשרה","שלוש עשרה","ארבע עשרה","חמש עשרה","שש עשרה","שבע עשרה","שמונה עשרה","תשע עשרה"];
+const NUMW_TENS=["","","עשרים","שלושים","ארבעים","חמישים","שישים","שבעים","שמונים","תשעים"];
+// כתיבים נוספים של אותה מילה, שנקראים ואינם נכתבים. «שנים» לבדה אינה שתיים: היא גם «שנים» של זמן («לפני שנים בינואר»)
+const NUMW_ALT={"שניים":["שנים"],"שתיים":["שתים"],"שתים":["שתיים"],"שנים":["שניים"],"שלושה":["שלשה"],"שלוש":["שלש"],
+  "חמישה":["חמשה"],"שישה":["ששה"],"שלושים":["שלשים"],"שישים":["ששים"]};
+// 1 עד 99 במילים; f: נקבה. ו לפני האיבר האחרון («עשרים ואחת»)
+function numWords(n,f){
+  if(n<10)return (f?NUMW_F:NUMW_M)[n];
+  if(n<20)return (f?NUMW_TEEN_F:NUMW_TEEN_M)[n-10];
+  const t=NUMW_TENS[Math.floor(n/10)], u=n%10;
+  return u?t+" ו"+(f?NUMW_F:NUMW_M)[u]:t;
+}
+// כל הכתיבים של צירוף: כל מילה בכתיב שלה או באחד מהנוספים (גם אחרי ו). «שנים» לבדה נשארת מחוץ, כמו שנאמר למעלה
+function numwSpellings(s){
+  let out=[""];
+  for(const w of s.split(" ")){
+    const and=w[0]==="ו"&&NUMW_ALT[w.slice(1)]?"ו":"", base=and?w.slice(1):w, alts=[base,...(NUMW_ALT[base]||[])];
+    out=out.flatMap(o=>alts.map(a=>(o?o+" ":"")+and+a));
+  }
+  return s==="שניים"?out.filter(x=>x!=="שנים"):out;
+}
+/* יום בחודש במילים: מספר יסודי בזכר («שנים עשר ביוני», «ביום שנים עשר בחודש») או בנקבה («שתים עשרה ביוני»), ו«ראשון»
+   לראשון בחודש. style: {f} לכתיבה באותו מין */
+const DAYW=new Map();
+for(let n=1;n<=31;n++) for(const f of [false,true]) for(const s of numwSpellings(numWords(n,f))) if(!DAYW.has(s))DAYW.set(s,{n,f});
+DAYW.set("ראשון",{n:1,f:false,ord:true});
+const dayWords=(n,st)=>numWords(n,!!(st&&st.f));
+/* שנה במילים, 1900 עד 2099, בנקבה כמו שנה («אלפיים עשרים וחמש»): ו לפני האיבר האחרון («אלפיים ואחת», «אלפיים ועשרים»,
+   «אלפיים עשרים וחמש»). נקראים גם היחידות בזכר («אלפיים עשרים וחמישה»), ו נוספת לפני העשרות («אלפיים ועשרים וחמש»),
+   ועשרות עגולות בלי ו («אלפיים עשרים»). style: {f, and} לכתיבה באותו כתיב */
+function yearWords(y,st){
+  const f=!st||st.f!==false, head=y>=2000?"אלפיים":"אלף תשע מאות", r=y>=2000?y-2000:y-1900;
+  if(!r)return head;
+  const w=numWords(r,f);
+  if(r<20||r%10===0)return head+(st&&st.bare&&r>=20&&r%10===0?" ":" ו")+w;
+  return head+" "+(st&&st.and?"ו":"")+w;
+}
+const YEARW=new Map();
+for(let y=1900;y<=2099;y++) for(const f of [true,false]) for(const and of [false,true]) for(const bare of [false,true]){
+  const st={f,and,bare}, r=y%100;
+  if((and&&(r<20||r%10===0))||(bare&&(r<20||r%10)))continue;
+  for(const s of numwSpellings(yearWords(y,st))) if(!YEARW.has(s))YEARW.set(s,{y,f,and,bare});
+}
+/* בתבנית: דקדוק קצר של המילים, לא רשימה של כל הכתיבים (1,060 לשנה: התבנית של התאריכים נבנתה בשליש שנייה, ונבדקה פי
+   תשעה לאט). הוא מקבל גם צירוף שאינו מספר («שלוש עשר»), ו-DAYW ו-YEARW, הרשימות המלאות, הן מה שקורא אותו: מה שאינו בהן
+   אינו תאריך (dateOK, 06-model.js). הארוך קודם בכל חלופה, ורווח אחד או יותר בין המילים */
+const NUMW_UNIT_ALT=[...new Set([...NUMW_M,...NUMW_F].filter(Boolean).flatMap(w=>[w,...(NUMW_ALT[w]||[])]))].sort((a,b)=>b.length-a.length).join("|");
+const NUMW_TEEN_ALT="(?:"+NUMW_UNIT_ALT+") +(?:עשרה|עשר)|עשרה|עשר";
+const NUMW_TENS_ALT=[...new Set(NUMW_TENS.filter(Boolean).flatMap(w=>[w,...(NUMW_ALT[w]||[])]))].join("|");
+const D_DAYW_ALT="(?:"+NUMW_TEEN_ALT+"|(?:עשרים|שלושים|שלשים)(?: +ו(?:"+NUMW_UNIT_ALT+"))?|(?!שנים(?![א-ת]))(?:"+NUMW_UNIT_ALT+")|ראשון)";
+const D_YEARW_ALT="(?:אלף +תשע +מאות|אלפיים)(?: +ו?(?:(?:"+NUMW_TENS_ALT+")(?: +ו(?:"+NUMW_UNIT_ALT+"))?|"+NUMW_TEEN_ALT+"|(?:"+NUMW_UNIT_ALT+")))?";
+
+/* הלוח העברי, בחשבון הקבוע (Reingold ו-Dershowitz, Calendrical Calculations): חודשים 1 ניסן … 6 אלול, 7 תשרי … 12 אדר
+   (אדר א' בשנה מעוברת), 13 אדר ב'. היום נספר מ-1.1.1 בלוח הגרגוריאני (R.D.). tests/datewords_t.js משווה לכל יום בשתי
+   מאות שנים ללוח העברי של Intl */
+const hebLeap=y=>(7*y+1)%19<7;
+function hebElapsed(y){
+  const mo=235*Math.floor((y-1)/19)+12*((y-1)%19)+Math.floor((7*((y-1)%19)+1)/19);
+  const pe=204+793*(mo%1080), he=5+12*mo+793*Math.floor(mo/1080)+Math.floor(pe/1080);
+  let d=1+29*mo+Math.floor(he/24); const parts=1080*(he%24)+pe%1080;
+  if(parts>=19440||(d%7===2&&parts>=9924&&!hebLeap(y))||(d%7===1&&parts>=16789&&hebLeap(y-1)))d++;
+  if(d%7===0||d%7===3||d%7===5)d++;
+  return d;
+}
+const hebYearDays=y=>hebElapsed(y+1)-hebElapsed(y);
+function hebMonthDays(m,y){
+  if(m===2||m===4||m===6||m===10||m===13||(m===12&&!hebLeap(y)))return 29;
+  if(m===8&&hebYearDays(y)%10!==5)return 29;
+  if(m===9&&hebYearDays(y)%10===3)return 29;
+  return 30;
+}
+function hebToRD(d,m,y){
+  let n=d;
+  if(m<7){for(let k=7;k<=(hebLeap(y)?13:12);k++)n+=hebMonthDays(k,y); for(let k=1;k<m;k++)n+=hebMonthDays(k,y)}
+  else for(let k=7;k<m;k++)n+=hebMonthDays(k,y);
+  return n+hebElapsed(y)-1373429;
+}
+function rdToHeb(rd){
+  let y=Math.floor((rd+1373429)/366);
+  while(rd>=hebToRD(1,7,y+1))y++;
+  let m=rd<hebToRD(1,1,y)?7:1;
+  while(rd>hebToRD(hebMonthDays(m,y),m,y))m++;
+  return {d:rd-hebToRD(1,m,y)+1,m,y};
+}
+const gregToRD=(d,m,y)=>Date.UTC(y,m-1,d)/864e5+719163;
+function rdToGreg(rd){const t=new Date((rd-719163)*864e5); return {d:t.getUTCDate(),m:t.getUTCMonth()+1,y:t.getUTCFullYear()}}
+
+// שמות החודשים העבריים, בכתיב שבו התאריך המוזז נכתב; ובכתיבים שנקראים. «אדר» לבדו בשנה מעוברת הוא אדר ב'
+const HMONTHS=[null,"ניסן","אייר","סיוון","תמוז","אב","אלול","תשרי","חשוון","כסלו","טבת","שבט","אדר","אדר ב'"];
+const HMONTH_READ=[["ניסן",1],["אייר",2],["איר",2],["סיוון",3],["סיון",3],["תמוז",4],["מנחם אב",5],["אב",5],["אלול",6],["תשרי",7],
+  ["מרחשוון",8],["מרחשון",8],["חשוון",8],["חשון",8],["כסלו",9],["כסליו",9],["טבת",10],["שבט",11],["אדר א'",12],["אדר א",12],
+  ["אדר ראשון",12],["אדר ב'",13],["אדר ב",13],["אדר שני",13],["אדר",0]];
+const D_HMONTH="(?:"+HMONTH_READ.map(([s])=>s.replace(/ /g," +")).sort((a,b)=>b.length-a.length).join("|")+")";
+// אותיות ומספרים: «כ"ג» 23, «ט"ו» 15, «תשפ"ה» 785. האות האחרונה בסופית בשנה («תש"ף»), לא ביום («כ'»)
+const GEMATRIA=[[400,"ת"],[300,"ש"],[200,"ר"],[100,"ק"],[90,"צ"],[80,"פ"],[70,"ע"],[60,"ס"],[50,"נ"],[40,"מ"],[30,"ל"],[20,"כ"],[10,"י"],
+  [9,"ט"],[8,"ח"],[7,"ז"],[6,"ו"],[5,"ה"],[4,"ד"],[3,"ג"],[2,"ב"],[1,"א"]];
+const GEM_VAL=Object.assign(Object.fromEntries(GEMATRIA.map(([v,c])=>[c,v])),{"ך":20,"ם":40,"ן":50,"ף":80,"ץ":90});
+const GEM_FINAL={"כ":"ך","מ":"ם","נ":"ן","פ":"ף","צ":"ץ"};
+function gemValue(s){let n=0; for(const c of s){const v=GEM_VAL[c]; if(!v)return null; n+=v} return n}
+function gemLetters(n){
+  let s="";
+  for(const [v,c] of GEMATRIA.slice(0,4)) while(n>=v){s+=c;n-=v}
+  if(n===15||n===16)return s+"ט"+(n===15?"ו":"ז");
+  for(const [v,c] of GEMATRIA.slice(4)) if(n>=v){s+=c;n-=v}
+  return s;
+}
+// גרש אחרי אות אחת, גרשיים לפני האחרונה; st.g ו-st.gg: הסימנים שהמסמך כתב. plain: בלי סימנים, כמו שהמסמך כתב את היום
+function gemWrite(n,st,fin,plain){
+  let s=gemLetters(n);
+  if(fin&&GEM_FINAL[s.slice(-1)])s=s.slice(0,-1)+GEM_FINAL[s.slice(-1)];
+  if(plain)return s;
+  return s.length===1?s+st.g:s.slice(0,-1)+st.gg+s.slice(-1);
+}
+/* יום בחודש העברי, א' עד ל', אחרי norm, שבו הגרש הוא גרש ישר והגרשיים מירכאות ישרות, וגם בלי סימנים («ד באדר ב תשנ"ז»,
+   כמו בפסקי דין ישנים; השנה אחריו היא הראיה); ושנה בשלוש מאות השנים 5600–5899 (1840–2139), עם ה' של האלפים או ה הידיעה
+   או בלעדיהן */
+const D_HDAY=`(?:י"?[א-דזחט]|ט"?[וז]|כ"?[א-ט]|[א-ט]'?|[יכל]'?)`, D_HYEAR=`(?:ה' ?|ה)?ת[א-ת]{0,2}"[א-ת]`;
+const HEB_DATE_RX=new RegExp(`^(${D_HDAY})( +)([בל]חודש +|[בל]?)(${D_HMONTH})(,? +)(${D_HYEAR})$`,"u");
+/* תאריך בלוח העברי (טקסט אחרי norm; raw לסימנים כמו שנכתבו): יום, חודש ושנה, וההמרה ללוח הגרגוריאני. בלי שנה הוא
+   אינו תאריך כאן: «ט"ו בשבט», «ט' באב» הם חגים */
+function parseHebDate(t,raw){
+  const m=HEB_DATE_RX.exec(t); if(!m)return null;
+  const d=gemValue(m[1].replace(/['"]/g,""));
+  let ys=m[6].replace(/['"]/g,""), thousands=null;
+  if(/^ה' ?/.test(m[6]))thousands=m[6].match(/^ה' ?/)[0], ys=m[6].slice(thousands.length).replace(/['"]/g,"");
+  else if(ys[0]==="ה"&&ys[1]==="ת")thousands="ה", ys=ys.slice(1);
+  const v=gemValue(ys); if(v==null||v<600||v>=900)return null;
+  const hy=5000+v, mon=m[4].replace(/ +/g," "), found=HMONTH_READ.find(([s])=>s===mon);
+  let hm=found[1]; if(!hm)hm=hebLeap(hy)?13:12;
+  if(hm===13&&!hebLeap(hy))hm=12;
+  if(hm===12&&mon!=="אדר"&&!hebLeap(hy))return null;
+  if(!d||d>hebMonthDays(hm,hy))return null;
+  const g=rdToGreg(hebToRD(d,hm,hy)), r=String(raw||"");
+  // הסימנים כמו שנכתבו: ׳ או ', ״ או "
+  const st={g:/׳/.test(r)?"׳":"'",gg:/״/.test(r)?"״":'"',sp:m[2],conn:m[3],yc:m[5],th:thousands==null?"":thousands.replace("'",/׳/.test(r)?"׳":"'"),
+    mon:found[1]?mon:null,hm,fin:/[ךםןףץ]["״]?$/.test(r.trim())||!/[כמנפצ]$/.test(ys),dm:/['"]/.test(m[1])};
+  return {d:g.d,m:g.m,y:g.y,form:"heb",h:st};
+}
+// התאריך המוזז, בלוח העברי ובאותו כתיב
+function writeHebDate(g,st){
+  const h=rdToHeb(gregToRD(g.d,g.m,g.y));
+  let mon=h.m===12&&hebLeap(h.y)?"אדר א'":HMONTHS[h.m];
+  if(st.mon&&HMONTH_READ.find(([s,k])=>s===st.mon&&k===h.m))mon=st.mon;
+  // מי שכותב את היום בלי גרש כותב כך גם את חצי האדר («אדר ב»)
+  mon=mon.replace("'",st.dm?st.g:"");
+  return gemWrite(h.d,st,false,!st.dm)+st.sp+st.conn+mon+st.yc+st.th+gemWrite(h.y-5000,st,st.fin);
+}
+/* תאריך עם יום או שנה במילים: יום (במספר או במילים), חודש, ושנה (בספרות או במילים, או בלי שנה); וחודש ושנה במילים.
+   רק כשיש בו מילים: הכתיב בספרות נקרא ב-parseDate עצמה */
+const WORDS_DATE_RX=new RegExp(`^(?:(\\d{1,2}|${D_DAYW_ALT})( +)([בל]חודש +|[בל]?-?))?(${DATE_MON_ALT})(?:(,? +(?:ב?שנת +)?)(\\d{4}|${D_YEARW_ALT}))?$`,"u");
+function parseWordsDate(t){
+  const m=WORDS_DATE_RX.exec(t); if(!m)return null;
+  // מילים שהדקדוק קיבל ואינן מספר ברשימות («שלוש עשר»): אינן תאריך
+  const words=x=>!!x&&!/^\d/.test(x), dw=words(m[1])?DAYW.get(m[1].replace(/ +/g," ")):null, yw=words(m[6])?YEARW.get(m[6].replace(/ +/g," ")):null;
+  if((words(m[1])&&!dw)||(words(m[6])&&!yw)||(!dw&&!yw))return null;
+  return {d:m[1]?(dw?dw.n:+m[1]):null,m:dateMonth(m[4]),y:m[6]?(yw?yw.y:+m[6]):null,form:m[1]?"wday":"wmy",
+    dw,yw,sp:m[2]||"",conn:m[3]||"",yc:m[5]||"",mtok:m[4]};
+}
+/* לזיהוי בתשובה של ה-AI: יום, שנה ותאריך עברי מסוימים בכל כתיב שנקרא כאן. ה-AI כותב תאריך במילים בספרות או בכתיב
+   אחר, ותאריך עברי בלי ב, בגרש אחר או בלי ה' של האלפים (dateRX, 08-docx.js) */
+const wordsRX=(m,k)=>"(?:"+[...m].filter(([,v])=>k(v)).map(([s])=>s.replace(/ /g,"[\\s\u00a0]+")).sort((a,b)=>b.length-a.length).join("|")+")";
+const dayWordsRX=n=>wordsRX(DAYW,v=>v.n===n), yearWordsRX=y=>wordsRX(YEARW,v=>v.y===y);
+function hebDateRX(f){
+  if(f.d==null||f.y==null)return null;
+  const h=rdToHeb(gregToRD(f.d,f.m,f.y));
+  const gem=(n,fin)=>{const s=gemLetters(n), last=s.slice(-1), L=fin&&GEM_FINAL[last]?"["+last+GEM_FINAL[last]+"]":last;
+    return s.length===1?s+"['׳]?":s.slice(0,-1)+"[\"״]?"+L};
+  const mon=HMONTH_READ.filter(([,k])=>k===h.m||(!k&&(h.m===12||h.m===13))).map(([s])=>s.replace(/'/g,"['׳]").replace(/ /g,"[\\s\u00a0]+"));
+  return gem(h.d,false)+"[\\s\u00a0]+(?:[בל]חודש[\\s\u00a0]+|[בל]?)(?:"+mon.sort((a,b)=>b.length-a.length).join("|")+"),?[\\s\u00a0]+(?:ה['׳]?[\\s\u00a0]?|ה)?"+gem(h.y-5000,true);
+}
+function writeWordsDate(p,d,mo,y,mw){
+  const year=p.y==null?"":p.yc+(p.yw?yearWords(y,p.yw):String(y));
+  if(p.form==="wmy")return mw+year;
+  return (p.dw?dayWords(d,p.dw):String(d))+p.sp+p.conn+mw+year;
 }
 /* ══════════ שמות חלופיים ריאליים ══════════
    הכינוי "פלוני א׳" מעביר את עומס החשיבה למשתמש: הוא עדיין צריך להחליט
@@ -1502,7 +1693,17 @@ const D_DAY="(?:0?[1-9]|[12][0-9]|3[01])", D_MON="(?:0?[1-9]|1[0-2])",
      ו"שעה" ("עד ה-12.3 שעה 12:00") */
   D_TIME="(?:ימים|ימי|שבועות|חודשים|חודשי|שנים|שנות|שנה|שעות|דקות|לילות)(?![א-ת])",
   // חודש ושנה במספרים ("03/2026")
-  D_MY="(?:0?[1-9]|1[0-2])[./-](?:19|20)\\d{2}";
+  D_MY="(?:0?[1-9]|1[0-2])[./-](?:19|20)\\d{2}",
+  /* יום ושנה במילים, ותאריך בלוח העברי (03-dates.js; הביקורת החיצונית של 18.10, F2). יום במילים בלי שנה הוא תאריך רק
+     אחרי מילה שמבשרת תאריך («ביום שנים עשר ביוני») או עם «בחודש»: «שלושה בינואר ושניים בפברואר» הם ספירה. «יום אחד
+     בינואר 2020» ו«פעם אחת במאי» אינם הראשון בחודש. הבדיקות הזולות קודם, כי התבנית נבדקת בכל מקום בטקסט: אות, תחילת
+     מילה (אחרי עד שלוש אותיות שימוש), ורק אז מילה או שתיים (יום במילים הוא לכל היותר שתיים, «שלושים ואחד») ושם של חודש אחריהן, לפני החלופה הארוכה של המילים */
+  D_DAYW="(?:"+D_DAYW_ALT+")", D_YEARW="(?:"+D_YEARW_ALT+")(?![א-ת])",
+  D_WPRE="(?=[א-ת])(?<=(?:^|[^א-ת])[ובלמהש]{0,3})(?=[א-ת]+(?: +[א-ת]+)? +(?:[בל]חודש +|[בל]?-?)"+D_MONTH+")(?!(?<=(?:יום|פעם|ערב|לילה|בוקר|שבוע) +)אח[דת](?![א-ת]))",
+  D_WDATE=D_WPRE+"(?:"+D_DAYW+" +(?:[בל]חודש +|[בל]?-?)"+D_MONTH+",? +(?:ב?שנת +)?(?:\\d{4}(?![0-9])(?!\\s*"+D_CUR+")|"+D_YEARW+")|"+
+    "(?<=(?<![א-ת])ו?(?:ביום|מיום|ליום|בתאריך|מתאריך|לתאריך|תאריך)[: ]*)"+D_DAYW+" +(?:[בל]חודש +|[בל]?-?)"+D_MONTH+"(?![א-ת0-9])|"+
+    D_DAYW+" +[בל]חודש +"+D_MONTH+"(?![א-ת0-9]))",
+  D_HDATE="(?=[א-ל](?:['\"][א-ט]?|[א-ט]?) )(?<=(?:^|[^א-ת'\"])[ובלמה]{0,2})"+D_HDAY+" +(?:[בל]חודש +|[בל]?)"+D_HMONTH+",? +"+D_HYEAR+"(?![א-ת'\"])";
 /* מספר של סעיף, תקנה או נספח בשלוש רמות ("סעיף 5.2.10", "תקנה 12.4.21") נראה כמו תאריך עם שנה בשתי ספרות, והוזז:
    "סעיף 5.9.10" בהסכם, וה-AI ציטט סעיפים שאינם בו (הציד של 11.10). מספר מיד אחרי מילת סעיף אינו תאריך, וגם לא
    מספר ברשימה שהפריט שלפניו בה באותה צורה ("בסעיפים 7.1.12 ו-7.1.13"). פריט בצורה אחרת לפניו הוא סוף הרשימה:
@@ -1527,6 +1728,10 @@ const D_UNTIL_END=new RegExp("(?:"+D_CL_HEAD(D_CL_ONE)+"|"+D_CL_HEAD(D_CL_MANY)+
 function clauseRange(pre,v){ const m=D_UNTIL_END.exec(pre); return !!m&&/^\d{1,3}[./]/.test(v)&&+v.split(/[./]/)[0]===+m[1]; }
 // תאריך במספרים עם שנה בשתי ספרות שהוא סוף טווח של סעיפים (validator של DATE; n ו-i: הטקסט ומקום ההתאמה)
 const notClauseRange=(v,n,i)=>!(n!=null&&/^\d{1,3}[./]\d{1,3}[./]\d{2}$/.test(v)&&clauseRange(n.slice(Math.max(0,i-120),i),v));
+// מה שנראה כתאריך במילים או בלוח העברי ואי אפשר לקרוא אותו כתאריך («ל' בטבת», שאין בו שלושים, «אדר א'» בשנה פשוטה)
+// אינו תאריך: אחרת הוא היה מוחלף בתווית (03-dates.js)
+const D_WORDY=new RegExp("^(?:"+D_DAYW+"|"+D_HDAY+") ","u");
+const dateOK=(v,n,i)=>notClauseRange(v,n,i)&&(!D_WORDY.test(v)||parseDate(v)!=null);
 const D_CLAUSE_END={2:new RegExp(D_CLAUSE(2)+"$","u"),3:new RegExp(D_CLAUSE(3)+"$","u")},
   D_UNIT_AT=new RegExp("^\\s*(?:%|"+D_UNIT+")","u"), D_TIME_AT=new RegExp("^\\s*"+D_TIME,"u"),
   D_VERB_AT=/^\s*(?:גרם|שקל)(?![א-ת])/u, D_CUR_AT=new RegExp("^\\s*"+D_CUR,"u");
@@ -1590,11 +1795,12 @@ const PAT=[
  ["DATE","תאריך",`${NW}(?:${D_NUM4("\\.")}|${D_NUM4("/")}|\\d{1,2}\\.\\d{1,2}/\\d{4}|\\d{1,2}/\\d{1,2}\\.\\d{4})${NWE}|`+
    `${NW}(?=\\d{1,2}[./]\\d{1,2}[./]\\d{2}(?![0-9]))(?<!${D_CLAUSE(3)})(?:${D_NUM2("\\.")}|${D_NUM2("/")}|\\d{1,2}\\.\\d{1,2}/\\d{2}|\\d{1,2}/\\d{1,2}\\.\\d{2})${NWE}|`+
    `${NW}${D_DAY}-${D_MON}-\\d{4}${NWE}|${NW}(?=\\d{1,2}-\\d{1,2}-\\d{2}(?![0-9]))(?<!${D_CLAUSE(3)})${D_DAY}-${D_MON}-\\d{2}${NWE}|`+
-   `${NW}\\d{4}-${D_MON}-${D_DAY}${NWE}|${NW}(?<![0-9][.,])${D_DAY}\\s+(?:[בל]חודש\\s+|[בל]?-?)${D_MONTH}(?:,? +(?:ב?שנת\\s+)?\\d{4}(?![0-9])(?!\\s*${D_CUR}))?(?![א-ת0-9])|`+
-   `(?=[א-ת])(?<!(?:^|[^0-9.,/:])[0-9]{1,2}\\s+(?:[בל]חודש\\s+|[בל]?-?))(?<=(?:^|[^א-ת])[ובלמהשכ]{0,3}-?)${D_MONTH},? +(?:ב?שנת\\s+)?(?:19|20)\\d{2}(?![0-9])(?!\\s*${D_CUR})|`+
+   `${NW}\\d{4}-${D_MON}-${D_DAY}${NWE}|${NW}(?<![0-9][.,])${D_DAY}\\s+(?:[בל]חודש\\s+|[בל]?-?)${D_MONTH}(?:,? +(?:ב?שנת\\s+)?(?:\\d{4}(?![0-9])(?!\\s*${D_CUR})|${D_YEARW}))?(?![א-ת0-9])|`+
+   `${D_WDATE}|${D_HDATE}|`+
+   `(?=[א-ת])(?<!(?:^|[^0-9.,/:])[0-9]{1,2}\\s+(?:[בל]חודש\\s+|[בל]?-?))(?<=(?:^|[^א-ת])[ובלמהשכ]{0,3}-?)${D_MONTH},? +(?:ב?שנת\\s+)?(?:(?:19|20)\\d{2}(?![0-9])(?!\\s*${D_CUR})|${D_YEARW})|`+
    `(?=${D_MY})(?<=(?:(?<![א-ת])[ובלמה]{0,2}(?:חודש|חודשים|תאריך)[:\\s]*|(?<![א-ת])ו?(?:ה|מה)-\\s*)(?:${D_MY}\\s*(?:,|ו|עד|ועד|-|או)-?\\s*){0,120})${D_MY}(?![0-9]|[./][0-9])|`+
    `(?=[0-9])(?<=(?<![א-ת])ו?(?:ביום|מיום|ליום|בתאריך|מתאריך|לתאריך|תאריך)[:\\s]*)${D_DAY}[./]${D_MON}(?![0-9%]|[./-][0-9])|`+
-   `(?=[0-9])(?<=(?<![א-ת])ו?(?:ה|מה)-[:\\s]*)${D_DAY}[./]${D_MON}(?![0-9%]|[./-][0-9]|\\s*${D_UNIT}|(?<=\\.5)\\s*${D_TIME})`,0,notClauseRange,5,1,1],
+   `(?=[0-9])(?<=(?<![א-ת])ו?(?:ה|מה)-[:\\s]*)${D_DAY}[./]${D_MON}(?![0-9%]|[./-][0-9]|\\s*${D_UNIT}|(?<=\\.5)\\s*${D_TIME})`,0,dateOK,5,1,1],
  // כל חלוקה של אותן ספרות (0547-712093, 054-771-20-93), קידומת בסוגריים ((03) 6123456) ורווחים סביב מקף (הציד של 11.10)
  ["PHONE_MOBILE","טלפון נייד",`${NW}(?:\\(0?5\\d\\)\\s?|(?:\\+?972[-\\s]?|0)5\\d)(?:[-\\s.]?\\d){7}${NWE}`,0,null,3,1],
  ["PHONE_LAND","טלפון קווי",`${NW}(?:\\(0?(?:[2-4689]|7\\d)\\)\\s?|(?:\\+?972[-\\s]?|0)(?:[2-4689]|7\\d)(?:\\s?-\\s?|[\\s.])?)\\d(?:[-\\s.]?\\d){6}${NWE}`,0,null,4,1],
@@ -4166,8 +4372,17 @@ function residuePass(files,walked,subs,applied,dateOut){
   for(const s of subs)put(s.value,s.replacement||"[הוסר]",s.kind==="DATE");
   const vals=[...repOf.keys()].sort((a,b)=>b.length-a.length);
   const done=[];
+  // EMF: הערכים, וגם כל מילה של שם בן כמה מילים, כי תוכנה כותבת לפעמים כל מילה בפקודה משלה (emfNames)
+  const emfPairs=[];
+  for(const v of vals){
+    const r=String(repOf.get(v)); emfPairs.push([v,r,dateKey.has(v)]);
+    const vw=v.split(/\s+/), rw=r.split(/\s+/);
+    if(!dateKey.has(v)&&vw.length>1&&vw.length===rw.length)vw.forEach((w,i)=>{ if(w.length>=3&&!COMMON.has(norm(w)))emfPairs.push([w,rw[i],false]) });
+  }
   for(const f of files){
-    if(walked.has(f.name)||!f.name.endsWith(".xml")||f.name==="[Content_Types].xml"||f.name==="docProps/core.xml"||f.name==="docProps/app.xml")continue;
+    if(/\.emf$/i.test(f.name)){ const c=emfNames(f.data,emfPairs,dateOut); if(c){f.data=c;done.push(f.name)} continue; }
+    // SVG הוא XML: הטקסט שבו מוחלף כמו בכל חלק שלא נקרא (dropSvgCopies)
+    if(walked.has(f.name)||!(f.name.endsWith(".xml")||/\.svg$/i.test(f.name))||f.name==="[Content_Types].xml"||f.name==="docProps/core.xml"||f.name==="docProps/app.xml")continue;
     const o=TXT.decode(f.data); let s=o;
     for(const v of vals){
       const r=XESC(repOf.get(v)), d=dateOut&&dateKey.has(v);
@@ -4177,6 +4392,28 @@ function residuePass(files,walked,subs,applied,dateOut){
     if(s!==o){f.data=ENC.encode(s);done.push(f.name)}
   }
   return done}
+/* שמות שברשימה בטקסט של תמונת EMF (UTF-16, בכל פקודה, גם בעותק של EMF+), באותו אורך, כדי שאף מבנה בקובץ לא יזוז:
+   הכינוי מרופד ברווחים או מקוצר. לא בתוך מילה ארוכה יותר. מה שלא ברשימה נשאר, כמו כל טקסט בתמונה (הביקורת החיצונית של
+   18.10, F3). pairs: [ערך, כינוי, תאריך?] */
+function emfNames(u,pairs,dateOut){
+  let out=null;
+  const heb=c=>c>=0x05D0&&c<=0x05EA, at=(a,i)=>i>=0&&i+1<a.length?a[i]|(a[i+1]<<8):0;
+  for(const [v,r,d] of pairs){
+    if(v.length<2||!/[א-ת0-9]/.test(v))continue;
+    const fit=(r+" ".repeat(v.length)).slice(0,v.length), pat=new Uint8Array(2*v.length);
+    for(let i=0;i<v.length;i++){pat[2*i]=v.charCodeAt(i)&255; pat[2*i+1]=v.charCodeAt(i)>>8}
+    const a=out||u;
+    for(let i=a.indexOf(pat[0]);i>=0&&i+pat.length<=a.length;i=a.indexOf(pat[0],i+1)){
+      let k=1; while(k<pat.length&&a[i+k]===pat[k])k++;
+      if(k<pat.length||heb(at(a,i-2))||heb(at(a,i+pat.length)))continue;
+      if(!out)out=new Uint8Array(u);
+      for(let j=0;j<fit.length;j++){out[i+2*j]=fit.charCodeAt(j)&255; out[i+2*j+1]=fit.charCodeAt(j)>>8}
+      if(d&&dateOut)dateOut.push(fit.trim());
+      i+=pat.length-1;
+    }
+  }
+  return out;
+}
 
 // התאריך המלא הראשון שכתוב בטקסט, כ-YYYY-MM-DD, או null
 function isoDateIn(s){
@@ -4254,10 +4491,140 @@ function stripPng(u){
   if(p<u.length)changed=true;
   return changed?cat(out):null;
 }
+/* ועוד (הביקורת החיצונית של 18.10, F3): GIF, WebP, TIFF ו-EMF יצאו כמו שהם. GIF: יוצאות ההערות (Comment Extension)
+   ו-XMP. WebP: יוצאים EXIF ו-XMP, והדגלים שלהם בכותרת. TIFF: התגים שבהם טקסט (תיאור, מחבר, מצלמה, תוכנה, תאריך,
+   זכויות, XMP, IPTC) מתאפסים במקומם, וכך גם כל מה שבתת-התיקיות של EXIF ו-GPS; המבנה עצמו לא זז. EMF: התיאור שבכותרת
+   מתאפס (ושמות שברשימה בטקסט שבו מוחלפים ב-residuePass). מה שלא נקרא עד סופו נשאר כמו שהוא (null) */
+function stripGif(u){
+  const sig=String.fromCharCode(...u.subarray(0,6));
+  if(u.length<13||(sig!=="GIF89a"&&sig!=="GIF87a"))return null;
+  let p=13; if(u[10]&0x80)p+=3*(1<<((u[10]&7)+1));
+  if(p>u.length)return null;
+  const out=[u.subarray(0,p)]; let changed=false, ended=false;
+  // רצף של תת-בלוקים, עד בלוק באורך אפס; המקום שאחריו, או -1
+  const subs=q=>{while(q<u.length){const n=u[q++]; if(!n)return q; q+=n} return -1};
+  while(p<u.length){
+    const b=u[p];
+    if(b===0x3B){out.push(u.subarray(p,p+1)); p++; ended=true; break}
+    if(b===0x21){
+      const label=u[p+1], xmp=label===0xFF&&u[p+2]===11&&String.fromCharCode(...u.subarray(p+3,p+14))==="XMP DataXMP";
+      const q=subs(p+2); if(q<0)return null;
+      if(label===0xFE||xmp)changed=true; else out.push(u.subarray(p,q));
+      p=q; continue;
+    }
+    if(b===0x2C){
+      let q=p+10; if(q>u.length)return null; if(u[p+9]&0x80)q+=3*(1<<((u[p+9]&7)+1));
+      q=subs(q+1); if(q<0)return null;
+      out.push(u.subarray(p,q)); p=q; continue;
+    }
+    return null;
+  }
+  if(!ended)return null;
+  if(p<u.length)changed=true;
+  return changed?cat(out):null;
+}
+function stripWebp(u){
+  if(u.length<12||String.fromCharCode(...u.subarray(0,4))!=="RIFF"||String.fromCharCode(...u.subarray(8,12))!=="WEBP")return null;
+  const out=[]; let p=12, at=12, x=-1, changed=false;
+  while(p+8<=u.length){
+    const id=String.fromCharCode(...u.subarray(p,p+4)), len=u32(u,p+4,true), end=p+8+len+(len&1);
+    if(end>u.length)return null;
+    if(id==="EXIF"||id==="XMP ")changed=true;
+    else{ if(id==="VP8X")x=at; out.push(u.subarray(p,end)); at+=end-p; }
+    p=end;
+  }
+  if(p<u.length)changed=true;
+  if(!changed)return null;
+  const r=cat([u.subarray(0,12),...out]), size=r.length-8;
+  r[4]=size&255; r[5]=(size>>8)&255; r[6]=(size>>16)&255; r[7]=size>>>24;
+  if(x>=0)r[x+8]&=~0x0C;
+  return r;
+}
+const TIFF_TEXT=new Set([269,270,271,272,285,305,306,315,316,700,33432,33723,34377,37510,42016,42032,42033]);
+const TIFF_SIZE={1:1,2:1,3:2,4:4,5:8,6:1,7:1,8:2,9:4,10:8,11:4,12:8,13:4,16:8,17:8,18:8};
+function stripTiff(u){
+  const le=u[0]===0x49&&u[1]===0x49;
+  if(u.length<8||(!le&&!(u[0]===0x4D&&u[1]===0x4D))||u16(u,2,le)!==42)return null;
+  const out=new Uint8Array(u); let changed=false;
+  // all: כל הרשומות של התיקייה (תת-תיקייה של EXIF או GPS); אחרת רק התגים שבהם טקסט. false: לא נקרא עד סופו
+  const wipe=(ifd,all,depth)=>{
+    if(depth>4||ifd+2>u.length)return false;
+    const n=u16(u,ifd,le); if(ifd+2+12*n+4>u.length)return false;
+    for(let k=0;k<n;k++){
+      const e=ifd+2+12*k, tag=u16(u,e,le), type=u16(u,e+2,le), sz=(TIFF_SIZE[type]||1)*u32(u,e+4,le);
+      if(tag===34665||tag===34853){ if(!wipe(u32(u,e+8,le),true,depth+1))return false; continue; }
+      if(!all&&!TIFF_TEXT.has(tag))continue;
+      if(sz<=4)out.fill(0,e+8,e+12);
+      else{ const off=u32(u,e+8,le); if(off+sz>u.length)return false; out.fill(0,off,off+sz); }
+      changed=true;
+    }
+    return true;
+  };
+  let ifd=u32(u,4,le);
+  for(let page=0;ifd&&page<64;page++){
+    if(!wipe(ifd,false,0))return null;
+    ifd=u32(u,ifd+2+12*u16(u,ifd,le),le);
+  }
+  return changed?out:null;
+}
+function stripEmf(u){
+  if(u.length<88||u32(u,0,true)!==1||u32(u,40,true)!==0x464D4520)return null;
+  const n=u32(u,60,true), off=u32(u,64,true);
+  if(!n||off+2*n>u.length)return null;
+  const out=new Uint8Array(u); out.fill(0,off,off+2*n);
+  return out;
+}
 function stripImageMeta(name,u){
   if(/\.(?:jpe?g|jfif)$/i.test(name))return stripJpeg(u);
   if(/\.png$/i.test(name))return stripPng(u);
+  if(/\.gif$/i.test(name))return stripGif(u);
+  if(/\.webp$/i.test(name))return stripWebp(u);
+  if(/\.tiff?$/i.test(name))return stripTiff(u);
+  if(/\.emf$/i.test(name))return stripEmf(u);
   return null;
+}
+/* SVG (הביקורת החיצונית של 18.10, F3): הטקסט שבו כתוב כטקסט, הכותרת (title), התיאור (desc), התוויות (text) והמטא-נתונים,
+   ואיש מהם לא נקרא: «תרשים של …» יצא בקובץ כמו שהוא, והבדיקה האחרונה עברה. Word שומר כל SVG לצד עותק PNG שלו ומציג את
+   ה-SVG; כאן ה-SVG יוצא, וההפניה אליו (svgBlip) איתו, ו-Word מציג את ה-PNG, תמונה כמו כל תמונה אחרת במסמך. מחזיר את
+   החלקים שיצאו. SVG שיש אליו עוד הפניה נשאר, וממנו יוצאים כותרת, תיאור, מטא-נתונים והערות (cleanSvg); שמות שברשימה
+   בטקסט שלו מוחלפים ב-residuePass. tests/pictext_t.js */
+const SVG_EXT=/<(\w+):ext\b[^>]*\buri="\{96DAC541-7B7A-43D3-8B79-37D633B846F1\}"[^>]*>[\s\S]*?<\/\1:ext>/g;
+function partOf(from,target){
+  if(target.startsWith("/"))return target.slice(1);
+  const out=from.split("/").slice(0,-1);
+  for(const s of target.split("/")){ if(s==="..")out.pop(); else if(s&&s!==".")out.push(s); }
+  return out.join("/");
+}
+function dropSvgCopies(files){
+  const cut=new Set(), relsOf=n=>n.replace(/([^/]*)$/,"_rels/$1.rels");
+  for(const f of files){
+    if(!/\.xml$/.test(f.name))continue;
+    const s=TXT.decode(f.data); if(!s.includes("96DAC541"))continue;
+    const ids=[], t=s.replace(SVG_EXT,m=>{const r=/\bembed="([^"]+)"/.exec(m); if(r)ids.push(r[1]); return ""}).replace(/<(\w+):extLst>\s*<\/\1:extLst>/g,"");
+    if(t===s)continue;
+    f.data=ENC.encode(t);
+    const rf=files.find(x=>x.name===relsOf(f.name)); if(!rf)continue;
+    let rs=TXT.decode(rf.data);
+    for(const id of ids){
+      const m=new RegExp(`<Relationship\\b[^>]*\\bId="${esc(id)}"[^>]*/>`).exec(rs); if(!m)continue;
+      const tg=(/\bTarget="([^"]+)"/.exec(m[0])||[])[1];
+      rs=rs.replace(m[0],"");
+      if(tg&&!/TargetMode="External"/.test(m[0]))cut.add(partOf(f.name,tg));
+    }
+    rf.data=ENC.encode(rs);
+  }
+  // SVG שעוד חלק מפנה אליו נשאר
+  for(const rf of files.filter(x=>x.name.endsWith(".rels"))){
+    const from=rf.name.replace(/_rels\/([^/]*)\.rels$/,"$1"), rs=TXT.decode(rf.data);
+    for(const m of rs.matchAll(/<Relationship\b[^>]*>/g)){ const tg=(/\bTarget="([^"]+)"/.exec(m[0])||[])[1]; if(tg)cut.delete(partOf(from,tg)); }
+  }
+  return [...cut];
+}
+function cleanSvg(u){
+  const s=TXT.decode(u);
+  const t=s.replace(/<!--[\s\S]*?-->/g,"").replace(/<(\w+:)?(title|desc|metadata)\b[^>]*\/>/g,"").replace(/<((?:\w+:)?(?:title|desc|metadata))\b[^>]*>[\s\S]*?<\/\1>/g,"")
+    .replace(/\s(?:aria-label|xlink:title|aria-description)="[^"]*"/g,"");
+  return t===s?null:ENC.encode(t);
 }
 async function redactDocx(buf,subs,allow,opt){
   const files=await unzip(buf);
@@ -4266,15 +4633,19 @@ async function redactDocx(buf,subs,allow,opt){
   const chunks=await inlineChunks(files,0);
   // קובץ מוטמע יוצא, ושורה במקומו (dropObjects)
   const objs=dropObjects(files); rep.embedded=objs.files;
+  // SVG שיש לו עותק PNG יוצא, ו-Word מציג את העותק (dropSvgCopies)
+  const svgs=dropSvgCopies(files); rep.svg=svgs.length;
   let keep=files.filter(f=>{
     // התמונה הממוזערת היא צילום של העמוד הראשון, עם כל מה שכתוב בו (ביקורת H10)
-    if(DROP.includes(f.name)||/(?:^|\/)customxml\//i.test(f.name)||f.name.startsWith("docProps/thumbnail.")||chunks.includes(f.name)||objs.gone.includes(f.name)){rep.dropped.push(f.name);return false}
+    if(DROP.includes(f.name)||/(?:^|\/)customxml\//i.test(f.name)||f.name.startsWith("docProps/thumbnail.")||chunks.includes(f.name)||objs.gone.includes(f.name)||svgs.includes(f.name)){rep.dropped.push(f.name);return false}
     return true});
   // הקישורים של חלק שהוסר (ההערות) הולכים איתו: בלעדיו נשארו בקובץ, יתומים (הציד של 11.10)
   {const gone=new Set(rep.dropped.map(n=>n.replace(/([^/]*)$/,"_rels/$1.rels")));keep=keep.filter(f=>!gone.has(f.name))}
   for(const f of keep){
     // תמונה: בלי מקום, מצלמה, תאריך ומחבר (stripImageMeta)
     if(/(?:^|\/)media\/[^/]+$/i.test(f.name)){ const c=stripImageMeta(f.name,f.data); if(c){ f.data=c; rep.img++; } }
+    // SVG שנשאר: בלי כותרת, תיאור, מטא-נתונים והערות (cleanSvg)
+    if(/\.svg$/i.test(f.name)){ const c=cleanSvg(f.data); if(c){ f.data=c; rep.img++; } }
     if(f.name.endsWith(".rels")||f.name==="[Content_Types].xml"){
       let s=TXT.decode(f.data);
       for(const d of rep.dropped){
@@ -5777,6 +6148,13 @@ function dateRX(f,o){
     body=D+"(?<sep>[./-])"+S+"?"+M+"\\k<sep>"+S+"?(?:"+Y+"|"+YY+")|"+Y+"-"+M+"-"+D+"|"+D+S+"+"+CONN+MON+YC+Y+"|"+
       EN+S+"*"+D+"(?:st|nd|rd|th)?,?"+S+"+"+Y+"|"+D+"(?:st|nd|rd|th)?"+S+"+(?:of"+S+"+)?"+EN+",?"+S+"+"+Y;
   }
+  // יום או שנה במילים, ותאריך בלוח העברי (03-dates.js): ה-AI כותב תאריך כזה בספרות, או במילים בכתיב אחר, ואת העברי בלי ב
+  // או בלי ה' של האלפים. בלי זה התאריך המוזז נשאר בתשובה (הביקורת החיצונית של 18.10, F2)
+  if(!o.anyYear){
+    if(f.d==null)body+="|(?<![0-9]"+S+"*)"+MON+YC+yearWordsRX(f.y);
+    else if(f.y==null)body+="|"+dayWordsRX(f.d)+S+"+"+CONN+MON+"(?!"+YC+"(?:[0-9]|אלף))";
+    else body+="|"+dayWordsRX(f.d)+S+"+"+CONN+MON+YC+"(?:"+Y+"|"+yearWordsRX(f.y)+")|"+z(f.d)+S+"+"+CONN+MON+YC+yearWordsRX(f.y)+"|"+hebDateRX(f);
+  }
   return new RegExp((o.range?"":NOT_RANGE_END)+"(?<!["+B+"])(?<pre>(?:"+PRE_SEQ.join("|")+")[-\u05be]?)?(?:"+body+")(?!["+B+"])","giu");
 }
 /* כינוי של תאריך בכתיב שיצא: לא מתוך תאריך ארוך יותר ("27.4" של "27.4.2026", "אפריל 2026" של "27 באפריל 2026"),
@@ -5869,9 +6247,11 @@ function lev(a,b){
    תאריך אחר בתשובה, עד שנה לפני או אחרי התאריכים שהכלי כתב, זז אחורה באותה הזזה ומסומן לבדיקה; תאריך רחוק יותר (חוק
    משנת 1962) נשאר כמו שנכתב, וכך גם תאריך שהוא תאריך אמיתי מהרשימה (היא כתבה אותו בשאלה). ההזזה: של המסמך הפתוח
    (off, בימים), או זו שכל זוגות התאריכים הידועים מסכימים עליה; בלי הזזה אחת ודאית (תיק של כמה מסמכים) כלום לא זז.
-   known: [{f, t}], חלקי התאריך הבדוי והאמיתי. מוסיף ל-took ומחזיר את מה שזז. tests/dateback_t.js */
+   known: [{f, t}], חלקי התאריך הבדוי והאמיתי. מוסיף ל-took ומחזיר את מה שזז. tests/dateback_t.js
+   today: היום, {d, m, y}. הוא אף פעם לא זז (החלטת הבעלים, 18.10): «היום, 18.10.2026» שה-AI כתב הוא היום שלה, לא
+   תאריך שחושב מהמסמך */
 const dayNum=p=>p&&p.d!=null&&p.m?Date.UTC(p.y??dateRefYear(p),p.m-1,p.d)/864e5:null;
-function backDates(txt,took,known,off){
+function backDates(txt,took,known,off,today){
   const fakes=known.map(x=>dayNum(x.f)).filter(Number.isFinite);
   if(!Number.isInteger(off)||!off){
     const offs=new Set(known.map(x=>dayNum(x.f)-dayNum(x.t)).filter(Number.isFinite));
@@ -5892,7 +6272,7 @@ function backDates(txt,took,known,off){
     // קצה של טווח («4-23.12.2026», «23.12-4.1»): לא מחזירים חצי טווח, כמו בתאריכים שהכלי כתב
     if(/[0-9][\s\u00a0]?[-–—־][\s\u00a0]?$/.test(NT.slice(Math.max(0,s-4),s))||/^[\s\u00a0]?[-–—־][\s\u00a0]?[0-9]/.test(NT.slice(e,e+4)))continue;
     const raw=txt.slice(s,e), p=parseDate(raw), n=dayNum(p);
-    if(n==null||n<lo||n>hi||realDays.has(n)||fakeDM.has(p.d+"."+p.m))continue;
+    if(n==null||n<lo||n>hi||realDays.has(n)||fakeDM.has(p.d+"."+p.m)||(p.y!=null&&n===dayNum(today)))continue;
     const now=fakeDate(raw,-off); if(!now||now===raw)continue;
     took.push([s,e,now]); out.push({s,e,was:raw,now});
   }
@@ -6031,7 +6411,7 @@ function restoreNames(txt,pairs,earlier,dateOpt){
     else if(!(WORDLIKE.has(kk)||COMMON.has(kk)||STOP.has(kk)||VRB.has(kk)))toksOnly.set(k,v);
   }
   // תאריכים שה-AI חישב מתאריכים מוזזים: זזים אחורה ומסומנים (backDates)
-  const moved=backDates(txt,took,days,dateOpt&&dateOpt.off);
+  const moved=backDates(txt,took,days,dateOpt&&dateOpt.off,dateOpt&&dateOpt.today);
   let out="",at=0;
   for(const [s,e,t] of took.sort((a,b)=>a[0]-b[0])){out+=txt.slice(at,s)+t;at=e}
   const left=leftOver(txt,took,{conflict,held,bad,reals,seen,partial,toks,dates:lone,wordOne,toksOnly,earlier});
