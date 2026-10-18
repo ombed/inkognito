@@ -1,80 +1,35 @@
-/* Replaces extract.py.
+/* The two files the suites load the engine from, made from redact-engine.js before every run (tests/run.js).
 
-   The suites were written against app.html, the vanilla single-file build,
-   and slice the engine out of its one <script>. This repo splits engine and
-   UI, so there is no app.html to slice. Rather than edit suites whose
-   assertions encode bugs that took a while to find, this regenerates the
-   shape they expect from redact-engine.js, which is byte-identical to the
-   reference engine they were written against.
+   tests/core.js is the engine for the Node suites: one line that hands over scripts/engine-node.js, the one
+   way the suites, the benchmark and the scripts load the engine. It exports every top-level name, and a
+   test that swaps a piece of the engine does it with swap() and the list there.
 
-   The one subtlety is ordering. Each suite cuts the script at the UI
-   divider, then re-appends spans that lived on the UI side of it in the
-   vanilla build. pseudoRX is one such span for every suite: it sits inside
-   the engine here, so it is moved back across the divider, or the generated
-   core declares it twice and refuses to load.
+   tests/app.html is the engine as a page script, for the two suites that run it in jsdom the way a browser
+   would (tests/tok_t.js, tests/diag_t.js); they load the whole page and cut nothing out of it.
 
-   edge.js also appends js.slice(indexOf("const TITLE_RX="), indexOf("function
-   peoAdd(")). That span used to be relocated too. It no longer can be:
-   bodyNames and nerClean reference TITLE_RX, and a core built without it
-   throws inside redactDocx's try and silently loses every suggestion, which
-   is how the real-transcript tool lost its prose-only name. So the span
-   stays in the body, the declaration is spelled with a space so edge.js's
-   indexOf does not find it, and no peoAdd stub is emitted: both markers come
-   back -1 and the appended slice is empty. */
+   Until 18.10 this file also rebuilt the shape of the old single-file build (a UI divider, pseudoRX moved
+   across it, a TITLE_RX spelled with a space), because 22 suites cut their own engine out of app.html at
+   those markers and patched a line in it. They load tests/core.js now, and the markers are gone. */
 const fs = require("fs");
 const path = require("path");
 
 const HERE = __dirname;
 let src = fs.readFileSync(path.join(HERE, "..", "redact-engine.js"), "utf8");
 
-/* What the browser can reach: the engine's own export list. core.js exports all of it,
-   plus the internals the suites reach into. It used to export a hand-written list only, and
-   a suite could pass on a name the shipped engine did not have (review M21: VRB, COMMON and
-   KNOWN_FIRST were undefined in the browser, so page-logic.js classified every verb as
-   "other" there and "verb" here). tests/pagelogic_t.js checks page-logic against SHIPPED. */
-const SHIPPED = [...(src.match(/^export\s*\{([\s\S]*?)\};?[ \t]*$/m) || ["", ""])[1].split(",").map((s) => s.trim()).filter(Boolean),
-  ...[...src.matchAll(/^export\s+(?:async\s+)?(?:function|const|let|class)\s+([A-Za-z_$][\w$]*)/gm)].map((m) => m[1])];
-if (!SHIPPED.length) throw new Error("no export list in redact-engine.js");
-
-// ESM to plain script: the suites load this with require().
+// ESM to plain script, for the page
 src = src.replace(/^export\s+(?=(async\s+)?(function|const|let|class)\b)/gm, "");
 src = src.replace(/^export\s*\{[\s\S]*?\};?[ \t]*$/gm, "");
 
-/* extract.py sliced the vanilla script and so skipped the load-time call to
-   nerFixRegExp, which touches window. Taking the whole engine keeps more
-   coverage but pulls that call in, so the generated files open with the one
-   global it needs. Guarded, because jsdom supplies the real one. */
+/* The engine calls nerFixRegExp when it loads, which touches window, so the page opens with that one global.
+   Guarded, because jsdom supplies the real one. */
 const PRELUDE =
   'if (typeof globalThis.window === "undefined") globalThis.window = globalThis;\n';
 
-const find = (needle) => {
-  const i = src.indexOf(needle);
-  if (i < 0) throw new Error("not found in redact-engine.js: " + needle);
-  return i;
-};
-
-const pseudoStart = find("function pseudoRX(p){");
-const pseudoEnd = src.indexOf("\n}", pseudoStart) + 2;
-const spanPseudo = src.slice(pseudoStart, pseudoEnd);
-const engine = (src.slice(0, pseudoStart) + src.slice(pseudoEnd))
-  .replace("const TITLE_RX=", "const TITLE_RX =");
-if (engine.includes("const TITLE_RX=")) throw new Error("TITLE_RX marker still visible to edge.js");
-
-// Take the divider from a suite rather than retyping 52 box-drawing chars.
-const marker = (fs.readFileSync(path.join(HERE, "e2e.js"), "utf8")
-  .match(/indexOf\('(\/\*[^']*ממשק[^']*\*\/)'\)/) || [])[1];
-if (!marker) throw new Error("could not read the UI divider out of e2e.js");
-
 fs.writeFileSync(path.join(HERE, "app.html"),
-  '<!doctype html><meta charset="utf-8">\n<script>\n' + PRELUDE + engine +
-  "\n" + marker + "\n" +
-  spanPseudo + "\nfunction livePairs(){}\n" +
-  "</script>\n", "utf8");
+  '<!doctype html><meta charset="utf-8">\n<script>\n' + PRELUDE + src + "\n</script>\n", "utf8");
 
-// core.js is required directly, never sliced, so it keeps the original order.
-// INTERNAL is what extract.py used to append: engine internals the suites reach into.
-const INTERNAL = "norm,near1,findNear,restoreNames,fakeName,gender,origin,POOL,STOP,PLACE_BY,Engine,ckey,variants,hord,words,pseudoRX,hash32,dateOffBase,setAliasKey,hmac32,sha256Sync,pickFrom,aliasSeed,unzip,stripJpeg,stripPng,stripImageMeta,exifOrientation,crc32,backDates,dayNum,secondScan,SECOND_NUM,dropObjects,OBJ_NOTE,discover,anchored,partName,ctxHTML,findPlaces,esc,GF,GM,bodyNames,nameish,VRB,COMMON,nerClean,nerChunks,PUBLIC_ORG,nerAlign,nerGroup,fixTokJSON,rxClean,geoNames,placesFound,examplesOf,fakePlace,PAT,fakeOrg,orgHead,GROUP_HEADS,ORG_HEADS,PLACES,ATLAS_TAGS,ATLAS_KEYS,ATLAS_VOCAB,atlasTags,atlasPenalty,atlasDiff,placeKind,NEIGHBORHOODS,STREETS,geoMap,mergeSignals,fakeDate,foldEvidence,tokPieces,namePosition,nerClean,WORDLIKE,trimEdges,verbTail,TOWNWORD,PLACE_ALT,GAZ,AMBIG,IDIOM".split(",");
-const exp = "module.exports={" + [...new Set([...SHIPPED, ...INTERNAL])].join(",") + "}";
-fs.writeFileSync(path.join(HERE, "core.js"), PRELUDE + src + "\n" + exp + ";\n", "utf8");
+fs.writeFileSync(path.join(HERE, "core.js"),
+  "// generated by tests/build-fixtures.js: the engine, as every Node suite loads it\n" +
+  'module.exports = require("../scripts/engine-node.js");\n', "utf8");
 
 console.log("built tests/app.html and tests/core.js from redact-engine.js");

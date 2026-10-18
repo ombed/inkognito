@@ -95,9 +95,11 @@ not a name (ID number, phone, email, bank account, plate, date of birth),
 with valid check digits where the detector verifies them. The corpus is
 committed under `corpus/` with a `.txt` beside each `.docx` for reading.
 
-`engine.js` loads `redact-engine.js` into Node with its full export list;
-`.engine.cjs` is its generated output and is ignored. `engine.js.load(patches)`
-returns the same engine with textual patches applied, for the sweep.
+`engine.js` hands over `scripts/engine-node.js`, the one way Node loads
+`redact-engine.js` (the suites use it too): every top-level name, written once per
+text of the engine to the system's temp folder. `engine.js.load({ patches })`
+returns the same engine with textual patches applied, each matching exactly once,
+for the sweep.
 
 ## The gate
 
