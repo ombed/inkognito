@@ -20,11 +20,11 @@ What each word means in this project, and where it lives in the code. The map of
   `engine/07-engine.js`).
 - **Kind.** What a finding is: a person's name, a body, a place, an ID number, a phone, an address, a date
   and the rest (`KINDS`, `engine/07-engine.js`).
-- **Pattern.** A rule that finds a kind of number or detail by its shape (`PAT`, `engine/06-model.js`). An
+- **Pattern.** A rule that finds a kind of number or detail by its shape (`PAT`, `engine/06-detect-2-patterns.js`). An
   "on" pattern replaces what it finds; a "flag" pattern only marks it for the person.
 - **The model.** A Hebrew name-recognition model (DictaBERT-parse's NER head) that runs in the browser
   (`engine/08-10-model-runtime.js`); what it says is cleaned before it is used (`nerClean`,
-  `engine/06-model.js`).
+  `engine/06-detect-1-model-output.js`).
 - **Suggestion.** A candidate the tool offers for the list: from the rules (`discover`,
   `engine/08-09-discover.js`; `bodyNames`, `engine/05-bodynames.js`), the model, or a near miss.
 - **Near miss.** A spelling of a listed name one letter off: a typo or a transcription slip (`findNear`,
