@@ -25,6 +25,12 @@ Every input becomes a Word file first, so one engine handles all of them. The en
 concatenated by `scripts/build-engine.js` into `redact-engine.js`, the file the browser loads; the screen is
 `page-component.js`, drawn from the template in `index.html` by the runtime in `support.js`.
 
+The numbers in the engine's file names are the order of that concatenation, and the diagram uses them as short
+names (`08-06` is `engine/08-06-redact-docx.js`). The order matters because the files share top-level names:
+lower numbers are the helpers that later files use, and `08`, the Word file, comes last. A second number marks
+the pieces of a file that was split, in the order the code had there, so the concatenated file stayed the same,
+byte for byte, through the split.
+
 ## Where things live
 
 Each suite runs alone with `node tests/<file>`; all of them with `node tests/run.js`.
