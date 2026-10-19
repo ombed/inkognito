@@ -17,7 +17,7 @@
   "shippable": true,
   "tier": 1,
   "trainedOn": ["unknown"],
-  "notes": "Ships today (engine/08-docx.js NER_REV, NER_WEIGHTS). Same bytes as onnx/model_int8.onnx at this revision."
+  "notes": "Ships today (engine/08-10-model-runtime.js NER_REV, NER_WEIGHTS). Same bytes as onnx/model_int8.onnx at this revision."
  },
  {
   "key": "base-fp32",

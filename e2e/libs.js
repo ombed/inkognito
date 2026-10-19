@@ -29,7 +29,7 @@ function installedFile(url) {
 // Subresource Integrity sha384, or the engine's SHA-256 for the runtime; the atlas is data, unpinned
 function named() {
   const read = (f) => fs.readFileSync(path.join(ROOT, f), "utf8");
-  const support = read("support.js"), page = read("index.html") + read("page-component.js"), eng = read("engine/08-docx.js");
+  const support = read("support.js"), page = read("index.html") + read("page-component.js"), eng = read("redact-engine.js");
   const out = [];
   for (const k of ["REACT", "REACT_DOM", "BABEL"]) {
     const url = (support.match(new RegExp(`var ${k}_URL = "([^"]+)"`)) || [])[1];

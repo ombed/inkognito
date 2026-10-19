@@ -26,7 +26,7 @@ Every part of the harness (`bench/model-eval/`) reads and writes these shapes. T
 ```
 
 - `text` for our documents is exactly what the product hands the model: the blocks of
-  `E.readBlocks(buf)`, their `.text` joined with `"\n"` (see `nerRun` in `engine/08-docx.js`).
+  `E.readBlocks(buf)`, their `.text` joined with `"\n"` (see `nerRun` in `engine/08-10-model-runtime.js`).
 - `type` is one of `PER`, `ORG`, `PLACE`. `PLACE` merges GPE, LOC and FAC. Other types are dropped.
 - `must` (our sets only): true for an entity that must be redacted; false for a trap or a public
   body (a negative: proposing it is a false positive).
