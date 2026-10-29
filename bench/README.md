@@ -128,11 +128,19 @@ also what the reader and `discover` found and the restore. The golden outputs ke
 only the redacted text, and the gate counts entities; a change that moves code
 without meaning to change behaviour proves it here.
 
-The corpus runs with five sets of choices: four on `lib.js` `OPT`, which turns on
-five detectors only (the ID number, a mobile phone, an e-mail address, the place
-list, a street address), and the page's own defaults, which turn on every detector
-the engine marks on, the date and the case number among them. `tests/lock_t.js`
-checks that set against the page's `opts()`, so the two cannot drift apart.
+Each corpus document runs the benchmark's chain without the model (`lib.js`
+`runDoc`): a first run with what `discover` offered, and a second with every
+suggestion, near miss and flagged item accepted, each with the kind the benchmark
+gives it (a flagged item, its label's where `LABEL_KIND` has the label).
+`tests/lock_t.js` runs both chains on three documents that hold every kind of item
+and checks that they hand the engine the same.
+
+The choices are not the benchmark's but the lock's five sets: four on `lib.js`
+`OPT`, which turns on five detectors only (the ID number, a mobile phone, an
+e-mail address, the place list, a street address), and the page's own defaults,
+which turn on every detector the engine marks on, the date and the case number
+among them. `tests/lock_t.js` checks that set against the page's `opts()`, so the
+two cannot drift apart.
 
     npm run lock                          # against main: the corpus, 5 sets of choices
     node bench/lock.js --base=<ref>       # against another commit

@@ -4,11 +4,16 @@
    and the first difference is named by its place in the result. The full run is node bench/lock.js --suites.
 
    One set of choices is the page's own defaults: it is checked here against the page's opts(), and a planted change
-   in a detector that only the page turns on (the case number) is found by it and by no other set. */
+   in a detector that only the page turns on (the case number) is found by it and by no other set.
+
+   The corpus runs are the benchmark's chain without the model, as the lock's header says: here, on three documents
+   that hold every kind of item, the lock and bench/lib.js runDoc hand the engine the same rules and the same choices,
+   call by call. */
 const fs = require("fs");
 const path = require("path");
 const L = require("../scripts/engine-node.js");
-const { compare, corpusInputs, firstDiff, CHOICES, PAGE } = require("../bench/lock.js");
+const { compare, corpusInputs, corpusRun, firstDiff, CHOICES, PAGE } = require("../bench/lock.js");
+const { makeBench, KEY } = require("../bench/lib.js");
 
 // the page's own Component class (page-component.js), with a stub DCLogic and a storage of its own, nothing global
 function pageComponent() {
@@ -76,6 +81,42 @@ console.log("\n— one set is the page's own defaults —");
   const f2 = all.filter((x) => /^corpus f2\.docx/.test(x.label));
   const cut = await compare(L, caseCut, f2);
   ok(cut.length >= 1 && cut.every((d) => d.includes(`, ${PAGE}: `)), `found, and only by the page's defaults: ${cut.length} of ${f2.length} runs: ` + cut.join(" | ").slice(0, 300));
+
+  console.log("\n— the corpus runs are the benchmark's chain, without the model —");
+  /* The lock's corpusRun and the benchmark's runDoc on the same engine, every call to redactDocx recorded: the same
+     rules, and the same choices in any order of their fields, with each set. The documents hold every kind of item the
+     second run takes: suggestions, a near miss, and flagged items of a place, a body and an institution. */
+  const canon = (v) => v instanceof Set ? { "@set": [...v] } : Array.isArray(v) ? v.map(canon)
+    : v && typeof v === "object" ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, canon(v[k])])) : v;
+  const firsts = [];
+  async function handed(run) {
+    const calls = [], spy = Object.create(L);
+    spy.redactDocx = async (buf, subs, allow, opt) => {
+      calls.push(canon({ subs, allow, opt }));
+      const r = await L.redactDocx(buf, subs, allow, opt);
+      if (calls.length === 1) firsts.push(r);
+      return r;
+    };
+    L.setAliasKey(null); // a clean engine, as the lock starts each run
+    await run(spy);
+    return calls;
+  }
+  const parted = [];
+  let runs = 0;
+  for (const doc of KEY.docs.filter((d) => ["m1", "f1", "c4"].includes(d.id))) {
+    const bytes = fs.readFileSync(path.join(__dirname, "..", "bench", doc.file));
+    for (const name of Object.keys(CHOICES)) {
+      runs++;
+      const lock = await handed((E) => corpusRun(E, new Uint8Array(bytes).buffer, name));
+      const bench = await handed((E) => makeBench(E, CHOICES[name](E)).runDoc(null, doc));
+      const d = firstDiff(lock, bench, "");
+      if (d) parted.push(`${doc.id}, ${name}: ${d.at}: ${JSON.stringify(d.a)} → ${JSON.stringify(d.b)}`);
+    }
+  }
+  const labels = new Set(firsts.flatMap((r) => (r.flagged || []).map((x) => x.label)));
+  ok(firsts.some((r) => (r.verification.suggest || []).length) && firsts.some((r) => (r.verification.near || []).length)
+    && ["יישוב", "גוף", "מוסד חינוך"].every((l) => labels.has(l)), "the documents hold suggestions, a near miss, and a flagged place, body and institution: " + [...labels].join(", "));
+  ok(runs === 15 && parted.length === 0, `both hand the engine the same, in ${runs} runs: ` + parted.slice(0, 3).join(" | "));
 
   console.log(`\n${pass} passed, ${fail} failed`);
   if (fail) process.exitCode = 1;

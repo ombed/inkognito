@@ -7,8 +7,11 @@
      and the second scan, the names' map and the date offset;
    - every part of the output file, byte for byte (text, pictures, links, properties), and the file itself;
    - for the synthetic corpus also the text the reader found, what discover offered, the second run with every
-     suggestion, near miss and flagged item accepted, and the restore of the redacted text. That is the benchmark's
-     chain without the model, but not with the benchmark's choices: those are the five sets below.
+     suggestion, near miss and flagged item accepted, and the restore of the redacted text. On the corpus the two
+     runs are the benchmark's two (bench/lib.js runDoc) without the model, down to the kind each item goes in with
+     (a flagged item's is its label's, by LABEL_KIND, else its value's): given the same set of choices, both hand
+     the engine the same, which tests/lock_t.js checks on three documents that hold every kind of item. The sets
+     are not the benchmark's own choices but the lock's five, below.
    The golden outputs (bench/golden.js) keep only the redacted text of the corpus, and the recall gate counts
    entities; neither sees the rest.
 
@@ -24,7 +27,7 @@
 const fs = require("fs"), path = require("path"), os = require("os"), crypto = require("crypto");
 const { execFileSync, spawnSync } = require("child_process");
 const L = require("../scripts/engine-node.js");
-const { OPT } = require("./lib.js");
+const { OPT, LABEL_KIND } = require("./lib.js");
 
 const ROOT = path.join(__dirname, "..");
 const CORPUS = path.join(__dirname, "corpus");
@@ -34,7 +37,8 @@ const TODAY = { d: 18, m: 10, y: 2026 };
    what it is handed. The first four are bench/lib.js OPT, which turns on five detectors only (the ID number, a mobile
    phone, an e-mail address, the place list and a street address) and leaves every other detector off, the date and
    the case number among them; the fifth is what the page hands the engine on a fresh visit, every detector the
-   engine marks on. */
+   engine marks on. The benchmark's own set (makeBench) is none of them: it is the page's defaults without the page's
+   styles, key and citations to replace. */
 const fromOPT = (extra) => () => ({ ...OPT, on: new Set(OPT.on), flag: new Set(OPT.flag), body: true, ...extra });
 const PAGE = "the page's defaults";
 const CHOICES = {
@@ -94,7 +98,8 @@ async function corpusRun(E, buf, name) {
   const rules2 = rules.slice();
   for (const x of r1.verification.suggest || []) add(rules2, x.value, kindOf(x.value));
   for (const x of r1.verification.near || []) add(rules2, x.value, (x.near && x.near.kind) || "NAME", x.near && x.near.rep);
-  for (const x of r1.flagged || []) add(rules2, x.value, kindOf(x.value));
+  // a flagged item goes in with its label's kind where LABEL_KIND has one, as in the benchmark; until 30.10 its value's
+  for (const x of r1.flagged || []) add(rules2, x.value, LABEL_KIND[x.label] || kindOf(x.value));
   const r2 = await E.redactDocx(buf.slice(0), rules2, [], choices(name, E));
   out.second = await shot(r2);
   const outBlocks = await E.readBlocks(new Uint8Array(await r2.blob.arrayBuffer()).buffer);
