@@ -40,7 +40,8 @@ const PAGE = "the page's defaults";
 const CHOICES = {
   "five detectors": fromOPT({}),
   labels: fromOPT({ mode: "label" }),
-  "black numbers, no near misses": fromOPT({ numStyle: "black", near: false }),
+  // a number's style is styles["*"], as the page hands it; until 30.10 this set said numStyle, which the engine never reads
+  "black numbers, no near misses": fromOPT({ styles: { "*": "black" }, near: false }),
   "a secret key": fromOPT({ aliasKey: "5eed".repeat(16) }),
   /* page-component.js opts() with the page's first state: built from each engine's own list (E.PAT), as the page
      builds it from the engine it loads; the key of the invented names, which the page makes at random once per

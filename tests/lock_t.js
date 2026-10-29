@@ -36,6 +36,10 @@ const all = corpusInputs();
 {
   const docs = fs.readdirSync(path.join(__dirname, "..", "bench", "corpus")).filter((f) => f.endsWith(".docx")).length;
   ok(docs >= 40 && all.length === docs * 5, `${docs} documents × 5 sets of choices: ${all.length} runs`);
+  // each set runs what its name says: the engine reads a number's style from styles["*"], and never read numStyle
+  const black = CHOICES && CHOICES["black numbers, no near misses"] && CHOICES["black numbers, no near misses"](L);
+  const eng = black && new L.Engine([], [], black, "");
+  ok(eng && eng.styleFor({ type: "ISRAELI_ID" }) === "black" && black.near === false, "«black numbers» blacks an ID number: " + (eng && eng.styleFor({ type: "ISRAELI_ID" })));
 }
 
 console.log("\n— one set is the page's own defaults —");
