@@ -7,13 +7,15 @@
      and the second scan, the names' map and the date offset;
    - every part of the output file, byte for byte (text, pictures, links, properties), and the file itself;
    - for the synthetic corpus also the text the reader found, what discover offered, the second run with every
-     suggestion accepted (as the benchmark runs it), and the restore of the redacted text.
+     suggestion, near miss and flagged item accepted, and the restore of the redacted text. That is the benchmark's
+     chain without the model, but not with the benchmark's choices: those are the five sets below.
    The golden outputs (bench/golden.js) keep only the redacted text of the corpus, and the recall gate counts
    entities; neither sees the rest.
 
-   The documents: the synthetic corpus (bench/corpus), each with four sets of choices; and, with --suites, every
-   document the Node suites hand to redactDocx, recorded by a run of tests/run.js with LOCK_RECORD set
-   (scripts/engine-node.js).
+   The documents: the synthetic corpus (bench/corpus), each with five sets of choices (CHOICES): four on bench/lib.js
+   OPT, which turns on five detectors only, and the page's own defaults, which turn on every detector the engine
+   marks on; and, with --suites, every document the Node suites hand to redactDocx, with the choices each suite
+   handed it, recorded by a run of tests/run.js with LOCK_RECORD set (scripts/engine-node.js).
 
      node bench/lock.js                  # against main, or GATE_BASE_REF as CI sets it
      node bench/lock.js --base=<ref>     # against another commit
@@ -28,14 +30,29 @@ const ROOT = path.join(__dirname, "..");
 const CORPUS = path.join(__dirname, "corpus");
 // restore's "today" is fixed, so the clock cannot make two runs differ
 const TODAY = { d: 18, m: 10, y: 2026 };
+/* The sets of choices, each a function of the engine it is handed to, called afresh each run: the engine may change
+   what it is handed. The first four are bench/lib.js OPT, which turns on five detectors only (the ID number, a mobile
+   phone, an e-mail address, the place list and a street address) and leaves every other detector off, the date and
+   the case number among them; the fifth is what the page hands the engine on a fresh visit, every detector the
+   engine marks on. */
+const fromOPT = (extra) => () => ({ ...OPT, on: new Set(OPT.on), flag: new Set(OPT.flag), body: true, ...extra });
+const PAGE = "the page's defaults";
 const CHOICES = {
-  bench: { body: true },
-  labels: { body: true, mode: "label" },
-  "black numbers, no near misses": { body: true, numStyle: "black", near: false },
-  "a secret key": { body: true, aliasKey: "5eed".repeat(16) },
+  "five detectors": fromOPT({}),
+  labels: fromOPT({ mode: "label" }),
+  "black numbers, no near misses": fromOPT({ numStyle: "black", near: false }),
+  "a secret key": fromOPT({ aliasKey: "5eed".repeat(16) }),
+  /* page-component.js opts() with the page's first state: built from each engine's own list (E.PAT), as the page
+     builds it from the engine it loads; the key of the invented names, which the page makes at random once per
+     browser, is fixed here. tests/lock_t.js checks it against the page's opts(), so the two cannot drift apart. */
+  [PAGE]: (E) => ({
+    on: new Set([...E.PAT.filter((p) => p.on).map((p) => p.n), "PLACES"]),
+    flag: new Set([...E.PAT.filter((p) => !p.on).map((p) => p.n), "NAME_ANCHORED"]),
+    mode: "real", near: true, body: true, prefixes: "normal", aliasKey: "ab12".repeat(16), citeReplace: [],
+    styles: { "*": "blank", DATE: "name" },
+  }),
 };
-// a fresh copy each run: the engine may change what it is handed
-const choices = (name) => ({ ...OPT, on: new Set(OPT.on), flag: new Set(OPT.flag), ...CHOICES[name] });
+const choices = (name, E) => CHOICES[name](E);
 
 const sha = (u8) => crypto.createHash("sha256").update(u8).digest("hex");
 // what can be compared as text: sets and maps in their order, bytes by their hash, functions and undefined named
@@ -71,13 +88,13 @@ async function corpusRun(E, buf, name) {
   out.discover = cands.map((c) => [c.value, c.why]);
   const rules = [];
   for (const c of cands) add(rules, c.value, kindOf(c.value));
-  const r1 = await E.redactDocx(buf.slice(0), rules, [], choices(name));
+  const r1 = await E.redactDocx(buf.slice(0), rules, [], choices(name, E));
   out.first = await shot(r1);
   const rules2 = rules.slice();
   for (const x of r1.verification.suggest || []) add(rules2, x.value, kindOf(x.value));
   for (const x of r1.verification.near || []) add(rules2, x.value, (x.near && x.near.kind) || "NAME", x.near && x.near.rep);
   for (const x of r1.flagged || []) add(rules2, x.value, kindOf(x.value));
-  const r2 = await E.redactDocx(buf.slice(0), rules2, [], choices(name));
+  const r2 = await E.redactDocx(buf.slice(0), rules2, [], choices(name, E));
   out.second = await shot(r2);
   const outBlocks = await E.readBlocks(new Uint8Array(await r2.blob.arrayBuffer()).buffer);
   const text = outBlocks.map((b) => b.text).join("\n");
@@ -141,7 +158,7 @@ function suiteInputs(dir) {
   return { inputs, skipped };
 }
 
-module.exports = { compare, corpusInputs, suiteInputs, corpusRun, firstDiff };
+module.exports = { compare, corpusInputs, suiteInputs, corpusRun, firstDiff, CHOICES, PAGE };
 
 if (require.main === module) {
   (async () => {

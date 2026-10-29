@@ -128,7 +128,13 @@ also what the reader and `discover` found and the restore. The golden outputs ke
 only the redacted text, and the gate counts entities; a change that moves code
 without meaning to change behaviour proves it here.
 
-    npm run lock                          # against main: the corpus, 4 sets of choices
+The corpus runs with five sets of choices: four on `lib.js` `OPT`, which turns on
+five detectors only (the ID number, a mobile phone, an e-mail address, the place
+list, a street address), and the page's own defaults, which turn on every detector
+the engine marks on, the date and the case number among them. `tests/lock_t.js`
+checks that set against the page's `opts()`, so the two cannot drift apart.
+
+    npm run lock                          # against main: the corpus, 5 sets of choices
     node bench/lock.js --base=<ref>       # against another commit
     node bench/lock.js --suites           # also every document the Node suites build
     node bench/lock.js --self             # against itself: the lock sees no noise
