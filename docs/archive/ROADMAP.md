@@ -1,5 +1,8 @@
 # InKognito — the step-up plan
 
+> **Archived, 2026-10-18.** Kept for its history; it no longer describes the code. How the code works
+> today starts at the [README](../../README.md).
+
 > **מצב, 7.9.2026.** ספרינטים A ו-B הושלמו, וכך גם פריטי המחקר ורוב ספרינט C.
 > ההחלטות שנגזרו מכאן, והמדידות שלהן, נמצאות ב-`docs/PLAN-v18.md`,
 > `docs/measurements.md` ו-`CHANGELOG.md`. מה שנשאר פתוח מהמסמך הזה הוא בעיקר

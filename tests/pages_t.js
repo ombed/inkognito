@@ -46,7 +46,9 @@ ok(/\[ -f scripts\/build-forward\.js \]/.test(kind.run), "it asks whether the re
 ok(/echo "kind=forward" >> "\$GITHUB_OUTPUT"/.test(kind.run) && /echo "kind=tool" >> "\$GITHUB_OUTPUT"/.test(kind.run), "and says forward or tool");
 ok(/kind=forward[\s\S]*else[\s\S]*kind=tool/.test(kind.run), "forward when it has it, the tool when it does not");
 ok(/^ {6}kind: \$\{\{ steps\.kind\.outputs\.kind \}\}$/m.test(J.build.head), "the build job hands the kind on to verify");
-const checkout = step("build", (s) => s.uses === "actions/checkout@v4", "that checks out the ref");
+// an action is named without its pin (actions/checkout@<commit> # v4.4.0, below)
+const action = (s) => String(s.uses || "").split("@")[0];
+const checkout = step("build", (s) => action(s) === "actions/checkout", "that checks out the ref");
 ok(index("build", checkout) < index("build", kind), "the kind is read from the ref it checked out");
 
 console.log("\n— the forward for a ref that has its build script —");
@@ -69,13 +71,13 @@ ok(toolCheck.if === "steps.kind.outputs.kind == 'tool'" && /SITE_ROOT: _site/.te
 const version = step("build", (s) => s.id === "version", "that reads the version");
 ok(/grep -o 'גרסה v\[0-9\]\*' _site\/index\.html/.test(version.run) && /"\$KIND" = "tool"/.test(version.run), "the version is read from a tool build only");
 ok(/sha=\$\(git rev-parse HEAD\)/.test(version.run), "and the commit, for every build");
-const upload = step("build", (s) => s.uses === "actions/upload-pages-artifact@v3", "that uploads _site");
+const upload = step("build", (s) => action(s) === "actions/upload-pages-artifact", "that uploads _site");
 ok(!upload.if && /path: _site/.test(upload.text), "whichever was built");
 ok(index("build", kind) < index("build", fwd) && index("build", kind) < index("build", tool) && index("build", version) < index("build", upload), "in order: decide, build, read, upload");
 
 console.log("\n— the live check —");
 ok(/^ {6}KIND: \$\{\{ needs\.build\.outputs\.kind \}\}$/m.test(J.verify.head), "verify knows what was built");
-const vco = step("verify", (s) => s.uses === "actions/checkout@v4", "that checks out the published commit");
+const vco = step("verify", (s) => action(s) === "actions/checkout", "that checks out the published commit");
 const live = step("verify", (s) => /<meta name="inkognito" content="moved">/.test(s.run), "that looks for the moved page's marker");
 ok(live.if === "needs.build.outputs.kind == 'forward'", "only for the forward: " + live.if);
 ok(/curl [^\n]*https:\/\/ombed\.github\.io\/inkognito\/index\.html/.test(live.run), "on the live page");
@@ -98,6 +100,17 @@ ok(/scripts\/build-forward\.js/.test(rollback) && rollback.includes('<meta name=
 const deploy = fs.readFileSync(path.join(ROOT, "README.md"), "utf8").split("## פריסה")[1].split("\n## ")[0];
 ok(/scripts\/build-forward\.js/.test(deploy) && /inkognito\.co\.il/.test(deploy) && /docs\/ROLLBACK\.md/.test(deploy) && /-f ref=live\/vNN/.test(deploy),
   "the README's deploy section says what the address serves and how to roll back");
+
+/* Every action in every workflow runs the code of one commit (the outside review of 18.10, F13: pinned by major
+   tag, an action's owner could change what runs here). The version follows as a comment, for a reader. */
+{
+  const dir = path.join(ROOT, ".github", "workflows");
+  const uses = fs.readdirSync(dir).filter((f) => /\.ya?ml$/.test(f))
+    .flatMap((f) => [...fs.readFileSync(path.join(dir, f), "utf8").matchAll(/^\s*(?:- )?uses: (\S+)(.*)$/gm)].map((m) => [f, m[1], m[2]]));
+  const loose = uses.filter(([, ref, rest]) => !/@[0-9a-f]{40}$/.test(ref) || !/^\s+# v\d+(\.\d+)*\s*$/.test(rest));
+  ok(uses.length >= 10 && !loose.length, `every action is pinned to a commit, with its version beside it (${uses.length}): ` +
+    loose.map(([f, ref]) => f + " " + ref).join(", "));
+}
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exitCode = fail ? 1 : 0;
