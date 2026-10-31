@@ -182,6 +182,138 @@ function splitFake(fake){
   const h=w.length>2&&SUR_PARTS.has(w[1])?2:1;
   return {head:w.slice(0,h),sur:w.slice(h).join(" ")};
 }
+/* כל מילה של המסמך, וגם המילה בלי גרש בסופה («ברקוביץ׳» ← «ברקוביץ») ובלי אות שימוש בתחילתה («וברקוביץ» ← «ברקוביץ»): שם בדוי שהוא
+   מילה אמיתית של המסמך בצורה אחרת הוא אותה מלכודת (12.10: «ברקוביץ», שם משפחה בדוי מהמאגר, נבחר לאדם אחר במסמך שבו
+   «יואב ברקוביץ׳» אמיתי; בבדיקת הדפדפן של v73.13, אחד למאה מפתחות). tests/forbidden_t.js */
+function addForbiddenWords(forbidden,docText){
+  for(const w of wordsOf(norm(docText))){
+    forbidden.add(w);
+    const bare=w.replace(/['"]+$/,"");
+    if(bare!==w&&bare.length>1)forbidden.add(bare);
+    if(bare.length>=4&&PFX.has(bare[0]))forbidden.add(bare.slice(1));
+  }
+}
+// מילה אחרי "הקטין", "האם", "מר" נכנסת ל-firstish, ושם ברשימה שזו המילה הראשונה שלו מקבל ב-gmap את המגדר של ההקשר
+function addContextFirstNames(docText,subs,firstish,gmap){
+  const FCTX=/(?<![\u0590-\u05ff])(הקטינה|הילדה|הבת|האחות|האם|הסבתא|הדודה|גב'|הגב'|גברת|התובעת|הנתבעת|המבקשת|המשיבה|המנוחה|הפעוטה|התינוקת|הנערה|הקטין|הילד|הבן|האח|האב|הסבא|הדוד|מר|התובע|הנתבע|המבקש|המשיב|המנוח|הפעוט|התינוק|הנער)\s*:?\s+([\u05d0-\u05ea][\u05d0-\u05ea'"\u05f3\u05f4-]{1,14})(?![\u0590-\u05ff])/gu;
+  const FEMCTX=new Set(["הקטינה","הילדה","הבת","האחות","האם","הסבתא","הדודה","גב'","הגב'","גברת","התובעת","הנתבעת","המבקשת","המשיבה","המנוחה","הפעוטה","התינוקת","הנערה"]);
+  const nt=norm(docText); let m;
+  while((m=FCTX.exec(nt))){ const w=m[2]; if(STOP.has(w)||COMMON.has(w)||VRB.has(w))continue; firstish.add(w);
+    // השם הפרטי של שם מלא נקבע גם הוא מההקשר: "הקטינה ליה לוי" (סבב QA 1, M2). קודם רק ערך
+    // בן מילה אחת קיבל אותו, וכל ילדה ששמה לא ברשימות קיבלה כינוי של בן
+    for(const s of subs) if(s.kind==="NAME"&&!gmap[s.value]&&norm(s.value).trim().split(/\s+/)[0]===w) gmap[s.value]=FEMCTX.has(m[1])?"f":"m"; }
+}
+// כל אדם עם תחליף: שם המשפחה האמיתי שלו ← שם המשפחה הבדוי שקיבל (הראשון לכל שם משפחה)
+function addCaseSurnames(subs,surOf){
+  for(const s of subs){
+    if((s.kind||"NAME")!=="NAME"||!s.replacement)continue;
+    const k=surKeyOf(s.value), sp=splitFake(s.replacement);
+    if(k&&sp&&sp.sur&&!surOf.has(k)) surOf.set(k,sp.sur);
+  }
+}
+// תחליף שכבר נקבע — ביד או שהוצמד — שמור: הבחירה האוטומטית לאחרים מדלגת
+// עליו ועל כל מילה בו, אחרת "מרים" שהוקלדה למישהי יכולה להיבחר גם למישהו אחר.
+function reserveReplacements(subs,used){
+  for(const s of subs){
+    if(!s.replacement)continue;
+    const nr=norm(s.replacement).trim();
+    used.add(nr); for(const w of nr.split(/\s+/)) if(w) used.add(w);
+  }
+}
+// תחליף שנבחר וכבר מופיע במסמך (nd: הטקסט המנורמל) כמילה אמיתית נרשם ב-collided
+function addCollisions(subs,nd,collided){
+  for(const s of subs){
+    if(!s.replacement||!nd)continue;
+    if(new RegExp(NW+flex(s.replacement)+NWE,"u").test(nd)){
+      // התחליף שנבחר כבר מופיע במסמך כמילה אמיתית. עד כאן זה נמחק בשקט והתחליף
+      // הוחלף בשם אחר בלי לומר. עכשיו הבחירה עומדת, והכרטיס מזהיר.
+      collided.push({value:s.value,rep:s.replacement});
+    }
+  }
+}
+// כלל לכל צורה של כל ערך ברשימה (עם אות שימוש ובלי), וצורה שכבר קיבלה כלל אינה מקבלת עוד אחד.
+// forbidden: מילות המסמך, שבהן צורה עם אות שימוש נבדקת אם היא מילה
+function addListRules(rules,subs,opt,forbidden){
+  const seen=new Set();
+  const protect=new Set(subs.map(x=>x.value));
+  if(typeof PLACE_BY!=="undefined")Object.keys(PLACE_BY).forEach(n=>protect.add(n));
+  for(const s of subs){
+    // גם מקום שאישרה מקבל צורות עם אות שימוש: "במבוא חורון" הוא "מבוא חורון".
+    // בלי זה יישוב שאינו במאגר מאושר, לא נמצא, ומדווח "לא מופיע במסמך".
+    const lvl=(s.kind==="NAME"||s.kind==="ORG"||s.kind==="PLACE")?(opt.prefixes||"normal"):"off";
+    // שם קצר בן מילה אחת ("רון", "גל") — הצורות עם אות שימוש דומות מדי למילים
+    // אחרות, אז הן דורשות אישור. אבל רק כשהשם באמת גם מילה: במסמך שבו שם בן
+    // שלוש אותיות חוזר פעמים רבות, צורות כמו "לגלי" ו"שגלי" סומנו לבדיקה במקום
+    // להיות מוחלפות, והשם נשאר בטקסט עד שהמשתמש/ת מטפל/ת בכל אחת מהן.
+    const nv=norm(s.value).trim();
+    // שם קצר שאושר (Q3 בגרסה 3): הצורות עם אות שימוש מוחלפות, חוץ מצורה שהיא
+    // בעצמה מילה עברית — "לשי" ו"שרן" מוחלפים, "ושם" (ו+שם) נשאר לבדיקה. עד כאן כל
+    // צורה של שם בן שתיים-שלוש אותיות חיכתה לאישור, וצורות כמו "ושי", "לרן",
+    // "שרן" היה צריך להוסיף ביד, אחת-אחת, ו"לשי" עדיין יכול היה לצאת גלוי.
+    const shortSingle = s.kind==="NAME" && nv.split(/\s+/).length===1 && nv.length<=3;
+    const isWord=x=>wordish(x,forbidden);
+    // יישוב שהוא גם מילה או צירוף, שחזר מהתיק (cond, applyProfile בדף): מוחלף רק במופע שהטקסט מראה שהוא מקום,
+    // באותו תחליף; במופע אחר שכבת היישובים שואלת. כלל גורף החליף את «אני חוששת לשלומי» במסמך הבא (הביקורת של 11.10)
+    const cond=s.kind==="PLACE"&&!!s.cond&&typeof placeCond==="function"&&placeCond(nv);
+    for(const [v,pre] of variants(s.value,lvl,protect)){
+      if(seen.has(v))continue; seen.add(v);
+      rules.push({rx:new RegExp(NW+flex(v)+NWE,"gu"),base:s.value,
+        kind:s.kind,rep:s.replacement,style:s.style||null,pre,auto:s.auto,cond,soft:!!pre&&shortSingle&&isWord(norm(v).trim())});
+    }
+    if(s.kind==="ORG")addOrgShortRules(rules,s,lvl,protect,seen);
+  }
+}
+// "עמותת שביל הלב" אושרה: גם "שביל הלב" לבדו הוא אותו גוף, כמו שם משפחה
+// לבדו אצל אדם. אחרת המופע הראשון מוחלף והשני נשאר בטקסט.
+function addOrgShortRules(rules,s,lvl,protect,seen){
+  const hm=/^(עמותת|עמותה|מעון|מרפאת|מכון|קרן|מרכז|אגודת|חברת|בית ספר|בי"ס|ביה"ס|גן ילדים|פנימיית|ישיבת)\s+(.+)$/u.exec(s.value.trim());
+  const rest=hm&&hm[2].trim();
+  if(rest&&(rest.split(/\s+/).length>=2||rest.length>=5)&&!protect.has(rest))
+    for(const [v,pre] of variants(rest,lvl,protect)){
+      if(seen.has(v))continue; seen.add(v);
+      rules.push({rx:new RegExp(NW+flex(v)+NWE,"gu"),base:s.value,kind:s.kind,rep:s.replacement,style:s.style||null,pre,auto:s.auto,soft:false});
+    }
+}
+// הרשימה הלבנה חייבת לתפוס גם צורות עם אות שימוש ("בתל אביב"),
+// אחרת "אל תחליפו" נכשל בשקט על כל מילה עם ב/ל/מ/ה לפניה.
+// אותן אותיות שימוש שהכללים עצמם מכירים (SING ו-DBL ב-02-hebrew.js), ולא רשימה נפרדת:
+// הרשימה שעמדה כאן הכירה 15 מתוך 22 הצורות, ו"שבחיפה" הוחלף גם אחרי "אל תחליפו" (ביקורת H8)
+function allowPatterns(allow){
+  const ALLOW_PRE="(?:"+[...DBL,...SING].join("|")+")?";
+  return (allow||[]).map(a=>new RegExp(
+    "(?<![\\u0590-\\u05ff])"+ALLOW_PRE+
+    flex(a)+NWE,"gu"));
+}
+// "גולדשמיט" ו"תמר גולדשמיט" הם אותו אדם — אותו כינוי, לא שניים.
+function addSurnameAliases(subs,alias){
+  const named=subs.filter(x=>x.kind==="NAME")
+    .sort((a,b)=>b.value.length-a.value.length);
+  for(const short of named){
+    if(short.replacement)continue;
+    const toks=short.value.trim().split(/\s+/);
+    if(toks.length!==1)continue;
+    const full=named.find(f=>f!==short&&f.value.split(/\s+/).length>1&&
+      f.value.split(/\s+/).slice(-1)[0]===toks[0]);
+    if(full)alias[short.value]=full.value;
+  }
+}
+// "שלוה ליבוביץ" ו"שלווה ליבוביץ": עד כאן מוזגו מעצמם כשכל מילה במרחק
+// אות-קריאה. ההחלטה שלה (Q12 בגרסה 2): מיזוג לעולם אינו אוטומטי — מסך השמות מציע
+// אותו (mergeSignals) והיא מקישה. מה שאושר מגיע כאן כ-sameAs על הכלל.
+function addConfirmedMerges(subs,alias){
+  for(const s of subs){
+    if(!s.sameAs||s.sameAs===s.value)continue;
+    if(subs.some(f=>f.value===s.sameAs))alias[s.value]=s.sameAs;
+  }
+}
+// שרשרת (א→ב, ב→ג) נפתרת עד הסוף, בלי מעגלים
+function resolveAliasChains(alias){
+  for(const k of Object.keys(alias)){
+    let t=alias[k], n=0; const seen=new Set([k]);
+    while(alias[t]&&!seen.has(t)&&n++<20){seen.add(t);t=alias[t];}
+    alias[k]=t;
+  }
+}
 class Engine{
   constructor(subs,allow,opt,docText){
     subs=subs.map(x=>({...x}));
@@ -195,38 +327,18 @@ class Engine{
     // אותו, והוא ייראה כאילו הוא שייך למישהו. אוספים את כל מילות המסמך
     // ואוסרים עליהן.
     this.forbidden=new Set();
-    /* וגם המילה בלי גרש בסופה («ברקוביץ׳» ← «ברקוביץ») ובלי אות שימוש בתחילתה («וברקוביץ» ← «ברקוביץ»): שם בדוי שהוא
-       מילה אמיתית של המסמך בצורה אחרת הוא אותה מלכודת (12.10: «ברקוביץ», שם משפחה בדוי מהמאגר, נבחר לאדם אחר במסמך שבו
-       «יואב ברקוביץ׳» אמיתי; בבדיקת הדפדפן של v73.13, אחד למאה מפתחות). tests/forbidden_t.js */
-    if(docText)for(const w of wordsOf(norm(docText))){
-      this.forbidden.add(w);
-      const bare=w.replace(/['"]+$/,"");
-      if(bare!==w&&bare.length>1)this.forbidden.add(bare);
-      if(bare.length>=4&&PFX.has(bare[0]))this.forbidden.add(bare.slice(1));
-    }
+    if(docText)addForbiddenWords(this.forbidden,docText);
     this.gmap={}; for(const s of subs) if(s.g)this.gmap[s.value]=s.g;
     // מה המסמך אומר על מילה בודדת: אחרי "הקטין", "האם", "מר", "התובעת:" היא שם
     // פרטי, והמילה שלפניה מסגירה גם מגדר. זה מכריע שם פרטי מול שם משפחה בשם
     // בדוי, ותוקן כאן אחרי שמסמך אמיתי החליף "עמרי" בשם משפחה ו"נריה" בשם אישה.
     this.firstish=new Set();
-    if(docText){
-      const FCTX=/(?<![\u0590-\u05ff])(הקטינה|הילדה|הבת|האחות|האם|הסבתא|הדודה|גב'|הגב'|גברת|התובעת|הנתבעת|המבקשת|המשיבה|המנוחה|הפעוטה|התינוקת|הנערה|הקטין|הילד|הבן|האח|האב|הסבא|הדוד|מר|התובע|הנתבע|המבקש|המשיב|המנוח|הפעוט|התינוק|הנער)\s*:?\s+([\u05d0-\u05ea][\u05d0-\u05ea'"\u05f3\u05f4-]{1,14})(?![\u0590-\u05ff])/gu;
-      const FEMCTX=new Set(["הקטינה","הילדה","הבת","האחות","האם","הסבתא","הדודה","גב'","הגב'","גברת","התובעת","הנתבעת","המבקשת","המשיבה","המנוחה","הפעוטה","התינוקת","הנערה"]);
-      const nt=norm(docText); let m;
-      while((m=FCTX.exec(nt))){ const w=m[2]; if(STOP.has(w)||COMMON.has(w)||VRB.has(w))continue; this.firstish.add(w);
-        // השם הפרטי של שם מלא נקבע גם הוא מההקשר: "הקטינה ליה לוי" (סבב QA 1, M2). קודם רק ערך
-        // בן מילה אחת קיבל אותו, וכל ילדה ששמה לא ברשימות קיבלה כינוי של בן
-        for(const s of subs) if(s.kind==="NAME"&&!this.gmap[s.value]&&norm(s.value).trim().split(/\s+/)[0]===w) this.gmap[s.value]=FEMCTX.has(m[1])?"f":"m"; }
-    }
+    if(docText)addContextFirstNames(docText,subs,this.firstish,this.gmap);
     this.used=new Set();
     // שם משפחה אמיתי ← שם המשפחה הבדוי שלו (sameSurname). מהתיק קודם: כל אדם עם תחליף, כדי שבן משפחה במסמך הבא יקבל
     // את שם המשפחה הבדוי שהמשפחה כבר קיבלה
     this.surOf=new Map();
-    for(const s of subs){
-      if((s.kind||"NAME")!=="NAME"||!s.replacement)continue;
-      const k=surKeyOf(s.value), sp=splitFake(s.replacement);
-      if(k&&sp&&sp.sur&&!this.surOf.has(k)) this.surOf.set(k,sp.sur);
-    }
+    addCaseSurnames(subs,this.surOf);
     // פרופיל שכופה "יעל רוזן" על מישהי, כשיעל רוזן אמיתית מופיעה במסמך
     // הזה — שתי נשים היו מתמזגות לשם אחד. עדיף לשבור עקביות פעם אחת
     // ולומר את זה, מאשר לערבב שני אנשים.
@@ -237,96 +349,19 @@ class Engine{
     // כינוי שהוצמד לכלל אחרי ריצה (pinned, ראו pinReps בממשק) תקף רק כשהסגנון הוא
     // "שם"; בתווית, ███ או ריק הוא נופל, כדי שהחלפת מצב במסך הבדיקה עדיין תעבוד.
     for(const s of subs) if(s.pinned&&s.replacement&&this.styleFor({type:s.kind,style:s.style})!=="name") s.replacement="";
-    // תחליף שכבר נקבע — ביד או שהוצמד — שמור: הבחירה האוטומטית לאחרים מדלגת
-    // עליו ועל כל מילה בו, אחרת "מרים" שהוקלדה למישהי יכולה להיבחר גם למישהו אחר.
-    for(const s of subs){
-      if(!s.replacement)continue;
-      const nr=norm(s.replacement).trim();
-      this.used.add(nr); for(const w of nr.split(/\s+/)) if(w) this.used.add(w);
-    }
-    for(const s of subs){
-      if(!s.replacement||!nd)continue;
-      if(new RegExp(NW+flex(s.replacement)+NWE,"u").test(nd)){
-        // התחליף שנבחר כבר מופיע במסמך כמילה אמיתית. עד כאן זה נמחק בשקט והתחליף
-        // הוחלף בשם אחר בלי לומר. עכשיו הבחירה עומדת, והכרטיס מזהיר.
-        this.collided.push({value:s.value,rep:s.replacement});
-      }
-    }
-    this.rules=[];const seen=new Set();
-    const protect=new Set(subs.map(x=>x.value));
-    if(typeof PLACE_BY!=="undefined")Object.keys(PLACE_BY).forEach(n=>protect.add(n));
-    for(const s of subs){
-      // גם מקום שאישרה מקבל צורות עם אות שימוש: "במבוא חורון" הוא "מבוא חורון".
-      // בלי זה יישוב שאינו במאגר מאושר, לא נמצא, ומדווח "לא מופיע במסמך".
-      const lvl=(s.kind==="NAME"||s.kind==="ORG"||s.kind==="PLACE")?(opt.prefixes||"normal"):"off";
-      // שם קצר בן מילה אחת ("רון", "גל") — הצורות עם אות שימוש דומות מדי למילים
-      // אחרות, אז הן דורשות אישור. אבל רק כשהשם באמת גם מילה: במסמך שבו שם בן
-      // שלוש אותיות חוזר פעמים רבות, צורות כמו "לגלי" ו"שגלי" סומנו לבדיקה במקום
-      // להיות מוחלפות, והשם נשאר בטקסט עד שהמשתמש/ת מטפל/ת בכל אחת מהן.
-      const nv=norm(s.value).trim();
-      // שם קצר שאושר (Q3 בגרסה 3): הצורות עם אות שימוש מוחלפות, חוץ מצורה שהיא
-      // בעצמה מילה עברית — "לשי" ו"שרן" מוחלפים, "ושם" (ו+שם) נשאר לבדיקה. עד כאן כל
-      // צורה של שם בן שתיים-שלוש אותיות חיכתה לאישור, וצורות כמו "ושי", "לרן",
-      // "שרן" היה צריך להוסיף ביד, אחת-אחת, ו"לשי" עדיין יכול היה לצאת גלוי.
-      const shortSingle = s.kind==="NAME" && nv.split(/\s+/).length===1 && nv.length<=3;
-      const isWord=x=>wordish(x,this.forbidden);
-      // יישוב שהוא גם מילה או צירוף, שחזר מהתיק (cond, applyProfile בדף): מוחלף רק במופע שהטקסט מראה שהוא מקום,
-      // באותו תחליף; במופע אחר שכבת היישובים שואלת. כלל גורף החליף את «אני חוששת לשלומי» במסמך הבא (הביקורת של 11.10)
-      const cond=s.kind==="PLACE"&&!!s.cond&&typeof placeCond==="function"&&placeCond(nv);
-      for(const [v,pre] of variants(s.value,lvl,protect)){
-        if(seen.has(v))continue; seen.add(v);
-        this.rules.push({rx:new RegExp(NW+flex(v)+NWE,"gu"),base:s.value,
-          kind:s.kind,rep:s.replacement,style:s.style||null,pre,auto:s.auto,cond,soft:!!pre&&shortSingle&&isWord(norm(v).trim())});
-      }
-      // "עמותת שביל הלב" אושרה: גם "שביל הלב" לבדו הוא אותו גוף, כמו שם משפחה
-      // לבדו אצל אדם. אחרת המופע הראשון מוחלף והשני נשאר בטקסט.
-      if(s.kind==="ORG"){
-        const hm=/^(עמותת|עמותה|מעון|מרפאת|מכון|קרן|מרכז|אגודת|חברת|בית ספר|בי"ס|ביה"ס|גן ילדים|פנימיית|ישיבת)\s+(.+)$/u.exec(s.value.trim());
-        const rest=hm&&hm[2].trim();
-        if(rest&&(rest.split(/\s+/).length>=2||rest.length>=5)&&!protect.has(rest))
-          for(const [v,pre] of variants(rest,lvl,protect)){
-            if(seen.has(v))continue; seen.add(v);
-            this.rules.push({rx:new RegExp(NW+flex(v)+NWE,"gu"),base:s.value,kind:s.kind,rep:s.replacement,style:s.style||null,pre,auto:s.auto,soft:false});
-          }
-      }
-    }
+    reserveReplacements(subs,this.used);
+    addCollisions(subs,nd,this.collided);
+    this.rules=[];
+    addListRules(this.rules,subs,opt,this.forbidden);
     this.rules.sort((a,b)=>b.rx.source.length-a.rx.source.length);
-    // הרשימה הלבנה חייבת לתפוס גם צורות עם אות שימוש ("בתל אביב"),
-    // אחרת "אל תחליפו" נכשל בשקט על כל מילה עם ב/ל/מ/ה לפניה.
-    // אותן אותיות שימוש שהכללים עצמם מכירים (SING ו-DBL ב-02-hebrew.js), ולא רשימה נפרדת:
-    // הרשימה שעמדה כאן הכירה 15 מתוך 22 הצורות, ו"שבחיפה" הוחלף גם אחרי "אל תחליפו" (ביקורת H8)
-    const ALLOW_PRE="(?:"+[...DBL,...SING].join("|")+")?";
-    this.allow=(allow||[]).map(a=>new RegExp(
-      "(?<![\\u0590-\\u05ff])"+ALLOW_PRE+
-      flex(a)+NWE,"gu"));
+    this.allow=allowPatterns(allow);
     // הצורה המנורמלת של כל ערך מותר, באותו סדר, בשביל השער שב-detect
     this.allowN=(allow||[]).map(a=>norm(a).trim());
     this.cnt={};this.map={};
-    // "גולדשמיט" ו"תמר גולדשמיט" הם אותו אדם — אותו כינוי, לא שניים.
-    const named=subs.filter(x=>x.kind==="NAME")
-      .sort((a,b)=>b.value.length-a.value.length);
     this.alias={};
-    for(const short of named){
-      if(short.replacement)continue;
-      const toks=short.value.trim().split(/\s+/);
-      if(toks.length!==1)continue;
-      const full=named.find(f=>f!==short&&f.value.split(/\s+/).length>1&&
-        f.value.split(/\s+/).slice(-1)[0]===toks[0]);
-      if(full)this.alias[short.value]=full.value;
-    }
-    // "שלוה ליבוביץ" ו"שלווה ליבוביץ": עד כאן מוזגו מעצמם כשכל מילה במרחק
-    // אות-קריאה. ההחלטה שלה (Q12 בגרסה 2): מיזוג לעולם אינו אוטומטי — מסך השמות מציע
-    // אותו (mergeSignals) והיא מקישה. מה שאושר מגיע כאן כ-sameAs על הכלל.
-    for(const s of subs){
-      if(!s.sameAs||s.sameAs===s.value)continue;
-      if(subs.some(f=>f.value===s.sameAs))this.alias[s.value]=s.sameAs;
-    }
-    // שרשרת (א→ב, ב→ג) נפתרת עד הסוף, בלי מעגלים
-    for(const k of Object.keys(this.alias)){
-      let t=this.alias[k], n=0; const seen=new Set([k]);
-      while(this.alias[t]&&!seen.has(t)&&n++<20){seen.add(t);t=this.alias[t];}
-      this.alias[k]=t;
-    }
+    addSurnameAliases(subs,this.alias);
+    addConfirmedMerges(subs,this.alias);
+    resolveAliasChains(this.alias);
     for(const s of subs) if(s.replacement) this.map[ckey(s.kind,s.value)]??=s.replacement;
   }
   blocked(s,e,zones){return zones.some(([a,b])=>a<=s&&e<=b)}
