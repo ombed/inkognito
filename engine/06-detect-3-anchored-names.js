@@ -142,6 +142,7 @@ function wordForm(w,first){
   return COMMON.has(s)||COMMON.has(s.slice(0,-1)+(FINAL[s.slice(-1)]||s.slice(-1)))||(/ת$/.test(s)&&COMMON.has(s.slice(0,-1)+"ה"))}
 // שם פעולה: כותרת של רישום ביומן או נושא של בקשה ("איסוף", "ביקור", "העברה", "תזכורת", "פירוק"), לא אדם
 const VNOUN=/^(?:[א-ת]י[א-ת]ו[א-ת](?:ים|ין)?|ה[א-ת]{2,3}(?:ה|ות)|ת[א-ת]{2}ו[א-ת]ת?)$/;
+const PARTY_ROLE=/(התובע(?:ת)?|הנתבע(?:ת)?|המבקש(?:ת)?|המשיב(?:ה)?|הנאשמת|הנאשם|המערער(?:ת)?|המנוח(?:ה)?)/;
 const knownName=w=>KNOWN_FIRST.has(w)||POOL.he_s.includes(w)||POOL.ar_s.includes(w)||POOL.he_f.includes(w)||POOL.he_m.includes(w)||
   POOL.ar_f.includes(w)||POOL.ar_m.includes(w)||SUR_SUFFIX.test(w);
 /* מועמד בחריץ חלש או בשכן של תווית (הביקורת של 11.10): כל מילה נראית כשם — לא מילת מילוי של דיבור ("תודה",
@@ -357,171 +358,208 @@ function coupleOf(n,c,s,e,a,ctx){
 /* ctx: תווית שעומדת לבדה בשכן (labelOf). הטקסט נקרא כאילו התווית עומדת לפניו, רק בעוגנים שלה, והמיקומים
    חוזרים לטקסט עצמו. בלי ctx, שורת רשימה אינה עוגן. ממצא של שכן נושא near, ו-only כשהשורה היא השם בלבד */
 function anchored(text,ctx){
-  const lead=ctx?ctx.lead:"", L=lead.length;
-  const n=norm(lead+text),out=[],seen=new Set();
-  for(const a of ANCH){
-    if(ctx?!ctx.keys.includes(a.k):a.k==="listitem")continue;
-    if(a.gate&&!a.gate.test(n))continue;
-    // ההקשר של שכן הוא שורה אחרת, ולכן כל קריאה של שכן חלשה: slotOK ומילים של שם (הביקורת של 11.10)
-    const weak=WEAK_ANCH.has(a.k)||!!ctx||!!a.plural;
-    a.rx.lastIndex=0;let m;
-    while((m=a.rx.exec(n))){
-      const stamped=a.k==="speaker"&&STAMP_RX.test(m[0]);
-      for(let g=1;g<m.length;g++){
-        if(!m[g])continue;
-        // גרשיים בסוף מילה הם מירכאה שנסגרת, לא חלק מהשם: 'מאת: "נגה טרכטנגוט" <…>'
-        let raw=m[g].replace(/"+$/,"");
-        let c=cleanName(raw); if(!c)continue;
-        // "פלוני", "פלונית", "אלמוני" הם מציין-מקום של בית המשפט, לא שם. "פלוני בדיון"
-        // נתפס כאן כשם ואז הוחלף, וההחלפה מחקה את המילה שנועדה להסתיר.
-        if(["פלוני","פלונית","אלמוני","אלמונית"].includes(c.split(" ")[0]))continue;
-        // העוגן הפרוזאי בלבד: מילת תפקיד באה גם לפני פועל ("התובעת הגישה בקשה").
-        // מסננים פעלים ומילים נפוצות; לא nameish, שדוחה שמות כמו הדס.
-        // בכתב טענות השמות מעטים ומילות התפקיד רבות: "הח"מ סבורה", "הקטין ביקש", "בפני מי
-        // מההורים". פועל, מילה נפוצה או מילת תפקיד בתוך המועמד פוסלים אותו, בכל העוגנים.
-        if(a.k!=="speaker"&&!anchorOK(c)){
-          // "הקטינה אגם פעמיים": התבנית בולעת את המילה שאחרי השם, המועמד
-          // הדו-מילתי נדחה, ואיתו נופל גם השם עצמו. מנסים שוב את המילה
-          // הראשונה לבדה. רק בעוגני התפקיד, שבהם מילת התפקיד כבר קבעה
-          // שמה שבא אחריה הוא שם. לא בצד ברבים: "המערערים: יורשי המנוח" אינו «יורשי»
-          const w1=((a.k==="role"&&!a.plural)||a.k==="rolep"||a.k==="carep")?c.split(" "):[];
-          if(w1.length<2||!anchorOK(w1[0]))continue;
-          c=w1[0];
-        }
-        // "המבקשת הביאה", "המשיבה המציאה", "המבקש להעברת מדורו": אחרי מילת תפקיד בגוף
-        // הטקסט בא בדרך כלל פועל, לא שם. מילה יחידה שנפתחת ב-ה' ואינה שם פרטי מוכר
-        // נדחית; שמות כמו הדס, הילה והלל נמצאים ברשימות ולכן עוברים.
-        if(a.k==="rolep"||a.k==="carep"){const cw=c.split(/\s+/);
-          if(cw.length===1&&c[0]==="ה"&&!KNOWN_FIRST.has(c))continue;
-          if(cw.length>1&&cw.every(x=>x[0]==="ה"||PFX.has(x[0])))continue;}
-        // מילת תפקיד טיפולית באה גם לפני תואר ("פסיכולוגית קלינית", "מדריך נוער"),
-        // לפני פועל ("המנהל סיכמנו") ולפני מילת יחס ("למורה שלך"). המילה הראשונה
-        // אחריה חייבת להיראות כשם פרטי: מוכרת מהרשימות, או שאינה מילה, פועל, תואר
-        // או שייכות. ארבע הצעות עודפות על הקורפוס נולדו בלי הבדיקה הזאת.
-        // "הפסיכולוג שלו, ברקוביץ": מילת השייכות אחרי התפקיד אינה חלק מהשם —
-        // מקלפים אותה ובודקים את מה שאחריה, במקום להציע "שלו ברקוביץ"
-        if(a.k==="carep"){const cw0=c.split(/\s+/); if(cw0.length>1&&/^של[ךכםןנהוי]?$/.test(norm(cw0[0])))c=cw0.slice(1).join(" ");}
-        if(a.k==="carep"||a.k==="self"){const f=norm(c.split(/\s+/)[0]);
-          // "קוראים לי עכשיו", "המורה שלה עכשיו": תואר-פועל או מילת עצירה אחרי העוגן אינם שם
-          if(STOP.has(f)||COMMON.has(f)||VRB.has(f)||/^(?:עכשיו|היום|כאן|פה|שם|גם|רק|כבר|אחרת|ככה|כך|תמיד|אולי|לפעמים)$/.test(f))continue;
-          if(!KNOWN_FIRST.has(f)){
-            if(/^של[ךכםןנהוי]?$/.test(f)||/(?:נו|תי|ית|יים|יות)$/.test(f))continue;
-            // "מדריך נוער", "אחות ראשית", "מטפלת משפחתית": הזנב של תפקיד מורכב, לא שם
-            if(CARE_TAIL.has(f))continue;
-            if(!nameish(f,new Set()))continue;
-          }}
-        // תור דיבור: "מועד אחרון לתגובה:" ו"בעניין הקטין:" הם תוויות, לא דוברים
-        // מילה נפוצה שהיא גם שם פרטי מוכר ("דוד" — גם דוד של הילד) אינה פוסלת דובר בן שתיים-שלוש
-        // מילים: "דוד כהן:" פעמיים הוא אדם, ובלי המודל הוא נשמט מהרשימה. דובר של מילה אחת נשאר זהיר.
-        const csp=c.split(/\s+/), firstName=w=>POOL.he_m.includes(w)||POOL.he_f.includes(w)||POOL.ar_m.includes(w)||POOL.ar_f.includes(w)||FEM.has(w)||MASC.has(w);
-        if(a.k==="speaker"&&csp.some(w=>FORMLABEL.has(w)||STOP.has(w)||(COMMON.has(w)&&!(csp.length>1&&firstName(w)))||VRB.has(w)||ROLEWORD.test(w)||
-          (NOT_PERSON.has(w)&&!knownName(w))))continue;
-        // "סיכמנו:" ו"הבנתי:" הם פועל בגוף ראשון לפני נקודתיים, לא דובר. רק מילה
-        // בודדת: "אברה ברהנו:" הוא דובר, ו"ברהנו" נגמר ב-נו כמו פועל.
-        // המילה הראשונה נבדקת גם כשאחריה שם משפחה: "אמרנו כהן:" פותח בפועל.
-        if(a.k==="speaker"){const f0=norm(c.split(/\s+/)[0]); if(/(?:נו|תי)$/.test(f0)&&!KNOWN_FIRST.has(f0)&&(!/\s/.test(c)||f0.length>3))continue;}
-        /* אחרי חותמת של שיחה בא גם רישום ביומן, "12.3.2026, 16:00 - איסוף: …", ושם התווית חוזרת ומילאה את הרשימה
-           (הביקורת של 11.10). דובר שהניקוי קיצץ ("מספר לא ידוע") אינו שם; מילה רגילה או נטייה שלה ("שיחת וידאו")
-           אינה שם; ומילה אחת שאינה שם מוכר אינה שם כשהיא קצרה, מיודעת או שם פעולה ("איסוף", "העברה", "תזכורת") */
-        if(stamped){
-          if(raw.trim().split(/\s+/).join(" ")!==c)continue;
-          const sw=c.split(/\s+/);
-          if(sw.some((w,i)=>!knownName(w)&&(NOT_NAME.has(w)||wordForm(w,i===0))))continue;
-          if(sw.length===1&&!knownName(c)&&(c.length<3||c[0]==="ה"||VNOUN.test(c)))continue;
-          // וכל מילה שלו נבדקת כמו בחריץ: שם פעולה, מילת מילוי, נטייה או רבים ("איסוף מהגן", "העברה בנקאית", "צעקות
-          // בטלפון") אינם שולח (ביקורת שנייה, 11.10)
-          if(!slotWords(c,true))continue;
-        }
-        let s=m.index+m[0].indexOf(m[g]); const o=m[g].indexOf(c); if(o>0)s+=o;
-        let e=s+c.length;
-        if(s<L)continue;
-        // בשכן של תווית השם פותח את השורה: "התובעת:" ואחריה "המשרד להגנת הסביבה" אינה «להגנת»
-        if(ctx&&o>0)continue;
-        /* שם פרטי שנעצר לפני מילה שנפתחת ב-ו (MAIL_END, ADDR_END, NEAR_END, או המילה הראשונה של מועמד שנפסל): אדם נוסף
-           רק כשאחרי ו' בא שם פרטי מוכר. אחרת זה שם המשפחה שלו, שנפתח ב-ו ("לכבוד שירה ולדמן היקרה", "מאת: אורי וקנין
-           מנהל חשבונות"): עד כאן נשאל השם הפרטי לבדו, ואחרי האישור שם המשפחה האמיתי נשאר ליד שם בדוי (ביקורת שנייה,
-           11.10). מילה שנראית כשם נקראת עם השם; מילה רגילה ("ומשפחתה") משאירה אותו כמו שהוא */
-        {const vm=/^[\s\u0000]+(ו-?([א-ת][א-ת'"-]+))(?![א-ת'"-])/u.exec(n.slice(e));
-         if(vm&&!/\s/.test(c)&&!KNOWN_FIRST.has(vm[2])){
-           const c2=c+" "+vm[1];
-           if(anchorOK(c2)&&slotWords(c2,true)){c=c2; raw=c2; e+=vm[0].length;}
-         }}
-        const parts=(COUPLE_ANCH.has(a.k)&&coupleOf(n,c,s,e,a,ctx))||[{c,s,e,raw}];
-        for(const p of parts){
-          const k=p.s+":"+p.e; if(seen.has(k))continue;
-          // נמען או שולח נוסף אחרי ו' אינו מתחיל בתוך שם שכבר נמצא: ה-ו של "ולדמן" אינה "ו" של אדם נוסף ("מאת: שירה
-          // ולדמן מחיפה" הציע את «לדמן מחיפה», ביקורת שנייה)
-          if(a.gate&&out.some(o=>o.s<p.e-L&&p.s-L<o.e))continue;
-          seen.add(k);
-          const rest=n.slice(p.e).replace(/\u0000/g,"");
-          const viaIni=BEFORE_INI.test(n.slice(Math.max(0,p.s-6),p.s)), viaTitle=BEFORE_TITLE.test(n.slice(Math.max(0,p.s-16),p.s));
-          // "ר' תצהיר האם", "ר' ההחלטה", "א. פירוק השיתוף": אחרי "ראו" או אות של סעיף בא מסמך או נושא, לא שם משפחה
-          if(viaIni&&!knownName(p.c)&&(p.c[0]==="ה"||DOC_WORD.has(p.c)||VNOUN.test(p.c)))continue;
-          if(weak){
-            if(!slotOK(p.raw,p.c))continue;
-            // מילה אחת בחריץ חלש רק כשהיא שם מוכר, או אחרי אות ראשונה או תואר, או בשדה של שם. שדה של מי שהוא אדם או
-            // חברה ("שם הקבלן: א.ב. בנייה", "שם הספק: אלקטרה") אינו נותן מילה אחת שאינה שם (ביקורת שנייה)
-            const org=FIELD_ORG.test(n.slice(Math.max(0,p.s-40),p.s));
-            if(org&&!/\s/.test(p.c)&&!knownName(p.c))continue;
-            const one=p.pair||viaIni||viaTitle||(ctx?ctx.keys.some(x=>x==="field"||x==="fieldx"):a.k==="fieldx");
-            if(!slotWords(p.c,one))continue;
-            // "בעניין: פירוק שיתוף", "בעניין: יישוב סכסוך", "בעניין: קיום צוואה": נושא הבקשה נפתח בשם פעולה
-            const f=p.c.split(" ")[0]; if(a.k==="matter"&&(VNOUN.test(f)||MATTER_W.has(f))&&!knownName(f))continue;
-          }
-          // וגם מקצוע או משרה אחרי השם מסיימים אותו ("דנה וייס מנהלת הלשכה" מתחת ל"לכבוד", ביקורת שנייה)
-          const w1=(/^\s+([א-ת"']+)/u.exec(rest)||[])[1];
-          if(ctx&&!NEAR_END.test(rest)&&!(w1&&(NOT_PERSON.has(w1)||SLOT_HEAD.has(w1))))continue;
-          if(a.k==="addressee"&&!ctx&&/^\s*,/.test(rest)){
-            const w1=rest.replace(/^\s*,\s*/,"").split(/[\s,]+/)[0]||"";
-            if(!ADDR_REST.test(rest)&&!PLACE_BY[w1]&&!ROLE1.includes(w1))continue;
-          }
-          let role=null;
-          if(a.k==="role"||a.k==="rolep"){
-            const rm=/(התובע(?:ת)?|הנתבע(?:ת)?|המבקש(?:ת)?|המשיב(?:ה)?|הנאשמת|הנאשם|המערער(?:ת)?|המנוח(?:ה)?)/.exec(m[0]);
-            if(rm)role=rm[1];
-          }
-          // המסמך עצמו מעיד על המגדר טוב יותר מכל ניחוש לפי השם
-          const ctx0=n.slice(Math.max(0,m.index-26),p.s+p.c.length+26);
-          const gh=GF.test(ctx0)?"f":GM.test(ctx0)?"m":null;
-          const h={s:p.s-L,e:p.e-L,type:"NAME_ANCHORED",label:"שם (לפי הקשר)",text:text.slice(p.s-L,p.e-L),
-            why:(ctx&&ctx.why)||a.w,anchor:(ctx&&ctx.as)||a.k,src:"pattern",prio:2,conf:"medium",role,g:gh};
-          /* שכן של תווית ממלא את הרשימה רק כשהשורה היא השם בלבד, ורק עם ראיה של שם: מילה שהיא שם מוכר (known), או אותו
-             שם במקום אחר במסמך (discover). "המבקשת:" מעל "מהנדסת תוכנה" או "עובדת ניקיון" מילאה את הרשימה (ביקורת שנייה) */
-          if(ctx){h.near=true; h.only=!rest.trim(); h.known=p.c.split(/\s+/).some(knownName);
-            // שורה ממוספרת ברשימת צדדים ("1. נגה טרכטנגוט" מתחת ל"התובעים:") היא ראיה של כותרת תיק
-            h.numbered=!!ctx.list&&/^[\s\u0000]*\(?\d{1,2}[.)]/.test(n.slice(L));}
-          /* "הנתבע - מתנגד נחרצות" בפרוטוקול: באותה שורה, מה שנפתח במילת מילוי, בפועל, בבינוני של פועל או בשם פעולה
-             נשאר הצעה ואינו ממלא את הרשימה. לא שם משפחה שנגמר כמו רבים ("נסים", "מרגליות") או נראה כשם פעולה
-             ("מימון"): אחרי שם פרטי מוכר הוא שם משפחה (ביקורת שנייה) */
-          else if(a.k==="role"){const f0=p.c.split(/\s+/)[0];
-            if(!KNOWN_FIRST.has(f0)&&!knownName(f0)&&(FILLER.has(f0)||VRB.has(f0)||NOT_NAME.has(f0)||VNOUN.test(f0)||
-              /^מת[א-ת]{3,}$/.test(f0)||wordForm(f0,true)))h.unsure=true;}
-          // חצי של זוג אינו ממלא את הרשימה מעצמו (coupleOf), וגם לא שולח אחרי חותמת שאף מילה שלו אינה שם מוכר
-          if(p.pair)h.pair=true;
-          // שולח אחרי חותמת ממלא את הרשימה רק כשאחת המילים שלו היא שם מוכר: תווית ביומן נראית אותו דבר (ביקורת שנייה)
-          if(stamped&&!p.c.split(/\s+/).some(knownName))h.weakSpk=true;
-          out.push(h);
-        }
-      }}}
+  const lead=ctx?ctx.lead:"";
+  // st: מה שכל השלבים חולקים. out ו-seen גדלים לאורך הקריאה, והעוגנים הלטיניים רואים את מה שהעבריים כבר מצאו
+  const st={text,ctx,L:lead.length,n:norm(lead+text),out:[],seen:new Set()};
+  for(const a of ANCH)if(anchorApplies(a,st))hebrewAnchorHits(a,st);
   // שם באותיות לטיניות אחרי אותן תוויות (LAT_ANCH); בשכן של תווית, רק כשהשורה נגמרת אחריו
-  for(const a of LAT_ANCH){
-    if(ctx&&!ctx.keys.includes(a.k))continue;
-    a.rx.lastIndex=0;let m;
-    while((m=a.rx.exec(n))){
-      const c=m[1].replace(/\s+/g," ").trim(); if(!latinOK(c))continue;
-      const s=m.index+m[0].lastIndexOf(m[1]), e=s+m[1].length; if(s<L)continue;
-      const k=s+":"+e; if(seen.has(k))continue; seen.add(k);
-      const rest=n.slice(e).replace(/\u0000/g,"");
-      if(ctx&&!NEAR_END.test(rest))continue;
-      const rm=a.k==="role"&&/(התובע(?:ת)?|הנתבע(?:ת)?|המבקש(?:ת)?|המשיב(?:ה)?|הנאשמת|הנאשם|המערער(?:ת)?|המנוח(?:ה)?)/.exec(m[0]);
-      // המגדר מהתווית ומהמסמך, כמו בשם עברי ("הקטינה: Léa Dubois" מקבלת שם בדוי של אישה)
-      const c0=n.slice(Math.max(0,m.index-26),e+26), gh=GF.test(c0)?"f":GM.test(c0)?"m":null;
-      const h={s:s-L,e:e-L,type:"NAME_ANCHORED",label:"שם (לפי הקשר)",text:text.slice(s-L,e-L),why:(ctx&&ctx.why)||a.w,
-        anchor:(ctx&&ctx.as)||a.k,src:"pattern",prio:2,conf:"medium",role:rm?rm[1]:null,g:gh,latin:true};
-      if(ctx){h.near=true; h.only=!rest.trim(); h.known=false;}
-      out.push(h);
-    }}
-  return out}
+  for(const a of LAT_ANCH)if(!ctx||ctx.keys.includes(a.k))latinAnchorHits(a,st);
+  return st.out}
+// האם העוגן רץ על הטקסט הזה: בשכן רק העוגנים של התווית, בלי שכן לא שורת רשימה, ועוגן עם gate רק כשהטקסט מתאים לו
+function anchorApplies(a,{n,ctx}){
+  if(ctx?!ctx.keys.includes(a.k):a.k==="listitem")return false;
+  return !(a.gate&&!a.gate.test(n))}
+// כל ההתאמות של עוגן עברי אחד, וכל קבוצה נתפסת בהן, אל st.out
+function hebrewAnchorHits(a,st){
+  // ההקשר של שכן הוא שורה אחרת, ולכן כל קריאה של שכן חלשה: slotOK ומילים של שם (הביקורת של 11.10)
+  const weak=WEAK_ANCH.has(a.k)||!!st.ctx||!!a.plural;
+  a.rx.lastIndex=0;let m;
+  while((m=a.rx.exec(st.n))){
+    const stamped=a.k==="speaker"&&STAMP_RX.test(m[0]);
+    for(let g=1;g<m.length;g++){
+      if(!m[g])continue;
+      const cand=nameCandidate(m[g],a,stamped); if(!cand)continue;
+      candidateHits(st,a,m,g,cand,weak,stamped);
+    }}}
+// הקבוצה שנתפסה, מנוקה ונבדקת כשם לפי סוג העוגן: {raw, c}, או null כשאינה שם
+function nameCandidate(group,a,stamped){
+  // גרשיים בסוף מילה הם מירכאה שנסגרת, לא חלק מהשם: 'מאת: "נגה טרכטנגוט" <…>'
+  const raw=group.replace(/"+$/,"");
+  let c=cleanName(raw); if(!c)return null;
+  // "פלוני", "פלונית", "אלמוני" הם מציין-מקום של בית המשפט, לא שם. "פלוני בדיון"
+  // נתפס כאן כשם ואז הוחלף, וההחלפה מחקה את המילה שנועדה להסתיר.
+  if(["פלוני","פלונית","אלמוני","אלמונית"].includes(c.split(" ")[0]))return null;
+  // העוגן הפרוזאי בלבד: מילת תפקיד באה גם לפני פועל ("התובעת הגישה בקשה").
+  // מסננים פעלים ומילים נפוצות; לא nameish, שדוחה שמות כמו הדס.
+  // בכתב טענות השמות מעטים ומילות התפקיד רבות: "הח"מ סבורה", "הקטין ביקש", "בפני מי
+  // מההורים". פועל, מילה נפוצה או מילת תפקיד בתוך המועמד פוסלים אותו, בכל העוגנים.
+  if(a.k!=="speaker"&&!anchorOK(c)){c=roleFirstWord(c,a); if(c===null)return null;}
+  if(!proseRoleOK(c,a))return null;
+  c=careName(c,a); if(c===null)return null;
+  if(a.k==="speaker"&&!speakerOK(c))return null;
+  if(stamped&&!stampedOK(raw,c))return null;
+  return {raw,c}}
+/* "הקטינה אגם פעמיים": התבנית בולעת את המילה שאחרי השם, המועמד
+   הדו-מילתי נדחה, ואיתו נופל גם השם עצמו. מנסים שוב את המילה
+   הראשונה לבדה. רק בעוגני התפקיד, שבהם מילת התפקיד כבר קבעה
+   שמה שבא אחריה הוא שם. לא בצד ברבים: "המערערים: יורשי המנוח" אינו «יורשי» */
+function roleFirstWord(c,a){
+  const w1=((a.k==="role"&&!a.plural)||a.k==="rolep"||a.k==="carep")?c.split(" "):[];
+  if(w1.length<2||!anchorOK(w1[0]))return null;
+  return w1[0]}
+// "המבקשת הביאה", "המשיבה המציאה", "המבקש להעברת מדורו": אחרי מילת תפקיד בגוף
+// הטקסט בא בדרך כלל פועל, לא שם. מילה יחידה שנפתחת ב-ה' ואינה שם פרטי מוכר
+// נדחית; שמות כמו הדס, הילה והלל נמצאים ברשימות ולכן עוברים.
+function proseRoleOK(c,a){
+  if(a.k!=="rolep"&&a.k!=="carep")return true;
+  const cw=c.split(/\s+/);
+  if(cw.length===1&&c[0]==="ה"&&!KNOWN_FIRST.has(c))return false;
+  return !(cw.length>1&&cw.every(x=>x[0]==="ה"||PFX.has(x[0])))}
+// מילת תפקיד טיפולית באה גם לפני תואר ("פסיכולוגית קלינית", "מדריך נוער"),
+// לפני פועל ("המנהל סיכמנו") ולפני מילת יחס ("למורה שלך"). המילה הראשונה
+// אחריה חייבת להיראות כשם פרטי: מוכרת מהרשימות, או שאינה מילה, פועל, תואר
+// או שייכות. ארבע הצעות עודפות על הקורפוס נולדו בלי הבדיקה הזאת.
+// מחזיר את המועמד (בלי מילת השייכות), או null כשאינו שם
+function careName(c,a){
+  // "הפסיכולוג שלו, ברקוביץ": מילת השייכות אחרי התפקיד אינה חלק מהשם —
+  // מקלפים אותה ובודקים את מה שאחריה, במקום להציע "שלו ברקוביץ"
+  if(a.k==="carep"){const cw0=c.split(/\s+/); if(cw0.length>1&&/^של[ךכםןנהוי]?$/.test(norm(cw0[0])))c=cw0.slice(1).join(" ");}
+  if(a.k!=="carep"&&a.k!=="self")return c;
+  const f=norm(c.split(/\s+/)[0]);
+  // "קוראים לי עכשיו", "המורה שלה עכשיו": תואר-פועל או מילת עצירה אחרי העוגן אינם שם
+  if(STOP.has(f)||COMMON.has(f)||VRB.has(f)||/^(?:עכשיו|היום|כאן|פה|שם|גם|רק|כבר|אחרת|ככה|כך|תמיד|אולי|לפעמים)$/.test(f))return null;
+  if(KNOWN_FIRST.has(f))return c;
+  if(/^של[ךכםןנהוי]?$/.test(f)||/(?:נו|תי|ית|יים|יות)$/.test(f))return null;
+  // "מדריך נוער", "אחות ראשית", "מטפלת משפחתית": הזנב של תפקיד מורכב, לא שם
+  if(CARE_TAIL.has(f))return null;
+  return nameish(f,new Set())?c:null}
+function speakerOK(c){
+  // תור דיבור: "מועד אחרון לתגובה:" ו"בעניין הקטין:" הם תוויות, לא דוברים
+  // מילה נפוצה שהיא גם שם פרטי מוכר ("דוד" — גם דוד של הילד) אינה פוסלת דובר בן שתיים-שלוש
+  // מילים: "דוד כהן:" פעמיים הוא אדם, ובלי המודל הוא נשמט מהרשימה. דובר של מילה אחת נשאר זהיר.
+  const csp=c.split(/\s+/), firstName=w=>POOL.he_m.includes(w)||POOL.he_f.includes(w)||POOL.ar_m.includes(w)||POOL.ar_f.includes(w)||FEM.has(w)||MASC.has(w);
+  if(csp.some(w=>FORMLABEL.has(w)||STOP.has(w)||(COMMON.has(w)&&!(csp.length>1&&firstName(w)))||VRB.has(w)||ROLEWORD.test(w)||
+    (NOT_PERSON.has(w)&&!knownName(w))))return false;
+  // "סיכמנו:" ו"הבנתי:" הם פועל בגוף ראשון לפני נקודתיים, לא דובר. רק מילה
+  // בודדת: "אברה ברהנו:" הוא דובר, ו"ברהנו" נגמר ב-נו כמו פועל.
+  // המילה הראשונה נבדקת גם כשאחריה שם משפחה: "אמרנו כהן:" פותח בפועל.
+  const f0=norm(c.split(/\s+/)[0]);
+  return !(/(?:נו|תי)$/.test(f0)&&!KNOWN_FIRST.has(f0)&&(!/\s/.test(c)||f0.length>3))}
+/* אחרי חותמת של שיחה בא גם רישום ביומן, "12.3.2026, 16:00 - איסוף: …", ושם התווית חוזרת ומילאה את הרשימה
+   (הביקורת של 11.10). דובר שהניקוי קיצץ ("מספר לא ידוע") אינו שם; מילה רגילה או נטייה שלה ("שיחת וידאו")
+   אינה שם; ומילה אחת שאינה שם מוכר אינה שם כשהיא קצרה, מיודעת או שם פעולה ("איסוף", "העברה", "תזכורת") */
+function stampedOK(raw,c){
+  if(raw.trim().split(/\s+/).join(" ")!==c)return false;
+  const sw=c.split(/\s+/);
+  if(sw.some((w,i)=>!knownName(w)&&(NOT_NAME.has(w)||wordForm(w,i===0))))return false;
+  if(sw.length===1&&!knownName(c)&&(c.length<3||c[0]==="ה"||VNOUN.test(c)))return false;
+  // וכל מילה שלו נבדקת כמו בחריץ: שם פעולה, מילת מילוי, נטייה או רבים ("איסוף מהגן", "העברה בנקאית", "צעקות
+  // בטלפון") אינם שולח (ביקורת שנייה, 11.10)
+  return slotWords(c,true)}
+// המועמד במקומו בטקסט, מורחב בשם משפחה שנפתח ב-ו ומפוצל לזוג; כל חלק שעובר את הבדיקות נכנס ל-st.out
+function candidateHits(st,a,m,g,cand,weak,stamped){
+  const {n,L,ctx}=st;
+  let {raw,c}=cand;
+  let s=m.index+m[0].indexOf(m[g]); const o=m[g].indexOf(c); if(o>0)s+=o;
+  let e=s+c.length;
+  if(s<L)return;
+  // בשכן של תווית השם פותח את השורה: "התובעת:" ואחריה "המשרד להגנת הסביבה" אינה «להגנת»
+  if(ctx&&o>0)return;
+  ({c,raw,e}=withVavSurname(n,c,raw,e));
+  const parts=(COUPLE_ANCH.has(a.k)&&coupleOf(n,c,s,e,a,ctx))||[{c,s,e,raw}];
+  for(const p of parts){const h=partHit(st,a,m,p,weak,stamped); if(h)st.out.push(h);}}
+/* שם פרטי שנעצר לפני מילה שנפתחת ב-ו (MAIL_END, ADDR_END, NEAR_END, או המילה הראשונה של מועמד שנפסל): אדם נוסף
+   רק כשאחרי ו' בא שם פרטי מוכר. אחרת זה שם המשפחה שלו, שנפתח ב-ו ("לכבוד שירה ולדמן היקרה", "מאת: אורי וקנין
+   מנהל חשבונות"): עד כאן נשאל השם הפרטי לבדו, ואחרי האישור שם המשפחה האמיתי נשאר ליד שם בדוי (ביקורת שנייה,
+   11.10). מילה שנראית כשם נקראת עם השם; מילה רגילה ("ומשפחתה") משאירה אותו כמו שהוא */
+function withVavSurname(n,c,raw,e){
+  const vm=/^[\s\u0000]+(ו-?([א-ת][א-ת'"-]+))(?![א-ת'"-])/u.exec(n.slice(e));
+  if(vm&&!/\s/.test(c)&&!KNOWN_FIRST.has(vm[2])){
+    const c2=c+" "+vm[1];
+    if(anchorOK(c2)&&slotWords(c2,true)){c=c2; raw=c2; e+=vm[0].length;}
+  }
+  return {c,raw,e}}
+// חלק אחד של מועמד (אדם, או חצי של זוג) כממצא, או null כשנפסל. מוסיף ל-st.seen אחרי בדיקת החפיפה ולפני שאר הבדיקות
+function partHit(st,a,m,p,weak,stamped){
+  const {text,n,L,ctx,out,seen}=st;
+  const k=p.s+":"+p.e; if(seen.has(k))return null;
+  // נמען או שולח נוסף אחרי ו' אינו מתחיל בתוך שם שכבר נמצא: ה-ו של "ולדמן" אינה "ו" של אדם נוסף ("מאת: שירה
+  // ולדמן מחיפה" הציע את «לדמן מחיפה», ביקורת שנייה)
+  if(a.gate&&out.some(o=>o.s<p.e-L&&p.s-L<o.e))return null;
+  seen.add(k);
+  const rest=n.slice(p.e).replace(/\u0000/g,"");
+  const viaIni=BEFORE_INI.test(n.slice(Math.max(0,p.s-6),p.s)), viaTitle=BEFORE_TITLE.test(n.slice(Math.max(0,p.s-16),p.s));
+  // "ר' תצהיר האם", "ר' ההחלטה", "א. פירוק השיתוף": אחרי "ראו" או אות של סעיף בא מסמך או נושא, לא שם משפחה
+  if(viaIni&&!knownName(p.c)&&(p.c[0]==="ה"||DOC_WORD.has(p.c)||VNOUN.test(p.c)))return null;
+  if(weak&&!weakSlotOK(st,a,p,viaIni,viaTitle))return null;
+  if(ctx&&!nearLineOK(rest))return null;
+  if(a.k==="addressee"&&!ctx&&!addresseeRestOK(rest))return null;
+  const role=(a.k==="role"||a.k==="rolep")?partyRole(m[0]):null;
+  const h={s:p.s-L,e:p.e-L,type:"NAME_ANCHORED",label:"שם (לפי הקשר)",text:text.slice(p.s-L,p.e-L),
+    why:(ctx&&ctx.why)||a.w,anchor:(ctx&&ctx.as)||a.k,src:"pattern",prio:2,conf:"medium",role,g:genderNear(n,m.index,p.s+p.c.length)};
+  markHit(h,st,a,p,rest,stamped);
+  return h}
+// הבדיקות של עוגן חלש (WEAK_ANCH, או כל קריאה של שכן)
+function weakSlotOK({n,ctx},a,p,viaIni,viaTitle){
+  if(!slotOK(p.raw,p.c))return false;
+  // מילה אחת בחריץ חלש רק כשהיא שם מוכר, או אחרי אות ראשונה או תואר, או בשדה של שם. שדה של מי שהוא אדם או
+  // חברה ("שם הקבלן: א.ב. בנייה", "שם הספק: אלקטרה") אינו נותן מילה אחת שאינה שם (ביקורת שנייה)
+  const org=FIELD_ORG.test(n.slice(Math.max(0,p.s-40),p.s));
+  if(org&&!/\s/.test(p.c)&&!knownName(p.c))return false;
+  const one=p.pair||viaIni||viaTitle||(ctx?ctx.keys.some(x=>x==="field"||x==="fieldx"):a.k==="fieldx");
+  if(!slotWords(p.c,one))return false;
+  // "בעניין: פירוק שיתוף", "בעניין: יישוב סכסוך", "בעניין: קיום צוואה": נושא הבקשה נפתח בשם פעולה
+  const f=p.c.split(" ")[0]; return !(a.k==="matter"&&(VNOUN.test(f)||MATTER_W.has(f))&&!knownName(f))}
+// בשכן של תווית: השורה נגמרת אחרי השם (NEAR_END)
+function nearLineOK(rest){
+  // וגם מקצוע או משרה אחרי השם מסיימים אותו ("דנה וייס מנהלת הלשכה" מתחת ל"לכבוד", ביקורת שנייה)
+  const w1=(/^\s+([א-ת"']+)/u.exec(rest)||[])[1];
+  return NEAR_END.test(rest)||!!(w1&&(NOT_PERSON.has(w1)||SLOT_HEAD.has(w1)))}
+// "לכבוד פסח, קיבלו הילדים": אחרי פסיק בשורה של הנמען באה כתובת, תואר, ת"ז, יישוב או תפקיד (ADDR_REST)
+function addresseeRestOK(rest){
+  if(!/^\s*,/.test(rest))return true;
+  const w1=rest.replace(/^\s*,\s*/,"").split(/[\s,]+/)[0]||"";
+  if(!ADDR_REST.test(rest)&&!PLACE_BY[w1]&&!ROLE1.includes(w1))return false;
+  return true}
+// התפקיד בתווית ("התובעת: …"), לעוגן תפקיד עברי או לטיני
+function partyRole(s){const rm=PARTY_ROLE.exec(s); return rm?rm[1]:null}
+// המסמך עצמו מעיד על המגדר טוב יותר מכל ניחוש לפי השם
+function genderNear(n,from,to){
+  const c0=n.slice(Math.max(0,from-26),to+26);
+  return GF.test(c0)?"f":GM.test(c0)?"m":null}
+// הסימנים על הממצא שקובעים אם הוא ממלא את הרשימה או נשאר הצעה
+function markHit(h,{n,L,ctx},a,p,rest,stamped){
+  /* שכן של תווית ממלא את הרשימה רק כשהשורה היא השם בלבד, ורק עם ראיה של שם: מילה שהיא שם מוכר (known), או אותו
+     שם במקום אחר במסמך (discover). "המבקשת:" מעל "מהנדסת תוכנה" או "עובדת ניקיון" מילאה את הרשימה (ביקורת שנייה) */
+  if(ctx){h.near=true; h.only=!rest.trim(); h.known=p.c.split(/\s+/).some(knownName);
+    // שורה ממוספרת ברשימת צדדים ("1. נגה טרכטנגוט" מתחת ל"התובעים:") היא ראיה של כותרת תיק
+    h.numbered=!!ctx.list&&/^[\s\u0000]*\(?\d{1,2}[.)]/.test(n.slice(L));}
+  /* "הנתבע - מתנגד נחרצות" בפרוטוקול: באותה שורה, מה שנפתח במילת מילוי, בפועל, בבינוני של פועל או בשם פעולה
+     נשאר הצעה ואינו ממלא את הרשימה. לא שם משפחה שנגמר כמו רבים ("נסים", "מרגליות") או נראה כשם פעולה
+     ("מימון"): אחרי שם פרטי מוכר הוא שם משפחה (ביקורת שנייה) */
+  else if(a.k==="role"){const f0=p.c.split(/\s+/)[0];
+    if(!KNOWN_FIRST.has(f0)&&!knownName(f0)&&(FILLER.has(f0)||VRB.has(f0)||NOT_NAME.has(f0)||VNOUN.test(f0)||
+      /^מת[א-ת]{3,}$/.test(f0)||wordForm(f0,true)))h.unsure=true;}
+  // חצי של זוג אינו ממלא את הרשימה מעצמו (coupleOf), וגם לא שולח אחרי חותמת שאף מילה שלו אינה שם מוכר
+  if(p.pair)h.pair=true;
+  // שולח אחרי חותמת ממלא את הרשימה רק כשאחת המילים שלו היא שם מוכר: תווית ביומן נראית אותו דבר (ביקורת שנייה)
+  if(stamped&&!p.c.split(/\s+/).some(knownName))h.weakSpk=true;}
+// כל ההתאמות של עוגן לטיני אחד אל st.out, עם אותו seen כמו העבריים
+function latinAnchorHits(a,st){
+  const {text,n,L,ctx,out,seen}=st;
+  a.rx.lastIndex=0;let m;
+  while((m=a.rx.exec(n))){
+    const c=m[1].replace(/\s+/g," ").trim(); if(!latinOK(c))continue;
+    const s=m.index+m[0].lastIndexOf(m[1]), e=s+m[1].length; if(s<L)continue;
+    const k=s+":"+e; if(seen.has(k))continue; seen.add(k);
+    const rest=n.slice(e).replace(/\u0000/g,"");
+    if(ctx&&!NEAR_END.test(rest))continue;
+    // המגדר מהתווית ומהמסמך, כמו בשם עברי ("הקטינה: Léa Dubois" מקבלת שם בדוי של אישה)
+    const h={s:s-L,e:e-L,type:"NAME_ANCHORED",label:"שם (לפי הקשר)",text:text.slice(s-L,e-L),why:(ctx&&ctx.why)||a.w,
+      anchor:(ctx&&ctx.as)||a.k,src:"pattern",prio:2,conf:"medium",role:a.k==="role"?partyRole(m[0]):null,g:genderNear(n,m.index,e),latin:true};
+    if(ctx){h.near=true; h.only=!rest.trim(); h.known=false;}
+    out.push(h);
+  }}
 // העוגנים קוראים את מה שהקורא רואה: בלי סימני כיוון ותווים בלתי נראים (squeeze), והמיקומים חוזרים לטקסט עצמו
 function anchoredSeen(text,ctx){
   const t=String(text||""), q=squeeze(t); if(!q)return anchored(t,ctx);

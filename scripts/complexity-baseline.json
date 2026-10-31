@@ -1,7 +1,7 @@
 {
  "note": "Written by node scripts/complexity.js --baseline; read by --check and tests/complexity_t.js. Functions above the limit, by name.",
  "limit": 12,
- "deep": 85,
+ "deep": 55,
  "typed": [
   "engine/03-fakenames.js",
   "engine/globals.d.ts",
@@ -10,7 +10,6 @@
  "functions": {
   "redactDocx": 274,
   "make/Component/renderVals": 242,
-  "anchored": 148,
   "bodyNames": 113,
   "nerClean": 112,
   "flatten": 101,
@@ -65,6 +64,7 @@
   "coupleOf": 22,
   "make/Component/docReset": 22,
   "make/Component/tourNext": 22,
+  "partHit": 22,
   "pctDecode": 22,
   "placePool": 22,
   "joinFields": 21,
@@ -105,10 +105,12 @@
   "nerPrepTokenizer": 16,
   "nerRun": 16,
   "notDateAt": 16,
+  "careName": 15,
   "dropSvgCopies": 15,
   "fakeName": 15,
   "make/Component/caseKind": 15,
   "make/Component/run": 15,
+  "markHit": 15,
   "nerChunks": 15,
   "renameBookmarks": 15,
   "foldEvidence": 14,
@@ -128,6 +130,7 @@
   "examplesOf": 13,
   "fieldAddrs/(anonymous 1)": 13,
   "joinNext": 13,
+  "latinAnchorHits": 13,
   "leftOver/each": 13,
   "make/Component/componentDidMount/this._pop": 13,
   "make/Component/importParsed": 13,
@@ -140,6 +143,7 @@
   "scrubPaths": 13,
   "stripTiff/wipe": 13,
   "trimPlace": 13,
+  "weakSlotOK": 13,
   "yearWords": 13
  }
 }
