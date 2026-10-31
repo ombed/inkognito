@@ -1,4 +1,4 @@
-/* One document through one model, the way nerRun does it (engine/08-docx.js), with the
+/* One document through one model, the way nerRun does it (engine/08-10-model-runtime.js), with the
    adapter in the middle and the harness health counted (PLAN.md 3.1, FORMATS.md).
 
    predict(pipe, spec, text, opt) -> { raw, health, timing, unmappedNames }

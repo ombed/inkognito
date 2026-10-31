@@ -4,7 +4,7 @@
    bench/key.json lists each entity's surface forms but not where they are. The
    models are scored on spans, so every occurrence of every surface is located in
    the exact text the product hands the model: the blocks of E.readBlocks(buf),
-   their .text joined with "\n" (nerRun in engine/08-docx.js).
+   their .text joined with "\n" (nerRun in engine/08-10-model-runtime.js).
 
    How an occurrence is found:
    - trap surfaces are located first and their text is claimed, so "חיים" inside
