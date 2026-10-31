@@ -279,33 +279,62 @@ const ROOM=new Set(["חדרה"]), UNIT=new Set(["חדרה","מודיעין"]), P
 // «מאופקים» (מתאפקים) יכול לעמוד לבד בין פסיקים, ולכן אינו כותרת של צד
 const APPO_NOT=new Set(["אופקים"]);
 function placeCtx(n,x,all){
+  const c=townSurroundings(n,x);
+  if(townIsCommonNoun(c))return false;
+  if(placeVerbBefore(c)||placeWordBefore(c)||directionOrPartyHeading(c)||addressAround(c))return true;
+  return nextToOtherTown(n,x,all,c.person);
+}
+// מה שמסביב למופע: השם וסוגו ב-TOWNWORD, הטקסט לפניו ואחריו באותה שורה, ואות המקום (ב, ל, מ) שצמודה לו
+function townSurroundings(n,x){
   const nm=x.name, kind=TOWNWORD.get(nm), person=kind==="name"||kind==="both";
   // חיפוש לאחור עד 90 תווים, ובתוכם עד תחילת השורה: lastIndexOf על כל השורה היה ריבועי בשורה ארוכה
   const w90=n.slice(Math.max(0,x.i-90),x.i), before=w90.slice(w90.lastIndexOf("\n")+1);
   const after=n.slice(x.e,x.e+60).split("\n")[0];
   const loc=/[בלמ]$/.test(x.pre)?x.pre.slice(-1):"";
-  // "חדרה של הקטינה", "אופקים חדשים": שם עצם, לא יישוב
-  if(/^\s+של(?![א-ת])/.test(after))return false;
-  if(kind==="word"&&/(?:ים|ות)$/.test(nm)&&/^\s+ה?[א-ת]{2,}(?:ים|ות)(?![א-ת])/.test(after))return false;
+  return {x,nm,kind,person,before,after,loc};
+}
+// "חדרה של הקטינה", "אופקים חדשים": שם עצם, לא יישוב
+function townIsCommonNoun({nm,kind,after}){
+  if(/^\s+של(?![א-ת])/.test(after))return true;
+  if(kind==="word"&&/(?:ים|ות)$/.test(nm)&&/^\s+ה?[א-ת]{2,}(?:ים|ות)(?![א-ת])/.test(after))return true;
+  return false;
+}
+// פועל לפני היישוב: מגורים, בית, שהייה, עבודה, או מוסד, לפני ב-; מעבר או נסיעה לפני ל- או מ-; "עזבה את"
+function placeVerbBefore({x,nm,person,before,loc}){
   if(loc==="ב"&&(CTX_RES.test(before)||CTX_COURT.test(before)||CTX_HOME.test(before)))return true;
   if(loc==="ב"&&!ROOM.has(nm)&&CTX_STAY.test(before))return true;
   if(loc==="ב"&&!UNIT.has(nm)&&CTX_WORK.test(before))return true;
   if((loc==="ל"||loc==="מ")&&!person&&(CTX_RELOC.test(before)||(!ROOM.has(nm)&&CTX_GO.test(before))))return true;
   if(!x.pre&&!person&&!UNIT.has(nm)&&CTX_LEFT.test(before))return true;
+  return false;
+}
+// מילה של מקום צמודה לפניו: מילת יישוב, עיר, אזור או קרבה, בית משפט בלי ב-, ושורת התיק
+function placeWordBefore({x,nm,person,before,after}){
   if(!x.pre&&CTX_NOUN.test(before)&&!CTX_SETTLE.test(before))return true;
   if(!x.pre&&((!person&&CTX_CITY.test(before))||CTX_AREA.test(before)||(!person&&CTX_CLOSE.test(before))))return true;
   if(!x.pre&&!person&&!PREDICATE.has(nm)&&CTX_BENCH.test(before))return true;
   if(!x.pre&&CTX_CITE.test(before)&&/^\s*\)/.test(after))return true;
+  return false;
+}
+// כיוון, סמיכות או כניסה לפני ל- או מ-, וכותרת של צד
+function directionOrPartyHeading({nm,person,before,after,loc}){
   if(loc==="ל"&&(CTX_DIR.test(before)||(!person&&!ROOM.has(nm)&&CTX_NEAR.test(before))))return true;
   if((loc==="ל"||loc==="מ")&&!ROOM.has(nm)&&CTX_GATE.test(before))return true;
   // כותרת של צד: "המבקשת, מאילת, הגישה", "…, ת"ז 012345678, מרעננה"
   if(loc==="מ"&&/,\s*$/.test(before)&&/^[ \t]*(?:,|$)/.test(after)&&!APPO_NOT.has(nm))return true;
+  return false;
+}
+// כתובת לפניו, או מיקוד אחריו
+function addressAround({x,before,after,loc}){
   if((!x.pre||loc==="ב")&&CTX_ADDR.test(before))return true;
   if(!x.pre&&CTX_ADDR_END.test(before)&&/^[ \t]*(?:[,.;]|$|\d{5,7}(?!\d))/.test(after))return true;
   // מיקוד אחריו, ולא מספר תיק או סכום ("שילמה אילת 12345 ש"ח")
   if(/^\s*,?\s*\d{5,7}(?![\d/-])(?!\s*(?:ש"ח|שקל|שקלים|₪|דולר|אירו|יורו|%))/.test(after))return true;
-  // יישוב אחר צמוד, ברשימה או בטווח: רווח ואות שימוש מחברת, או מקף ולוכסן. שם פרטי צריך אות של מקום (ב, ל,
-  // מ): "בחיפה ואלעד נשאר בבית" הוא אלעד
+  return false;
+}
+// יישוב אחר צמוד, ברשימה או בטווח: רווח ואות שימוש מחברת, או מקף ולוכסן. שם פרטי צריך אות של מקום (ב, ל,
+// מ): "בחיפה ואלעד נשאר בבית" הוא אלעד
+function nextToOtherTown(n,x,all,person){
   const k=x.k, solid=y=>!!y&&!AMBIG.has(y.name)&&!TOWNWORD.has(y.name);
   const join=person?/[לבמ]/:/[לבו]/;
   const joined=(gap,pre)=>/^[ \t]*[\/-][ \t]*$/.test(gap)||(/^[ \t]+$/.test(gap)&&join.test(pre));
