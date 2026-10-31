@@ -10,7 +10,6 @@
  "functions": {
   "redactDocx": 274,
   "make/Component/renderVals": 242,
-  "flatten": 101,
   "Engine/constructor": 85,
   "make/Component/showPeople": 78,
   "restoreNames": 73,
@@ -42,8 +41,10 @@
   "discover/take": 33,
   "dropObjects": 32,
   "make/Component/mergeCase": 31,
+  "propertyTextBlocks": 30,
   "make/Component/groupsOf": 29,
   "mergeSignals": 29,
+  "textOutsideParagraphs": 29,
   "make/Component/persistProfile": 28,
   "verify": 28,
   "make/Component/componentDidMount": 27,
