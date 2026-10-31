@@ -1,7 +1,7 @@
 {
  "note": "Written by node scripts/complexity.js --baseline; read by --check and tests/complexity_t.js. Functions above the limit, by name.",
  "limit": 12,
- "deep": 49,
+ "deep": 48,
  "typed": [
   "engine/03-fakenames.js",
   "engine/globals.d.ts",
@@ -10,7 +10,6 @@
  "functions": {
   "redactDocx": 274,
   "make/Component/renderVals": 242,
-  "Engine/constructor": 85,
   "make/Component/showPeople": 78,
   "restoreNames": 73,
   "placeCtx": 69,
@@ -81,6 +80,7 @@
   "make/Component/tourMeasure": 19,
   "nerIsPlainWord": 19,
   "stripHidden": 19,
+  "addListRules": 18,
   "make/Component/guardModel": 18,
   "make/Component/logMiss": 18,
   "make/Component/onSheetSelect/(anonymous 1)": 18,
@@ -88,6 +88,7 @@
   "paragraphChars/walk": 18,
   "parseWordsDate": 18,
   "unzip": 18,
+  "Engine/constructor": 17,
   "citeKept": 17,
   "emfNames": 17,
   "findPlaces": 17,
