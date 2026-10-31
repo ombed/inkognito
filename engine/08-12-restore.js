@@ -227,6 +227,27 @@ function backDates(txt,took,known,off,today){
 function restoreNames(txt,pairs,earlier,dateOpt){
   // כל צורה של כל אדם (restoreForms). "מה לא נמצא" נשאר של הזוגות עצמם
   const own=new Set(pairs.map(p=>p[1])); pairs=restoreForms(pairs);
+  const {seen,conflict}=pseudoOwners(pairs);
+  const {partial,bad,reals,firstOf}=personParts(pairs,seen,conflict);
+  const {took,free,run}=spanTaker(txt);
+  const toks=answerWords(txt);
+  const {hits,wordOne}=restoreWhole(seen,toks,run);
+  restoreEncoded(seen,hits,run);
+  const {days,lone}=restoreDateSpellings(seen,hits,run);
+  const found=countFound(seen,hits,own,wordOne);
+  const misspelt=restoreMisspeltFirst(txt,seen,own,took,free);
+  const held=heldNames(txt,pairs);
+  const parts=restoreParts(txt,partial,firstOf,toks,held,run);
+  // תאריכים שה-AI חישב מתאריכים מוזזים: זזים אחורה ומסומנים (backDates)
+  const moved=backDates(txt,took,days,dateOpt&&dateOpt.off,dateOpt&&dateOpt.today);
+  const text=spliceTook(txt,took);
+  const nearOf=nearWords(pairs,toks);
+  const left=leftOver(txt,took,{conflict,held,bad,reals,seen,partial,toks,dates:lone,wordOne,toksOnly:parts.toksOnly,earlier,nearOf});
+  const dates=placeMoved(moved,took);
+  return {text,count:found.n+misspelt+parts.n,missing:found.missing,conflict:[...conflict],left,dates};
+}
+// כל כינוי והאמיתי שלו (seen), וכינוי של יותר מאדם אחד (conflict), שאינו ב-seen
+function pseudoOwners(pairs){
   const seen=new Map(), conflict=new Set();
   for(const [real,pseudo] of pairs){
     if(!real||!pseudo||pseudo==="███")continue;
@@ -236,11 +257,14 @@ function restoreNames(txt,pairs,earlier,dateOpt){
     else seen.set(pseudo,real);
   }
   for(const k of conflict)seen.delete(k);
-  /* חלק של שם לבד: "מיכל ברנע" → ה-AI כותב "ברנע", "גב' ברנע" או "מיכל". רק חלק של אדם אחד
-     במיפוי; חלק של שניים, של כינוי ששני אנשים חולקים, או מילה של כינוי שאינו אדם — לא נוחש. עד
-     כאן רק שם של שתי מילים בדיוק וחלק של ארבע אותיות ומעלה: "מר כהן", "רחל תעדכן", "בני הזוג
-     כהן" ושני החלקים של "יפעת בן פלדמן" נשארו בדויים (בדיקה בכלי החי, 6.10).
-     reals: כל החלקים האמיתיים של כל חלק של אדם, גם של חלק שלא יוחזר, בשביל מה שנשאר בתשובה (leftOver) */
+  return {seen,conflict};
+}
+/* חלק של שם לבד: "מיכל ברנע" → ה-AI כותב "ברנע", "גב' ברנע" או "מיכל". רק חלק של אדם אחד
+   במיפוי; חלק של שניים, של כינוי ששני אנשים חולקים, או מילה של כינוי שאינו אדם — לא נוחש. עד
+   כאן רק שם של שתי מילים בדיוק וחלק של ארבע אותיות ומעלה: "מר כהן", "רחל תעדכן", "בני הזוג
+   כהן" ושני החלקים של "יפעת בן פלדמן" נשארו בדויים (בדיקה בכלי החי, 6.10).
+   reals: כל החלקים האמיתיים של כל חלק של אדם, גם של חלק שלא יוחזר, בשביל מה שנשאר בתשובה (leftOver) */
+function personParts(pairs,seen,conflict){
   const partial=new Map(), bad=new Set(), reals=new Map(), firstOf=new Map(), ownerOf=new Map();
   for(const [real,pseudo,form] of pairs){
     // צורה (restoreForms) חוזרת רק כשם שלם: אין לה חלקים לבד
@@ -262,12 +286,15 @@ function restoreNames(txt,pairs,earlier,dateOpt){
     }
   }
   for(const k of bad)partial.delete(k);
-  const longFirst=m=>[...m.entries()].sort((a,b)=>b[0].length-a[0].length);
-  /* כל החזרה היא קטע של הטקסט שהודבק, וקטע שכבר נלקח לא נלקח שוב. עד כאן כל כינוי הוחלף
-     בטקסט שכבר השתנה: חלק של שם נמצא בתוך שם אמיתי שחזר רגע קודם, ושם המשפחה לבד הוחלף
-     בתוך שם מלא שלא נתפס ("שלאביבה ביטון" חזר כ"שלאביבה שרעבי", אדם שאינו קיים — בדיקה
-     בכלי החי, 6.10). */
-  const took=[], held=[];
+  return {partial,bad,reals,firstOf};
+}
+/* כל החזרה היא קטע של הטקסט שהודבק, וקטע שכבר נלקח לא נלקח שוב. עד כאן כל כינוי הוחלף
+   בטקסט שכבר השתנה: חלק של שם נמצא בתוך שם אמיתי שחזר רגע קודם, ושם המשפחה לבד הוחלף
+   בתוך שם מלא שלא נתפס ("שלאביבה ביטון" חזר כ"שלאביבה שרעבי", אדם שאינו קיים — בדיקה
+   בכלי החי, 6.10).
+   took: הקטעים שנלקחו, [התחלה, סוף, מה שבא במקומם]; free: הקטע פנוי, גם ממה שב-also; run: לוקח כל התאמה פנויה של rx */
+function spanTaker(txt){
+  const took=[];
   const free=(s,e,also)=>![took,also||[]].some(l=>l.some(t=>t[0]<e&&s<t[1]));
   // fits: מה שנמצא חוזר רק כשההקשר שלו מתאים (תואר ממין אחר, אות ראשונה אחרת: fitsPart)
   const run=(rx,to,also,fits)=>{
@@ -280,11 +307,21 @@ function restoreNames(txt,pairs,earlier,dateOpt){
     }
     return hit;
   };
-  const back=real=>m=>(m[1]||(typeof m[2]==="string"?m[2]:"")||"")+real;
-  const hits=new Map();
-  // המילים של התשובה, לבדיקה אם חלק של שם הוא גם מילה בה ("הכהן", גם אחרי אות שימוש: "והכהן")
+  return {took,free,run};
+}
+// מה שבא במקום התאמה של pseudoRX או partRX: אותיות השימוש שלפניה, ואחריהן האמיתי
+const backTo=real=>m=>(m[1]||(typeof m[2]==="string"?m[2]:"")||"")+real;
+// המילים של התשובה, לבדיקה אם חלק של שם הוא גם מילה בה ("הכהן", גם אחרי אות שימוש: "והכהן")
+function answerWords(txt){
   const toks=new Set();
   for(const w of wordsOf(norm(txt))){toks.add(w);const h=/^[וכלבמש]{1,3}(ה.+)$/.exec(w);if(h)toks.add(h[1])}
+  return toks;
+}
+// הרשומות של מפה, המפתח הארוך קודם
+const longFirst=m=>[...m.entries()].sort((a,b)=>b[0].length-a[0].length);
+// כל כינוי בשלמותו, הארוך קודם. hits: כמה פעמים חזר כל כינוי; wordOne: כינוי שהוא מילה, שאינו מוחזר
+function restoreWhole(seen,toks,run){
+  const hits=new Map();
   /* מילה שהיא גם מילה רגילה, לפי הרשימות, לפי מאגר הכינויים עצמו (WORDISH: «דנה», «מלמד», «פרץ», «מירב», שבחר בהם מקרה
      שנשמר לפני v73.6) או לפי התשובה הזאת */
   const rwordy=k=>wordish(k,toks)||WORDISH.has(k);
@@ -295,27 +332,40 @@ function restoreNames(txt,pairs,earlier,dateOpt){
   const wordOne=new Map();
   for(const [pseudo,real] of longFirst(seen)){
     if(/^[א-ת][א-ת'׳]*$/.test(pseudo)&&inPool(pseudo)&&rwordy(norm(pseudo).trim())){wordOne.set(pseudo,real);continue}
-    hits.set(pseudo,run(dateGuard(pseudo,pseudoRX(pseudo)),back(real)));
+    hits.set(pseudo,run(dateGuard(pseudo,pseudoRX(pseudo)),backTo(real)));
   }
-  /* כינוי מקודד בתוך כתובת — כמו שהכלי עצמו כותב שם בקישור ("…/%D7%99%D7%A2%D7%9C%20%D7%9B%D7%94%D7%9F.pdf") — חוזר
-     לשם האמיתי, מקודד באותה צורה ובאותו מפריד (%20, +, _, -). עד כאן נשאר הכינוי, ולא נרשם כמה שנשאר (הסקירה של 11.10) */
-  const hexI=e=>e.replace(/[.*+?^${}()|[\]\\]/g,"\\$&").replace(/%([0-9A-F]{2})/g,(m,h)=>"%(?:"+h+"|"+h.toLowerCase()+")");
+  return {hits,wordOne};
+}
+/* כינוי מקודד בתוך כתובת — כמו שהכלי עצמו כותב שם בקישור ("…/%D7%99%D7%A2%D7%9C%20%D7%9B%D7%94%D7%9F.pdf") — חוזר
+   לשם האמיתי, מקודד באותה צורה ובאותו מפריד (%20, +, _, -). עד כאן נשאר הכינוי, ולא נרשם כמה שנשאר (הסקירה של 11.10) */
+const hexI=e=>e.replace(/[.*+?^${}()|[\]\\]/g,"\\$&").replace(/%([0-9A-F]{2})/g,(m,h)=>"%(?:"+h+"|"+h.toLowerCase()+")");
+function restoreEncoded(seen,hits,run){
   for(const [pseudo,real] of longFirst(seen)){
     if(!/[\u05d0-\u05ea]/.test(pseudo))continue;
     for(const sp of ["%20","+","_","-"]){
       const e=encodeURIComponent(pseudo).replace(/%20/g,sp), er=encodeURIComponent(real).replace(/%20/g,sp);
       hits.set(pseudo,(hits.get(pseudo)||0)+run(new RegExp(hexI(e),"g"),()=>er))}}
-  // תאריך מוזז בכתיב אחר של ה-AI. יום בדוי ששני ימים אמיתיים יצאו בו (שני מסמכים בתיק, שתי הזזות)
-  // חוזר רק בכתיב שיצא, כי אין לדעת לאיזה מהם התכוון
+}
+// תאריך מוזז בכתיב אחר של ה-AI. יום בדוי ששני ימים אמיתיים יצאו בו (שני מסמכים בתיק, שתי הזזות)
+// חוזר רק בכתיב שיצא, כי אין לדעת לאיזה מהם התכוון. days: כל זוג של תאריכים, בחלקיו; lone: אלה שחוזרים בכל כתיב
+function restoreDateSpellings(seen,hits,run){
   const days=[...seen].map(([p,r])=>({p,r,f:dateParts(p),t:dateParts(r)})).filter(x=>x.f&&x.t);
   const lone=days.filter(x=>!days.some(y=>sameDay(y.f,x.f)&&!sameDay(y.t,x.t)));
   for(const x of lone)hits.set(x.p,hits.get(x.p)+run(dateRX(x.f),m=>(m.groups.pre||"")+x.r));
+  return {days,lone};
+}
+// כמה הוחזרו, ואילו כינויים של הזוגות עצמם (own) לא נמצאו
+function countFound(seen,hits,own,wordOne){
   let n=0;const missing=[];
   // כינוי שהוא מילה (wordOne) אינו "לא נמצא": הוא נרשם כמה שנשאר, במקומות שבהם הוא בתשובה
   for(const [pseudo] of longFirst(seen)){const h=hits.get(pseudo); if(h)n+=h; else if(own.has(pseudo)&&!wordOne.has(pseudo))missing.push(pseudo)}
-  /* שם פרטי בדוי שה-AI שיבש, צמוד לשם המשפחה הבדוי שלו ("סרגאי לוי", "וסרגי לוי"): האדם כולו חוזר, לא שם המשפחה האמיתי
-     ליד שם פרטי בדוי, אדם שאינו קיים. רק כשהמילה שלפני אינה שם מוכר אחר (אז זה אדם אחר באותה משפחה, "יעל לוי") ומרחק
-     העריכה ממנה קטן */
+  return {n,missing};
+}
+/* שם פרטי בדוי שה-AI שיבש, צמוד לשם המשפחה הבדוי שלו ("סרגאי לוי", "וסרגי לוי"): האדם כולו חוזר, לא שם המשפחה האמיתי
+   ליד שם פרטי בדוי, אדם שאינו קיים. רק כשהמילה שלפני אינה שם מוכר אחר (אז זה אדם אחר באותה משפחה, "יעל לוי") ומרחק
+   העריכה ממנה קטן. מחזיר כמה הוחזרו */
+function restoreMisspeltFirst(txt,seen,own,took,free){
+  let n=0;
   for(const [pseudo,real] of seen){
     const fw=pseudo.split(/\s+/), rw=String(real).split(/\s+/);
     if(!own.has(pseudo)||fw.length!==2||rw.length<2||!nameParts(pseudo,real).length)continue;
@@ -328,18 +378,21 @@ function restoreNames(txt,pairs,earlier,dateOpt){
       took.push([s,e,pre+real]); n++;
     }
   }
-  // שם מלא שנמצא בטקסט ולא נלקח — דבוק לאותיות שאינן אותיות שימוש, או עם סיומת — שומר על החלקים שלו
+  return n;
+}
+// שם מלא שנמצא בטקסט ולא נלקח — דבוק לאותיות שאינן אותיות שימוש, או עם סיומת — שומר על החלקים שלו
+function heldNames(txt,pairs){
+  const held=[];
   for(const [,pseudo] of pairs){
     const p=typeof pseudo==="string"?pseudo.trim():"";
     if(/\s/.test(p))for(const m of txt.matchAll(new RegExp(pseudoPat(p),"gu")))held.push([m.index,m.index+m[0].length,p]);
   }
-  /* חלק לבד: קודם אחרי תואר ("מר כהן"), ואחר כך בלי תואר — רק כשאינו מילה רגילה, ברשימות, במאגר או בתשובה הזאת
-     עצמה (rwordy). תואר ממין אחר ("השופטת לוי" לשם בדוי של גבר) או אות ראשונה אחרת ("ר' לוי" ל«סרגיי לוי») הם אדם אחר,
-     ושם המשפחה אינו חוזר שם: "השופטת אלמגור" (הציד של 11.10). חלק שהוא מילה רק בתשובה הזאת ("המזרחי") נשאר, ונרשם
-     במקום שבו הוא עומד לבד (toksOnly, leftOver) */
-  const parts=longFirst(partial), toksOnly=new Map();
-  const femF=f=>FEM.has(f)||POOL.he_f.includes(f)||POOL.ar_f.includes(f), mascF=f=>MASC.has(f)||POOL.he_m.includes(f)||POOL.ar_m.includes(f);
-  const fitsPart=k=>m=>{
+  return held;
+}
+const femF=f=>FEM.has(f)||POOL.he_f.includes(f)||POOL.ar_f.includes(f), mascF=f=>MASC.has(f)||POOL.he_m.includes(f)||POOL.ar_m.includes(f);
+// fits של חלק k (spanTaker): לא אחרי תואר ממין אחר מהשם הפרטי שלו, ולא אחרי אות ראשונה אחרת
+function fitsPart(txt,firstOf,k){
+  return m=>{
     const f=firstOf.get(k); if(!f)return true;
     const before=txt.slice(Math.max(0,m.index-24),m.index+((m[1]||"").length));
     const ini=/(?:^|[\s(])([א-ת])['׳’.][\s\u00a0]*$/u.exec(before);
@@ -347,31 +400,45 @@ function restoreNames(txt,pairs,earlier,dateOpt){
     if(mascF(f)&&!femF(f)&&/(?:גב['׳’]|גברת|השופטת|הרשמת)[\s\u00a0]*$/u.test(before))return false;
     if(femF(f)&&!mascF(f)&&/(?:^|[\s(])(?:מר|השופט|הרשם)[\s\u00a0]*$/u.test(before))return false;
     return true};
-  for(const [k,v] of parts){const rx=partRX(k,true); if(rx)n+=run(rx,back(v),held,fitsPart(k))}
+}
+/* חלק לבד: קודם אחרי תואר ("מר כהן"), ואחר כך בלי תואר — רק כשאינו מילה רגילה, ברשימות, במאגר או בתשובה הזאת
+   עצמה (partWordy). תואר ממין אחר ("השופטת לוי" לשם בדוי של גבר) או אות ראשונה אחרת ("ר' לוי" ל«סרגיי לוי») הם אדם אחר,
+   ושם המשפחה אינו חוזר שם: "השופטת אלמגור" (הציד של 11.10). חלק שהוא מילה רק בתשובה הזאת ("המזרחי") נשאר, ונרשם
+   במקום שבו הוא עומד לבד (toksOnly, leftOver). n: כמה הוחזרו */
+function restoreParts(txt,partial,firstOf,toks,held,run){
+  const parts=longFirst(partial), toksOnly=new Map();
+  let n=0;
+  for(const [k,v] of parts){const rx=partRX(k,true); if(rx)n+=run(rx,backTo(v),held,fitsPart(txt,firstOf,k))}
   /* שם פרטי מהמאגר שהוא גם מילה ("מיכל") חוזר לבד כמו קודם: לבד הוא כמעט תמיד האדם ("מיכל אמרה"). שם משפחה כזה
      ("מלמד", "מזרחי", "פרץ") אינו מוחזר לבד בניחוש */
   const partWordy=(k,kk)=>wordish(kk,toks)||(WORDISH.has(kk)&&firstOf.get(k)!==kk);
   for(const [k,v] of parts){
     const rx=partRX(k,false), kk=norm(k).trim(); if(!rx)continue;
-    if(!partWordy(k,kk))n+=run(rx,back(v),held,fitsPart(k));
+    if(!partWordy(k,kk))n+=run(rx,backTo(v),held,fitsPart(txt,firstOf,k));
     else if(!(WORDLIKE.has(kk)||COMMON.has(kk)||STOP.has(kk)||VRB.has(kk)))toksOnly.set(k,v);
   }
-  // תאריכים שה-AI חישב מתאריכים מוזזים: זזים אחורה ומסומנים (backDates)
-  const moved=backDates(txt,took,days,dateOpt&&dateOpt.off,dateOpt&&dateOpt.today);
+  return {n,toksOnly};
+}
+// הטקסט שחוזר: כל קטע שנלקח במקומו. ממיין את took לפי הסדר בטקסט, ו-leftOver ו-placeMoved קוראים אותו כך
+function spliceTook(txt,took){
   let out="",at=0;
   for(const [s,e,t] of took.sort((a,b)=>a[0]-b[0])){out+=txt.slice(at,s)+t;at=e}
-  // כינוי של אדם שה-AI כתב באות אחת אחרת («לנדא» של «לנדאו»): לכל מילה של כינוי, שלוש אותיות ומעלה, המילה האמיתית שבמקומה
+  return out+txt.slice(at);
+}
+// כינוי של אדם שה-AI כתב באות אחת אחרת («לנדא» של «לנדאו»): לכל מילה של כינוי, שלוש אותיות ומעלה, המילה האמיתית שבמקומה
+function nearWords(pairs,toks){
   const nearOf=new Map();
   for(const [real,pseudo] of pairs) for(const [p,r] of nameParts(pseudo,real)){
     const pw=String(p).split(/\s+/), rw=String(r).split(/\s+/);
     if(pw.length!==rw.length)continue;
     pw.forEach((w,i)=>{ const k=norm(w).trim(); if(k.length>=3&&!wordish(k,toks)&&!nearOf.has(k))nearOf.set(k,rw[i]); });
   }
-  const left=leftOver(txt,took,{conflict,held,bad,reals,seen,partial,toks,dates:lone,wordOne,toksOnly,earlier,nearOf});
-  // המקום של כל תאריך שזז בטקסט שחוזר: ההחלפות שלפניו משנות את האורך
+  return nearOf;
+}
+// המקום של כל תאריך שזז בטקסט שחוזר: ההחלפות שלפניו משנות את האורך
+function placeMoved(moved,took){
   const shiftAt=p=>took.reduce((d,[s,e,t])=>e<=p?d+t.length-(e-s):d,0);
-  const dates=moved.map(x=>({was:x.was,now:x.now,at:[[x.s+shiftAt(x.s),x.s+shiftAt(x.s)+x.now.length]]}));
-  return {text:out+txt.slice(at),count:n,missing,conflict:[...conflict],left,dates};
+  return moved.map(x=>({was:x.was,now:x.now,at:[[x.s+shiftAt(x.s),x.s+shiftAt(x.s)+x.now.length]]}));
 }
 /* מה שנשאר בתשובה מהפרטים הבדויים שהכלי נתן ולא הוחזר, כדי שמסך ההחזרה יסמן אותו ויאמר מה לתקן ביד
    (החזרת שמות, 7.10.2026): כינוי של יותר מאדם אחד; שם מלא דבוק לאותיות שאינן אותיות שימוש ("אלירן כהןים");
