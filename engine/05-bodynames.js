@@ -138,127 +138,178 @@ function verbTail(w){
   if(VRB.has(x)||COMMON.has(x))return true;
   return /^לה[א-ת]{3,}$/.test(x);
 }
+/* bodyNames בשלבים: מה שכבר ברשימה, המילים של המסמך, ניקוד כל מועמד לפי ההקשר שלו,
+   הסולם שמחליט מה מוצע, הרחבה לשם מלא, ולבסוף הסרת כפילויות ומיון. */
 function bodyNames(blocks,known){
+  const {kn,knFull}=knownWords(known);
+  const {docTok,toks}=tokenizeBlocks(blocks);
+  const sc=scoreBody(toks,docTok,kn,knFull);
+  const out=proposeFromScores(sc);
+  expandToFullNames(out,toks,docTok,kn);
+  return keepBestAndWhole(out)}
+// kn: כל ערך ברשימה וכל חלק שלו מאורך 3 ומעלה; knFull: הערכים השלמים בלבד
+function knownWords(known){
   const kn=new Set(), knFull=new Set(); for(const k of known){const n=norm(k).trim();
     kn.add(n); knFull.add(n); for(const p of n.split(/\s+/))if(p.length>=3)kn.add(p)}
+  return {kn,knFull}}
+// לכל פסקה: הטקסט המנורמל והמילים שלו; docTok: כל מילה שמופיעה איפשהו במסמך
+function tokenizeBlocks(blocks){
   const docTok=new Set();
   const toks=[];
   for(const b of blocks){const n=norm(b.text),t=tokall(n);
     for(const x of t)docTok.add(x.w);
     toks.push({b,n,t})}
+  return {docTok,toks}}
+/* עובר על כל מילה בכל פסקה ומנסה קודם צירוף של שתי מילים ואחר כך מילה אחת.
+   המועמד הראשון שקיבל נקודות נספר, והסריקה עוברת למילה הבאה. */
+function scoreBody(toks,docTok,kn,knFull){
   const sc=new Map();
-  const bump=(key,pts,why,b,s,e,strong)=>{
-    const g=sc.get(key)||{n:0,pts:0,why:new Set(),ctx:"",part:"",strong:false};
-    g.n++; g.pts+=pts; if(why)g.why.add(why); if(strong)g.strong=true;
-    if(!g.ctx&&b){g.ctx=ctxHTML(b.text,s,e);g.part=partName(b.part)}
-    sc.set(key,g)};
   for(const {b,n,t} of toks){
     for(let i=0;i<t.length;i++){
       for(const len of [2,1]){
         if(i+len>t.length)continue;
-        const raw=t.slice(i,i+len);
-        // "המכתב אבד. אגבאריה" — שתי מילים משני משפטים אינן שם אחד,
-        // ו"מזרחי וכהן" הם שני אנשים ברשימה, לא שם מלא.
-        // "מהוועד אמר", "מהמשרד ביקשו": מילה בודדת שנפתחת ב-מ+ה היא "מן ה-", צירוף
-        // יחס ולא שם. רק כאן, במועמד בודד לפני פועל דיבור: ב-nameish הכלל הזה
-        // הפיל גם את "מהירות", שסורק השיבושים צריך בתור כמעט-התאמה של "מאירות".
-        if(len===1&&/^מה[א-ת]{2,}$/.test(raw[0].w)&&!KNOWN_FIRST.has(raw[0].w))continue;
-        if(len>1){
-          const gap=n.slice(raw[0].e,raw[1].s);
-          if(/[.!?;:,()\n]/.test(gap))continue;
-          if(PFX.has(raw[1].w[0])&&docTok.has(raw[1].w.slice(1)))continue;
-          // "איוונוב ואינו מהווה" — מילת שלילה, מילת יחס או פועל אחרי ו' החיבור
-          // אינם חלק מהשם. הצעה כזאת אושרה, ואז שם המשפחה לבדו נחשב משותף
-          // לשני ערכים ולא הוחלף.
-          // "משכך עמרי": מילת קישור בראש אינה חלק מהשם
-          if(LEAD.has(raw[0].w))continue;
-          const w2=raw[1].w.replace(/^ו/,"");
-          if(/^אינ[והםן]$/.test(w2)||STOP.has(w2)||COMMON.has(w2)||VRB.has(w2)||TRAIL.has(w2))continue;
-          if(verbTail(w2))continue;
-          // צירוף שאחת ממילותיו היא ערך שכבר ברשימה אינו אדם חדש: "אסתר" שברשימה
-          // אינה הופכת ל"אסתר להידחות" בהצעות, אחרי שכבר הוחלט מה "אסתר".
-          if(raw.some(x=>knFull.has(x.w)||knFull.has(x.w.replace(/^[בהולמכש]/,""))))continue;
-        }
-        // "מזרחי וכהן" — "וכהן" הוא אותו אדם כמו "כהן", לא מועמד נפרד
-        const wds=raw.map(x=>
-          PFX.has(x.w[0])&&docTok.has(x.w.slice(1))?x.w.slice(1):x.w);
-        if(!wds.every(w=>nameish(w,docTok)))continue;
-        // "הצעה שאינה", "וערכית אינו": מילת שלילה אינה חלק משם
-        if(wds.some(w=>/^[בהולמכש]?(?:אינ[הוםן]|איני|אין|לא|בלי|ללא)$/.test(w)))continue;
-        // "שפגשתי אומר": נטיית עבר בגוף ראשון היא פועל. רק ־תי/־נו, ורק מאורך שש:
-        // "אביתן" הוא שם משפחה שנגמר ב־תן, ו"אביטן" נשאר צמוד אליו במלכודת הזוגות.
-        if(wds.some(w=>/(?:תי|נו)$/.test(w)&&w.length>=6))continue;
-        // צירוף של שתי מילים שאחת מהן בצורת רבים או תואר ("שינוי משמעותי",
-        // "מאפיינים כלליים", "רמה מקצועית גבוהה") אינו שם של אדם. שם בודד לא נפסל כאן,
-        // כדי לא לפסול שמות נשים שנגמרים ב-ה או ב-ית.
-        if(wds.length>1&&wds.some(w=>/(?:ים|יים|ית|יות)$/.test(w)&&!KNOWN_FIRST.has(w)))continue;
-        // "פלוני מהוועד": הכינוי המשפטי אינו אדם, גם לפני פועל
-        if(wds.some(w=>NER_DROP.has(w)))continue;
-        // אותיות בודדות מופרדות ברווח ("נ ג ד") אינן שם
-        if(wds.every(w=>w.replace(/['"׳״]/g,"").length<=1))continue;
-        const cand=wds.join(" ");
-        if(kn.has(cand))continue;
-        const s=raw[0].s,e=raw[len-1].e;
-        let pts=0,strong=false;
-        // בין "עובדת סוציאלית," ל"אוניברסיטת בן גוריון" יש פסיק — אלה שני
-        // פריטים ברשימה, לא תפקיד ואחריו שם. כל בדיקת סמיכות חייבת רצף.
-        const cln=(x,y)=>x&&y&&!/[,.;:()\[\]\n]/.test(n.slice(x.e,y.s));
-        const nxt=cln(raw[len-1],t[i+len])&&t[i+len].w;
-        const prv=cln(t[i-1],raw[0])&&i>0&&t[i-1].w;
-        const prv2=prv&&cln(t[i-2],t[i-1])&&i>1&&t[i-2].w;
-        // תואר בראש המועמד ("עו\"ד יערה") אינו שם, וגוף ציבורי ("לביטוח לאומי",
-        // "המוסד לביטוח לאומי" עם המילה שלפניו) אינו פרט מזהה. שניהם הוצעו ואושרו,
-        // והראשון גם דחק את החלפת שם המשפחה של "יערה ליפשיץ" בגלל "שם משותף".
-        if(TITLE_RX.test(cand+" ")||[cand,prv&&prv+" "+cand,prv2&&prv&&prv2+" "+prv+" "+cand].filter(Boolean).some(x=>PUBLIC_ORG.test(x)||PUBLIC_ORG.test(x.replace(/^[בהולמכש]/,""))))continue;
-        const hit=(p,w)=>{pts+=p;strong=true;return w};
-        let why="";
-        if(nxt&&VRB.has(nxt))why=hit(3,`עומד לפני «${nxt}»`);
-        else if(prv&&ATTR.has(prv))why=hit(3,`בא אחרי «${prv}»`);
-        else if(prv&&ROLE1.includes(prv))why=hit(3,`בא אחרי תפקיד «${prv}»`);
-        else if(prv2&&ROLE2.some(r=>r===prv2+" "+prv))why=hit(3,`בא אחרי תפקיד «${prv2} ${prv}»`);
-        // מדברים עליו, לא הוא מדבר
-        else if(prv==="של"&&prv2&&KIN.has(prv2))why=hit(3,`בא אחרי «${prv2} של»`);
-        else if(prv&&PREP.has(prv))why=hit(3,`בא אחרי «${prv}»`);
-        else if(prv==="עם"&&len===2&&!wds.some(x=>docTok.has("ה"+x)))
-          why=hit(3,"בא אחרי «עם»");
-        // "אמא אומנת שלא תישבר, שהוא יישאר" — פסוקית זיקה מציגה אדם
-        // כשהיא פותחת פסוקית או באה אחרי תואר, לא כשהיא תלויה במילה שכיחה.
-        else if(t[i+len]&&REL.has(t[i+len].w)&&!wds.some(x=>VRB.has(x))&&
-                !(prv&&COMMON.has(prv))&&
-                /,/.test(n.slice(raw[len-1].e,t[i+len].s)))
-          why=hit(3,`ואחריו «, ${t[i+len].w}» — תיאור של אדם`);
-        else if(prv==="של"&&wds[0]!==raw[0].w)why=hit(2,"בא אחרי «של»");
-        if(!why){
-          for(let z=1;z<=2;z++){const b=t[i-z];
-            if(b&&CARE.has(b.w)&&!/[,.;:\n]/.test(n.slice(b.e,raw[0].s))){
-              why=hit(2,`בהקשר של «${b.w}»`);break}}
-        }
-        // אות שימוש בלי ה' הידיעה: "ולשליו", "במישל" — דפוס של שם פרטי,
-        // כי שם עצם מיודע היה מופיע גם כ"השליו" איפשהו במסמך
-        const st0=raw[0].w, stem=st0.slice(1);
-        if(PFX.has(st0[0])&&st0.length>=4&&st0[1]!=="ה"&&
-           !docTok.has("ה"+stem)&&nameish(stem,docTok)&&
-           (docTok.has(stem)||[...PFX].some(q=>q!==st0[0]&&docTok.has(q+stem)))){
-          pts+=2; if(!why)why="מופיע עם אות שימוש ובלי ה' הידיעה";
-        }
-        // סמיכות לשם מוכר היא רמז חלש: ברשימת מוזמנים מופרדת בפסיקים
-        // היא מסמנת כל מילת תפקיד. לבדה היא לא מספיקה.
-        if(prv&&(kn.has(prv)||kn.has(prv.replace(/^ו/,""))))pts+=1;
-        if(nxt&&(kn.has(nxt)||kn.has(nxt.replace(/^ו/,""))))pts+=1;
-        if(!pts)continue;
-        bump(cand,pts,why||"מופיע ליד שם שכבר ידוע",b,s,e,strong);
+        const c=scoreCandidate(n,t,i,len,docTok,kn,knFull);
+        if(!c)continue;
+        countHit(sc,c.cand,c.pts,c.why,b,c.s,c.e,c.strong);
         break}}}
-  /* הסולם שמחליט אם מועמד מוצע בכלל. כל מופע מקבל נקודות לפי כוח הראיה:
-     3 — הקשר שכמעט רק שם של אדם מקבל: לפני פועל דיבור, אחרי תואר, תפקיד, "X של"
-         של קרבה, מילת יחס של אדם, "עם" לפני שתי מילים, או לפני פסוקית זיקה אחרי פסיק;
-     2 — הקשר חלש יותר: אחרי "של" עם אות שימוש, מילת טיפול עד שתי מילים לפניו,
-         או אות שימוש בלי ה' הידיעה בשום מקום במסמך;
-     1 — סמיכות לשם שכבר ידוע, לכל צד בנפרד.
-     חזרה מוסיפה: שני מופעים +1, שלושה ומעלה +2. מועמד מוצע רק אם לפחות מופע אחד
-     שלו קיבל ראיה של הקשר (strong: ה-3 וה-2 שדרך hit, לא אות השימוש ולא הסמיכות),
-     והסכום הכולל הוא 3 ומעלה. כלומר: ראיה של 3 מספיקה במופע אחד; ראיה של 2 צריכה
-     חזרה או ראיה נוספת ("ליווי אלמוגית" פעם אחת לא מוצע, פעמיים כן); אות שימוש
-     וסמיכות לשם ידוע לבדן אינן מציעות לעולם. */
+  return sc}
+// מופע אחד של מועמד בטבלת הניקוד; המופע הראשון קובע את ההקשר שמוצג לה
+function countHit(sc,key,pts,why,b,s,e,strong){
+  const g=sc.get(key)||{n:0,pts:0,why:new Set(),ctx:"",part:"",strong:false};
+  g.n++; g.pts+=pts; if(why)g.why.add(why); if(strong)g.strong=true;
+  if(!g.ctx&&b){g.ctx=ctxHTML(b.text,s,e);g.part=partName(b.part)}
+  sc.set(key,g)}
+// המועמד של len מילים שמתחיל במילה i: null כשאינו שם או כשאין לו אף ראיה
+function scoreCandidate(n,t,i,len,docTok,kn,knFull){
+  const raw=t.slice(i,i+len);
+  if(rawRejected(raw,len,n,docTok,knFull))return null;
+  const wds=peelPrefixes(raw,docTok);
+  if(wordsRejected(wds,docTok))return null;
+  const cand=wds.join(" ");
+  if(kn.has(cand))return null;
+  const s=raw[0].s,e=raw[len-1].e;
+  const nb=neighbours(n,t,i,len,raw);
+  if(titleOrPublicBody(cand,nb.prv,nb.prv2))return null;
+  let {pts,why}=contextEvidence(n,t,i,len,raw,wds,docTok,nb);
+  const strong=!!why;
+  // אות שימוש בלי ה' הידיעה: "ולשליו", "במישל" — דפוס של שם פרטי,
+  // כי שם עצם מיודע היה מופיע גם כ"השליו" איפשהו במסמך
+  if(prefixWithoutArticle(raw,docTok)){
+    pts+=2; if(!why)why="מופיע עם אות שימוש ובלי ה' הידיעה";
+  }
+  pts+=knownNeighbourPoints(nb.prv,nb.nxt,kn);
+  if(!pts)return null;
+  return {cand,pts,why:why||"מופיע ליד שם שכבר ידוע",s,e,strong}}
+// המילים כפי שנכתבו אינן יכולות להיות מועמד, עוד לפני קילוף אותיות השימוש
+function rawRejected(raw,len,n,docTok,knFull){
+  // "מהוועד אמר", "מהמשרד ביקשו": מילה בודדת שנפתחת ב-מ+ה היא "מן ה-", צירוף
+  // יחס ולא שם. רק כאן, במועמד בודד לפני פועל דיבור: ב-nameish הכלל הזה
+  // הפיל גם את "מהירות", שסורק השיבושים צריך בתור כמעט-התאמה של "מאירות".
+  if(len===1&&/^מה[א-ת]{2,}$/.test(raw[0].w)&&!KNOWN_FIRST.has(raw[0].w))return true;
+  return len>1&&pairRejected(raw,n,docTok,knFull)}
+// שתי מילים סמוכות שאינן שם אחד
+function pairRejected(raw,n,docTok,knFull){
+  // "המכתב אבד. אגבאריה" — שתי מילים משני משפטים אינן שם אחד,
+  // ו"מזרחי וכהן" הם שני אנשים ברשימה, לא שם מלא.
+  const gap=n.slice(raw[0].e,raw[1].s);
+  if(/[.!?;:,()\n]/.test(gap))return true;
+  if(PFX.has(raw[1].w[0])&&docTok.has(raw[1].w.slice(1)))return true;
+  // "איוונוב ואינו מהווה" — מילת שלילה, מילת יחס או פועל אחרי ו' החיבור
+  // אינם חלק מהשם. הצעה כזאת אושרה, ואז שם המשפחה לבדו נחשב משותף
+  // לשני ערכים ולא הוחלף.
+  // "משכך עמרי": מילת קישור בראש אינה חלק מהשם
+  if(LEAD.has(raw[0].w))return true;
+  const w2=raw[1].w.replace(/^ו/,"");
+  if(/^אינ[והםן]$/.test(w2)||STOP.has(w2)||COMMON.has(w2)||VRB.has(w2)||TRAIL.has(w2))return true;
+  if(verbTail(w2))return true;
+  // צירוף שאחת ממילותיו היא ערך שכבר ברשימה אינו אדם חדש: "אסתר" שברשימה
+  // אינה הופכת ל"אסתר להידחות" בהצעות, אחרי שכבר הוחלט מה "אסתר".
+  return raw.some(x=>knFull.has(x.w)||knFull.has(x.w.replace(/^[בהולמכש]/,"")))}
+// "מזרחי וכהן" — "וכהן" הוא אותו אדם כמו "כהן", לא מועמד נפרד
+function peelPrefixes(raw,docTok){
+  return raw.map(x=>
+    PFX.has(x.w[0])&&docTok.has(x.w.slice(1))?x.w.slice(1):x.w)}
+// המילים אחרי הקילוף אינן שם של אדם
+function wordsRejected(wds,docTok){
+  if(!wds.every(w=>nameish(w,docTok)))return true;
+  // "הצעה שאינה", "וערכית אינו": מילת שלילה אינה חלק משם
+  if(wds.some(w=>/^[בהולמכש]?(?:אינ[הוםן]|איני|אין|לא|בלי|ללא)$/.test(w)))return true;
+  // "שפגשתי אומר": נטיית עבר בגוף ראשון היא פועל. רק ־תי/־נו, ורק מאורך שש:
+  // "אביתן" הוא שם משפחה שנגמר ב־תן, ו"אביטן" נשאר צמוד אליו במלכודת הזוגות.
+  if(wds.some(w=>/(?:תי|נו)$/.test(w)&&w.length>=6))return true;
+  // צירוף של שתי מילים שאחת מהן בצורת רבים או תואר ("שינוי משמעותי",
+  // "מאפיינים כלליים", "רמה מקצועית גבוהה") אינו שם של אדם. שם בודד לא נפסל כאן,
+  // כדי לא לפסול שמות נשים שנגמרים ב-ה או ב-ית.
+  if(wds.length>1&&wds.some(w=>/(?:ים|יים|ית|יות)$/.test(w)&&!KNOWN_FIRST.has(w)))return true;
+  // "פלוני מהוועד": הכינוי המשפטי אינו אדם, גם לפני פועל
+  if(wds.some(w=>NER_DROP.has(w)))return true;
+  // אותיות בודדות מופרדות ברווח ("נ ג ד") אינן שם
+  return wds.every(w=>w.replace(/['"׳״]/g,"").length<=1)}
+/* המילה שאחרי המועמד (nxt) ושתי המילים שלפניו (prv, prv2), או false כשאין.
+   בין "עובדת סוציאלית," ל"אוניברסיטת בן גוריון" יש פסיק — אלה שני
+   פריטים ברשימה, לא תפקיד ואחריו שם. כל בדיקת סמיכות חייבת רצף. */
+function neighbours(n,t,i,len,raw){
+  const cln=(x,y)=>x&&y&&!/[,.;:()\[\]\n]/.test(n.slice(x.e,y.s));
+  const nxt=cln(raw[len-1],t[i+len])&&t[i+len].w;
+  const prv=cln(t[i-1],raw[0])&&i>0&&t[i-1].w;
+  const prv2=prv&&cln(t[i-2],t[i-1])&&i>1&&t[i-2].w;
+  return {nxt,prv,prv2}}
+// תואר בראש המועמד ("עו\"ד יערה") אינו שם, וגוף ציבורי ("לביטוח לאומי",
+// "המוסד לביטוח לאומי" עם המילה שלפניו) אינו פרט מזהה. שניהם הוצעו ואושרו,
+// והראשון גם דחק את החלפת שם המשפחה של "יערה ליפשיץ" בגלל "שם משותף".
+function titleOrPublicBody(cand,prv,prv2){
+  return TITLE_RX.test(cand+" ")||[cand,prv&&prv+" "+cand,prv2&&prv&&prv2+" "+prv+" "+cand].filter(Boolean).some(x=>PUBLIC_ORG.test(x)||PUBLIC_ORG.test(x.replace(/^[בהולמכש]/,"")))}
+/* הראיה מההקשר: 3 נקודות להקשר שכמעט רק שם של אדם מקבל, 2 להקשר חלש יותר
+   (ראו הסולם ב-proposeFromScores). רק הראשונה שמתאימה נספרת; why ריק כשאין. */
+function contextEvidence(n,t,i,len,raw,wds,docTok,{nxt,prv,prv2}){
+  if(nxt&&VRB.has(nxt))return {pts:3,why:`עומד לפני «${nxt}»`};
+  if(prv&&ATTR.has(prv))return {pts:3,why:`בא אחרי «${prv}»`};
+  if(prv&&ROLE1.includes(prv))return {pts:3,why:`בא אחרי תפקיד «${prv}»`};
+  if(prv2&&ROLE2.some(r=>r===prv2+" "+prv))return {pts:3,why:`בא אחרי תפקיד «${prv2} ${prv}»`};
+  // מדברים עליו, לא הוא מדבר
+  if(prv==="של"&&prv2&&KIN.has(prv2))return {pts:3,why:`בא אחרי «${prv2} של»`};
+  if(prv&&PREP.has(prv))return {pts:3,why:`בא אחרי «${prv}»`};
+  if(prv==="עם"&&len===2&&!wds.some(x=>docTok.has("ה"+x)))
+    return {pts:3,why:"בא אחרי «עם»"};
+  // "אמא אומנת שלא תישבר, שהוא יישאר" — פסוקית זיקה מציגה אדם
+  // כשהיא פותחת פסוקית או באה אחרי תואר, לא כשהיא תלויה במילה שכיחה.
+  if(t[i+len]&&REL.has(t[i+len].w)&&!wds.some(x=>VRB.has(x))&&
+     !(prv&&COMMON.has(prv))&&
+     /,/.test(n.slice(raw[len-1].e,t[i+len].s)))
+    return {pts:3,why:`ואחריו «, ${t[i+len].w}» — תיאור של אדם`};
+  if(prv==="של"&&wds[0]!==raw[0].w)return {pts:2,why:"בא אחרי «של»"};
+  return careContext(n,t,i,raw)}
+// מילת טיפול ("ליווי", "מעקב") עד שתי מילים לפני המועמד, בלי סימן פיסוק ביניהם
+function careContext(n,t,i,raw){
+  for(let z=1;z<=2;z++){const before=t[i-z];
+    if(before&&CARE.has(before.w)&&!/[,.;:\n]/.test(n.slice(before.e,raw[0].s)))
+      return {pts:2,why:`בהקשר של «${before.w}»`}}
+  return {pts:0,why:""}}
+// אות שימוש בלי ה' הידיעה בשום מקום במסמך, כשהמילה בלעדיה נראית כמו שם
+function prefixWithoutArticle(raw,docTok){
+  const st0=raw[0].w, stem=st0.slice(1);
+  return PFX.has(st0[0])&&st0.length>=4&&st0[1]!=="ה"&&
+     !docTok.has("ה"+stem)&&nameish(stem,docTok)&&
+     (docTok.has(stem)||[...PFX].some(q=>q!==st0[0]&&docTok.has(q+stem)))}
+// סמיכות לשם מוכר היא רמז חלש: ברשימת מוזמנים מופרדת בפסיקים
+// היא מסמנת כל מילת תפקיד. לבדה היא לא מספיקה.
+function knownNeighbourPoints(prv,nxt,kn){
+  let pts=0;
+  if(prv&&(kn.has(prv)||kn.has(prv.replace(/^ו/,""))))pts+=1;
+  if(nxt&&(kn.has(nxt)||kn.has(nxt.replace(/^ו/,""))))pts+=1;
+  return pts}
+/* הסולם שמחליט אם מועמד מוצע בכלל. כל מופע מקבל נקודות לפי כוח הראיה:
+   3 — הקשר שכמעט רק שם של אדם מקבל: לפני פועל דיבור, אחרי תואר, תפקיד, "X של"
+       של קרבה, מילת יחס של אדם, "עם" לפני שתי מילים, או לפני פסוקית זיקה אחרי פסיק;
+   2 — הקשר חלש יותר: אחרי "של" עם אות שימוש, מילת טיפול עד שתי מילים לפניו,
+       או אות שימוש בלי ה' הידיעה בשום מקום במסמך;
+   1 — סמיכות לשם שכבר ידוע, לכל צד בנפרד.
+   חזרה מוסיפה: שני מופעים +1, שלושה ומעלה +2. מועמד מוצע רק אם לפחות מופע אחד
+   שלו קיבל ראיה של הקשר (strong: ה-3 וה-2 שדרך contextEvidence, לא אות השימוש ולא הסמיכות),
+   והסכום הכולל הוא 3 ומעלה. כלומר: ראיה של 3 מספיקה במופע אחד; ראיה של 2 צריכה
+   חזרה או ראיה נוספת ("ליווי אלמוגית" פעם אחת לא מוצע, פעמיים כן); אות שימוש
+   וסמיכות לשם ידוע לבדן אינן מציעות לעולם. */
+function proposeFromScores(sc){
   const out=[];
   for(const [value,g] of sc){
     if(!g.strong)continue;
@@ -267,8 +318,10 @@ function bodyNames(blocks,known){
     if(PUBLIC_ORG.test(value)||PUBLIC_ORG.test(value.replace(/^[בהולמכש]/,"")))continue;
     out.push({value,score:total,count:g.n,why:[...g.why].slice(0,2).join(" · "),
       ctx:g.ctx,part:g.part})}
-  // "אזולאי" הוצע כי הוא חוזר, אבל במסמך כתוב "סיגלית אזולאי" — עדיף
-  // להציע את השם המלא, אחרת השם הפרטי יישאר בטקסט.
+  return out}
+// "אזולאי" הוצע כי הוא חוזר, אבל במסמך כתוב "סיגלית אזולאי" — עדיף
+// להציע את השם המלא, אחרת השם הפרטי יישאר בטקסט. משנה את out במקום.
+function expandToFullNames(out,toks,docTok,kn){
   for(const o of out){
     if(o.value.includes(" "))continue;
     for(const {n,t} of toks){
@@ -282,7 +335,9 @@ function bodyNames(blocks,known){
       // "מהוועד" לבדו לא היה מועמד טוב, ו"פלוני מהוועד" אינו שם מלא: ההרחבה
       // לשם מלא לא מצילה מילה עם אות שימוש שהמסמך מכיר גם בלעדיה
       if(PFX.has(o.value[0])&&docTok.has(o.value.slice(1)))continue;
-      o.value=p+" "+o.value; o.full=true; break}}
+      o.value=p+" "+o.value; o.full=true; break}}}
+// הצעה אחת לכל ערך (הציון הגבוה), בלי מילה בודדת שכבר חלק משם מלא, מהחזקה לחלשה
+function keepBestAndWhole(out){
   const dedup=new Map();
   for(const o of out){const ex=dedup.get(o.value);
     if(!ex||o.score>ex.score)dedup.set(o.value,o)}

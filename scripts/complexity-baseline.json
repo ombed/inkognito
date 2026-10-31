@@ -1,7 +1,7 @@
 {
  "note": "Written by node scripts/complexity.js --baseline; read by --check and tests/complexity_t.js. Functions above the limit, by name.",
  "limit": 12,
- "deep": 55,
+ "deep": 49,
  "typed": [
   "engine/03-fakenames.js",
   "engine/globals.d.ts",
@@ -10,7 +10,6 @@
  "functions": {
   "redactDocx": 274,
   "make/Component/renderVals": 242,
-  "bodyNames": 113,
   "nerClean": 112,
   "flatten": 101,
   "Engine/constructor": 85,
@@ -53,6 +52,7 @@
   "nameish": 26,
   "parseDate": 26,
   "backDates": 25,
+  "contextEvidence": 25,
   "inlineChunks": 25,
   "residuePass": 25,
   "hostRule": 24,
@@ -107,6 +107,7 @@
   "notDateAt": 16,
   "careName": 15,
   "dropSvgCopies": 15,
+  "expandToFullNames": 15,
   "fakeName": 15,
   "make/Component/caseKind": 15,
   "make/Component/run": 15,
