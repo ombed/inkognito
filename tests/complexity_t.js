@@ -25,7 +25,8 @@ const repo = snapshot(ROOT);
   const { fns } = repo;
   const names = fns.map((x) => x.name);
   ok(names.some((n) => /'redactDocx'/.test(n)), "redactDocx is in the list");
-  ok(names.some((n) => /'bodyNames'/.test(n)), "bodyNames is in the list");
+  // bodyNames left the list when it was split into steps; its scoring step, from the same file, stands in for it
+  ok(names.some((n) => /'contextEvidence'/.test(n)), "contextEvidence (bodyNames' scoring step) is in the list");
   ok(fns.some((x) => x.file === "page-component.js"), "the page's component logic, page-component.js, is measured");
   ok(fns.every((x, i) => i === 0 || fns[i - 1].value >= x.value), "sorted by value, highest first");
   ok(new Set(fns.map((x) => x.key)).size === fns.length, "every function has a name of its own");
