@@ -2017,6 +2017,7 @@ function wordForm(w,first){
   return COMMON.has(s)||COMMON.has(s.slice(0,-1)+(FINAL[s.slice(-1)]||s.slice(-1)))||(/ת$/.test(s)&&COMMON.has(s.slice(0,-1)+"ה"))}
 // שם פעולה: כותרת של רישום ביומן או נושא של בקשה ("איסוף", "ביקור", "העברה", "תזכורת", "פירוק"), לא אדם
 const VNOUN=/^(?:[א-ת]י[א-ת]ו[א-ת](?:ים|ין)?|ה[א-ת]{2,3}(?:ה|ות)|ת[א-ת]{2}ו[א-ת]ת?)$/;
+const PARTY_ROLE=/(התובע(?:ת)?|הנתבע(?:ת)?|המבקש(?:ת)?|המשיב(?:ה)?|הנאשמת|הנאשם|המערער(?:ת)?|המנוח(?:ה)?)/;
 const knownName=w=>KNOWN_FIRST.has(w)||POOL.he_s.includes(w)||POOL.ar_s.includes(w)||POOL.he_f.includes(w)||POOL.he_m.includes(w)||
   POOL.ar_f.includes(w)||POOL.ar_m.includes(w)||SUR_SUFFIX.test(w);
 /* מועמד בחריץ חלש או בשכן של תווית (הביקורת של 11.10): כל מילה נראית כשם — לא מילת מילוי של דיבור ("תודה",
@@ -2237,7 +2238,7 @@ function anchored(text,ctx){
   const st={text,ctx,L:lead.length,n:norm(lead+text),out:[],seen:new Set()};
   for(const a of ANCH)if(anchorApplies(a,st))hebrewAnchorHits(a,st);
   // שם באותיות לטיניות אחרי אותן תוויות (LAT_ANCH); בשכן של תווית, רק כשהשורה נגמרת אחריו
-  for(const a of LAT_ANCH)if(!(ctx&&!ctx.keys.includes(a.k)))latinAnchorHits(a,st);
+  for(const a of LAT_ANCH)if(!ctx||ctx.keys.includes(a.k))latinAnchorHits(a,st);
   return st.out}
 // האם העוגן רץ על הטקסט הזה: בשכן רק העוגנים של התווית, בלי שכן לא שורת רשימה, ועוגן עם gate רק כשהטקסט מתאים לו
 function anchorApplies(a,{n,ctx}){
@@ -2353,7 +2354,7 @@ function withVavSurname(n,c,raw,e){
     if(anchorOK(c2)&&slotWords(c2,true)){c=c2; raw=c2; e+=vm[0].length;}
   }
   return {c,raw,e}}
-// חלק אחד של מועמד (אדם, או חצי של זוג) כממצא, או null כשנפסל. מוסיף ל-st.seen כמו קודם: אחרי בדיקת החפיפה, לפני השאר
+// חלק אחד של מועמד (אדם, או חצי של זוג) כממצא, או null כשנפסל. מוסיף ל-st.seen אחרי בדיקת החפיפה ולפני שאר הבדיקות
 function partHit(st,a,m,p,weak,stamped){
   const {text,n,L,ctx,out,seen}=st;
   const k=p.s+":"+p.e; if(seen.has(k))return null;
@@ -2396,7 +2397,6 @@ function addresseeRestOK(rest){
   if(!ADDR_REST.test(rest)&&!PLACE_BY[w1]&&!ROLE1.includes(w1))return false;
   return true}
 // התפקיד בתווית ("התובעת: …"), לעוגן תפקיד עברי או לטיני
-const PARTY_ROLE=/(התובע(?:ת)?|הנתבע(?:ת)?|המבקש(?:ת)?|המשיב(?:ה)?|הנאשמת|הנאשם|המערער(?:ת)?|המנוח(?:ה)?)/;
 function partyRole(s){const rm=PARTY_ROLE.exec(s); return rm?rm[1]:null}
 // המסמך עצמו מעיד על המגדר טוב יותר מכל ניחוש לפי השם
 function genderNear(n,from,to){
