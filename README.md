@@ -27,6 +27,7 @@ The interface is in Hebrew; the Hebrew documentation follows this section.
 - Name recognition: the NER head of DictaBERT-parse, exported to ONNX, quantized to 8 bits and run in the browser with transformers.js. It is served from this site and checked against a pinned SHA-256 before use.
 - Rules, Hebrew prefix handling and a gazetteer run alongside the model; the model only adds suggestions.
 - Tests: more than 8,500 Node checks and 350 Playwright browser tests in CI, WebKit and Firefox before each release that changes the page, plus the benchmark gates above.
+- How it works: [ARCHITECTURE.md](ARCHITECTURE.md), the map of a document's journey, where each part lives, what the tool promises and which test guards each promise. The words it uses: [CONTEXT.md](CONTEXT.md).
 - Developed with Claude Code as the coding agent. Each decision is recorded with its reasons: the model choice in [docs/model-eval/](docs/model-eval/README.md), the rest in the changelog and the code. Who does what, and what the owner catches that the agent and the tests miss: [docs/HOW-IT-WAS-BUILT.md](docs/HOW-IT-WAS-BUILT.md). How real documents are handled while it is built: [docs/DATA-GOVERNANCE.md](docs/DATA-GOVERNANCE.md).
 
 ## Known limits

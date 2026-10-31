@@ -143,5 +143,26 @@ console.log("\n— the figures README quotes —");
   ok(!!mb && num(mb[1]) === Math.round(weights / 1e6), `the model: README says ${mb && mb[1]} MB, its files hold ${(weights / 1e6).toFixed(1)} MB`);
 }
 
+/* The map (ARCHITECTURE.md, 18.10): the files it names exist, and its "who uses what" table is the one the
+   code gives today (scripts/engine-map.js), so a change that moves a name between engine files updates it. */
+console.log("\n— the map —");
+{
+  const doc = read("ARCHITECTURE.md");
+  const EM = require("../scripts/engine-map.js");
+  const a = doc.indexOf(EM.START), b = doc.indexOf(EM.END);
+  ok(a >= 0 && b > a && doc.slice(a, b + EM.END.length) === EM.table(EM.map()),
+    "ARCHITECTURE.md's engine map is the code's: run node scripts/engine-map.js --write");
+  const named = [...new Set([...doc.matchAll(/`((?:engine\/)?[\w.-]+\.js)`/g)].map((m) => m[1]))];
+  const where = (f) => [f, "engine/" + f, "tests/" + f, "tests/" + f + ".js", path.join("e2e", f)].some((p) => fs.existsSync(path.join(ROOT, p)));
+  const missing = named.filter((f) => !where(f));
+  ok(named.length >= 30 && !missing.length, `every file the map names exists (${named.length}): missing ${missing.join(", ")}`);
+  const suites = [...new Set([...doc.matchAll(/`(\w+_t)`/g)].map((m) => m[1]))].filter((t) => !fs.existsSync(path.join(__dirname, t + ".js")));
+  ok(!suites.length, "every suite the map names exists: missing " + suites.join(", "));
+  // the glossary (CONTEXT.md) points into the code the same way
+  const words = read("CONTEXT.md"), paths = [...new Set([...words.matchAll(/`((?:engine|bench|scripts|tests)\/[\w./-]+)`/g)].map((m) => m[1]))];
+  const gone = paths.filter((p) => !fs.existsSync(path.join(ROOT, p.replace(/\/$/, ""))));
+  ok(paths.length >= 15 && !gone.length, `every file the glossary names exists (${paths.length}): missing ${gone.join(", ")}`);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exitCode = fail ? 1 : 0;
