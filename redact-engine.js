@@ -3902,41 +3902,60 @@ function cellOf(p,part,T){
     return {row:r.id,col:r.cells.indexOf(n),tbl:r.tbl,r:r.r,n:r.cells.length};
   }
   return null}
+/* הבלוקים של חלק אחד בחבילה, לפי הסדר: הפסקאות, תוויות של גרף, טקסט חלופי וקוד שדה, טקסט שנשמר כמאפיין,
+   ובסוף הבלוקים בחלופה של תיבת טקסט שזהים לבלוק בצורה עצמה */
 function flatten(doc,part,ctx){
-  const out=[], T={rows:new Map(),tbls:new Map()};
+  const out=[];
   // SmartArt וגרפים כותבים פסקאות DrawingML (a:p), לא פסקאות Word
   const dml=/\/(diagrams|charts)\//.test(part);
-  const counters=new Map();
+  paragraphBlocks(doc,part,ctx,dml,out);
+  // כל האלמנטים פעם אחת: השלבים שלמטה עוברים על אותה רשימה
+  const all=Array.from(doc.getElementsByTagName("*"));
+  if(dml)chartLabelBlocks(all,part,out);
+  textOutsideParagraphs(all,part,out);
+  propertyTextBlocks(all,part,out);
+  markFallbackTwins(out);
+  return out}
+// הטקסט של פסקה אחת, החלקים שלו (spans) וסימני ההערות שמוצגים בתוכה (ins)
+function paragraphText(p,ctx){
+  const els=[];ownText(p,els);
+  let pos=0;const spans=[],ins=[];let txt="";
+  for(const el of els){
+    if(el.note){const t=ctx&&noteMark(el.note,ctx.notes);if(t)ins.push({at:pos,t});continue}
+    if(el.sep!==undefined){spans.push({el:el.el,s:pos,e:pos+el.sep.length,sep:true});txt+=el.sep;pos+=el.sep.length;continue}
+    const t=el.textContent||"";if(!t)continue;
+    spans.push({el,s:pos,e:pos+t.length,attr:null});txt+=t;pos+=t.length}
+  return {txt,spans,ins}}
+// בלוק לכל פסקה שיש בה טקסט, עם המספר שלה ותא הטבלה שלה
+function paragraphBlocks(doc,part,ctx,dml,out){
+  const T={rows:new Map(),tbls:new Map()}, counters=new Map();
   for(const p of doc.getElementsByTagNameNS(dml?DML:W,"p")){
-    const els=[];ownText(p,els);
-    let pos=0;const spans=[],ins=[];let txt="";
-    for(const el of els){
-      if(el.note){const t=ctx&&noteMark(el.note,ctx.notes);if(t)ins.push({at:pos,t});continue}
-      if(el.sep!==undefined){spans.push({el:el.el,s:pos,e:pos+el.sep.length,sep:true});txt+=el.sep;pos+=el.sep.length;continue}
-      const t=el.textContent||"";if(!t)continue;
-      spans.push({el,s:pos,e:pos+t.length,attr:null});txt+=t;pos+=t.length}
+    const {txt,spans,ins}=paragraphText(p,ctx);
     // גם פסקה ממוספרת ריקה לוקחת מספר, ולכן המונה מתקדם לפני הבדיקה אם יש בה טקסט
     const lead=ctx&&!dml&&!part.includes("glossary/")?numLead(p,ctx.num,counters):"";
     if(txt.trim()){const b={text:txt,spans,part,node:p};if(lead)b.lead=lead;if(ins.length)b.ins=ins;
       const cell=dml?null:cellOf(p,part,T); if(cell)b.cell=cell; out.push(b)}
-  }
-  // כל האלמנטים פעם אחת: שלוש הלולאות שלמטה עוברות על אותה רשימה
-  const all=Array.from(doc.getElementsByTagName("*"));
-  // תוויות בגרף: שם קטגוריה או סדרה במטמון המחרוזות
-  // (גרף מורחב, chartEx, כותב את אותן תוויות כ-pt בתוך lvl)
-  if(dml)for(const el of all){
+  }}
+// תוויות בגרף: שם קטגוריה או סדרה במטמון המחרוזות
+// (גרף מורחב, chartEx, כותב את אותן תוויות כ-pt בתוך lvl)
+function chartLabelBlocks(all,part,out){
+  for(const el of all){
     const p1=el.parentNode, ln=el.localName;
     const label=(ln==="v"&&p1&&p1.localName==="pt"&&p1.parentNode&&p1.parentNode.localName==="strCache")||
                 (ln==="pt"&&p1&&p1.localName==="lvl");
     if(!label)continue;
     const t=el.textContent||"";if(t.trim())out.push({text:t,spans:[{el,s:0,e:t.length,attr:null}],part});
-  }
+  }}
+// הטקסט החלופי, השם והכותרת של תמונה או צורה (docPr, cNvPr)
+function pictureAltBlocks(el,part,out){
+  for(const a of ["descr","name","title"]){const v=el.getAttribute(a);
+    if(v&&v.trim())out.push({text:v,spans:[{el,s:0,e:v.length,attr:a}],
+      part:part+" (טקסט חלופי)"})}}
+// טקסט שנמצא מחוץ לפסקאות: טקסט חלופי של תמונה וטבלה, קוד שדה, WordArt ישן, וטקסט של מספור ושם של סגנון
+function textOutsideParagraphs(all,part,out){
   for(const el of all){
     const ln=el.localName;
-    if(ln==="docPr"||ln==="cNvPr"){
-      for(const a of ["descr","name","title"]){const v=el.getAttribute(a);
-        if(v&&v.trim())out.push({text:v,spans:[{el,s:0,e:v.length,attr:a}],
-          part:part+" (טקסט חלופי)"})}}
+    if(ln==="docPr"||ln==="cNvPr")pictureAltBlocks(el,part,out);
     // טקסט חלופי של טבלה: בודק הנגישות של Word מבקש אותו, ולכן הוא מתמלא (ביקורת H10)
     else if((ln==="tblCaption"||ln==="tblDescription")&&el.namespaceURI===W){
       const v=el.getAttribute("w:val");
@@ -3958,12 +3977,13 @@ function flatten(doc,part,ctx){
        כמשפט, ולכן לא נסרקים לשמות חדשים, אבל שם מהרשימה מוחלף בהם (שאר H10) */
     else if((ln==="lvlText"||(ln==="name"||ln==="aliases")&&el.parentNode&&el.parentNode.localName==="style")&&el.namespaceURI===W){
       const v=el.getAttribute("w:val");
-      if(v&&HEB_LETTER.test(v))out.push({text:v,spans:[{el,s:0,e:v.length,attr:"w:val"}],part:part+" (הגדרות עיצוב)"})}}
-  /* עוד טקסט שאדם כותב ושנשמר כמאפיין ולא כריצה (הציד של 11.10): תמונה, צורה וקו חתימה בפורמט הישן
-     (VML) — טקסט חלופי, כותרת והחותם המוצע; ScreenTip של קישור; שדה טופס — ברירת מחדל, עזרה ושורת
-     מצב; הבחירות ברשימה נפתחת; ושם ותיאור של רכיב מהיר. אף שכבה לא קראה אותם: שם מהרשימה נשאר בקובץ
-     והפס נצבע אדום בלי דבר לתקן במסך, ושם שלא ברשימה עבר בירוק. הם נקראים כמו טקסט חלופי וקוד שדה:
-     מוחלפים, ואינם מועתקים ל-AI. בתמונה, שם פרטי ושם משפחה מוצעים לה (pair), כמו בטקסט חלופי. */
+      if(v&&HEB_LETTER.test(v))out.push({text:v,spans:[{el,s:0,e:v.length,attr:"w:val"}],part:part+" (הגדרות עיצוב)"})}}}
+/* עוד טקסט שאדם כותב ושנשמר כמאפיין ולא כריצה (הציד של 11.10): תמונה, צורה וקו חתימה בפורמט הישן
+   (VML) — טקסט חלופי, כותרת והחותם המוצע; ScreenTip של קישור; שדה טופס — ברירת מחדל, עזרה ושורת
+   מצב; הבחירות ברשימה נפתחת; ושם ותיאור של רכיב מהיר. אף שכבה לא קראה אותם: שם מהרשימה נשאר בקובץ
+   והפס נצבע אדום בלי דבר לתקן במסך, ושם שלא ברשימה עבר בירוק. הם נקראים כמו טקסט חלופי וקוד שדה:
+   מוחלפים, ואינם מועתקים ל-AI. בתמונה, שם פרטי ושם משפחה מוצעים לה (pair), כמו בטקסט חלופי. */
+function propertyTextBlocks(all,part,out){
   const att=(el,a,v,sfx,pair)=>{if(v&&v.trim())out.push({text:v,spans:[{el,s:0,e:v.length,attr:a}],part:part+sfx,pair:!!pair})};
   for(const el of all){
     const ln=el.localName, ns=el.namespaceURI, up=el.parentNode;
@@ -3979,10 +3999,11 @@ function flatten(doc,part,ctx){
       else if(ln==="listItem"){att(el,"w:displayText",el.getAttribute("w:displayText")," (קוד שדה)");att(el,"w:value",el.getAttribute("w:value")," (קוד שדה)")}
       // רשימה נפתחת: הערך שנבחר בה אחרון (w:lastValue) — אחרת שם מהרשימה השאיר פס אדום בלי מה לתקן (הסקירה של 11.10)
       else if(ln==="dropDownList"||ln==="comboBox")att(el,"w:lastValue",el.getAttribute("w:lastValue")," (קוד שדה)");
-      else if((ln==="name"||ln==="description")&&up&&up.localName==="docPartPr"&&HEB_LETTER.test(valW(el)||""))att(el,"w:val",valW(el)," (הגדרות עיצוב)")}}
-  /* תיבת טקסט נכתבת פעמיים: הצורה (mc:Choice) וחלופה לתוכנות ישנות (mc:Fallback), ו-Word מציג רק את
-     הראשונה. בלוק בחלופה שזהה לבלוק בצורה הוא אותו טקסט: הוא מקבל את אותן החלפות, ואינו מוצג, מועתק או
-     נקרא שוב — הוא הגיע ל-AI פעמיים (הציד של 11.10). חלופה שכתוב בה דבר אחר נקראת כרגיל. */
+      else if((ln==="name"||ln==="description")&&up&&up.localName==="docPartPr"&&HEB_LETTER.test(valW(el)||""))att(el,"w:val",valW(el)," (הגדרות עיצוב)")}}}
+/* תיבת טקסט נכתבת פעמיים: הצורה (mc:Choice) וחלופה לתוכנות ישנות (mc:Fallback), ו-Word מציג רק את
+   הראשונה. בלוק בחלופה שזהה לבלוק בצורה הוא אותו טקסט: הוא מקבל את אותן החלפות, ואינו מוצג, מועתק או
+   נקרא שוב — הוא הגיע ל-AI פעמיים (הציד של 11.10). חלופה שכתוב בה דבר אחר נקראת כרגיל. */
+function markFallbackTwins(out){
   const twins=new Map(), nodeOf=b=>b.node||(b.spans[0]&&b.spans[0].el), kind=b=>(b.spans[0]&&b.spans[0].attr)||"";
   for(const b of out){const br=altBranch(nodeOf(b));if(br&&br.localName==="Choice"){const k=br.parentNode;if(!twins.has(k))twins.set(k,[]);twins.get(k).push(b)}}
   for(const b of out){
@@ -3990,8 +4011,7 @@ function flatten(doc,part,ctx){
     const l=twins.get(br.parentNode)||[];
     let i=l.findIndex(x=>x.text===b.text&&kind(x)===kind(b)); if(i<0)i=l.findIndex(x=>x.text===b.text);
     // WordArt: בצורה פסקה, בחלופה כיתוב של VML. הפסקה נבדקת מעכשיו כמו כיתוב
-    if(i>=0){b.dupOf=l[i];if(b.label)l[i].label=true;l.splice(i,1)}}
-  return out}
+    if(i>=0){b.dupOf=l[i];if(b.label)l[i].label=true;l.splice(i,1)}}}
 /* וכך גם SmartArt: הטקסט כתוב במודל הנתונים (dataN.xml) ושוב בציור המוכן שלו (drawingN.xml). בלוק של
    אחד מהם שזהה לבלוק של השני באותו תרשים הוא אותו טקסט — הראשון מבין השניים נקרא, השני מקבל את
    ההחלפות שלו. blocks: כל הבלוקים של החבילה, לפי הסדר. */
