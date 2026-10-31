@@ -21,7 +21,7 @@
     "bench:nomodel": "node bench/generate.js && node bench/run.js --no-model",
     "bench:protocol": "node bench/protocol.js",
     "lock": "node bench/lock.js",
-    "check:types": "npx --yes -p typescript@5.6.3 tsc -p tsconfig.check.json",
+    "check:types": "tsc -p tsconfig.check.json",
     "gate": "node bench/gate.js",
     "bump": "node scripts/bump.js",
     "shapes": "node scripts/harvest-shapes.js",
@@ -41,7 +41,7 @@
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
     "@babel/standalone": "7.29.0",
-    "@huggingface/transformers": "^4.2.0",
+    "@huggingface/transformers": "4.2.0",
     "@playwright/test": "^1.62.1",
     "@xmldom/xmldom": "^0.9.12",
     "d3": "7.9.0",
@@ -52,6 +52,13 @@
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "topojson-client": "3.1.0",
+    "typescript": "5.6.3",
     "world-atlas": "2.0.2"
+  },
+  "overrides": {
+    "@mapbox/node-pre-gyp": "^2.0.3",
+    "adm-zip": "^0.6.1",
+    "global-agent": "^4.1.3",
+    "sharp": "^0.35.5"
   }
 }
