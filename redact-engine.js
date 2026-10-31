@@ -1606,124 +1606,157 @@ function nerClean(ents,text,opt){
   const seen=new Map();
   for(const e of ents){
     if(!NER_KIND[e.type]||e.score<min)continue;
-    // ── תיקון הקיצוץ: מרחיבים כל קצה עד גבול מילה בטקסט המקורי ──
-    // גבול מילה הוא אות או ניקוד. ״ ו-־ יושבים בטווח העברי, ובלי ההבחנה "״מיכל ברנע״" נקרא
-    // כמילה שנחתכה ו-מ קולפה, ו"המורה־מיכל" נבלע לתוך השם (שכבה 1ב, אותו סוג כמו המירכאות
-    // ב-v41). סימן בתוך מילה נכלל רק בצורה שהעברית כותבת אותו: גרשיים לפני האות האחרונה
-    // של ראשי תיבות (צה״ל, עו"ד), וגרש אחרי ג, ז, צ או ת (ג׳ורג׳). "ב״חיפה״" הוא ציטוט.
-    const LET=/[֑-ֽֿ-ׇא-ת]/, isL=k=>k>=0&&k<text.length&&LET.test(text[k]);
-    const inner=k=>{const c=text[k];
-      if(c==='"'||c==='״')return isL(k-1)&&isL(k+1)&&!isL(k+2);
-      if(c==="'"||c==='׳')return /[גזצץת]/.test(text[k-1]||"");
-      return false};
-    let s=e.s,en=e.e;
-    while(s>0&&(isL(s-1)||(inner(s-1)&&isL(s-2))))s--;
-    const endWas=en;
-    while(en<text.length&&(isL(en)||(inner(en)&&isL(en-1))))en++;
-    // המודל מקצץ בסוף בדיוק כשהוא בלע אות שימוש בהתחלה. ההארכה בסוף
-    // היא לכן העדות הטובה ביותר לכך שהאות הראשונה אינה חלק מהשם.
-    const wasCut=en>endWas;
-    let v=trimEdges(text.slice(s,en));
-    if(!v||v.length<2)continue;
-    // סוג תיק לפני מספר תיק («ת"א 48213-05-25») אינו מקום ואינו גוף: המודל קרא את «ת"א» כתל אביב, והכותרת יצאה
-    // «חולון 48213-05-25» (הביקורת החיצונית של 18.10, F6). ראשי התיבות נשארים, והמספר נמחק (CASE_NUMBER)
-    if(COURT_SET.has(norm(v).replace(/[״]/g,'"'))&&/^\s*(?:\([^)\n]{1,12}\)\s*)?\d/.test(text.slice(en)))continue;
-    // ── קילוף אות שימוש ──
-    // "המוסד לביטוח לאומי": הקילוף לפי ראש מוסד ("מוסד") הפך גוף ציבורי לגוף
-    // פרטי לכאורה. הצורה שלפני הקילוף נשמרת ונבדקת גם היא מול הגופים הציבוריים.
-    const v0=v;
-    const w=v.split(/\s+/), f=norm(w[0]);
-    if(PFX.has(f[0])&&f.length>=4){
-      const stem=f.slice(1);
-      const elsewhere=tok.has(stem)||[...PFX].some(q=>q!==f[0]&&tok.has(q+stem));
-      // "לכוכב יאיר" מופיע פעם אחת ו"כוכב יאיר" לא — אבל מאגר היישובים
-      // יודע שזה יישוב, וזו עדות טובה יותר מספירת הופעות
-      const bare=[stem,...w.slice(1)].join(" ");
-      const known=!!PLACE_BY[norm(bare)]||KNOWN_FIRST.has(stem);
-      // "בעמותת שביל הלב", "ברחוב הארזים": כשהגזע הוא ראש של גוף או של מקום,
-      // האות הראשונה היא אות שימוש גם בלי שהגזע מופיע במקום אחר.
-      // "בבית ספר אורט", "לחסידות נורבין": גם ראש של מוסד או של קבוצה הוא עדות.
-      // "בקריית אתא" (L14 בביקורת השנייה): יישוב שמילתו הראשונה היא ראש של שם יישוב —
-      // קריית, כפר, גבעת, רמת, נווה… — מקבל את אות השימוש כאות שימוש גם כשהכתיב אינו
-      // במאגר; אחרת ה-ב' נכנסה לערך והוחלפה יחד עם השם ("מתגוררת תקוע")
-      const SETTLE=/^(?:קריית|קרית|כפר|גבעת|רמת|נווה|נוה|מעלה|מצפה|גני|שדה|שדות|תל|ראש|מגדל|עין|אבן|נחלת|בית)$/;
-      const headPeel=NER_HEADS.has(stem)||
-        (NER_KIND[e.type]==="PLACE"&&w.length>1&&SETTLE.test(stem))||
-        (typeof ORG_HEADS!=="undefined"&&ORG_HEADS.test(norm(bare)))||
-        (typeof GROUP_HEADS!=="undefined"&&GROUP_HEADS.test(norm(bare)));
-      if(wasCut||elsewhere||known||headPeel){
-        w[0]=w[0].slice(w[0].length-f.length+1); v=trimEdges(w.join(" "));
-      }
-      // שתי אותיות שימוש ("ולמיכל", "כשחיפה", "ובאלונים"): הקילוף של אות אחת השאיר את
-      // השנייה בערך. זוגות שהעברית כותבת בלבד, ואותן עדויות על הגזע שאחרי שתיהן (שכבה 4).
-      else if(f.length>=5&&/^(?:ו[בהלמכ]|כש|מה|לכ)/.test(f)){
-        const stem2=f.slice(2), bare2=[stem2,...w.slice(1)].join(" ");
-        const ev2=tok.has(stem2)||!!PLACE_BY[norm(bare2)]||KNOWN_FIRST.has(stem2)||NER_HEADS.has(stem2)||
-          (typeof ORG_HEADS!=="undefined"&&ORG_HEADS.test(norm(bare2)));
-        if(ev2){ w[0]=w[0].slice(w[0].length-f.length+2); v=trimEdges(w.join(" ")); }
-      }
-    }
-    // פיסוק של סוף משפט אינו חלק משם. אם נשאר כזה בתוך המקטע, שומרים את
-    // החלק שאחרי הפיסוק האחרון: שם שהמודל הדביק לו את סוף המשפט הקודם.
-    if(/[.!?:;\n]/.test(v)){const parts=v.split(/[.!?:;\n]+/).map(x=>trimEdges(x)).filter(Boolean); v=parts.length?parts[parts.length-1]:"";}
-    // מילה בודדת שהיא מילת עצירה, מילה נפוצה או פועל אינה שם: "אני", "השופט",
-    // "לבד". בתמלול "אני" מסומן כשם שוב ושוב, וכל משפט בגוף ראשון נהרס.
-    // תואר בתחילת המקטע אינו חלק מהשם: "עו\"ד יערה" הוא "יערה". בלי זה המקטע
-    // המודבק מאושר כשם שני לצד "יערה ליפשיץ", ושם המשפחה לבדו נחשב משותף ולא מוחלף.
-    if(v)v=trimEdges(v.replace(TITLE_RX,""));
-    // "כאמור עמרי", "משכך עמרי": מילת קישור בראש המקטע אינה חלק מהשם
-    if(v){let ws=v.split(/\s+/); while(ws.length>1&&LEAD.has(norm(ws[0])))ws.shift(); v=ws.join(" ");}
-    if(v&&!/\s/.test(v)&&(STOP.has(v)||COMMON.has(v)||VRB.has(v)||STOP.has(norm(v))||COMMON.has(norm(v))))continue;
-    // "שדוברת רוסית": אות שימוש על פועל או מילה נפוצה בראש המקטע אינה שם
-    if(v){const fw=norm(v.split(/\s+/)[0]), st=fw.slice(1);
-      if(fw.length>=4&&PFX.has(fw[0])&&(VRB.has(st)||COMMON.has(st)))continue;
-      // ש + בינוני או תואר ("שדוברת", "שגרים", "שעובדות"): מילת זיקה, לא שם — אלא אם הגזע הוא שם ("שרות")
-      if(fw.length>=5&&fw[0]==="ש"&&/(?:ת|ות|ים)$/.test(st)&&!KNOWN_FIRST.has(st)&&!FEM.has(st)&&!MASC.has(st))continue;}
-    // "אפוטרופא לדין", "משה אפטרופא": מילת תפקיד בכל צורה אינה שם, לבדה או בקצה
-    if(v&&v.split(/\s+/).every(w=>ROLEWORD.test(norm(w))))continue;
-    if(v){let ws=v.split(/\s+/); while(ws.length>1&&ROLEWORD.test(norm(ws[ws.length-1])))ws.pop(); while(ws.length>1&&ROLEWORD.test(norm(ws[0])))ws.shift(); v=ws.join(" ");}
-    // המודל נדבק לימין: "אסתר להידחות" חזר כישות אחת. שם פועל או פועל בקצה
-    // המקטע אינם חלק מהשם, כמו בשכבת גוף הטקסט (verbTail).
-    if(v&&typeof verbTail==="function"){let ws=v.split(/\s+/); while(ws.length>1&&verbTail(ws[ws.length-1]))ws.pop(); v=ws.join(" ");}
-    if(!v||v.length<2||NER_DROP.has(v)||NER_DROP.has(norm(v)))continue;
-    // "33" הוצע כשם גוף והוחלף. ערך בלי אות עברית אחת אינו שם של גוף או אדם.
-    if(!/[֐-׿]/.test(v))continue;
-    // "נ ג ד" מכותרת התיק חזר מהמודל כשם אדם
-    {const vw=norm(v).split(/\s+/); if(vw.length>1&&vw.every(x=>x.replace(/['"׳״]/g,"").length<=1))continue;}
-    let kind=NER_KIND[e.type];
-    // "שחר - שירותי חברה רווחה משפחה" סומן כאדם. שם עם מקף מפריד או
-    // חמש מילים ומעלה הוא גוף, ושם בדוי של אדם שם היה מבלבל.
-    if(kind==="NAME"&&(/\s[-\u2013]\s/.test(v)||v.split(/\s+/).length>4))kind="ORG";
-    // ראש של גוף (עמותת, מעון, מרפאת…) באמצע המקטע: מה שלפניו הודבק מהמשפט,
-    // "משרד עמותת שביל הלב". חותכים לפני הראש, אחרת הכלל תופס רק את הצורה המודבקת.
-    if(kind==="ORG"){const m=/(?:^|\s)(עמותת|עמותה|מעון|מרפאת|מכון|קרן|מרכז|אגודת|חברת|בית ספר|בי"ס|ביה"ס|גן ילדים|פנימיית|ישיבת)\s/u.exec(v); if(m&&m.index>0)v=v.slice(m.index+1);}
-    // גוף לפי כללי ראש, בלי רשימה סגורה: קבוצה רחבה (חסידות, תנועה, מפלגה, זרם,
-    // עדה, קהילה) אינה מזהה ואינה מוצעת; מוסד עם מילת סוג מוצע כרגיל; גוף בלי
-    // אף אחד מהראשים — "נורבין" לבדו — עולה לבדיקה ולא נכנס לרשימה מעצמו.
-    let orgReview=false;
-    if(kind==="ORG"){
-      const nv=norm(v).trim();
-      if(typeof GROUP_HEADS!=="undefined"&&GROUP_HEADS.test(nv))continue;
-      // סיומת של חברה («… בע"מ», «… Ltd», «… ושות'») ודאית כמו מילת סוג לפני השם. עד כאן חברה כזאת עלתה רק כהצעה, וכל
-      // החברות שהיו צד בפסקי הדין של הבדיקה העיוורת השנייה נשארו בטקסט כשהרשימה אושרה כמו שהוצעה (13.10)
-      if(typeof ORG_HEADS!=="undefined"&&!ORG_HEADS.test(nv)&&!ORG_TAIL.test(nv))orgReview=true;
-    }
-    // גם כשהמודל תפס רק קטע: "הרווחה" מתוך "משרד הרווחה". בודקים את הקטע עם
-    // עד שתי המילים שלפניו בטקסט המקורי, אחרת גוף ציבורי מוצע ומושחר.
-    if(kind!=="NAME"){const back=text.slice(Math.max(0,s-40),s).split(/\s+/).filter(Boolean).slice(-2); const strip1=x=>x.replace(/^[בהולמכש]/,""); const c2=norm([...back,v].join(" ")), c1=norm([...back.slice(-1),v].join(" ")); if([c2,strip1(c2),c1,strip1(c1)].some(x=>PUBLIC_ORG.test(x)))continue;}
-    // בית משפט ומשרד ממשלתי אינם פרט מזהה, ואין טעם להציע אותם
-    if(kind!=="NAME"&&PUBLIC_ORG.test(norm(v).replace(/^[\u05d1\u05d4\u05d5\u05dc\u05de\u05db\u05e9]/,"")))continue;
-    if(kind!=="NAME"&&PUBLIC_ORG.test(norm(v)))continue;
-    if(kind!=="NAME"&&(PUBLIC_ORG.test(norm(v0))||PUBLIC_ORG.test(norm(v0).replace(/^[בהולמכש]/,""))))continue;
-    // "הפרדס בעקבות": המודל גרר את מילת היחס הבאה לתוך מקום. מילת יחס או פועל
-    // בסוף גוף או מקום אינם חלק מהשם. רק מהסוף, ורק אחרי בדיקת הגופים
-    // הציבוריים — חיתוך מההתחלה הפך את "משרד הרווחה" ל"הרווחה" והציע אותו.
-    if(kind!=="NAME"){const ws=v.split(/\s+/); while(ws.length>1&&(TRAIL.has(norm(ws[ws.length-1]))||VRB.has(norm(ws[ws.length-1]))))ws.pop(); v=ws.join(" ");}
-    const key=kind+"|"+norm(v);
-    const g=seen.get(key)||{value:v,kind,score:0,n:0,s,e:en,review:orgReview,cut:false};
-    g.n++; g.score=Math.max(g.score,e.score); if(wasCut)g.cut=true; seen.set(key,g);
+    const c=nerCandidate(e,text,tok);
+    if(!c)continue;
+    const key=c.kind+"|"+norm(c.value);
+    const g=seen.get(key)||{value:c.value,kind:c.kind,score:0,n:0,s:c.s,e:c.e,review:c.review,cut:false};
+    g.n++; g.score=Math.max(g.score,e.score); if(c.cut)g.cut=true; seen.set(key,g);
   }
-  // "רונית אזולאי" מכסה את "אזולאי" — לא מציעים את שניהם
+  return nerDropCovered(seen)}
+// ישות אחת של המודל: הערך המתוקן שלה, או null כשאין בה שם להציע
+function nerCandidate(e,text,tok){
+  const {s,en,wasCut}=nerWidenSpan(text,e.s,e.e);
+  let v=trimEdges(text.slice(s,en));
+  if(!v||v.length<2)return null;
+  // סוג תיק לפני מספר תיק («ת"א 48213-05-25») אינו מקום ואינו גוף: המודל קרא את «ת"א» כתל אביב, והכותרת יצאה
+  // «חולון 48213-05-25» (הביקורת החיצונית של 18.10, F6). ראשי התיבות נשארים, והמספר נמחק (CASE_NUMBER)
+  if(COURT_SET.has(norm(v).replace(/[״]/g,'"'))&&/^\s*(?:\([^)\n]{1,12}\)\s*)?\d/.test(text.slice(en)))return null;
+  // "המוסד לביטוח לאומי": הקילוף לפי ראש מוסד ("מוסד") הפך גוף ציבורי לגוף
+  // פרטי לכאורה. הצורה שלפני הקילוף נשמרת ונבדקת גם היא מול הגופים הציבוריים.
+  const v0=v;
+  v=nerPeelPrefix(v,e.type,tok,wasCut);
+  v=nerTidyValue(v);
+  if(nerIsPlainWord(v))return null;
+  v=nerTrimEdgeWords(v);
+  if(v===null||nerIsJunk(v))return null;
+  let kind=NER_KIND[e.type];
+  // "שחר - שירותי חברה רווחה משפחה" סומן כאדם. שם עם מקף מפריד או
+  // חמש מילים ומעלה הוא גוף, ושם בדוי של אדם שם היה מבלבל.
+  if(kind==="NAME"&&(/\s[-\u2013]\s/.test(v)||v.split(/\s+/).length>4))kind="ORG";
+  // ראש של גוף (עמותת, מעון, מרפאת…) באמצע המקטע: מה שלפניו הודבק מהמשפט,
+  // "משרד עמותת שביל הלב". חותכים לפני הראש, אחרת הכלל תופס רק את הצורה המודבקת.
+  if(kind==="ORG"){const m=/(?:^|\s)(עמותת|עמותה|מעון|מרפאת|מכון|קרן|מרכז|אגודת|חברת|בית ספר|בי"ס|ביה"ס|גן ילדים|פנימיית|ישיבת)\s/u.exec(v); if(m&&m.index>0)v=v.slice(m.index+1);}
+  // גוף לפי כללי ראש, בלי רשימה סגורה: קבוצה רחבה (חסידות, תנועה, מפלגה, זרם,
+  // עדה, קהילה) אינה מזהה ואינה מוצעת; מוסד עם מילת סוג מוצע כרגיל; גוף בלי
+  // אף אחד מהראשים — "נורבין" לבדו — עולה לבדיקה ולא נכנס לרשימה מעצמו.
+  let orgReview=false;
+  if(kind==="ORG"){
+    const nv=norm(v).trim();
+    if(typeof GROUP_HEADS!=="undefined"&&GROUP_HEADS.test(nv))return null;
+    // סיומת של חברה («… בע"מ», «… Ltd», «… ושות'») ודאית כמו מילת סוג לפני השם. עד כאן חברה כזאת עלתה רק כהצעה, וכל
+    // החברות שהיו צד בפסקי הדין של הבדיקה העיוורת השנייה נשארו בטקסט כשהרשימה אושרה כמו שהוצעה (13.10)
+    if(typeof ORG_HEADS!=="undefined"&&!ORG_HEADS.test(nv)&&!ORG_TAIL.test(nv))orgReview=true;
+  }
+  if(kind!=="NAME"){
+    if(nerIsPublicBody(text,s,v,v0))return null;
+    v=nerDropTrailingWords(v);
+  }
+  return {value:v,kind,s,e:en,review:orgReview,cut:wasCut}}
+// ── תיקון הקיצוץ: מרחיבים כל קצה עד גבול מילה בטקסט המקורי ──
+// גבול מילה הוא אות או ניקוד. ״ ו-־ יושבים בטווח העברי, ובלי ההבחנה "״מיכל ברנע״" נקרא
+// כמילה שנחתכה ו-מ קולפה, ו"המורה־מיכל" נבלע לתוך השם (שכבה 1ב, אותו סוג כמו המירכאות
+// ב-v41). סימן בתוך מילה נכלל רק בצורה שהעברית כותבת אותו: גרשיים לפני האות האחרונה
+// של ראשי תיבות (צה״ל, עו"ד), וגרש אחרי ג, ז, צ או ת (ג׳ורג׳). "ב״חיפה״" הוא ציטוט.
+function nerWidenSpan(text,s,en){
+  const LET=/[֑-ֽֿ-ׇא-ת]/, isL=k=>k>=0&&k<text.length&&LET.test(text[k]);
+  const inner=k=>{const c=text[k];
+    if(c==='"'||c==='״')return isL(k-1)&&isL(k+1)&&!isL(k+2);
+    if(c==="'"||c==='׳')return /[גזצץת]/.test(text[k-1]||"");
+    return false};
+  while(s>0&&(isL(s-1)||(inner(s-1)&&isL(s-2))))s--;
+  const endWas=en;
+  while(en<text.length&&(isL(en)||(inner(en)&&isL(en-1))))en++;
+  // המודל מקצץ בסוף בדיוק כשהוא בלע אות שימוש בהתחלה. ההארכה בסוף
+  // היא לכן העדות הטובה ביותר לכך שהאות הראשונה אינה חלק מהשם.
+  return {s,en,wasCut:en>endWas}}
+// ── קילוף אות שימוש ──
+function nerPeelPrefix(v,type,tok,wasCut){
+  const w=v.split(/\s+/), f=norm(w[0]);
+  if(!(PFX.has(f[0])&&f.length>=4))return v;
+  const stem=f.slice(1);
+  const elsewhere=tok.has(stem)||[...PFX].some(q=>q!==f[0]&&tok.has(q+stem));
+  // "לכוכב יאיר" מופיע פעם אחת ו"כוכב יאיר" לא — אבל מאגר היישובים
+  // יודע שזה יישוב, וזו עדות טובה יותר מספירת הופעות
+  const bare=[stem,...w.slice(1)].join(" ");
+  const known=!!PLACE_BY[norm(bare)]||KNOWN_FIRST.has(stem);
+  // "בעמותת שביל הלב", "ברחוב הארזים": כשהגזע הוא ראש של גוף או של מקום,
+  // האות הראשונה היא אות שימוש גם בלי שהגזע מופיע במקום אחר.
+  // "בבית ספר אורט", "לחסידות נורבין": גם ראש של מוסד או של קבוצה הוא עדות.
+  // "בקריית אתא" (L14 בביקורת השנייה): יישוב שמילתו הראשונה היא ראש של שם יישוב —
+  // קריית, כפר, גבעת, רמת, נווה… — מקבל את אות השימוש כאות שימוש גם כשהכתיב אינו
+  // במאגר; אחרת ה-ב' נכנסה לערך והוחלפה יחד עם השם ("מתגוררת תקוע")
+  const SETTLE=/^(?:קריית|קרית|כפר|גבעת|רמת|נווה|נוה|מעלה|מצפה|גני|שדה|שדות|תל|ראש|מגדל|עין|אבן|נחלת|בית)$/;
+  const headPeel=NER_HEADS.has(stem)||
+    (NER_KIND[type]==="PLACE"&&w.length>1&&SETTLE.test(stem))||
+    (typeof ORG_HEADS!=="undefined"&&ORG_HEADS.test(norm(bare)))||
+    (typeof GROUP_HEADS!=="undefined"&&GROUP_HEADS.test(norm(bare)));
+  if(wasCut||elsewhere||known||headPeel){
+    w[0]=w[0].slice(w[0].length-f.length+1); return trimEdges(w.join(" "));
+  }
+  return nerPeelTwoLetters(v,w,f,tok)}
+// שתי אותיות שימוש ("ולמיכל", "כשחיפה", "ובאלונים"): הקילוף של אות אחת השאיר את
+// השנייה בערך. זוגות שהעברית כותבת בלבד, ואותן עדויות על הגזע שאחרי שתיהן (שכבה 4).
+function nerPeelTwoLetters(v,w,f,tok){
+  if(!(f.length>=5&&/^(?:ו[בהלמכ]|כש|מה|לכ)/.test(f)))return v;
+  const stem2=f.slice(2), bare2=[stem2,...w.slice(1)].join(" ");
+  const ev2=tok.has(stem2)||!!PLACE_BY[norm(bare2)]||KNOWN_FIRST.has(stem2)||NER_HEADS.has(stem2)||
+    (typeof ORG_HEADS!=="undefined"&&ORG_HEADS.test(norm(bare2)));
+  if(ev2){ w[0]=w[0].slice(w[0].length-f.length+2); return trimEdges(w.join(" ")); }
+  return v}
+// ניקוי הערך: פיסוק של סוף משפט, תואר ומילת קישור בראש המקטע
+function nerTidyValue(v){
+  // פיסוק של סוף משפט אינו חלק משם. אם נשאר כזה בתוך המקטע, שומרים את
+  // החלק שאחרי הפיסוק האחרון: שם שהמודל הדביק לו את סוף המשפט הקודם.
+  if(/[.!?:;\n]/.test(v)){const parts=v.split(/[.!?:;\n]+/).map(x=>trimEdges(x)).filter(Boolean); v=parts.length?parts[parts.length-1]:"";}
+  // תואר בתחילת המקטע אינו חלק מהשם: "עו\"ד יערה" הוא "יערה". בלי זה המקטע
+  // המודבק מאושר כשם שני לצד "יערה ליפשיץ", ושם המשפחה לבדו נחשב משותף ולא מוחלף.
+  if(v)v=trimEdges(v.replace(TITLE_RX,""));
+  // "כאמור עמרי", "משכך עמרי": מילת קישור בראש המקטע אינה חלק מהשם
+  if(v){let ws=v.split(/\s+/); while(ws.length>1&&LEAD.has(norm(ws[0])))ws.shift(); v=ws.join(" ");}
+  return v}
+// מילה בודדת שהיא מילת עצירה, מילה נפוצה או פועל אינה שם: "אני", "השופט",
+// "לבד". בתמלול "אני" מסומן כשם שוב ושוב, וכל משפט בגוף ראשון נהרס.
+function nerIsPlainWord(v){
+  if(v&&!/\s/.test(v)&&(STOP.has(v)||COMMON.has(v)||VRB.has(v)||STOP.has(norm(v))||COMMON.has(norm(v))))return true;
+  // "שדוברת רוסית": אות שימוש על פועל או מילה נפוצה בראש המקטע אינה שם
+  if(v){const fw=norm(v.split(/\s+/)[0]), st=fw.slice(1);
+    if(fw.length>=4&&PFX.has(fw[0])&&(VRB.has(st)||COMMON.has(st)))return true;
+    // ש + בינוני או תואר ("שדוברת", "שגרים", "שעובדות"): מילת זיקה, לא שם — אלא אם הגזע הוא שם ("שרות")
+    if(fw.length>=5&&fw[0]==="ש"&&/(?:ת|ות|ים)$/.test(st)&&!KNOWN_FIRST.has(st)&&!FEM.has(st)&&!MASC.has(st))return true;}
+  return false}
+// "אפוטרופא לדין", "משה אפטרופא": מילת תפקיד בכל צורה אינה שם, לבדה או בקצה
+// מחזירה null כשכל המקטע הוא מילות תפקיד
+function nerTrimEdgeWords(v){
+  if(v&&v.split(/\s+/).every(w=>ROLEWORD.test(norm(w))))return null;
+  if(v){let ws=v.split(/\s+/); while(ws.length>1&&ROLEWORD.test(norm(ws[ws.length-1])))ws.pop(); while(ws.length>1&&ROLEWORD.test(norm(ws[0])))ws.shift(); v=ws.join(" ");}
+  // המודל נדבק לימין: "אסתר להידחות" חזר כישות אחת. שם פועל או פועל בקצה
+  // המקטע אינם חלק מהשם, כמו בשכבת גוף הטקסט (verbTail).
+  if(v&&typeof verbTail==="function"){let ws=v.split(/\s+/); while(ws.length>1&&verbTail(ws[ws.length-1]))ws.pop(); v=ws.join(" ");}
+  return v}
+// ערך קצר מדי, מילה שאינה שם, בלי אות עברית, או אותיות בודדות מפוזרות
+function nerIsJunk(v){
+  if(!v||v.length<2||NER_DROP.has(v)||NER_DROP.has(norm(v)))return true;
+  // "33" הוצע כשם גוף והוחלף. ערך בלי אות עברית אחת אינו שם של גוף או אדם.
+  if(!/[֐-׿]/.test(v))return true;
+  // "נ ג ד" מכותרת התיק חזר מהמודל כשם אדם
+  {const vw=norm(v).split(/\s+/); if(vw.length>1&&vw.every(x=>x.replace(/['"׳״]/g,"").length<=1))return true;}
+  return false}
+// בית משפט ומשרד ממשלתי אינם פרט מזהה, ואין טעם להציע אותם
+function nerIsPublicBody(text,s,v,v0){
+  // גם כשהמודל תפס רק קטע: "הרווחה" מתוך "משרד הרווחה". בודקים את הקטע עם
+  // עד שתי המילים שלפניו בטקסט המקורי, אחרת גוף ציבורי מוצע ומושחר.
+  {const back=text.slice(Math.max(0,s-40),s).split(/\s+/).filter(Boolean).slice(-2); const strip1=x=>x.replace(/^[בהולמכש]/,""); const c2=norm([...back,v].join(" ")), c1=norm([...back.slice(-1),v].join(" ")); if([c2,strip1(c2),c1,strip1(c1)].some(x=>PUBLIC_ORG.test(x)))return true;}
+  if(PUBLIC_ORG.test(norm(v).replace(/^[\u05d1\u05d4\u05d5\u05dc\u05de\u05db\u05e9]/,"")))return true;
+  if(PUBLIC_ORG.test(norm(v)))return true;
+  if(PUBLIC_ORG.test(norm(v0))||PUBLIC_ORG.test(norm(v0).replace(/^[בהולמכש]/,"")))return true;
+  return false}
+// "הפרדס בעקבות": המודל גרר את מילת היחס הבאה לתוך מקום. מילת יחס או פועל
+// בסוף גוף או מקום אינם חלק מהשם. רק מהסוף, ורק אחרי בדיקת הגופים
+// הציבוריים — חיתוך מההתחלה הפך את "משרד הרווחה" ל"הרווחה" והציע אותו.
+function nerDropTrailingWords(v){
+  const ws=v.split(/\s+/); while(ws.length>1&&(TRAIL.has(norm(ws[ws.length-1]))||VRB.has(norm(ws[ws.length-1]))))ws.pop(); return ws.join(" ")}
+// "רונית אזולאי" מכסה את "אזולאי" — לא מציעים את שניהם
+function nerDropCovered(seen){
   const all=[...seen.values()].sort((a,b)=>b.value.length-a.value.length);
   const keep=[];
   for(const x of all){
