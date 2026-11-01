@@ -135,6 +135,17 @@ async function clean(items, label) {
     const r = await withAuto(["התובעת - מסכימה בהחלט", "הנתבע - מתנגד נחרצות"]);
     ok(!r.auto.length && r.out === "התובעת - מסכימה בהחלט\nהנתבע - מתנגד נחרצות", "a statement after a role and a dash in one line is not listed by itself — " + show(r));
   }
+  console.log("\n— a caption over a hearing: the parties' names under their roles are read (bug hunt of 1.11) —");
+  {
+    // the caption's role labels were counted with the hearing's turns; once most labels in the part stood over speech, no
+    // label read its neighbour, and both names stayed in the text with nothing asked and a green bar
+    const hear = ["פרוטוקול הדיון", "התובעת:", "חוזרת על הבקשה ומבקשת להורות על מזונות זמניים.", "הנתבע:", "מתנגד לבקשה, אין לו הכנסה קבועה.",
+      "התובעת:", "הוא עובד בחברה של אחיו ומקבל משכורת.", "הנתבע:", "זה לא נכון, אני מובטל מאז הקיץ."];
+    await expect(["התובעת:", N1, "נ ג ד", "הנתבע:", N2, ...hear], [[N1, "auto"], [N2, "auto"]], "a caption over two turns per side");
+    await expect([{ table: [[["התובעת:"], [N1]], [[""], ["נ ג ד"]], [["הנתבע:"], [N2]]] }, ...hear], [[N1, "auto"], [N2, "auto"]], "the caption as a table");
+    await expect(["התובעת:", N1, "הנתבע:", N2, ...hear], [[N1, "auto"], [N2, "auto"]], "a caption without «נגד»");
+    await clean(hear, "the same hearing without a caption");
+  }
   // the same cause in a table and under a plural label: a value or a sub-heading is not a party
   await clean([{ table: [[["התובעת"], ["שכר חודשי"]], [["הנתבע"], ["הכנסות מעסק"]]] }, "שכר חודשי של התובעת הוא 9,000 ש\"ח."], "an income table");
   await clean(["המבקשים –", "פרטים אישיים", "מצב משפחתי", "פרטים אישיים נוספים מפורטים בנספח א'."], "a plural party over sub-headings");
