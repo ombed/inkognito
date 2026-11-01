@@ -109,7 +109,7 @@ differs from the code.
 |---|---|---|
 | `00-head.js` | none | 08-03-parts, 08-06-redact-docx, 08-08-checks, 08-10-model-runtime, 08-13-exports |
 | `01-xml.js` | none | 08-01-word-text, 08-02-links, 08-03-parts, 08-04-runs, 08-05-pictures, 08-06-redact-docx, 08-13-exports |
-| `02-hebrew.js` | 03-dates (4), 03-fakenames (1), 06-detect-1-model-output (1), 06-detect-4-places (1) | 03-dates, 03-fakenames, 04-nearmiss, 05-bodynames, 06-detect-1-model-output, 06-detect-2-patterns, 06-detect-3-anchored-names, 06-detect-4-places, 07-cite, 07-engine, 08-01-word-text, 08-02-links, 08-04-runs, 08-05-pictures, 08-06-redact-docx, 08-07-report-text, 08-08-checks, 08-09-discover, 08-10-model-runtime, 08-11-entries, 08-12-restore, 08-13-exports |
+| `02-hebrew.js` | 03-dates (4), 03-fakenames (1), 06-detect-1-model-output (1), 06-detect-4-places (1) | 03-dates, 03-fakenames, 04-nearmiss, 05-bodynames, 06-detect-1-model-output, 06-detect-2-patterns, 06-detect-3-anchored-names, 06-detect-4-places, 07-cite, 07-engine, 08-01-word-text, 08-02-links, 08-03-parts, 08-04-runs, 08-05-pictures, 08-06-redact-docx, 08-07-report-text, 08-08-checks, 08-09-discover, 08-10-model-runtime, 08-11-entries, 08-12-restore, 08-13-exports |
 | `03-dates.js` | 02-hebrew (2) | 02-hebrew, 06-detect-2-patterns, 08-12-restore |
 | `03-fakenames.js` | 05-bodynames (2), 02-hebrew (1), 06-detect-1-model-output (1), 06-detect-3-anchored-names (1), 06-detect-4-places (1) | 02-hebrew, 05-bodynames, 06-detect-1-model-output, 06-detect-3-anchored-names, 06-detect-4-places, 07-engine, 08-06-redact-docx, 08-08-checks, 08-10-model-runtime, 08-11-entries, 08-12-restore, 08-13-exports |
 | `04-nearmiss.js` | 06-detect-3-anchored-names (2), 08-07-report-text (2), 02-hebrew (1), 05-bodynames (1) | 05-bodynames, 06-detect-1-model-output, 06-detect-4-places, 07-engine, 08-06-redact-docx, 08-08-checks, 08-12-restore, 08-13-exports |
@@ -125,7 +125,7 @@ differs from the code.
 | `07-gazetteer.js` | 06-detect-4-places (2) | 06-detect-4-places, 08-12-restore |
 | `08-01-word-text.js` | 02-hebrew (3), 01-xml (1) | 08-02-links, 08-03-parts, 08-04-runs, 08-06-redact-docx, 08-09-discover, 08-13-exports |
 | `08-02-links.js` | 02-hebrew (4), 01-xml (2), 08-01-word-text (2), 07-engine (1), 08-04-runs (1), 08-08-checks (1) | 08-03-parts, 08-06-redact-docx |
-| `08-03-parts.js` | 01-xml (7), 08-01-word-text (4), 08-04-runs (3), 08-02-links (2), 00-head (1) | 08-06-redact-docx, 08-13-exports |
+| `08-03-parts.js` | 01-xml (7), 08-01-word-text (4), 08-04-runs (3), 08-02-links (2), 00-head (1), 02-hebrew (1) | 08-06-redact-docx, 08-13-exports |
 | `08-04-runs.js` | 01-xml (4), 02-hebrew (2), 05-bodynames (1), 07-engine (1), 08-01-word-text (1), 08-05-pictures (1) | 08-02-links, 08-03-parts, 08-06-redact-docx, 08-10-model-runtime, 08-13-exports |
 | `08-05-pictures.js` | 01-xml (2), 02-hebrew (2) | 08-04-runs, 08-06-redact-docx, 08-13-exports |
 | `08-06-redact-docx.js` | 01-xml (7), 02-hebrew (7), 08-04-runs (7), 08-01-word-text (6), 08-02-links (6), 06-detect-4-places (5), 05-bodynames (4), 07-cite (4), 08-03-parts (4), 08-05-pictures (4), 07-engine (3), 00-head (2), 03-fakenames (2), 04-nearmiss (2), 06-detect-1-model-output (2), 06-detect-3-anchored-names (2), 08-07-report-text (2), 08-08-checks (2), 06-detect-2-patterns (1), 08-09-discover (1) | 08-13-exports |

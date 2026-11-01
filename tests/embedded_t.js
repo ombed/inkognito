@@ -49,6 +49,27 @@ const file = (extra) => mkzip([
   { name: "word/charts/_rels/chart1.xml.rels", body: rels([["rId1", "package", "../embeddings/Microsoft_Excel_Worksheet1.xlsx"]]) },
 ]);
 
+// The class behind a review on 1.11 (F3): the file opens only if no reference points at nothing. For every XML part,
+// each r:… attribute names a relationship in the part's links file, and each internal relationship's target exists.
+function dangling(parts) {
+  const names = new Set(parts.map((p) => p.name)), out = [];
+  for (const p of parts) {
+    if (!/\.xml$/.test(p.name)) continue;
+    const xml = TXT.decode(p.data), relsName = p.name.replace(/([^/]*)$/, "_rels/$1.rels");
+    const rf = parts.find((x) => x.name === relsName), rs = rf ? TXT.decode(rf.data) : "";
+    const ids = new Set([...rs.matchAll(/<Relationship\b[^>]*\bId="([^"]+)"/g)].map((m) => m[1]));
+    for (const m of xml.matchAll(/\sr:[\w]+="([^"]+)"/g)) if (!ids.has(m[1])) out.push(p.name + " → " + m[1]);
+    for (const m of rs.matchAll(/<Relationship\b[^>]*>/g)) {
+      const tg = (/\bTarget="([^"]+)"/.exec(m[0]) || [])[1];
+      if (!tg || /TargetMode="External"/.test(m[0])) continue;
+      const from = p.name.split("/").slice(0, -1), path = [];
+      for (const seg of (tg.startsWith("/") ? tg.slice(1).split("/") : [...from, ...tg.split("/")])) { if (seg === "..") path.pop(); else if (seg && seg !== ".") path.push(seg); }
+      if (!names.has(path.join("/"))) out.push(relsName + " → " + tg);
+    }
+  }
+  return out;
+}
+
 (async () => {
   console.log("\n— the embedded files leave, a line stands where each was —");
   const res = await C.redactDocx(file(), [{ value: "דנה כהן", kind: "NAME", replacement: "" }], [], OPT);
@@ -67,11 +88,33 @@ const file = (extra) => mkzip([
   ok(res.structural.embedded === 3, "the report counts three embedded files: " + res.structural.embedded);
   ok(res.verification.passed, "the final check passes");
   ok(!parts.some((f) => TXT.decode(f.data).includes("Dana Cohen")), "nothing in the file says «Dana Cohen» any more");
+  ok(dangling(parts).length === 0, "no reference points at nothing: " + dangling(parts).join(", "));
 
   console.log("\n— a picture used elsewhere too stays —");
   const shared = await C.redactDocx(file([["rId10", "image", "media/image1.emf"]]), [], [], OPT);
   const sp = (await C.unzip(await shared.blob.arrayBuffer())).map((f) => f.name);
   ok(sp.includes("word/media/image1.emf") && !sp.includes("word/media/image2.emf"), "a preview picture another link uses stays; the one only the object used goes");
+
+  console.log("\n— a picture the document shows, sharing its link with an object's preview, stays (a review on 1.11, F3) —");
+  // Word can point a picture in the text and an object's preview at one relationship: removing the object must not
+  // take the picture with it, or the text keeps a reference to a part that is gone
+  const inline = (id) => `<w:p><w:r><w:drawing><wp:inline xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:blipFill><a:blip r:embed="${id}"/></pic:blipFill></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>`;
+  const both = mkzip([
+    { name: "[Content_Types].xml", body: types },
+    { name: "_rels/.rels", body: rels([["rId1", "officeDocument", "word/document.xml"]]) },
+    { name: "word/document.xml", body: docXml(P("הצילום שלמטה.") + inline("rId5") + object("rId5", "rId6")) },
+    { name: "word/_rels/document.xml.rels", body: rels([["rId5", "image", "media/image1.emf"], ["rId6", "oleObject", "embeddings/Microsoft_Excel_Worksheet.xlsx"]]) },
+    { name: "word/media/image1.emf", body: "EMF picture" },
+    { name: "word/embeddings/Microsoft_Excel_Worksheet.xlsx", body: "PK workbook: Dana Cohen" },
+  ]);
+  const bres = await C.redactDocx(both, [], [], OPT);
+  const bp = await C.unzip(await bres.blob.arrayBuffer()), bn = bp.map((x) => x.name);
+  const bd = TXT.decode((bp.find((x) => x.name === "word/document.xml") || {}).data || new Uint8Array());
+  ok(bn.includes("word/media/image1.emf"), "the picture the text still shows stays in the file");
+  ok(/r:embed="rId5"/.test(bd) && !/imagedata|OLEObject/.test(bd), "the text keeps its picture; the object and its preview reference are gone");
+  ok(!bn.some((n) => /^word\/embeddings\//.test(n)), "the embedded file itself still leaves");
+  ok(dangling(bp).length === 0, "no reference points at nothing: " + dangling(bp).join(", "));
+  ok(dangling(await C.unzip(await shared.blob.arrayBuffer())).length === 0, "and none in the file where another link used the preview");
 
   console.log("\n— a file with no embedded object is as before —");
   const plain = await C.redactDocx(mkzip([{ name: "[Content_Types].xml", body: types }, { name: "word/document.xml", body: docXml(P("דנה כהן הגישה את הבקשה.")) }]), [{ value: "דנה כהן", kind: "NAME", replacement: "" }], [], OPT);
