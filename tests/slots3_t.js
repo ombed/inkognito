@@ -83,6 +83,14 @@ const textOf = (items) => items.flatMap((x) => (typeof x === "string" ? [x] : x.
       if (!r.auto.length) ok(c.words.every((w) => r.out.includes(w) || !textOf(c.items).includes(w)), c.id + ": the text reaches the AI as written — " + show(r));
     }
   }
+  {
+    /* Q6 is a hearing with a caption table on top. Until the bug hunt of 1.11 no label read the caption's names (the
+       hearing's turns outnumbered them), and the document reached the AI with both parties' names; the check above
+       ("the text reaches the AI as written") passed on that. Now the caption's names fill the list, and the hearing's
+       words still ask nothing (the checks above) */
+    const q6 = CASES.proto.find((c) => c.id.startsWith("Q6 ")), r = await run(q6.items);
+    ok(["נגה טרכטנגוט", "אליאב פרוינדליך"].every((v) => r.auto.includes(v)), "Q6: the caption's names fill the list by themselves — " + show(r));
+  }
 
   console.log("\n— a surname that opens with ו, with more after it on the line (5 names × 13 continuations × 4 labels) —");
   {

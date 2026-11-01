@@ -5598,6 +5598,20 @@ function labelLike(t){
   if(labelOf(x,true)||/:$/.test(x))return true;
   return x.split(/\s+/).every(w=>{const b=w.replace(/[.'"]+$/,"");
     return FORMLABEL.has(w)||HEAD_WORDS.has(w)||HEAD_WORDS.has(b)||COMMON.has(b)||STOP.has(b)||(b.length>3&&PFX.has(b[0])&&(COMMON.has(b.slice(1))||STOP.has(b.slice(1))))})}
+/* כותרת התיק בראש פרוטוקול (ציד באגים של 1.11): «התובעת:», השם, «נ ג ד», «הנתבע:», השם, ואחריה הדיון. התוויות של
+   הכותרת נספרו עם התורות של הדיון, ומשרוב התוויות עמדו מעל דברים שנאמרו, אף תווית של צד בחלק לא קראה את השכן שלה:
+   שמות שני הצדדים נשארו בטקסט בלי הצעה ובלי סימון, והפס היה ירוק. הדיון מתחיל בתווית הראשונה של צד שחוזרת בחלק;
+   תווית לפניה היא של הכותרת. מחזיר לכל חלק את המקום שבו הדיון מתחיל */
+function hearingStarts(blocks,labs,asRole){
+  const seen=new Map(), start=new Map();
+  labs.forEach((l,i)=>{
+    if(!asRole(l))return;
+    const p=blocks[i].part, k=norm(String(blocks[i].text||"")).replace(/[^א-ת]/g,""), s=seen.get(p)||new Set();
+    if(s.has(k)&&!start.has(p))start.set(p,i);
+    s.add(k); seen.set(p,s)});
+  return start}
+// שורה קצרה כמו שם בכותרת: עד ארבע מילים, בלי סימן של סוף משפט. דבר שנאמר בדיון ארוך יותר או נגמר בנקודה
+const shortLine=t=>{const x=norm(String(t||"")).replace(/\u0000/g,"").trim(); return !!x&&x.split(/\s+/).length<=4&&!/[.:;?!]$/.test(x)};
 function labelNext(blocks){
   const out=[], rows=new Map(), grid=new Map(), last=new Map(), txt=b=>String(b.text||"");
   const labs=blocks.map(b=>hiddenPart(b.part||"")?null:labelOf(txt(b),!!b.cell));
@@ -5635,9 +5649,12 @@ function labelNext(blocks){
   const talk=new Set([...turns].filter(([,t])=>t.size>=2).map(([k])=>k.split("\u0001")[0])
     .filter(p=>{const c=named.get(p); return c.yes*2<c.n}));
   const field=l=>l.keys.some(x=>x==="field"||x==="fieldx");
+  // בפרוטוקול תווית של צד אינה קוראת את השכן שלה, חוץ מתווית של הכותרת שמעל שורה קצרה או ליד תא (hearingStarts)
+  const opens=hearingStarts(blocks,labs,asRole);
+  const quiet=i=>asRole(labs[i])&&talk.has(blocks[i].part)&&!(i<opens.get(blocks[i].part)&&(blocks[i].cell||shortLine(txt(blocks[after(i)]))));
   for(let i=0;i<blocks.length;i++){
     const lab=labs[i], b=blocks[i], ni=after(i), nb=blocks[ni]; if(!lab)continue;
-    if(asRole(lab)&&talk.has(b.part))continue;
+    if(quiet(i))continue;
     const next=[];
     if(lab.list){
       for(let j=i+1;j<blocks.length&&next.length<40;j++){
