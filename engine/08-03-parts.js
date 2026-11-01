@@ -77,11 +77,8 @@ function dropObjects(files){
   }
   // מה שתחת word/embeddings יוצא כולו, גם בלי אובייקט שמצביע עליו (גיליון של גרף)
   for(const f of files) if(/^word\/embeddings\//.test(f.name))gone.add(f.name);
-  // תמונת תצוגה יוצאת רק כשאין לה קישור נוסף מחוץ לאובייקטים שהוסרו
-  for(const [name,n] of media){
-    const b=name.split("/").pop(), refs=files.filter(x=>x.name.endsWith(".rels")).reduce((k,x)=>k+(TXT.decode(x.data).split('/'+b+'"').length-1)+(TXT.decode(x.data).split('"'+b+'"').length-1),0);
-    if(refs<=n)gone.add(name);
-  }
+  // תמונת תצוגה יוצאת רק כשאף אחד כבר לא משתמש בה (previewStillUsed)
+  for(const [name,n] of media) if(!previewStillUsed(files,name,n))gone.add(name);
   // גרף שהגיליון שלו יוצא: בלי הקישור אליו
   if([...gone].some(n=>/^word\/embeddings\//.test(n)))
     for(const f of files) if(/^word\/charts\/[^/]+\.xml$/.test(f.name)){
@@ -89,6 +86,30 @@ function dropObjects(files){
       if(t!==s)f.data=ENC.encode(t);
     }
   return {gone:[...gone], files:[...gone].filter(n=>/^word\/embeddings\//.test(n)).length};
+}
+/* תמונת תצוגה של אובייקט שהוסר נשארת כשעוד משתמשים בה: קישור נוסף אליה מעבר ל-n של האובייקטים, או אותו מזהה קישור
+   שעוד כתוב בחלק אחרי שהאובייקטים יצאו ממנו. Word נותן לפעמים לתמונה בגוף הטקסט ולתמונת התצוגה של אובייקט מזהה
+   אחד; נספרו רק הקישורים, התמונה יצאה, וההפניה אליה נשארה בטקסט (בדיקה חוזרת של 1.11, F3). tests/embedded_t.js */
+function previewStillUsed(files,name,n){
+  const b=name.split("/").pop(), relFiles=files.filter(x=>x.name.endsWith(".rels"));
+  const refs=relFiles.reduce((k,x)=>k+(TXT.decode(x.data).split('/'+b+'"').length-1)+(TXT.decode(x.data).split('"'+b+'"').length-1),0);
+  return refs>n||relFiles.some(rf=>relIdsTo(rf,name).some(id=>relIdWritten(files,rf.name,id)));
+}
+// המזהים בקובץ הקישורים rf שמובילים לחלק name
+function relIdsTo(rf,name){
+  const from=rf.name.replace(/_rels\/([^/]*)\.rels$/,"$1"), ids=[];
+  for(const m of TXT.decode(rf.data).matchAll(/<Relationship\b[^>]*>/g)){
+    let tg=(/\bTarget="([^"]*)"/.exec(m[0])||[])[1]; const id=(/\bId="([^"]*)"/.exec(m[0])||[])[1];
+    if(!tg||!id||/TargetMode="External"/.test(m[0]))continue;
+    try{tg=decodeURIComponent(tg)}catch(_){/* כמו שהוא */}
+    if(partPath(from,tg)===name)ids.push(id);
+  }
+  return ids;
+}
+// האם המזהה id עוד כתוב כערך של תכונה בחלק שקובץ הקישורים relsName שייך לו
+function relIdWritten(files,relsName,id){
+  const src=files.find(x=>x.name===relsName.replace(/_rels\/([^/]*)\.rels$/,"$1"));
+  return !!src&&new RegExp(`=["']${esc(id)}["']`).test(TXT.decode(src.data));
 }
 async function inlineChunks(files,depth){
   const gone=[];
