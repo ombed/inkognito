@@ -26,7 +26,7 @@ async function redactDocx(buf,subs,allow,opt){
         s=s.replace(new RegExp(`<Relationship[^>]*Target="[^"]*${b}"[^>]*/>`,"g"),"")
            .replace(new RegExp(`<Override[^>]*PartName="/${d.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")}"[^>]*/>`,"g"),"")}
       f.data=ENC.encode(s)}
-    if(f.name==="docProps/core.xml"||f.name==="docProps/app.xml"){
+    if(propsPart(f)){
       const o=TXT.decode(f.data),d=parseXML(o);
       for(const el of d.getElementsByTagName("*")){
         // HLinks: העתק של כתובות הקישורים, שהיא אינה רואה (הציד של 11.10)
@@ -50,7 +50,8 @@ async function redactDocx(buf,subs,allow,opt){
     const o=TXT.decode(f.data),d=parseXML(o);
     // שינוי במעקב נשמר גם בסגנונות ובהגדרות המספור, עם שם מי שעשה אותו
     {const [i,dl]=acceptTracked(d);rep.ins+=i;rep.del+=dl;}
-    if(main){rep.cm+=stripComments(d);rep.rsid+=stripRsid(d);}
+    if(main)rep.cm+=stripComments(d);
+    rep.rsid+=stripIds(d,f.name,main);
     rep.hidden+=stripHidden(d);
     // כתובת בקוד שדה: כבר כאן מה שיוצא כולו (מייל, נתיב, רשת חברתית); כתובת אינטרנט נקראת אחרי ההחלפה
     if(main){joinFields(d);scrubFields(d,hostRule,rep.rels)}

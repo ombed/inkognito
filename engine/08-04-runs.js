@@ -104,6 +104,25 @@ function stripComments(doc){
   for(const r of Array.from(doc.getElementsByTagNameNS(W,"r")))
     if(!r.children.length||Array.from(r.children).every(c=>c.localName==="rPr"))r.remove();
   return n}
+/* מאפייני המסמך (מחבר, עורך אחרון, כותרת) לפי מה שכתוב בחלק, לא לפי השם: חבילה ש-.NET כתבה (System.IO.Packaging) שומרת
+   אותם ב-package/services/metadata/core-properties/….psmdcp, ושם הם יצאו כמו שהם והפס היה ירוק (ציד באגים של 1.11).
+   חלק מאפיינים: השורש שלו coreProperties או Properties, במרחב השמות של המאפיינים. tests/docmeta_t.js */
+const PROPS_NS=/schemas\.openxmlformats\.org\/(?:package\/2006\/metadata\/core-properties|officeDocument\/2006\/extended-properties)/;
+function propsPart(f){
+  if(f.name==="docProps/core.xml"||f.name==="docProps/app.xml")return true;
+  if(/\.rels$/i.test(f.name)||f.name==="[Content_Types].xml"||f.data.length>1<<20)return false;
+  const head=TXT.decode(f.data.subarray(0,2048));
+  return /^\s*(?:<\?xml[^>]*\?>\s*)?<(?:[\w.-]+:)?(?:coreProperties|Properties)\b/.test(head)&&PROPS_NS.test(head);
+}
+/* מזהים שמקשרים מסמכים זה לזה: בחלקי הטקסט מזהי העריכה (stripRsid), ובהגדרות (settings.xml) גם רשימת מזהי העריכה
+   (w:rsids, w:rsidRoot) ומזהה המסמך (w14:docId, w15:docId), שנשארו בקובץ בפס ירוק (ציד באגים של 1.11). מחזיר כמה יצאו */
+function stripIds(doc,name,main){
+  if(main)return stripRsid(doc);
+  if(!/(?:^|\/)settings\.xml$/.test(name))return 0;
+  let n=stripRsid(doc);
+  for(const el of Array.from(doc.getElementsByTagName("*")))
+    if(el.localName==="docId"){el.remove();n++}
+  return n}
 function stripRsid(doc){let n=0;
   for(const el of doc.getElementsByTagName("*")){
     for(const a of Array.from(el.attributes))

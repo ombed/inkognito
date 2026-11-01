@@ -8,7 +8,7 @@
   "page-logic.js"
  ],
  "functions": {
-  "redactDocx": 274,
+  "redactDocx": 273,
   "make/Component/renderVals": 242,
   "make/Component/showPeople": 78,
   "make/Component/componentDidUpdate": 60,
