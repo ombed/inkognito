@@ -106,5 +106,9 @@
  "guards_engine_t.js": 7,
  "guards_restore_t.js": 9,
  "guards_detect_t.js": 9,
- "guards_numbers_t.js": 10
+ "guards_numbers_t.js": 10,
+ "guards_dates_t.js": 48,
+ "guards_passes_t.js": 20,
+ "guards_places_t.js": 101,
+ "guards_seen_t.js": 42
 }
