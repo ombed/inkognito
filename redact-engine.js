@@ -4698,11 +4698,15 @@ function orientApp1(o){
   return new Uint8Array([0xFF,0xE1,0,34,0x45,0x78,0x69,0x66,0,0,0x4D,0x4D,0,0x2A,0,0,0,8,0,1,0x01,0x12,0,3,0,0,0,1,0,o,0,0,0,0,0,0]);
 }
 const cat=parts=>{ const out=new Uint8Array(parts.reduce((n,p)=>n+p.length,0)); let o=0; for(const p of parts){ out.set(p,o); o+=p.length; } return out; };
+// המקום של ה-FF הבא, או סוף הקובץ כשאין (ואז הקובץ לא נקרא עד סופו, וחוזר null)
+const skipStray=(u,p)=>{ const q=u.indexOf(0xFF,p); return q<0?u.length:q; };
 function stripJpeg(u){
   if(u.length<4||u[0]!==0xFF||u[1]!==0xD8)return null;
   const out=[u.subarray(0,2)]; let p=2, orient=0, changed=false, ended=false;
   while(p<u.length){
-    if(u[p]!==0xFF)return null;
+    // בית שאינו סמן בין חלקי הקובץ: תוכנות שמציגות תמונות מדלגות עליו עד ה-FF הבא וקוראות את מה שאחריו, גם את ה-EXIF,
+    // ולכן גם כאן. הבית לא נכתב לפלט (בדיקה חוזרת של 1.11, F2: תמונה עם בית אחד כזה יצאה עם המקום והשם שבה)
+    if(u[p]!==0xFF){ p=skipStray(u,p); changed=true; continue; }
     const m=u[p+1];
     if(m===0xFF){ p++; continue; }
     if(m===0xD9){ out.push(u.subarray(p,p+2)); p+=2; ended=true; break; }
@@ -4827,14 +4831,22 @@ function stripEmf(u){
   const out=new Uint8Array(u); out.fill(0,off,off+2*n);
   return out;
 }
+/* סוג התמונה לפי מה שכתוב בתחילת הקובץ, לא לפי השם: Word מציג תמונה בכל שם, ו-PNG שנשמר בשם .gif, או תמונה בשם
+   image2.bin, יצאו עם כל מה שבהם (בדיקה חוזרת של 1.11, F2). כל שורה ב-PICTURES: איך מזהים סוג אחד, ומי מנקה אותו;
+   הבדיקה המדויקת של המבנה נשארת אצל המנקה. */
+const bytesAt=(u,i,s)=>[...s].every((c,k)=>u[i+k]===c.charCodeAt(0));
+const PICTURES=[
+  [u=>u[0]===0xFF&&u[1]===0xD8, u=>stripJpeg(u)],
+  [u=>u[0]===137&&bytesAt(u,1,"PNG"), u=>stripPng(u)],
+  [u=>bytesAt(u,0,"GIF8"), u=>stripGif(u)],
+  [u=>bytesAt(u,0,"RIFF")&&bytesAt(u,8,"WEBP"), u=>stripWebp(u)],
+  [u=>bytesAt(u,0,"II*\0")||bytesAt(u,0,"MM\0*"), u=>stripTiff(u)],
+  [u=>u.length>=44&&u32(u,0,true)===1&&u32(u,40,true)===0x464D4520, u=>stripEmf(u)],
+];
+// התמונה בלי הפרטים הנסתרים, או null: אין מה להסיר, זו לא תמונה מוכרת, או שלא נקראה עד סופה. name לא קובע את הסוג
 function stripImageMeta(name,u){
-  if(/\.(?:jpe?g|jfif)$/i.test(name))return stripJpeg(u);
-  if(/\.png$/i.test(name))return stripPng(u);
-  if(/\.gif$/i.test(name))return stripGif(u);
-  if(/\.webp$/i.test(name))return stripWebp(u);
-  if(/\.tiff?$/i.test(name))return stripTiff(u);
-  if(/\.emf$/i.test(name))return stripEmf(u);
-  return null;
+  const kind=PICTURES.find(([is])=>is(u));
+  return kind?kind[1](u):null;
 }
 /* SVG (הביקורת החיצונית של 18.10, F3): הטקסט שבו כתוב כטקסט, הכותרת (title), התיאור (desc), התוויות (text) והמטא-נתונים,
    ואיש מהם לא נקרא: «תרשים של …» יצא בקובץ כמו שהוא, והבדיקה האחרונה עברה. Word שומר כל SVG לצד עותק PNG שלו ומציג את
@@ -4895,8 +4907,9 @@ async function redactDocx(buf,subs,allow,opt){
   // הקישורים של חלק שהוסר (ההערות) הולכים איתו: בלעדיו נשארו בקובץ, יתומים (הציד של 11.10)
   {const gone=new Set(rep.dropped.map(n=>n.replace(/([^/]*)$/,"_rels/$1.rels")));keep=keep.filter(f=>!gone.has(f.name))}
   for(const f of keep){
-    // תמונה: בלי מקום, מצלמה, תאריך ומחבר (stripImageMeta)
-    if(/(?:^|\/)media\/[^/]+$/i.test(f.name)){ const c=stripImageMeta(f.name,f.data); if(c){ f.data=c; rep.img++; } }
+    // תמונה: בלי מקום, מצלמה, תאריך ומחבר (stripImageMeta). כל חלק שאינו XML, בכל תיקייה: הסוג נקבע לפי התוכן, ותמונה
+    // מחוץ ל-media או בשם אחר יצאה עם כל מה שבה (בדיקה חוזרת של 1.11, F2)
+    if(!/\.(?:xml|rels|svg|vml)$/i.test(f.name)){ const c=stripImageMeta(f.name,f.data); if(c){ f.data=c; rep.img++; } }
     // SVG שנשאר: בלי כותרת, תיאור, מטא-נתונים והערות (cleanSvg)
     if(/\.svg$/i.test(f.name)){ const c=cleanSvg(f.data); if(c){ f.data=c; rep.img++; } }
     if(f.name.endsWith(".rels")||f.name==="[Content_Types].xml"){

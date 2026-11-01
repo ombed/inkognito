@@ -98,7 +98,36 @@ const png = cat(SIG, IHDR, chunk("tEXt", enc("Author\0Dana Cohen")), chunk("iTXt
   }
   ok(C.stripPng(cat(SIG, IHDR, GAMA, IDAT, IEND)) === null, "a PNG with nothing to remove is left as it is");
   ok(C.stripPng(cat(SIG, IHDR, chunk("tEXt", enc("a\0b")), IDAT)) === null, "a PNG without its end is left as it is");
-  ok(C.stripImageMeta("word/media/image9.gif", png) === null, "other kinds of picture are left as they are");
+  // the parser is chosen by what is in the file, not by its name (a review on 1.11, F2): a PNG named .gif kept its author
+  const misnamed = C.stripImageMeta("word/media/image9.gif", png);
+  ok(misnamed && !has(misnamed, "Dana Cohen"), "a PNG named .gif is cleaned as a PNG");
+  ok(C.stripImageMeta("word/media/image9.bin", enc("not a picture at all")) === null, "something that is not a picture is left as it is");
+}
+
+console.log("\n— a picture the cleaner could not read kept everything (a review on 1.11, F2) —");
+{
+  // one stray byte after the start marker: picture viewers skip it and still read the EXIF, so the cleaner must too
+  const stray = cat(SOI, new Uint8Array([0x00]), JFIF, seg(0xE1, exif(6, true)), XMP, DQT, SOF, DHT, SOS, EOI);
+  const out = C.stripJpeg(stray);
+  ok(out && !has(out, "GPS 32.0853N") && !has(out, "Dana Cohen") && !has(out, "PhoneCam"), "a stray byte after the start marker no longer stops the cleaning");
+  ok(out && out[0] === 0xFF && out[1] === 0xD8 && out[out.length - 2] === 0xFF && out[out.length - 1] === 0xD9, "and the picture still starts and ends as a JPEG");
+  ok(out && C.exifOrientation(out.subarray(2 + JFIF.length + 4)) === 6, "and keeps its rotation");
+  // the class: a stray byte at any boundary between the parts of the file (the probe)
+  const partsOf = [SOI, JFIF, seg(0xE1, exif(6, true)), XMP, ICC, IPTC, COM, DQT, SOF, DHT, SOS, EOI];
+  let clean = 0, tried = 0;
+  for (let i = 1; i < partsOf.length; i++) for (const b of [0x00, 0x20, 0xAB]) {
+    tried++;
+    const u = cat(...partsOf.slice(0, i), new Uint8Array([b, b]), ...partsOf.slice(i));
+    const o = C.stripJpeg(u);
+    if (o && !has(o, "GPS 32.0853N") && !has(o, "Dana Cohen") && !has(o, "דנה כהן")) clean++;
+  }
+  ok(clean === tried, `stray bytes at every boundary: ${clean} of ${tried} pictures cleaned`);
+  ok(C.stripJpeg(cat(SOI, new Uint8Array([0x00, 0x00]))) === null, "a file with nothing after the stray bytes is left as it is");
+  // by content, whatever the name says
+  for (const name of ["word/media/image3.bin", "word/media/image3.png", "word/media/image3"]) {
+    const o = C.stripImageMeta(name, jpeg(6, true));
+    ok(o && !has(o, "GPS 32.0853N"), "a JPEG named " + name.split("/").pop() + " is cleaned");
+  }
 }
 
 console.log("\n— through a whole Word file —");
@@ -116,6 +145,18 @@ console.log("\n— through a whole Word file —");
   ok(pic("word/media/image1.jpeg") && C.exifOrientation(pic("word/media/image1.jpeg").subarray(2 + JFIF.length + 4)) === 6, "and keeps its rotation");
   ok(pic("word/media/image2.png") && !has(pic("word/media/image2.png"), "Dana Cohen"), "the PNG in the file has no author");
   ok(res.verification && res.verification.passed, "the final check passes: the name is gone from the text and the pictures");
+  {
+    const stray = cat(SOI, new Uint8Array([0x00]), JFIF, seg(0xE1, exif(1, true)), DQT, SOF, DHT, SOS, EOI);
+    const files2 = [...base, { name: "word/document.xml", body: doc(P(R("דנה כהן צילמה."))) },
+      { name: "word/media/image1.jpeg", body: stray }, { name: "word/media/image2.bin", body: jpeg(1, true) },
+      { name: "word/extra/photo.jpeg", body: jpeg(1, true) }];
+    const res2 = await C.redactDocx(mkzip(files2), [{ value: "דנה כהן", kind: "NAME", replacement: "" }], [], OPT);
+    const parts2 = await C.unzip(await res2.blob.arrayBuffer());
+    for (const n of ["word/media/image1.jpeg", "word/media/image2.bin", "word/extra/photo.jpeg"]) {
+      const d = (parts2.find((x) => x.name === n) || {}).data;
+      ok(d && !has(d, "GPS 32.0853N") && !has(d, "Dana Cohen"), "in the Word file, " + n + " has no place and no name");
+    }
+  }
   console.log(`\n${pass} passed, ${fail} failed`);
   process.exitCode = fail ? 1 : 0;
 })().catch((e) => { console.log("  ✗ " + (e && e.stack || e)); process.exitCode = 1; });

@@ -14,8 +14,9 @@ async function redactDocx(buf,subs,allow,opt){
   // הקישורים של חלק שהוסר (ההערות) הולכים איתו: בלעדיו נשארו בקובץ, יתומים (הציד של 11.10)
   {const gone=new Set(rep.dropped.map(n=>n.replace(/([^/]*)$/,"_rels/$1.rels")));keep=keep.filter(f=>!gone.has(f.name))}
   for(const f of keep){
-    // תמונה: בלי מקום, מצלמה, תאריך ומחבר (stripImageMeta)
-    if(/(?:^|\/)media\/[^/]+$/i.test(f.name)){ const c=stripImageMeta(f.name,f.data); if(c){ f.data=c; rep.img++; } }
+    // תמונה: בלי מקום, מצלמה, תאריך ומחבר (stripImageMeta). כל חלק שאינו XML, בכל תיקייה: הסוג נקבע לפי התוכן, ותמונה
+    // מחוץ ל-media או בשם אחר יצאה עם כל מה שבה (בדיקה חוזרת של 1.11, F2)
+    if(!/\.(?:xml|rels|svg|vml)$/i.test(f.name)){ const c=stripImageMeta(f.name,f.data); if(c){ f.data=c; rep.img++; } }
     // SVG שנשאר: בלי כותרת, תיאור, מטא-נתונים והערות (cleanSvg)
     if(/\.svg$/i.test(f.name)){ const c=cleanSvg(f.data); if(c){ f.data=c; rep.img++; } }
     if(f.name.endsWith(".rels")||f.name==="[Content_Types].xml"){
