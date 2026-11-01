@@ -101,11 +101,13 @@ console.log("\n— end to end: the kind survives in the document —");
 
 {
   // the places screen mapped each town against every town in the atlas, re-reading its tags for every pair:
-  // the tour's step 2 to 3 took over a second (8.10). Old: about 1.5 s here; now about 0.1 s
-  const t = process.hrtime.bigint();
+  // the tour's step 2 to 3 took over a second (8.10). Old: about 1.5 s here; now about 0.1 s. Measured as this
+  // process's CPU time, not the wall clock, which on a busy machine counts other programs too and failed here at 760
+  // and 987 ms (a review on 1.11, F9); the old code still takes about 1.5 s of CPU, so the check still catches it
+  const t = process.cpuUsage();
   C.geoMap(["חיפה", "עכו", "נהריה", "כרמיאל"], 0, [], new Set());
-  const ms = Number(process.hrtime.bigint() - t) / 1e6;
-  ok(ms < 750, "mapping four towns takes well under a second (" + Math.round(ms) + " ms)");
+  const used = process.cpuUsage(t), ms = (used.user + used.system) / 1000;
+  ok(ms < 750, "mapping four towns takes well under a second of CPU time (" + Math.round(ms) + " ms)");
 }
 
 {
