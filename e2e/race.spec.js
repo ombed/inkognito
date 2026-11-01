@@ -30,9 +30,13 @@ test("acting during a scan does nothing, and the scan result still lands", async
   await expect(H.scanning(page)).toBeDisabled();
   await expect(H.skipButton(page)).toBeDisabled();
 
-  // Hammer it anyway. The handler path must not advance to places.
+  // Hammer it anyway. A disabled button ignores even a scripted click, so these two only show that the lock holds.
   await H.scanning(page).evaluate((el) => el.click());
   await H.skipButton(page).evaluate((el) => el.click());
+  // The header's «יישובים» step is not locked during a scan (it is off only while there is no document), and it runs
+  // the same «המשך» code, peoForward. That code's own guard (if(S.scanning) return) is all that keeps it on this
+  // screen, so this click is the one that tests the handler path: it must not advance to places.
+  await page.locator("header nav").getByRole("button", { name: "יישובים", exact: true }).click();
   await expect(page.getByRole("heading", { name: /מי מופיע בתיק/ })).toBeVisible();
   await expect(page.getByRole("heading", { name: /יישובים/ })).toHaveCount(0);
 
