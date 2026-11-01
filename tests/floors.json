@@ -108,5 +108,6 @@
  "guards_detect_t.js": 9,
  "guards_numbers_t.js": 10,
  "guards_dates_t.js": 48,
- "guards_passes_t.js": 20
+ "guards_passes_t.js": 20,
+ "guards_places_t.js": 101
 }
