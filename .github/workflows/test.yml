@@ -1,18 +1,19 @@
 name: test
 
-# Every PR and every push to main: the Node suites, the browser checks, the deterministic benchmark and its
+# Every PR, and every push to main or to inkognito (the branch the site is built from): the Node suites,
+# the browser checks, the deterministic benchmark and its
 # gate; and, beside them, the model-on benchmark. The weights are in the repository (models/, since v56) and
 # the bench reads them locally, so nothing is downloaded; the model-on gate reports only until its baseline
 # has held on CI's machines (outside review of 12.10).
 #
-# The baseline both gates compare with is the one at the PR's base, or main before the push, read with
+# The baseline both gates compare with is the one at the PR's base, or the branch before the push, read with
 # git show (GATE_BASE_REF, bench/gate.js): a change cannot pass by regenerating its own baseline. What it
 # accepts as worse is named, with a reason, in bench/gate-accepted.json.
 
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, inkognito]
 
 jobs:
   # The Node side: lint, the suites, the type checks, the benchmark and what holds it. The browser tests run
@@ -37,7 +38,7 @@ jobs:
         run: npm run -s check:types
       - name: Benchmark, deterministic layers
         run: npm run bench:nomodel
-      - name: The baseline's commit (the PR's base, or main before this push)
+      - name: The baseline's commit (the PR's base, or the branch before this push)
         env:
           EVENT: ${{ github.event_name }}
           BASE_REF: ${{ github.base_ref }}
@@ -110,7 +111,7 @@ jobs:
       - run: npm ci
       - name: Benchmark, with the model
         run: npm run bench
-      - name: The baseline's commit (the PR's base, or main before this push)
+      - name: The baseline's commit (the PR's base, or the branch before this push)
         env:
           EVENT: ${{ github.event_name }}
           BASE_REF: ${{ github.base_ref }}
@@ -163,7 +164,7 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - name: The baseline's commit (the PR's base, or main before this push)
+      - name: The baseline's commit (the PR's base, or the branch before this push)
         env:
           EVENT: ${{ github.event_name }}
           BASE_REF: ${{ github.base_ref }}
