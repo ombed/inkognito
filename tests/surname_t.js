@@ -73,5 +73,31 @@ console.log("\n— the family's invented first names start with different letter
   ok(shared === 0, "each family still shares one invented surname: " + shared);
   ok(bad === 0, "150 families over 50 keys, every family's invented first names start with different letters: " + bad + " " + ex.slice(0, 3).join(" | "));
 }
+/* A surname the AI writes alone comes back (the review of 2.11). A fake of three letters («כהן», «לוי», «חדד») comes back
+   alone only after a title, by design, so «25.2 מיליון ללוי» stayed marked; and «לכהן» is also a verb, so it stayed
+   unmarked and fake. Over 12 keys of an invented agreement, 2 of the demo summaries hit it. The fake picker now
+   prefers names of four letters or more. Every example is invented. */
+console.log("\n— a fake surname written alone, with a prefix letter, comes back —");
+{
+  const crypto = require("crypto");
+  const people = ["יונתן גרוסמן", "אורנה אוחיון", "אריאל טלמון", "דנה פלדמן", "נתנאל פרלמן"];
+  const text = people.join(", ") + " חתמו על ההסכם.";
+  const bad = [];
+  for (let i = 0; i < 60; i++) {
+    const key = crypto.createHash("sha256").update("lone-sur-" + i).digest("hex");
+    const eng = new C.Engine(people.map((v) => ({ value: v, kind: "NAME", replacement: "" })), [], { ...OPT, aliasKey: key }, text);
+    const map = {}; for (const h of eng.detect(text)) if (h.apply) map[h.base || h.text] = String(eng.repFor({ ...h, pre: "" }));
+    const pairs = Object.entries(C.restorePairs({}, map));
+    for (const [real, fake] of Object.entries(map)) {
+      const s = fake.split(" ").pop(), rs = real.split(" ").pop();
+      for (const sent of ["התשלום ל" + s + " יבוצע במועד.", s + " מחזיק במניות.", "הסכום שישולם ל" + s + " ול" + s + " בלבד."]) {
+        const r = C.restoreNames(sent, pairs, [], {});
+        if (!r.text.includes(rs) || r.left.length) bad.push(fake + ": «" + sent + "» → «" + r.text + "»");
+      }
+    }
+  }
+  C.setAliasKey(null);
+  ok(bad.length === 0, "60 keys × 5 people: a lone fake surname, with or without ל, comes back: " + bad.length + " " + bad.slice(0, 3).join(" | "));
+}
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exitCode = fail ? 1 : 0;

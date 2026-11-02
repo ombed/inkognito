@@ -767,6 +767,7 @@ function nearDocWord(words){
   };
 }
 const nearForbidden=(forbidden,v)=>!!(forbidden.near&&forbidden.near(v));
+const longName=v=>String(v).replace(/[^א-ת]/g,"").length>=4;
 // שם מהמאגר שאינו מילה, מילת קישור או יישוב (pickFrom)
 const poolNameOK=v=>!WORDLIKE.has(v)&&!WORDISH.has(v)&&!(/-/.test(v)&&v.split("-").some(poolWordy))&&
   !(typeof PLACE_BY!=="undefined"&&PLACE_BY[v])&&!STOP.has(v);
@@ -776,9 +777,13 @@ function pickFrom(arr,seed,used,forbidden){
   const ok=v=>!used.has(v)&&!forbidden.has(v)&&poolNameOK(v);
   /* הקרבה למילה של המסמך היא העדפה, לא איסור: במסמך ארוך היא מיצתה את המאגר, ואנשים קיבלו שם ממוספר («תומר 60 גבאי»)
      שה-AI כותב בצורות שאינן חוזרות (הביקורת של 2.11). שם קרוב עדיף על שם ממוספר. tests/forbidden_t.js */
-  for(const near of [true,false])for(let k=0;k<n;k++){
+  /* וקודם שם של ארבע אותיות ומעלה: שם של שלוש («כהן», «לוי», «חדד») חוזר לבדו רק אחרי תואר, ו«לכהן» הוא גם פועל, ולכן
+     «25.2 מיליון ללוי» נשאר מסומן ו«לכהן» נשאר בדוי בלי סימון (הביקורת של 2.11). וכך שם פרטי: ה-AI כותב
+     את המוכרים בשמם הפרטי («4,000 של רחל»), ו«רחל» לבדה סומנה. tests/surname_t.js */
+  const pref=[v=>!nearForbidden(forbidden,v)&&longName(v),v=>!nearForbidden(forbidden,v),()=>true];
+  for(const p of pref)for(let k=0;k<n;k++){
     const v=arr[(seed+k*step+((seed>>>8)%3))%n];
-    if(ok(v)&&!(near&&nearForbidden(forbidden,v)))return v}
+    if(ok(v)&&p(v))return v}
   for(let j=0;j<89;j++){ const v=arr[seed%n]+" "+(((seed+j)%89)+11); if(!used.has(v)) return v; }
   return arr[seed%n]+" "+((seed%89)+11)+"-"+(used.size+1)}
 // שם פרטי לבד או שם משפחה לבד — נשמר אותו סוג, אחרת "כהן" הופך ל"יעל"
