@@ -80,6 +80,19 @@ const out = async (lines, subs) => (await C.redactDocx(zipOf(lines), subs || [],
       const r = C.restoreNames(ans, PAIRS, [], {});
       ok(!r.left.length, "nothing left where nothing is misspelled: «" + r.text + "» " + JSON.stringify(r.left));
     }
+    /* A misspelling adds or drops a vowel letter (א ה ו י) or swaps a final letter; an ordinary word one consonant away
+       is not a misspelled fake (the review of 2.11: the AI's own «ביטול», «ביטחון», «בעיה», «בתיק», «גייס» were marked
+       beside the fakes «ביטון», «בתיה», «וייס», 8 of 24 answers over an invented agreement) */
+    const P2 = [["אורנה אוחיון", "שירן ביטון"], ["דנה פלדמן", "בתיה גבאי"], ["נתנאל פרלמן", "גלעד וייס"]];
+    for (const ans of ["הוסכם על ביטול ההסכם ועל ביטחון לתשלום.", "אין בעיה בתיק הזה.", "החברה תגייס עובדים, והיא גייס כספים."]) {
+      const r = C.restoreNames(ans, P2, [], {});
+      ok(!r.left.length, "an ordinary word one consonant from a fake is not marked: «" + ans + "» " + JSON.stringify(r.left));
+    }
+    // (the misspellings above, «לנדא» with a vowel letter dropped and «פרצ» with a final letter, stay marked)
+    {
+      const r = C.restoreNames("לדברי ביטן, ההסכם נחתם.", P2, [], {});
+      ok(r.left.some((x) => x.fake === "ביטן"), "«ביטן», «ביטון» with its ו dropped, is still a misspelled fake: " + JSON.stringify(r.left));
+    }
   }
 
   console.log(`\n${pass} passed, ${fail} failed`);
