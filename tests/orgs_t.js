@@ -73,5 +73,117 @@ console.log("\n— end to end: the replacement keeps the head —");
   ok(reps.every(r => /^ל?עמותת \S+$/.test(r) && !/שביל/.test(r)), "fake keeps עמותת: " + reps.join(" | "));
 }
 
+/* A company's fake keeps the company's legal suffix, and is never a person's first name, a town or a word that is
+   also a name (the owner's decision of 2.11, Q6). «מרלין השקעות בע"מ» went out as «גלים» or «תמר»: the AI read a
+   woman, «תמר» was never restored by the paste-back, and a one-word fake named a town («סביון»). And four companies
+   in one document shared one fake in about a quarter of the keys («בנק ארז» for both banks), since fakeOrg never
+   recorded its pick. Every example is invented. */
+const crypto = require("crypto");
+const KEYS = Array.from({ length: 50 }, (_, i) => crypto.createHash("sha256").update("orgs-key-" + i).digest("hex"));
+const PERSONISH = (w) => C.POOL.he_f.includes(w) || C.POOL.he_m.includes(w) || C.POOL.ar_f.includes(w) || C.POOL.ar_m.includes(w) ||
+  C.FEM.has(w) || C.MASC.has(w) || C.WORDLIKE.has(w);
+const TOWNISH = (w) => !!C.PLACE_BY[w] || C.PLACES.some((p) => p.n === w);
+
+console.log("\n— a company fake keeps its legal suffix, and its name is not a person or a town —");
+{
+  const cases = [
+    ['מרלין השקעות בע"מ', ' בע"מ'], ['טרבלון מערכות בקרה בע"מ', ' בע"מ'], ["זיו ושות'", " ושות'"], ["ברקת ושות׳", " ושות'"],
+    ['גלבוע תעשיות (2019) בע"מ', ' בע"מ'], ['טרילון ייזום בע"מ (2019)', ' בע"מ (2019)'], ["Norlux Ltd", " Ltd"],
+  ];
+  const bad = [];
+  for (const key of KEYS) {
+    C.setAliasKey(key);
+    for (const [v, tail] of cases) {
+      const f = C.fakeOrg(v, new Set(), new Set());
+      const nf = C.norm(f || "");
+      if (!f || !nf.endsWith(C.norm(tail))) { bad.push(v + " → " + f + " (suffix)"); continue; }
+      const name = nf.slice(0, nf.length - C.norm(tail).length).trim();
+      if (!name || /\s/.test(name) || PERSONISH(name) || TOWNISH(name)) bad.push(v + " → " + f + " (name part «" + name + "»)");
+      if (C.norm(v).split(/\s+/).some((w) => w.length > 2 && name === w)) bad.push(v + " → " + f + " (a real word kept)");
+    }
+  }
+  C.setAliasKey(null);
+  ok(bad.length === 0, "suffix kept, name part not a person, word-name or town, over 50 keys: " + bad.slice(0, 6).join(" | "));
+  // without a suffix nothing is added: a headless name still gets one word, a head keeps its head
+  C.setAliasKey(KEYS[3]);
+  const plain = C.fakeOrg("נרות מאירות", new Set(), new Set()), bank = C.fakeOrg("בנק הצפון", new Set(), new Set());
+  C.setAliasKey(null);
+  ok(plain && !/\s/.test(plain) && !PERSONISH(plain) && !TOWNISH(plain), "no suffix, no head: one plain word: " + plain);
+  ok(/^בנק \S+$/.test(bank) && !PERSONISH(bank.split(" ")[1]) && !TOWNISH(bank.split(" ")[1]), "a head and no suffix: «בנק <word>»: " + bank);
+}
+
+console.log("\n— distinct entities get distinct fakes in one document, in every key —");
+{
+  const OPT2 = { on: new Set(), flag: new Set(), mode: "real", near: false, body: false, prefixes: "normal", styles: {} };
+  const orgs = ['מרלין השקעות בע"מ', 'טרבלון מערכות בע"מ', 'פלדור הנדסה בע"מ', "סולמית דירוג ושות'", "בנק הפועלים", "בנק דיסקונט", "עמותת שביל הלב", "עמותת נר תמיד"];
+  const towns = ["נתניה", "רחובות", "חיפה", "עפולה"];
+  const text = orgs.join(" חתמה עם ") + ". המשרדים ב" + towns.join(", ב") + ".";
+  const subs = orgs.map((v) => ({ value: v, kind: "ORG", replacement: "" })).concat(towns.map((v) => ({ value: v, kind: "PLACE", replacement: "" })));
+  const shared = [], tailShared = [];
+  for (const key of KEYS) {
+    const eng = new C.Engine(subs, [], { ...OPT2, aliasKey: key }, text);
+    const reps = new Map();
+    for (const h of eng.detect(text)) if (h.apply) reps.set(h.base, eng.repFor({ ...h, pre: "" }));
+    const vals = [...reps.values()];
+    if (reps.size !== orgs.length + towns.length || new Set(vals).size !== vals.length) shared.push(JSON.stringify([...reps]));
+    // and no two entities share the distinctive word of their fakes, which the AI writes alone («גלים» for «גלים בע"מ»)
+    const core = vals.map((r) => C.norm(r).replace(/\s(?:בע"מ|ושות')$/, "").replace(/^(?:בנק|עמותת)\s/, ""));
+    if (new Set(core).size !== core.length) tailShared.push(core.join(", "));
+  }
+  C.setAliasKey(null);
+  ok(shared.length === 0, "eight companies and four towns, twelve fakes in each of 50 keys: " + shared.length + " keys collide " + (shared[0] || ""));
+  ok(tailShared.length === 0, "no two entities share the name word of their fakes: " + tailShared.length + " keys, " + (tailShared[0] || ""));
+}
+
+console.log("\n— every written form of a company gets the same fake, and its defined short name drops the suffix —");
+{
+  const OPT2 = { on: new Set(), flag: new Set(), mode: "real", near: false, body: false, prefixes: "normal", styles: {} };
+  const full = 'מרלין השקעות בע"מ', short = "מרלין השקעות";
+  const forms = ["ל", "מ", "ב", "ו", "ש", "כש", "וה"];
+  const text = full + " (להלן: \"" + short + "\") חתמה. " + forms.map((p) => p + full).join(" ; ") + ". " + short + " תשלם, ול" + short + " אין חוב.";
+  const subs = [{ value: full, kind: "ORG", replacement: "" }, { value: short, kind: "ORG", replacement: "", sameAs: full }];
+  const bad = [];
+  for (const key of KEYS.slice(0, 20)) {
+    const eng = new C.Engine(subs, [], { ...OPT2, aliasKey: key }, text);
+    const hits = eng.detect(text).filter((h) => h.apply);
+    const fullHits = hits.filter((h) => h.base === full), shortHits = hits.filter((h) => h.base === short);
+    if (fullHits.length !== 1 + forms.length || shortHits.length !== 3) { bad.push("hits " + hits.map((h) => h.text).join(",")); continue; }
+    const fake = eng.repFor({ ...fullHits[0], pre: "" });
+    const stem = fake.replace(/\s+בע"מ$/, "");
+    if (!/\sבע"מ$/.test(fake)) bad.push("full: " + fake);
+    // after ל, ב, כ or ה a fake that starts with ה drops it, as Hebrew does («להשקמה» is «לשקמה»)
+    const same = (r, p) => { const n = C.norm(r); return n === C.norm(p + fake) || (fake[0] === "ה" && /[לבכה]$/.test(p) && n === C.norm(p + fake.slice(1))); };
+    for (const h of fullHits) { const r = eng.repFor(h); if (!same(r, h.pre || "") || !r.endsWith('בע"מ')) bad.push(h.text + " → " + r + " (pre «" + (h.pre || "") + "»)"); }
+    for (const h of shortHits) { const r = eng.repFor(h); if (!(r.endsWith(stem) || (stem[0] === "ה" && r.endsWith(stem.slice(1)))) || /בע"מ/.test(r)) bad.push(h.text + " → " + r + " (want " + stem + ")"); }
+  }
+  ok(bad.length === 0, "the full name in seven prefixed forms and the short name, over 20 keys: " + bad.slice(0, 4).join(" | "));
+}
+
+console.log("\n— the paste-back returns a company the AI wrote without its suffix —");
+{
+  // the AI drops «בע"מ» and writes «חברת גרניט», «לגרניט»: that is the company too, as its defined short name is
+  const pairs = [['מרלין השקעות בע"מ', 'גרניט בע"מ'], ["זיו ושות'", "קוורץ ושות'"], ["רחוב הנביאים 22", "רחוב הזית 22"], ["רחוב הברזל", "רחוב הרצל"], ["רחוב אחוזה", "רחוב השקד"], ["דנה כהן", "מיכל לוי"]];
+  const r = C.restoreNames("חברת גרניט חתמה, ולגרניט אין חוב. משרד קוורץ ייצג. גרניט בע\"מ תשלם. מיכל לוי גרה ברחוב הזית 22.", pairs, []);
+  ok(r.text === "חברת מרלין השקעות חתמה, ולמרלין השקעות אין חוב. משרד זיו ייצג. מרלין השקעות בע\"מ תשלם. דנה כהן גרה ברחוב הנביאים 22.", "restored: " + r.text);
+  ok(!r.conflict.length, "two streets are not people: no initials form «רחוב ה.» shared by both: " + JSON.stringify(r.conflict));
+}
+
+console.log("\n— a law firm in the list of names is still a firm —");
+{
+  // «שושן ושות'» ticked as a name (the model tags a law firm as a person) went out as a man, «משה זילברמן»: the suffix
+  // makes it a firm, whatever the list says
+  const OPT2 = { on: new Set(), flag: new Set(), mode: "real", near: false, body: false, prefixes: "normal", styles: {} };
+  const text = "ב\"כ התובעת, עו\"ד משושן ושות', ומשרד בוזגלו ושות׳ הגישו. שושן ושות' ביקשו דחייה.";
+  const bad = [];
+  for (const key of KEYS.slice(0, 20)) {
+    const eng = new C.Engine([{ value: "שושן ושות'", kind: "NAME", replacement: "" }, { value: "בוזגלו ושות׳", kind: "NAME", replacement: "" }], [], { ...OPT2, aliasKey: key }, text);
+    for (const h of eng.detect(text).filter((x) => x.apply)) {
+      const r = eng.repFor({ ...h, pre: "" }), w = C.norm(r).split(/\s+/);
+      if (!/ושות'$/.test(C.norm(r)) || w.length !== 2 || PERSONISH(w[0]) || C.origin(r) === "ar") bad.push(h.text + " → " + r);
+    }
+  }
+  ok(bad.length === 0, "a firm's fake keeps «ושות'» and is not a person, over 20 keys: " + bad.slice(0, 4).join(" | "));
+}
+
 console.log(`\n${pass} passed, ${fail} failed\n`);
 process.exit(fail ? 1 : 0);

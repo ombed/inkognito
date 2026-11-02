@@ -62,6 +62,36 @@ console.log("\n— a key: what outsiders compute is not what she gets —");
 console.log("\n— origin(): an apostrophe alone is not Arabic —");
 for (const [v, want] of [["יואב ברקוביץ'", "he"], ["דנה ברקוביץ׳", "he"], ["ג'ון סמית", "he"], ["ח'אלד עבאס", "ar"], ["ע'סאן ח'ורי", "ar"]])
   ok(C.origin(v) === want, `origin(«${v}») = ${C.origin(v)}, want ${want}`);
+/* The hunt of 1.11: «ושות'» ends in ת' and a law firm listed as a name went out as an Arab man («שושן ושות'» ←
+   «ג'מאל סרסור»); ז' is zh («ז'אנה», «ז'ק»), not Arabic; and common Arabic names were missing, so «סאמר מרעי» got a
+   Hebrew name. Every example is invented. */
+for (const [v, want] of [["שושן ושות'", "he"], ["בוזגלו ושות׳", "he"], ["כהן, לוי ושות'", "he"], ["ז'אנה שושן", "he"], ["ז'ק אמסלם", "he"],
+  ["סאמר מרעי", "ar"], ["ואסים נסאר", "ar"], ["נדים חורי", "ar"], ["עלא סלאמה", "ar"], ["ח'אלד עבאס", "ar"], ["ת'אמר עודה", "ar"], ["חוסאם ח'טיב ושות'", "ar"]])
+  ok(C.origin(v) === want, `origin(«${v}») = ${C.origin(v)}, want ${want}`);
+
+console.log("\n— a Russian first name only for a Russian first name; no first name a reader takes for ו + a name —");
+{
+  /* «אורי זכאי» went out as «ולדימיר ברקוביץ» in most keys: the Hebrew pools hold Russian first names, and origin() knows
+     only Hebrew and Arabic. And a fake first name starting with ו («ואאל», «וורוד») came back from the AI as «וואאל» and
+     was read as ו + the name. Every example is invented. */
+  const RU = new Set(["סרגיי", "ולדימיר", "דמיטרי", "אלכס", "אנה", "סבטלנה", "אירינה", "לודמילה", "אולגה"]);
+  const keys = Array.from({ length: 50 }, (_, i) => crypto.createHash("sha256").update("ru-key-" + i).digest("hex"));
+  let ru = 0, ruOwn = 0, vav = 0;
+  for (const key of keys) {
+    C.setAliasKey(key);
+    for (const v of ["אורי זכאי", "רינה אלוש", "יונתן קרסו", "מיכל גל-און", "עמית נגר", "ליה כהן", "שמעון לוי", "לאה ברק", "משה ברקת"])
+      if (RU.has(fake(v).split(/\s+/)[0])) ru++;
+    for (const v of ["ולדימיר קוזלוב", "אירינה קוזלובה", "סבטלנה מרקוביץ", "יבגני שור", "רומן זכאי", "אלנה גורדון"]) if (RU.has(fake(v).split(/\s+/)[0])) ruOwn++;
+    for (const v of ["סאמר מרעי", "מנאל נסאר", "ואסים עודה", "עביר ח'ורי", "ראמי דבור", "נור סעדי"]) {
+      const g = C.fakeName(v, null, new Set(), new Set(), new Set());
+      if (/^ו/.test(g)) vav++;
+    }
+  }
+  C.setAliasKey(null);
+  ok(ru === 0, "450 Hebrew names over 50 keys, no Russian first name: " + ru);
+  ok(ruOwn > 0, "a Russian first name may still get one: " + ruOwn + " of 300");
+  ok(vav === 0, "300 names over 50 keys, no first name starting with ו: " + vav);
+}
 
 console.log("\n— pickFrom(): every name of the pool can be reached, and no two people share one —");
 {

@@ -467,6 +467,39 @@ for (const [value, kind, t] of [
   ok(C.examplesOf([{ part: "w", text: t }], value).length === 1, "rule «" + value + "» — its sentence is shown on the screen");
 }
 
+/* One city, one fake, however it is written (the hunt of 1.11). «תל אביב» found by the places layer and «תל אביב-יפו»
+   ticked in the list were two keys of the map, so one copy read «כפר סבא» in one line and «חולון» in the next, and
+   the AI saw two cities. The same for a street written «רחוב ביאליק» and «רח' ביאליק». And two towns never share one
+   fake: «מנתניה לרחובות» went out as «מאשדוד לאשדוד», since fakePlace never recorded its pick. Every example is
+   invented. */
+console.log("\n— one city written several ways gets one fake; two towns never share one —");
+{
+  const crypto = require("crypto");
+  const KEYS = Array.from({ length: 50 }, (_, i) => crypto.createHash("sha256").update("towns-key-" + i).digest("hex"));
+  const O = { ...OPT, styles: {} };
+  const text = "המשרד בתל אביב. הכתובת תל אביב-יפו, ובמכתב תל אביב - יפו, ושוב לתל-אביב-יפו. " +
+    "הדירה ברחוב ביאליק 31, ובמכתב רח' ביאליק 31. הנכס עבר מנתניה לרחובות, ומשם לעפולה.";
+  const subs = [{ value: "תל אביב-יפו", kind: "PLACE", replacement: "" }, { value: "רחוב ביאליק 31", kind: "PLACE", replacement: "" },
+    { value: "רח' ביאליק 31", kind: "PLACE", replacement: "" }, { value: "נתניה", kind: "PLACE", replacement: "" }, { value: "רחובות", kind: "PLACE", replacement: "" }];
+  const strip = (r, h) => (h.pre && r.startsWith(h.pre) ? r.slice(h.pre.length) : r);
+  const bad = [];
+  for (const key of KEYS) {
+    const eng = new C.Engine(subs, [], { ...O, aliasKey: key }, text);
+    const hits = eng.detect(text).filter((h) => h.apply);
+    const rep = (rx) => hits.filter((h) => rx.test(C.norm(h.text))).map((h) => strip(eng.repFor(h), h));
+    const tlv = rep(/תל[ -]אביב/), street = rep(/ביאליק/), towns = ["נתניה", "רחובות", "עפולה"].map((t) => rep(new RegExp(t))[0]);
+    if (tlv.length < 4 || new Set(tlv).size !== 1) bad.push("תל אביב: " + tlv.join(" / "));
+    if (street.length !== 2 || new Set(street).size !== 1 || !/^רחוב \S.* 31$/.test(street[0] || "")) bad.push("street: " + street.join(" / "));
+    const all = [tlv[0], street[0], ...towns];
+    if (all.some((x) => !x) || new Set(all).size !== all.length) bad.push("distinct: " + all.join(" / "));
+  }
+  ok(bad.length === 0, "over 50 keys: " + bad.length + " keys wrong, " + bad.slice(0, 3).join(" | "));
+  // a short name inside a longer town is another town: «יפו» alone is not «תל אביב-יפו», «כפר סבא» is not «סבא»
+  const e2 = new C.Engine([{ value: "תל אביב-יפו", kind: "PLACE", replacement: "" }, { value: "כפר סבא", kind: "PLACE", replacement: "" }, { value: "יפו", kind: "PLACE", replacement: "" }], [], O, "תל אביב-יפו, כפר סבא ויפו.");
+  const r2 = new Map(e2.detect("תל אביב-יפו, כפר סבא ויפו.").filter((h) => h.apply).map((h) => [h.base, strip(e2.repFor(h), h)]));
+  ok(r2.size === 3 && new Set(r2.values()).size === 3, "three places, three fakes: " + JSON.stringify([...r2]));
+}
+
 /* The whole document, through redactDocx. After the first pass a uniformity pass replaces every other
    occurrence of a value that was replaced once: «גרה ברעננה» was replaced, so «נקודת מבט רעננה» was too,
    although the places layer had asked about it. And the final check read every occurrence of a replaced

@@ -1035,7 +1035,35 @@ function placePool(kind,value){
   }
   return base;
 }
+/* רחוב נשאר רחוב (הציד של 1.11). כשמילת הסוג בתוך הערך עצמו («רחוב הנביאים 22», כך המודל מסמן כתובת), placeKind לא
+   מצא אותה בטקסט שלפני הערך, והתחליף נלקח ממאגר היישובים: «מרחוב משה שרת 94» יצא «מערד 94», ו«רחוב הנביאים 22» יצא
+   «מנצרת» בלי מספר הבית. כאן מילת הסוג, ואות השימוש שלפניה, נשארות כמו שנכתבו, השם נלקח ממאגר הרחובות או השכונות,
+   מספר הבית נשאר, ויישוב אחרי פסיק מקבל יישוב. זה לא סותר את Q11 בגרסה 2: שם מילת הסוג מחוץ לערך ואינה חלק מהתחליף,
+   וכאן היא בתוכו. tests/places_t.js */
+const PLACE_HEAD_IN=/^((?:[בהולמכש]|ו[בהלמכ]|כש)?)(רחוב|רח'|שדרות|שד'|שדרת|סמטת|סמטה|דרך|שכונת|שכונה)\s+(\S.*)$/u;
+const HOUSE_NO=/^(.*?\S)(?:\s+(\d+[א-ת]?(?:[/-]\d+[א-ת]?)?))?(?:\s*,\s*(\S.*))?$/u;
+function fakeStreet(raw,nv,m,used,forbidden){
+  const k=/^שכונ/.test(m[2])?"שכונה":"רחוב";
+  const hd=raw.slice(0,m[1].length+m[2].length);
+  const p=HOUSE_NO.exec(m[3])||[m[3],m[3],"",""];
+  const taken=(...not)=>({has:n=>not.includes(n)||!!(used&&used.has(n))});
+  const name=pickPlace(nv,taken(p[1]),forbidden,k);
+  if(!name)return null;
+  const town=p[3]?pickPlace(p[3],taken(name,p[3]),forbidden,null):"";
+  return hd+" "+name+(p[2]?" "+p[2]:"")+(town?", "+town:"");
+}
 function fakePlace(value,used,forbidden,kind){
+  const raw=String(value||"").trim(), nv=norm(raw);
+  const m=PLACE_HEAD_IN.exec(nv);
+  if(m)return fakeStreet(raw,nv,m,used,forbidden);
+  if(kind==="רחוב"||kind==="שכונה"){
+    // מילת הסוג לפני הערך, ומספר הבית בתוכו («רחוב» + «הנביאים 22»): המספר נשאר
+    const p=/^(.*?\S)\s+(\d+[א-ת]?(?:[/-]\d+[א-ת]?)?)$/u.exec(nv);
+    if(p){ const name=pickPlace(nv,used,forbidden,kind); return name?name+" "+p[2]:null; }
+  }
+  return pickPlace(value,used,forbidden,kind);
+}
+function pickPlace(value,used,forbidden,kind){
   const pool=placePool(kind||null,value);
   if(!pool.length)return null;
   const free=n=>{
@@ -1047,6 +1075,8 @@ function fakePlace(value,used,forbidden,kind){
       if(!w)continue;
       if(forbidden.has(w))return false;
       for(const p of "בלמוהשכ") if(forbidden.has(p+w))return false;
+      // ולא מילה של המסמך בתוכו: «הרימון» ליד חברה בשם «רימון», «הרצליה» ליד «רחוב הרצל» (holdsDocWord, הציד של 1.11)
+      if(holdsDocWord(w,forbidden))return false;
     }
     return true;
   };
@@ -1056,7 +1086,7 @@ function fakePlace(value,used,forbidden,kind){
     if(free(cand))return cand;
   }
   // המאגר של הסוג נגמר (או שכל שמותיו במסמך): נופלים למאגר הכללי, לא לתווית
-  return kind?fakePlace(value,used,forbidden,null):null;
+  return kind?pickPlace(value,used,forbidden,null):null;
 }
 
 /* שם יישוב בכל כתיב רגיל (הציד של 11.10). עד כאן השמות נתפסו רק כפי שנכתבו ברשימה, ולכן «בתל-אביב»,

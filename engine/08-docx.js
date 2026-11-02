@@ -2629,13 +2629,23 @@ function wordForms(w){
   return [...out].filter(v=>!COMMON.has(v)&&!STOP.has(v)&&!(typeof VRB!=="undefined"&&VRB.has(v)));
 }
 // הזוגות ועוד הצורות של כל אדם בשתי מילים; צורה מסומנת (שלישי), ואינה נותנת חלקים לבד (restoreNames)
+/* האם לזוג יש צורות של שם אדם (restoreForms). חברה בלי הסיומת (החלטת הבעלים, 2.11, Q6): השם הבדוי שומר על «בע"מ»,
+   וה-AI כותב «חברת גרניט», «לגרניט». זה השם הקצר של אותה חברה, כמו שהשם הקצר המוגדר שלה מקבל אותו בלי הסיומת
+   (Engine.orgShort), והוא נוסף כאן במקום צורות של אדם. ורחוב אינו אדם: אין לו ראשי תיבות, ושני רחובות בדויים
+   («רחוב הרצל», «רחוב השקד») חלקו «רחוב ה.». tests/orgs_t.js */
+function personForms(real,fake,add){
+  if(!real||!fake||fake==="███")return false;
+  const f=String(fake).trim(), r=String(real).trim(), ft=ORG_TAIL.exec(norm(f)), rt=ORG_TAIL.exec(norm(r));
+  if(ft&&rt&&ft.index>0&&rt.index>0){add(r.slice(0,rt.index).trim(),f.slice(0,ft.index).trim());return false}
+  if(PLACE_HEAD_IN.test(norm(f)))return false;
+  return f.split(/\s+/).length===2&&r.split(/\s+/).length>=2&&nameParts(fake,real).length>0;
+}
 function restoreForms(pairs){
   const out=pairs.map(p=>[p[0],p[1]]), have=new Set(pairs.map(p=>p[1]));
   const add=(r,f)=>{if(f&&!have.has(f)){have.add(f);out.push([r,f,1])}};
   for(const [real,fake] of pairs){
-    if(!real||!fake||fake==="███")continue;
+    if(!personForms(real,fake,add))continue;
     const fw=String(fake).trim().split(/\s+/), rw=String(real).trim().split(/\s+/);
-    if(fw.length!==2||rw.length<2||!nameParts(fake,real).length)continue;
     for(let i=0;i<2;i++)for(const v of wordForms(fw[i]))add(real,i?fw[0]+" "+v:v+" "+fw[1]);
     // באנגלית: האיות הלועזי של שם מהמאגר (LATIN), לא תעתיק מנוחש
     if(fw.every(w=>w.split("-").every(p=>LATIN[p.replace(/׳/g,"'")])))add(real,latinOf(fake));

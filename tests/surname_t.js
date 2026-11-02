@@ -48,5 +48,30 @@ console.log("\n— the restore: a lone surname of the family comes back —");
   const r = C.restoreNames("גב' הרשקוביץ ומר הרשקוביץ הגיעו. משפחת הרשקוביץ ביקשה דחייה, וסבטלנה הרשקוביץ חתמה.", pairs);
   ok(r.text === "גב' לוי ומר לוי הגיעו. משפחת לוי ביקשה דחייה, ורונית לוי חתמה.", "«גב'», «מר» and «משפחת» with the shared surname: " + r.text);
 }
+/* The family's invented first names start with different letters (the hunt of 1.11). «י. אלמקייס» and «מ. אלמקייס»
+   share the invented surname, and their invented first names could share an initial: the AI wrote «א. אלבז» for both,
+   and the paste-back could not tell which. A family whose real initials are the same is left as it is. Invented names
+   only. */
+console.log("\n— the family's invented first names start with different letters —");
+{
+  const crypto = require("crypto");
+  const fams = [["י. אלמקייס", "מ. אלמקייס", "ד. אלמקייס"], ["רונית לוי", "דוד לוי", "מיכל לוי", "יוסי לוי"], ["אורי זכאי", "נעמה זכאי"]];
+  const text = fams.flat().join(" ו") + " חתמו.";
+  let bad = 0, shared = 0; const ex = [];
+  for (let i = 0; i < 50; i++) {
+    const e = new C.Engine(fams.flat().map((v) => R(v)), [], { ...OPT, aliasKey: crypto.createHash("sha256").update("fam-key-" + i).digest("hex") }, text);
+    const o = {};
+    for (const h of e.detect(text)) if (h.apply) o[h.base || h.text] = e.repFor({ ...h, pre: "" });
+    for (const f of fams) {
+      const reps = f.map((v) => o[v]);
+      if (reps.some((r) => !r)) { bad++; ex.push("missing " + JSON.stringify(o)); continue; }
+      if (new Set(reps.map(sur)).size !== 1) shared++;
+      const ini = reps.map((r) => first(r)[0]);
+      if (new Set(ini).size !== ini.length) { bad++; ex.push(reps.join(", ")); }
+    }
+  }
+  ok(shared === 0, "each family still shares one invented surname: " + shared);
+  ok(bad === 0, "150 families over 50 keys, every family's invented first names start with different letters: " + bad + " " + ex.slice(0, 3).join(" | "));
+}
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exitCode = fail ? 1 : 0;

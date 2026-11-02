@@ -44,7 +44,16 @@ const WORDLIKE=new Set(("חיים שלום אור גיל דור ברק שחר א
  "עומר עופר עמרי ענבל ענת פז צופיה קשת רז רינה רננה שגב שגיא שחף שלו שני "+
  "תום תמיר").split(/\s+/));
 const AR_NAMES=new Set([...POOL.ar_f,...POOL.ar_m,...POOL.ar_s,"מוחמד","אחמד","מחמד",
- "עומאר","סאלח","ג'מיל","נאדר","איאד","ריאד","סועאד","אימאן","ח'ליל","נעים","רימא"]);
+ "עומאר","סאלח","ג'מיל","נאדר","איאד","ריאד","סועאד","אימאן","ח'ליל","נעים","רימא",
+ // שמות ערביים נפוצים שחסרו, ו«סאמר מרעי» קיבל שם בדוי עברי (הציד של 1.11)
+ "חטיב","חורי","ח'ורי","סלאמה","נדים","ואסים","סאמר","עלא","חוסאם","עודה","עבאס","מחאמיד"]);
+/* שמות פרטיים רוסיים (החלטת הבעלים, 2.11): שם בדוי רוסי («ולדימיר», «סבטלנה») רק למי ששמו הפרטי האמיתי רוסי. מאגרי
+   השמות העבריים מחזיקים אותם, ו«אורי זכאי» יצא «ולדימיר ברקוביץ» ברוב המפתחות. המאגר עצמו לא משתנה, כי FEM נבנה
+   ממנו. tests/aliaskey_t.js */
+const RU_FAKE=new Set(["סרגיי","ולדימיר","דמיטרי","אלכס","אנה","סבטלנה","אירינה","לודמילה","אולגה"]);
+const RU_REAL=new Set([...RU_FAKE,"יבגני","רומן","אלנה","יוליה","ז'אנה","מרינה","ולדיסלב","איגור","בוריס","מקסים","ניקולאי",
+ "אנדריי","פאבל","יורי","ויקטור","אלכסנדר","אלכסנדרה","מיכאיל","קונסטנטין","ארטיום","אנטון","דניס","וסילי","טטיאנה","נטליה",
+ "נטשה","גלינה","ולנטינה","אוקסנה","ילנה","קטרינה","יקטרינה","לריסה","תמרה","ליודמילה","סווטלנה","אינה","ויקה","ויקטוריה"]);
 const FEM=new Set(POOL.he_f.concat(POOL.ar_f,["שרון","דליה","נירית","מיטל","ליהי","סתיו",
  "שירלי","אורנה","אתי","ציפורה","נאוה","סימה","רוחמה","שושנה","לאה","דבורה","צילה",
  "פרידה","רוזה","קלרה","ויקטוריה","מרינה","ליאורה","תמי","הודיה","אביטל","מעיין",
@@ -52,11 +61,14 @@ const FEM=new Set(POOL.he_f.concat(POOL.ar_f,["שרון","דליה","נירית"
 const MASC=new Set(POOL.he_m.concat(POOL.ar_m));
 /* אות עם גרש שמסמנת תעתיק מערבית: ח׳ (ח'אלד), ת׳, ד׳, ז׳, ט׳, ע׳ (ע'סאן). עד 12.10 התבנית הייתה [ח'ג'ת'ד'ז'],
    שהגרש עצמו בתוכה, וכל שם עם גרש נחשב ערבי: «יואב ברקוביץ'» קיבל שם בדוי ערבי (הביקורת ההנדסית). ג׳ (ג'ון) וצ׳
-   (ברקוביץ') נשארים בחוץ: הם באים גם משמות באנגלית ובסלאבית. tests/aliaskey_t.js */
+   (ברקוביץ') נשארים בחוץ: הם באים גם משמות באנגלית ובסלאבית. tests/aliaskey_t.js
+   ומ-1.11 (הציד): הגרש מסמן תעתיק רק כשאות באה אחריו, כי «ושות'» נגמר ב-ת' ומשרד עורכי דין ברשימת השמות יצא איש
+   ערבי («שושן ושות'» ← «ג'מאל סרסור»); הסיומת של חברה יורדת קודם; ו-ז' יצא, כי הוא «ז'אנה», «ז'ק» */
 function origin(v){
-  const w=v.split(/[\s-]+/);
+  let s=norm(String(v||"")).trim(); const t=ORG_TAIL.exec(s); if(t)s=s.slice(0,t.index).trim();
+  const w=s.split(/[\s,-]+/);
   if(w.some(x=>AR_HINT.has(x)||AR_NAMES.has(x)))return "ar";
-  if(/[חתדזטע]['׳’]/.test(v))return "ar";
+  if(/[חתדטע]'(?=[א-ת])/.test(s))return "ar";
   return "he"}
 // המגדר נקבע קודם כל לפי מה שכתוב במסמך ("הנתבעת", "גב'"), ורק אחר כך
 // לפי השם עצמו. סיומת ה' היא ניחוש אחרון, לא כלל.
@@ -214,21 +226,42 @@ const GROUP_HEADS=/^(?:חסידי|חסידות|חסידת|תנועת|מפלגת|
 const ORG_HEADS=/^(?:עמותת|עמותה|מכון|חברת|חברה|בית\s+ספר|בי"ס|ביה"ס|בית\s+הספר|מרכז|אגודת|אגודה|קרן|מוסד|גן|מעון|פנימיית|פנימייה|ישיבת|ישיבה|קופת\s+חולים|בנק|מרפאת|מרפאה|בית\s+חולים|ביה"ח|מכללת|אוניברסיטת|תיכון|חטיבת|מתנ"ס|בית\s+אבות|מועדון|סניף|קבוצת)(?=\s|$)/u;
 // סיומת שעושה מהשם חברה בוודאות: «… בע"מ», «… Ltd», «… ושות'», ואחריה אולי מצב בסוגריים («(בפירוק)»)
 const ORG_TAIL=/(?:^|\s)(?:בע"מ|Ltd\.?|LTD\.?|Inc\.?|ושות'?|ושותפיו?)(?:\s*\((?:\d{4}|בפירוק|בפירוק זמני|בכינוס נכסים|בהקפאת הליכים)\))?$/u;
-const ORG_TAILS=["אורנים","הגפן","שקד","נווה","הרימון","תמר","ארז","הדס","אלון","ברוש","נטע","גלים","אופק","דקל","צבר","הזית","סביון","יובל","עמית","רקפת"];
+/* שם החברה הבדוי (החלטת הבעלים, 2.11, Q6): לא שם פרטי של אדם, לא יישוב, ולא מילה שהיא גם שם (WORDLIKE). עד כאן שמונה
+   מעשרים המילים כאן היו שמות פרטיים מהמאגר (תמר, ארז, הדס…) ו«סביון» יישוב: «מרלין השקעות בע"מ» יצא «תמר», ה-AI קרא
+   אישה, וההחזרה לא החזירה שם בן מילה אחת שהוא גם מילה. גם לא מילה ממאגר הרחובות, השכונות או היישובים (07-gazetteer.js),
+   כי חברה ורחוב שחולקים מילה הם שאלה בהחזרה. tests/orgs_t.js */
+const ORG_TAILS=["גרניט","בזלת","קוורץ","טופז","אמטיסט","אזמרגד","בהט","בדולח","אקליפטוס","שחקים","רקיע","מרווה","האשל",
+  "השקמה","התאנה","צפצפה","ברושים","קטלב","טורקיז","אופל","פנינים","יהלום"];
+/* מילה של המסמך בתוך מילה בדויה ארוכה ממנה (הציד של 1.11). הבדיקה האחרונה (verify) קוראת סוד בכל מקום בטקסט, גם בתוך
+   מילה: «בנק צאלון» הכשיל אותה במכתב שבו אדם בשם «אלון», והפס האדום אסר להעתיק; וכך «הרימון» ליד חברה בשם «רימון», ו«הרצליה»
+   ליד «רחוב הרצל». רק חלק של ארבע אותיות לפחות. tests/forbidden_t.js */
+function holdsDocWord(w,forbidden){
+  if(!forbidden||w.length<5)return false;
+  for(let i=0;i<w.length;i++)for(let j=i+4;j<=w.length;j++) if(j-i<w.length&&forbidden.has(w.slice(i,j)))return true;
+  return false;
+}
 function orgHead(v){ const m=ORG_HEADS.exec(norm(v).trim()); return m?m[0]:null; }
+/* החברה הבדויה שומרת על הסיומת המשפטית של האמיתית (Q6): «מרלין השקעות בע"מ» ← «גרניט בע"מ», «זיו ושות'» ← «… ושות'»,
+   «… בע"מ (2019)» ← «… בע"מ (2019)». המילה הבדויה עצמה לא ניתנת לשני גופים באותו מסמך (used, גם לבדה: ה-AI כותב
+   «גרניט» בלי הסיומת), ואינה מילה של המסמך בשום צורה שלה, גם עם אות שימוש. עד כאן הבחירה לא נרשמה, ושני הבנקים
+   יצאו «בנק ארז» ברבע מהמפתחות (הציד של 1.11) */
 function fakeOrg(value,used,forbidden){
   const head=orgHead(value);
   const seed=aliasSeed(norm(value).trim());
-  const raw=value.trim().split(/\s+/);
+  const v=value.trim(), nv=norm(v);
+  const tm=ORG_TAIL.exec(nv), suffix=tm?v.slice(tm.index).trim():"";
+  const raw=v.split(/\s+/);
   const headWords=head?head.split(/\s+/).length:0;
   const pre=head?raw.slice(0,headWords).join(" "):"";
-  for(let k=0;k<ORG_TAILS.length;k++){
-    const tail=ORG_TAILS[(seed+k)%ORG_TAILS.length];
-    const cand=pre?pre+" "+tail:tail;
-    if(used&&used.has(cand))continue;
-    if(forbidden&&forbidden.has(norm(tail)))continue;
-    return cand;
-  }
+  const taken=w=>!!forbidden&&(forbidden.has(w)||[..."בלמוהשכ"].some(p=>forbidden.has(p+w))||holdsDocWord(w,forbidden));
+  for(const strict of [true,false])
+    for(let k=0;k<ORG_TAILS.length;k++){
+      const tail=ORG_TAILS[(seed+k)%ORG_TAILS.length];
+      const cand=[pre,tail,suffix].filter(Boolean).join(" ");
+      if(used&&(used.has(norm(cand))||(strict&&used.has(tail))))continue;
+      if(taken(norm(tail)))continue;
+      return cand;
+    }
   return null;
 }
 function fakeName(value,hint,used,forbidden,firstish){
@@ -236,6 +269,10 @@ function fakeName(value,hint,used,forbidden,firstish){
   const parts=value.trim().split(/\s+/);
   const seed=aliasSeed(norm(value).trim());
   const firsts=POOL[org+"_"+(g==="f"?"f":"m")], surs=POOL[org+"_s"];
+  /* השם הפרטי הבדוי: רוסי רק לשם פרטי רוסי (RU_FAKE, החלטת הבעלים 2.11), ולא שם שמתחיל ב-ו («ואאל», «וורוד»): ה-AI
+     כותב «וואאל», וההחזרה קוראת ו + השם. tests/aliaskey_t.js */
+  const ruOK=RU_REAL.has(norm(parts[0]));
+  const fForb={has:w=>!!(forbidden&&forbidden.has(w))||/^ו/.test(w)||(!ruOK&&RU_FAKE.has(w))};
   if(parts.length===1){
     // מילה אחת: שם פרטי כשהיא שם פרטי מוכר, או כשהמסמך מציג אותה אחרי מילת
     // תפקיד או קרבה ("הקטין עמרי", "התובעת: שלהבת"); אחרת שם משפחה.
@@ -243,9 +280,10 @@ function fakeName(value,hint,used,forbidden,firstish){
     const w=parts[0], nw=norm(w);
     const knownFirst=FEM.has(w)||MASC.has(w)||MALE_HE.has(w)||(typeof KNOWN_FIRST!=="undefined"&&KNOWN_FIRST.has(w));
     const isFirst=knownFirst||(!SUR_SUFFIX.test(nw)&&((firstish&&firstish.has(nw))||hint==="f"||hint==="m"));
-    const out=pickFrom(isFirst?firsts:surs,seed,used,forbidden);
+    const [arr,fb]=isFirst?[firsts,fForb]:[surs,forbidden];
+    const out=pickFrom(arr,seed,used,fb);
     used.add(out);return out}
-  const f=pickFrom(firsts,seed,used,forbidden); used.add(f);
+  const f=pickFrom(firsts,seed,used,fForb); used.add(f);
   const s=pickFrom(surs,aliasSeed("s"+norm(value)),used,forbidden); used.add(s);
   // "אלעד בן דוד" → "דניאל בן קפלן": המילית נשארת, כי היא חלק מהמבנה
   // ולא מהזהות. שם משפחה כפול אחר → שם משפחה בדוי אחד, פשוט יותר.
