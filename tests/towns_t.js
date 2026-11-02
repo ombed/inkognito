@@ -467,6 +467,149 @@ for (const [value, kind, t] of [
   ok(C.examplesOf([{ part: "w", text: t }], value).length === 1, "rule «" + value + "» — its sentence is shown on the screen");
 }
 
+/* One city, one fake, however it is written (the hunt of 1.11). «תל אביב» found by the places layer and «תל אביב-יפו»
+   ticked in the list were two keys of the map, so one copy read «כפר סבא» in one line and «חולון» in the next, and
+   the AI saw two cities. The same for a street written «רחוב ביאליק» and «רח' ביאליק». And two towns never share one
+   fake: «מנתניה לרחובות» went out as «מאשדוד לאשדוד», since fakePlace never recorded its pick. Every example is
+   invented. */
+console.log("\n— one city written several ways gets one fake; two towns never share one —");
+{
+  const crypto = require("crypto");
+  const KEYS = Array.from({ length: 50 }, (_, i) => crypto.createHash("sha256").update("towns-key-" + i).digest("hex"));
+  const O = { ...OPT, styles: {} };
+  const text = "המשרד בתל אביב. הכתובת תל אביב-יפו, ובמכתב תל אביב - יפו, ושוב לתל-אביב-יפו. " +
+    "הדירה ברחוב ביאליק 31, ובמכתב רח' ביאליק 31. הנכס עבר מנתניה לרחובות, ומשם לעפולה.";
+  const subs = [{ value: "תל אביב-יפו", kind: "PLACE", replacement: "" }, { value: "רחוב ביאליק 31", kind: "PLACE", replacement: "" },
+    { value: "רח' ביאליק 31", kind: "PLACE", replacement: "" }, { value: "נתניה", kind: "PLACE", replacement: "" }, { value: "רחובות", kind: "PLACE", replacement: "" }];
+  const strip = (r, h) => (h.pre && r.startsWith(h.pre) ? r.slice(h.pre.length) : r);
+  const bad = [];
+  for (const key of KEYS) {
+    const eng = new C.Engine(subs, [], { ...O, aliasKey: key }, text);
+    const hits = eng.detect(text).filter((h) => h.apply);
+    const rep = (rx) => hits.filter((h) => rx.test(C.norm(h.text))).map((h) => strip(eng.repFor(h), h));
+    const tlv = rep(/תל[ -]אביב/), street = rep(/ביאליק/), towns = ["נתניה", "רחובות", "עפולה"].map((t) => rep(new RegExp(t))[0]);
+    if (tlv.length < 4 || new Set(tlv).size !== 1) bad.push("תל אביב: " + tlv.join(" / "));
+    /* one street: one invented name and number, and each spelling keeps its own head word («רחוב הירדן 31», «רח' הירדן
+       31»), so that the paste-back returns each spelling to itself; one fake for both left both marked (the review of 2.11) */
+    const core = street.map((r) => r.replace(/^(?:רחוב|רח')\s+/, ""));
+    if (street.length !== 2 || new Set(core).size !== 1 || !/^\S.* 31$/.test(core[0] || "") || !street.some((r) => /^רחוב /.test(r)) || !street.some((r) => /^רח' /.test(r)))
+      bad.push("street: " + street.join(" / "));
+    const all = [tlv[0], street[0], ...towns];
+    if (all.some((x) => !x) || new Set(all).size !== all.length) bad.push("distinct: " + all.join(" / "));
+  }
+  ok(bad.length === 0, "over 50 keys: " + bad.length + " keys wrong, " + bad.slice(0, 3).join(" | "));
+  // a short name inside a longer town is another town: «יפו» alone is not «תל אביב-יפו», «כפר סבא» is not «סבא»
+  const e2 = new C.Engine([{ value: "תל אביב-יפו", kind: "PLACE", replacement: "" }, { value: "כפר סבא", kind: "PLACE", replacement: "" }, { value: "יפו", kind: "PLACE", replacement: "" }], [], O, "תל אביב-יפו, כפר סבא ויפו.");
+  const r2 = new Map(e2.detect("תל אביב-יפו, כפר סבא ויפו.").filter((h) => h.apply).map((h) => [h.base, strip(e2.repFor(h), h)]));
+  ok(r2.size === 3 && new Set(r2.values()).size === 3, "three places, three fakes: " + JSON.stringify([...r2]));
+}
+
+/* Only the aliases of one municipality are one place (the review of 2.11). The fold took any «<known place>-<anything>»
+   to its head, and «ערערה» / «ערערה-בנגב» (two towns), «מגדל» / «מגדל-העמק», «מצפה» / «מצפה-רמון» and «נווה-שאנן» /
+   «נווה-יעקב» shared one fake in every key. And «תל-אביב-יפו» written with hyphens or maqafs throughout, as its own
+   list value, was not folded at all. Every example is invented. */
+console.log("\n— the aliases of one city share a fake, two places that share a head word do not —");
+{
+  const crypto = require("crypto");
+  const KEYS = Array.from({ length: 20 }, (_, i) => crypto.createHash("sha256").update("fold-key-" + i).digest("hex"));
+  const O = { ...OPT, styles: {} };
+  const fakesOf = (a, b, key) => {
+    const text = "התובע מ" + a + ", והנתבע מ" + b + ".";
+    const eng = new C.Engine([{ value: a, kind: "PLACE", replacement: "" }, { value: b, kind: "PLACE", replacement: "" }], [], { ...O, aliasKey: key }, text);
+    const o = {}; for (const h of eng.detect(text)) if (h.apply) o[h.base] = eng.repFor({ ...h, pre: "" });
+    return o;
+  };
+  for (const [a, b] of [["ערערה", "ערערה-בנגב"], ["מגדל", "מגדל-העמק"], ["מצפה", "מצפה-רמון"], ["נווה-שאנן", "נווה-יעקב"], ["רמות", "רמות-השבים"]]) {
+    let same = 0, ex = "";
+    for (const key of KEYS) { const o = fakesOf(a, b, key); if (!o[a] || !o[b] || o[a] === o[b]) { same++; ex = JSON.stringify(o); } }
+    ok(same === 0, "«" + a + "» and «" + b + "» are two places, two fakes in every key: " + same + "/20 " + ex);
+  }
+  for (const [a, b] of [["תל אביב", "תל-אביב-יפו"], ["תל אביב", "תל־אביב־יפו"], ["תל אביב", "תל אביב - יפו"], ["תל אביב", "תל אביב/יפו"],
+    ["מודיעין", "מודיעין-מכבים-רעות"], ["יהוד", "יהוד-מונוסון"], ["פרדס חנה", "פרדס חנה-כרכור"]]) {
+    let two = 0, ex = "";
+    for (const key of KEYS) { const o = fakesOf(a, b, key); if (!o[a] || o[a] !== o[b]) { two++; ex = JSON.stringify(o); } }
+    ok(two === 0, "«" + a + "» and «" + b + "» are one city, one fake in every key: " + two + "/20 " + ex);
+  }
+  // the restore and the page's self-check (promise 4) read a shared fake of two such spellings as one value, nothing else
+  for (const [a, b, want] of [["תל אביב", "תל אביב-יפו", true], ["תל אביב", "תל־אביב־יפו", true], ["רחוב ביאליק 31", "רח' ביאליק 31", true],
+    ["מודיעין", "מודיעין-מכבים-רעות", true], ["ערערה", "ערערה-בנגב", false], ["מגדל", "מגדל-העמק", false], ["נתניה", "רחובות", false],
+    ["רחוב ביאליק 31", "רחוב ביאליק 33", false], ["רחוב הרצל", "הרצל", false], ["משה כהן", "משה-כהן", false], ["דנה לוי", "תל אביב", false]])
+    ok(C.samePlaceSpelling(a, b) === want, "«" + a + "» / «" + b + "»: one place written two ways is " + want);
+}
+
+/* A town never becomes a bracketed label (Q11 v2: «נופל למאגר היישובים הכללי — לעולם לא לתווית»). Once the picks were
+   recorded, the few towns of the same character ran out and the next town got «[מקום ז׳]»: seven Arab towns in one
+   document gave 30 labels over 20 keys. Every example is invented. */
+console.log("\n— many towns of one character in one document: every one gets a town, all distinct —");
+{
+  const crypto = require("crypto");
+  const KEYS = Array.from({ length: 20 }, (_, i) => crypto.createHash("sha256").update("label-key-" + i).digest("hex"));
+  const O = { ...OPT, styles: {} };
+  for (const towns of [["נצרת", "אום אל-פחם", "רהט", "טייבה", "שפרעם", "טמרה", "סח'נין", "עראבה"],
+    ["ירושלים", "תל אביב", "חיפה", "ראשון לציון", "פתח תקווה", "אשדוד", "נתניה", "באר שבע", "חולון", "בני ברק"]]) {
+    const text = "הסניפים פועלים ב" + towns.join(", ב") + ".";
+    let lab = 0, dup = 0, ex = "";
+    for (const key of KEYS) {
+      const eng = new C.Engine(towns.map((v) => ({ value: v, kind: "PLACE", replacement: "" })), [], { ...O, aliasKey: key }, text);
+      const o = {}; for (const h of eng.detect(text)) if (h.apply) o[h.base] = eng.repFor({ ...h, pre: "" });
+      const v = Object.values(o);
+      if (v.some((x) => /^\[/.test(x)) || v.length !== towns.length) { lab++; ex = JSON.stringify(o); }
+      if (new Set(v).size !== v.length) { dup++; ex = JSON.stringify(o); }
+    }
+    ok(lab === 0 && dup === 0, towns.length + " towns from «" + towns[0] + "»: no label, no shared fake, in every key: " + lab + " labels, " + dup + " shared " + ex.slice(0, 200));
+  }
+  // and each keeps its population (Q7 v3: «בלי אוכלוסייה שונה לעולם»): when the nearest few run out, the next pick is
+  // still a town of the same population, not any tagged town («רמלה» became a moshav, «רהט» a Jewish town)
+  // There are 8 mixed cities and 7 Bedouin towns, so a document with four or five of them leaves too few: then a Bedouin
+  // or Druze town gets another Arabic-speaking town and a mixed city another city (the owner-authorized decision of 2.11).
+  const ARABIC = new Set(["ערבי", "בדואי", "דרוזי"]);
+  const pop = (n) => (C.ATLAS_TAGS[n] || "").split("|")[1] || "?";
+  // an Arab town keeps its own population here; a Bedouin or Druze one may move within ARABIC; a mixed city, whose
+  // three free peers run out at four, to another city (never a kibbutz or a moshav)
+  const kind = (n) => (C.ATLAS_TAGS[n] || "").split("|")[0];
+  const group = (t, f) => pop(t) === pop(f) || (pop(t) !== "ערבי" && ARABIC.has(pop(t)) && ARABIC.has(pop(f))) ||
+    (pop(t) === "מעורב" && kind(f) === "עיר");
+  for (const towns of [["ירושלים", "חיפה", "לוד", "רמלה"], ["רהט", "כסייפה", "תל שבע", "ערוער", "לקיה"],
+    ["דאלית אל-כרמל", "עוספיא", "מג'אר", "ירכא"], ["נצרת", "שפרעם", "טמרה", "סח'נין", "עראבה", "טייבה"]]) {
+    const text = "הסניפים פועלים ב" + towns.join(", ב") + ".";
+    let n = 0, off = 0; const odd = new Set();
+    for (const key of KEYS) {
+      const eng = new C.Engine(towns.map((v) => ({ value: v, kind: "PLACE", replacement: "" })), [], { ...O, aliasKey: key }, text);
+      const o = {}; for (const h of eng.detect(text)) if (h.apply) o[h.base] = eng.repFor({ ...h, pre: "" });
+      for (const t of towns) { if (!o[t]) continue; n++; if (!group(t, o[t])) { off++; odd.add(t + "→" + o[t]); } }
+    }
+    ok(n > 0 && off === 0, towns.length + " towns from «" + towns[0] + "»: every fake keeps the population: " + off + "/" + n + " off " + [...odd].slice(0, 4).join(", "));
+  }
+  // an ordinary word of the document inside a town's name does not remove the town («קלון» in «אשקלון»); a secret does
+  const plain = new C.Engine([], [], O, "העבירה שבה הורשע יש עמה קלון, וציון הדיון נדחה.").forbidden;
+  ok(!C.holdsDocWord("אשקלון", plain) && !C.holdsDocWord("לציון", plain), "an ordinary word of the document («קלון», «וציון») leaves «אשקלון» and «ראשון לציון» free");
+  const sec = new C.Engine([{ value: "ציון כהן", kind: "NAME", replacement: "" }], [], O, "העד ציון כהן העיד.").forbidden;
+  ok(C.holdsDocWord("לציון", sec), "a secret of the document («ציון כהן») inside a town's name still removes it: the final check would read it");
+}
+
+/* The town of an address is the same town written alone (the review of 2.11). «רחוב הנביאים 22, הרצליה» picked its
+   town apart from «הרצליה» and recorded only its words, so it could be another town's fake: «… 22, כפר סבא» beside
+   «חולון» ← «כפר סבא», and the paste-back gave «כפר סבא» to חולון. Every example is invented. */
+console.log("\n— the town after a comma in an address gets the fake of that town —");
+{
+  const crypto = require("crypto");
+  const KEYS = Array.from({ length: 50 }, (_, i) => crypto.createHash("sha256").update("addr-key-" + i).digest("hex"));
+  const O = { ...OPT, styles: {} };
+  const others = ["נתניה", "חולון", "רעננה", "רמת השרון"];
+  const bad = [];
+  for (const [addr, text] of [["רחוב הנביאים 22, הרצליה", "המשרד ברחוב הנביאים 22, הרצליה. סניפים בנתניה, בחולון, ברעננה וברמת השרון, והמחסן בהרצליה."],
+    ["רחוב הנביאים 22, הרצליה", "המחסן בהרצליה. המשרד ברחוב הנביאים 22, הרצליה. סניפים בנתניה, בחולון, ברעננה וברמת השרון."]]) {
+    for (const key of KEYS) {
+      const subs = [addr, "הרצליה", ...others].map((v) => ({ value: v, kind: "PLACE", replacement: "" }));
+      const eng = new C.Engine(subs, [], { ...O, aliasKey: key }, text);
+      const o = {}; for (const h of eng.detect(text)) if (h.apply && !(h.base in o)) o[h.base] = eng.repFor({ ...h, pre: "" });
+      const t = (o[addr] || "").split(/,\s*/)[1];
+      if (!t || t !== o["הרצליה"] || others.some((x) => o[x] === t)) bad.push(JSON.stringify(o));
+    }
+  }
+  ok(bad.length === 0, "the address town is the town's own fake and no other town's, either order, over 50 keys: " + bad.length + " " + (bad[0] || ""));
+}
+
 /* The whole document, through redactDocx. After the first pass a uniformity pass replaces every other
    occurrence of a value that was replaced once: «גרה ברעננה» was replaced, so «נקודת מבט רעננה» was too,
    although the places layer had asked about it. And the final check read every occurrence of a replaced
@@ -485,13 +628,7 @@ global.DOMParser = xd.DOMParser; global.XMLSerializer = xd.XMLSerializer;
 const zlib = require("zlib"), fs = require("fs"), path = require("path");
 global.__deflate = (b) => new Uint8Array(zlib.deflateRawSync(Buffer.from(b)));
 global.__inflate = (b) => new Uint8Array(zlib.inflateRawSync(Buffer.from(b)));
-const js = fs.readFileSync(path.join(__dirname, "app.html"), "utf8").split("<script>")[1].split("</script>")[0]
-  .replace('const inflate=u8=>pipe(u8,DecompressionStream,"deflate-raw");', "const inflate=async u8=>global.__inflate(u8);")
-  .replace('const deflate=u8=>pipe(u8,CompressionStream,"deflate-raw");', "const deflate=async u8=>global.__deflate(u8);");
-const cut = js.indexOf("/* ══════════════════════════ ממשק ══════════════════════════ */");
-const a = js.indexOf("function pseudoRX(p){"), b = js.indexOf("function livePairs(){");
-fs.writeFileSync(path.join(__dirname, "towns-core.js"), js.slice(0, cut) + "\n" + js.slice(a, b) + "\nmodule.exports={redactDocx,verify};\n");
-const E = require("./towns-core.js");
+const E = require("./core.js");
 const { mkzip } = require("./mkzip.js");
 const { P, R, doc, part, base } = require("./structure-lib.js");
 const docOf = (lines, parts = []) => mkzip([...base, { name: "word/document.xml", body: doc(lines.map((l) => P(R(l))).join("")) }, ...parts]);
@@ -689,6 +826,65 @@ const leaksOf = (res) => JSON.stringify((res.verification.leaks || []).map((l) =
       d.addRule("שלומי", "NAME", "", "review");
       ok(d.state.rules[0].cond === true && d.ran === 0 && /כבר ברשימה/.test(d.state.err), "a person of that name is another decision: the place rule stays, and the screen says it is listed");
     }
+  }
+
+  /* One place written two ways comes back from the paste-back (the review of 2.11). Once the two spellings shared one
+     fake, restoreNames read a fake with two reals as «belongs to more than one» and left both marked: «רחוב ביאליק 31» and
+     «רח' ביאליק 31» in every key, «תל אביב» and «תל אביב-יפו» too. A street keeps its own head word in its fake, so each
+     spelling returns to itself; a city's two spellings return as its first. Every example is invented. */
+  console.log("\n— the paste-back of the clean copy returns one place written two ways —");
+  {
+    const crypto = require("crypto");
+    const lines = ["הדירה ברחוב ביאליק 31 תושכר לשוכרת.", "המשכיר מתגורר ברח' ביאליק 31.", "המשרד בתל אביב.", "הכתובת הרשומה: תל אביב-יפו.", "השוכרת עוברת מחולון."];
+    const rules = [{ value: "רחוב ביאליק 31", kind: "PLACE", replacement: "" }, { value: "רח' ביאליק 31", kind: "PLACE", replacement: "" },
+      { value: "תל אביב", kind: "PLACE", replacement: "" }, { value: "תל אביב-יפו", kind: "PLACE", replacement: "" }, { value: "חולון", kind: "PLACE", replacement: "" }];
+    const bad = [];
+    for (let i = 0; i < 10; i++) {
+      const key = crypto.createHash("sha256").update("pb-key-" + i).digest("hex");
+      const res = await E.redactDocx(docOf(lines), rules, [], { ...OPT, styles: {}, aliasKey: key });
+      const clean = shown(res).join("\n"), map = {};
+      for (const a of res.applied || []) { const v = a.base || a.value, rp = a.baseRep || a.rep; if (v && rp && !(v in map)) map[v] = rp; }
+      const pairs = Object.entries(E.restorePairs({}, map));
+      const back = E.restoreNames(clean, pairs, []);
+      const fakes = Object.values(map);
+      const want = ["ברחוב ביאליק 31 תושכר", "ברח' ביאליק 31.", "המשרד בתל אביב.", "מחולון."];
+      if (back.conflict.length || want.some((w) => !back.text.includes(w)) || !/הרשומה: תל אביב(?:-יפו)?\./.test(back.text) || fakes.some((f) => back.text.includes(f)))
+        bad.push(clean.replace(/\n/g, " / ") + " ⇒ " + back.text.replace(/\n/g, " / ") + " conflict " + JSON.stringify(back.conflict));
+      // and the street the AI writes without its number comes back too
+      const st = map["רחוב ביאליק 31"], ab = map["רח' ביאליק 31"];
+      if (!st || !ab) { bad.push("map " + JSON.stringify(map)); continue; }
+      const ai = E.restoreNames("לפי הסיכום, " + st.replace(/ 31$/, "") + " ו" + ab.replace(/ 31$/, "") + " הם אותו רחוב.", pairs, []);
+      if (ai.text !== "לפי הסיכום, רחוב ביאליק ורח' ביאליק הם אותו רחוב.") bad.push("AI form: " + ai.text);
+    }
+    ok(bad.length === 0, "two streets' and two cities' spellings return, nothing left marked, over 10 keys: " + bad.length + " " + bad.slice(0, 2).join(" | "));
+  }
+
+  /* The AI rewrites a street fake (the review of 2.11): it drops the town after the comma, drops the house number, writes
+     «רח'» for «רחוב» or drops the head word. Each of those forms came back fake, sometimes beside the real town; main's fake
+     was a town, and every form of it came back. Every example is invented. */
+  console.log("\n— the AI's forms of a street fake come back —");
+  {
+    const crypto = require("crypto");
+    const lines = ["המשרד הרשום של החברה ברחוב הנביאים 22, הרצליה.", "הסניף השני פועל בהרצליה ובחולון."];
+    const rules = [{ value: "רחוב הנביאים 22, הרצליה", kind: "PLACE", replacement: "" }, { value: "הרצליה", kind: "PLACE", replacement: "" },
+      { value: "חולון", kind: "PLACE", replacement: "" }];
+    const bad = [];
+    for (let i = 0; i < 10; i++) {
+      const key = crypto.createHash("sha256").update("street-ai-" + i).digest("hex");
+      const res = await E.redactDocx(docOf(lines), rules, [], { ...OPT, styles: {}, aliasKey: key });
+      const map = {};
+      for (const a of res.applied || []) { const v = a.base || a.value, rp = a.baseRep || a.rep; if (v && rp && !(v in map)) map[v] = rp; }
+      const pairs = Object.entries(E.restorePairs({}, map)), st = map["רחוב הנביאים 22, הרצליה"], town = map["הרצליה"];
+      const m = st && /^רחוב (.+) 22, (.+)$/.exec(st);
+      if (!m || !town) { bad.push("map " + JSON.stringify(map)); continue; }
+      for (const [ai, want] of [["המשרד ברחוב " + m[1] + " 22.", "המשרד ברחוב הנביאים 22."], ["המשרד ברחוב " + m[1] + ".", "המשרד ברחוב הנביאים."],
+        ["המשרד ברח' " + m[1] + " 22.", "המשרד ברח' הנביאים 22."], ["המשרד ברח' " + m[1] + ", " + town + ".", "המשרד ברח' הנביאים, הרצליה."],
+        ["המשרד ברחוב " + m[1] + " 22 ב" + town + ".", "המשרד ברחוב הנביאים 22 בהרצליה."], ["המשרד ב" + m[1] + " 22.", "המשרד בהנביאים 22."]]) {
+        const back = E.restoreNames(ai, pairs, []);
+        if (back.text !== want) bad.push(ai + " ⇒ " + back.text);
+      }
+    }
+    ok(bad.length === 0, "a street fake without its town, its number or its head word, or with «רח'», comes back, over 10 keys: " + bad.length + " " + bad.slice(0, 3).join(" | "));
   }
 
   console.log("\n— the final check still sees a word-town left where the text says it is a place —");

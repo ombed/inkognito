@@ -17,15 +17,7 @@ global.DOMParser = xd.DOMParser; global.XMLSerializer = xd.XMLSerializer;
 const zlib = require("zlib"), fs = require("fs");
 global.__deflate = (b) => new Uint8Array(zlib.deflateRawSync(Buffer.from(b)));
 global.__inflate = (b) => new Uint8Array(zlib.inflateRawSync(Buffer.from(b)));
-const js = fs.readFileSync("app.html", "utf8").split("<script>")[1].split("</script>")[0]
-  .replace('const inflate=u8=>pipe(u8,DecompressionStream,"deflate-raw");', "const inflate=async u8=>global.__inflate(u8);")
-  .replace('const deflate=u8=>pipe(u8,CompressionStream,"deflate-raw");', "const deflate=async u8=>global.__deflate(u8);");
-const cut = js.indexOf("/* ══════════════════════════ ממשק ══════════════════════════ */");
-const a = js.indexOf("function pseudoRX(p){"), b = js.indexOf("function livePairs(){");
-// an engine from before the change lacks worthAsking: it comes out null, and the checks say what fails
-const opt = (n) => `${n}:typeof ${n}!=="undefined"?${n}:null`;
-fs.writeFileSync("common-core.js", js.slice(0, cut) + "\n" + js.slice(a, b) + `\nmodule.exports={redactDocx,PAT,${["worthAsking", "commonWord"].map(opt).join(",")}};\n`);
-const C = require("./common-core.js");
+const C = require("./core.js");
 const { mkzip } = require("./mkzip.js");
 const { NS, P, R, base } = require("./structure-lib.js");
 

@@ -23,13 +23,7 @@ const zlib = require("zlib"), fs = require("fs"), path = require("path");
 global.__deflate = (b) => new Uint8Array(zlib.deflateRawSync(Buffer.from(b)));
 global.__inflate = (b) => new Uint8Array(zlib.inflateRawSync(Buffer.from(b)));
 const HERE = __dirname;
-const js = fs.readFileSync(path.join(HERE, "app.html"), "utf8").split("<script>")[1].split("</script>")[0]
-  .replace('const inflate=u8=>pipe(u8,DecompressionStream,"deflate-raw");', "const inflate=async u8=>global.__inflate(u8);")
-  .replace('const deflate=u8=>pipe(u8,CompressionStream,"deflate-raw");', "const deflate=async u8=>global.__deflate(u8);");
-const cut = js.indexOf("/* ══════════════════════════ ממשק ══════════════════════════ */");
-const a = js.indexOf("function pseudoRX(p){"), b = js.indexOf("function livePairs(){");
-fs.writeFileSync(path.join(HERE, "links-core.js"), js.slice(0, cut) + "\n" + js.slice(a, b) + "\nmodule.exports={redactDocx,unzip,verify,readBlocks,hiddenPart,Engine,PAT,restoreNames};\n");
-const E = require("./links-core.js");
+const E = require("./core.js");
 const { mkzip } = require("./mkzip.js");
 
 let pass = 0, fail = 0;
@@ -38,7 +32,7 @@ const ok = (c, m) => { c ? pass++ : (fail++, console.log("  ✗ " + m)); };
 const NAME = "דנה שגיא", REP = "יעל כהן", SUBS = [{ value: NAME, kind: "NAME", replacement: REP }];
 const ID = "123456782"; // nine digits with a valid check digit
 const enc = encodeURIComponent;
-// the page's own defaults (index.html opts()): numbers deleted, dates shifted, every rule as shipped
+// the page's own defaults (page-component.js opts()): numbers deleted, dates shifted, every rule as shipped
 const ON = new Set(E.PAT.filter((p) => p.on).map((p) => p.n).concat("PLACES"));
 const FLAG = new Set(E.PAT.filter((p) => !p.on).map((p) => p.n).concat("NAME_ANCHORED"));
 const OPT = { on: ON, flag: FLAG, mode: "real", near: true, body: true, prefixes: "normal", styles: { "*": "blank", DATE: "name" } };

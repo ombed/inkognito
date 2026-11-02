@@ -33,5 +33,82 @@ console.log("\n— so no key gives another person that surname —");
   C.setAliasKey(null);
   ok(hits === 0, "800 invented names over 400 keys, none «… ברקוביץ»: " + hits);
 }
+
+/* A word joined by a hyphen or a maqaf is a word of the document too (the hunt of 1.11). The document held «מרכז-לוד»
+   as one token, so «לוד» was free: Jerusalem became «לוד», and the paste-back turned the AI's «מחוזי מרכז-לוד» into
+   «מרכז-ירושלים». The same for a person's or company's fake. Every example is invented. */
+console.log("\n— a part of a hyphenated word is forbidden —");
+{
+  const f = forbiddenOf("התיק נדון בבית המשפט המחוזי מרכז-לוד ובבית משפט השלום בתל־אביב, ומבקר מטעם ומרכז-הגליל העיד. העד בן-דוד.");
+  for (const w of ["לוד", "מרכז", "אביב", "הגליל"]) ok(f.has(w), "«" + w + "» is forbidden as a part of a hyphenated word");
+  let lod = 0, org = 0;
+  const g = forbiddenOf("הערעור הוגש למחוזי מרכז-לוד. המשיבה: גפן-אורנים בע\"מ.");
+  for (let i = 0; i < 50; i++) {
+    C.setAliasKey(crypto.createHash("sha256").update("forb-key-" + i).digest("hex"));
+    for (const t of ["ירושלים", "רמלה", "באר שבע", "נתניה", "חיפה"]) if (C.fakePlace(t, new Set(), f) === "לוד") lod++;
+    for (const v of ['מרלין השקעות בע"מ', 'טרבלון מערכות בע"מ', "סולמית ושות'"]) if (/אורנים|גפן/.test(C.fakeOrg(v, new Set(), g))) org++;
+  }
+  C.setAliasKey(null);
+  ok(lod === 0, "250 invented towns over 50 keys, none «לוד»: " + lod);
+  ok(org === 0, "150 invented companies over 50 keys, none named for a part of «גפן-אורנים»: " + org);
+}
+
+/* And the other way: an invented place that is a word of the document with a prefix letter. A real company «רימון
+   לוגיסטיקה בע"מ» and an invented street «רחוב הרימון» read as one name to the AI and to the check. Invented examples. */
+console.log("\n— an invented place is not a word of the document with a prefix letter —");
+{
+  const f = forbiddenOf("הספקית רימון לוגיסטיקה בע\"מ, והמחסן שבו. השופטת נעמה רצל.");
+  let hits = 0;
+  for (let i = 0; i < 50; i++) {
+    C.setAliasKey(crypto.createHash("sha256").update("forb2-key-" + i).digest("hex"));
+    for (const s of ["רחוב הנחושת 4", "רחוב התעשייה", "רחוב הברזל 12", "רחוב הסדנה"]) if (/הרימון/.test(C.fakePlace(s, new Set(), f))) hits++;
+  }
+  C.setAliasKey(null);
+  ok(hits === 0, "200 invented streets over 50 keys, none «הרימון»: " + hits);
+}
+
+/* Nor a word of the document inside a longer word. The final check reads a secret anywhere in the text, so «בנק צאלון»
+   failed it in a letter that named a man «אלון» (the hunt of 1.11), and the bar went red. A town «הרצליה» beside a real
+   «רחוב הרצל» is the same trap. Invented examples. */
+console.log("\n— an invented company or town does not hold a secret of the document inside it —");
+{
+  /* what the check reads is the secrets, the values replaced, not every word: «הלום» and «הרצל» are secrets here (an
+     ordinary word inside a fake is no leak, and removing such fakes ran the pools out: tests/towns_t.js) */
+  const f = new C.Engine([{ value: "דניאל הלום", kind: "NAME", replacement: "" }, { value: "רחוב הרצל 5", kind: "PLACE", replacement: "" }], [], OPT,
+    "העד דניאל הלום העיד. המשרד ברחוב הרצל 5. השופט רענן כספי.").forbidden;
+  let org = 0, town = 0;
+  for (let i = 0; i < 50; i++) {
+    C.setAliasKey(crypto.createHash("sha256").update("forb3-key-" + i).digest("hex"));
+    for (const v of ['מרלין השקעות בע"מ', 'טרבלון מערכות בע"מ', "סולמית ושות'", "בנק הצפון"]) if (/הלום/.test(C.fakeOrg(v, new Set(), f))) org++;
+    for (const t of ["תל אביב", "נתניה", "חיפה", "רמת גן", "כפר סבא", "הוד השרון", "רעננה", "פתח תקווה"]) if (/הרצל/.test(C.fakePlace(t, new Set(), f))) town++;
+  }
+  C.setAliasKey(null);
+  ok(org === 0, "200 invented companies over 50 keys, none holding «הלום»: " + org);
+  ok(town === 0, "400 invented towns over 50 keys, none holding «הרצל»: " + town);
+}
+/* Nor a fake one letter away from a word of the document. The paste-back marks such a word as a fake the AI garbled
+   (nearOf), so in an agreement that says «הקניין», «שימור» and «נחתם», a fake surname «קנין» left «הקניין» marked in the
+   AI's answer, in 13 of 40 keys (the review of 2.11). Invented examples. */
+console.log("\n— no fake name one letter away from a word of the document —");
+{
+  const text = "הקניין במניות יושלם במועד ההשלמה. מענק שימור ישולם לעובדים. ההסכם נחתם בין הצדדים. הקונה ושלומית ברנר, " +
+    "יואב קדמי, רינה אפשטיין, אסף מזרחי ונגה טל חתמו. המניות, המחאות, ההתחייבויות והמסמכים נמסרו.";
+  const names = ["שלומית ברנר", "יואב קדמי", "רינה אפשטיין", "אסף מזרחי", "נגה טל"];
+  const near = (a, b) => { if (a === b || Math.abs(a.length - b.length) > 1 || a.length < 4 || b.length < 4) return false; const d = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+    for (let j = 1; j <= b.length; j++) d[0][j] = j;
+    for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    return d[a.length][b.length] === 1; };
+  const docWords = new Set(); for (const w of text.match(/[א-ת]{3,}/g)) { docWords.add(w); if ("בלמוהשכ".includes(w[0])) docWords.add(w.slice(1)); if (w.length > 4 && "בלמוהשכ".includes(w[0]) && "בלמוהשכ".includes(w[1])) docWords.add(w.slice(2)); }
+  const bad = [];
+  for (let i = 0; i < 60; i++) {
+    const key = crypto.createHash("sha256").update("near-key-" + i).digest("hex");
+    const eng = new C.Engine(names.map((v) => ({ value: v, kind: "NAME", replacement: "" })), [], { ...OPT, aliasKey: key }, text);
+    for (const h of eng.detect(text)) if (h.apply) for (const part of String(eng.repFor({ ...h, pre: "" })).split(/\s+/))
+      for (const w of docWords) for (const p of [part].concat("בלמוהשכ".includes(part[0]) && part.length >= 4 ? [part.slice(1)] : []))
+        if (near(p, w)) bad.push(part + "~" + w);
+  }
+  C.setAliasKey(null);
+  ok(bad.length === 0, "60 keys, no fake name part one letter away from a word of the document: " + bad.length + " " + [...new Set(bad)].slice(0, 6).join(", "));
+}
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exitCode = fail ? 1 : 0;

@@ -25,15 +25,7 @@ const zlib = require("zlib"), fs = require("fs"), path = require("path");
 global.__deflate = (b) => new Uint8Array(zlib.deflateRawSync(Buffer.from(b)));
 global.__inflate = (b) => new Uint8Array(zlib.inflateRawSync(Buffer.from(b)));
 const HERE = __dirname;
-const js = fs.readFileSync(path.join(HERE, "app.html"), "utf8").split("<script>")[1].split("</script>")[0]
-  .replace('const inflate=u8=>pipe(u8,DecompressionStream,"deflate-raw");', "const inflate=async u8=>global.__inflate(u8);")
-  .replace('const deflate=u8=>pipe(u8,CompressionStream,"deflate-raw");', "const deflate=async u8=>global.__deflate(u8);");
-const cut = js.indexOf("/* ══════════════════════════ ממשק ══════════════════════════ */");
-const a = js.indexOf("function pseudoRX(p){"), b = js.indexOf("function livePairs(){");
-fs.writeFileSync(path.join(HERE, "failopen-core.js"), js.slice(0, cut) + "\n" + js.slice(a, b) +
-  "\nmodule.exports={redactDocx,nerRun,break:(k,f)=>{" +
-  "if(k==='bodyNames')bodyNames=f;else if(k==='nameish')nameish=f;else if(k==='nerLoad')nerLoad=f;else if(k==='foldEvidence')foldEvidence=f;else throw new Error(k)}};\n");
-const E = require("./failopen-core.js");
+const E = require("./core.js");
 const { mkzip } = require("./mkzip.js");
 const { P, R, doc, base } = require("./structure-lib.js");
 
@@ -74,7 +66,7 @@ const boom = () => { throw new Error("broken on purpose"); };
 
   console.log("\n— the body scan throws —");
   {
-    E.break("bodyNames", boom);
+    E.swap("bodyNames", boom);
     const res = await E.redactDocx(zipOf(BODY), [], [], OPT);
     const inc = res.verification.incomplete || [];
     ok(inc.includes("body"), "the result says the body scan did not finish: " + JSON.stringify(inc));
@@ -83,7 +75,7 @@ const boom = () => { throw new Error("broken on purpose"); };
 
   console.log("\n— the label scan throws —");
   {
-    E.break("nameish", boom);
+    E.swap("nameish", boom);
     const res = await E.redactDocx(zipOf(BODY, [chart]), [], [], { ...OPT, body: false });
     const inc = res.verification.incomplete || [];
     ok(inc.includes("labels"), "the result says the label scan did not finish: " + JSON.stringify(inc));
@@ -109,8 +101,8 @@ const boom = () => { throw new Error("broken on purpose"); };
     // a pipeline that answers every chunk but the second
     let calls = 0;
     const pipe = async () => { calls++; if (calls === 2) throw new Error("chunk broken on purpose"); return []; };
-    E.break("nerLoad", async () => pipe);
-    E.break("foldEvidence", async () => {});
+    E.swap("nerLoad", async () => pipe);
+    E.swap("foldEvidence", async () => {});
     const long = Array.from({ length: 80 }, (_, i) => "שורה מספר " + i + " של הפרוטוקול, והדיון נמשך כרגיל בלי שמות.").join(" ");
     const blocks = [{ text: long }];
     let res, threw = null;
@@ -123,7 +115,7 @@ const boom = () => { throw new Error("broken on purpose"); };
 
   console.log("\n— every chunk of the model fails —");
   {
-    E.break("nerLoad", async () => async () => { throw new Error("all broken on purpose"); });
+    E.swap("nerLoad", async () => async () => { throw new Error("all broken on purpose"); });
     let threw = null;
     try { await E.nerRun([{ text: "המורה רחל פרידמן אמרה שלום." }]); } catch (e) { threw = e; }
     ok(!!threw, "a model that read nothing fails, so the screen shows the failure and not an empty list");

@@ -1,6 +1,43 @@
 # Rolling the live site back
 
-## What the address serves now
+The tool is served at https://inkognito.co.il/, built from the `inkognito` branch. Every deploy of it is
+tagged `ink/vNN` (or `ink/vNN.k`) on that branch, once the live site serves that version
+([RELEASING.md](RELEASING.md)). The old address, https://ombed.github.io/inkognito/, serves only a page that
+sends visitors on; its own rollback is at the end.
+
+## When
+
+Only for a blocker: users cannot work at all (the page will not load, a file will not process, the
+download or the restore fails), or the tool lets out something it did not before. Anything less waits for
+a normal fix. Roll back first, diagnose second.
+
+## inkognito.co.il
+
+**The fastest way.** Cloudflare keeps every earlier deployment of the project, and a past production
+deployment can be made the live one again at once, without a rebuild: in the Cloudflare dashboard, Workers
+& Pages, the `inkognito` project, its deployments, the last good one, its rollback action. (The exact
+labels are Cloudflare's; check them the first time and correct this line.)
+
+**From a tag, which rebuilds exactly what the repository holds:**
+
+```
+git fetch --tags
+git worktree add ../wt-rollback ink/v76            # the last good version
+cd ../wt-rollback && npm ci && npm run build:hosted
+npx --yes wrangler@4.147.0 pages deploy dist --project-name=inkognito --branch=main
+```
+
+Either way, probe the live site afterwards, and check that the demo serves the version rolled back to.
+
+**What users see.** The page's service worker caches the files under the version (`hedact-vNN`), so the
+older one installs on the next visit, and one refresh is enough. Saved cases are in the browser's storage
+and are not touched. A case saved by a newer version is read by an older one as long as the case format
+has not changed: it is version 1 in every release so far.
+
+**After.** `main` and `inkognito` still hold the bad change. Revert it on a branch through a pull request,
+merge `main` into `inkognito`, and release forward with a new tag.
+
+## The old address (GitHub Pages)
 
 Since 6.10.2026 the tool lives at https://inkognito.co.il/ (the owner's decision).
 Its old address, https://ombed.github.io/inkognito/, serves the forward that
@@ -19,8 +56,8 @@ The `pages` workflow publishes the forward whenever the ref it builds has
 folder. It then fails unless the live page carries
 `<meta name="inkognito" content="moved">`, the live `sw.js` is `forward/sw.js` byte
 for byte, and an old deep link lands on the moved page. The forward has no version
-and gets no tag: versions and `live/vNN` tags now belong to the inkognito.co.il
-deploys, which have their own process.
+and gets no tag; the tool's versions are tagged `ink/vNN` on the `inkognito` branch,
+as above.
 
 Every version of the tool that was published here before the move has a tag,
 `live/vNN`, put there by the `pages` workflow after it confirmed the live page
@@ -28,7 +65,7 @@ reported that version; the last is `live/v62`. Those tags have no
 `scripts/build-forward.js`, so publishing one again builds and publishes the tool
 from it, exactly as before the move. That is a rollback.
 
-## When
+### When
 
 Only for a blocker. Before the move: she cannot work at all (the page will not
 load, a file will not process, the download fails). Now also: the moved page does
@@ -39,7 +76,7 @@ user session this is the only deploy allowed.
 
 Roll back first, diagnose second.
 
-## How
+### How
 
 ```
 git ls-remote --tags origin "refs/tags/live/*"      # what can be published
@@ -54,7 +91,7 @@ To serve the forward again, publish main: `gh workflow run pages.yml` with no
 `ref`, or let the next push to main do it. That run checks the live address as
 described above, and makes no tag.
 
-## What she sees
+### What she sees
 
 Rolling back to the tool: her browser fetches `sw.js` fresh on the next visit. Its
 contents differ, so the browser installs it as a new service worker, which serves
@@ -71,7 +108,7 @@ them as one file.
 A case profile written by a newer version is read by an older one as long as the
 profile format has not changed; the format is version 1 in every release so far.
 
-## After
+### After
 
 `main` still holds the bad commit, so the next push to main would publish it
 again. Revert it on a branch, through a PR, before anything else is merged:
@@ -80,7 +117,7 @@ again. Revert it on a branch, through a PR, before anything else is merged:
 git revert <bad-commit>     # or the merge commit, with -m 1
 ```
 
-## What this does not do
+### What this does not do
 
 It does not undo anything in her browser beyond the app files: a case she saved
 with the bad version stays saved. If the bad version wrote something harmful into

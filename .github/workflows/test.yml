@@ -16,19 +16,22 @@ on:
     branches: [main, inkognito]
 
 jobs:
+  # The Node side: lint, the suites, the type checks, the benchmark and what holds it. The browser tests run
+  # beside it, in their own job below (18.10: together they used 15 of this job's 20 minutes).
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
-      - name: Node suites and browser checks
-        run: npm test
+      - name: Lint
+        run: npx eslint .
+      - name: Node suites
+        run: node tests/run.js
       # The files that have joined the type checks (tsconfig.check.json; engine/globals.d.ts names what the engine's
       # sections share): page-logic.js and engine/03-fakenames.js since 12.10, more one at a time (the audit, item 14)
       - name: Type checks
@@ -60,7 +63,34 @@ jobs:
       - name: Output against bench/golden
         if: always()
         run: node bench/golden.js
-      - uses: actions/upload-artifact@v4
+      # The complexity guard (18.10): against the baseline at the same commit as the gates, no function above 12
+      # gets more complex, the total above 12 does not rise, nesting does not deepen and no file leaves the type
+      # checks (scripts/complexity.js; a rise it lets through is named, with a reason, in complexity-accepted.json)
+      - name: Complexity guard
+        if: always()
+        run: node scripts/complexity.js --check
+      # The committed table is the one this run wrote (18.10): it holds no date and no timings (bench/run.js), so a
+      # change that moves a figure commits the table with it, and README's link to the benchmark stays true
+      - name: The benchmark table is the fresh one
+        if: always()
+        run: git diff --exit-code -- bench/results-no-model.md
+
+  # The browser tests: the real page in Chrome (playwright.config.js). WebKit and Firefox run before a release
+  # (docs/RELEASING.md).
+  browsers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Browser tests
+        run: npx playwright test
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: failure()
         with:
           name: playwright-report
@@ -73,8 +103,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
           cache: npm
@@ -104,7 +134,12 @@ jobs:
         run: |
           npm run -s bench:protocol -- --json bench/protocol-result.json
           node bench/protocol-claims.js bench/protocol-result.json
-      - uses: actions/upload-artifact@v4
+      # README's second-scan figures, measured the same way (bench/second-scan.js; the outside review of 18.10 found
+      # 28 there where the measurement was 27)
+      - name: The second scan, and the figures README quotes from it
+        if: always()
+        run: node bench/second-scan.js --claims README.md
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
           name: bench-model
@@ -113,3 +148,40 @@ jobs:
             bench/results.md
             bench/protocol-result.json
           retention-days: 14
+
+  # The result lock (18.10): this commit's engine against the base's, on the synthetic corpus and on every document
+  # the Node suites build, comparing every field of the results and every byte of the output files (bench/lock.js).
+  # It blocks a PR whose description ticks "No behaviour change"; on any other change it reports, since a fix or a
+  # feature is meant to change results. The description reaches the step as an environment variable, never as text
+  # inside the script, so nothing written in it can run.
+  lock:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: The baseline's commit (the PR's base, or the branch before this push)
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if [ "$EVENT" = "pull_request" ]; then
+            git fetch --no-tags --depth=1 origin "$BASE_REF"
+            echo "GATE_BASE_REF=$(git rev-parse FETCH_HEAD)" >> "$GITHUB_ENV"
+          elif git fetch --no-tags --depth=1 origin "$BEFORE"; then
+            echo "GATE_BASE_REF=$(git rev-parse FETCH_HEAD)" >> "$GITHUB_ENV"
+          fi
+      - name: Result lock
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          if printf '%s\n' "$PR_BODY" | grep -qiE '^\s*[-*]\s*\[x\]\s*No behaviour change'; then
+            node bench/lock.js --suites
+          else
+            node bench/lock.js --suites || echo "::notice::The result lock found differences. This change does not say it keeps behaviour, so they are reported, not blocking."
+          fi

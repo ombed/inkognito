@@ -113,6 +113,85 @@ console.log("\n— fakePlace: a town gets a town, not a bracketed label —");
   ok(new Set(seen).size === seen.length, "five towns get five distinct substitutes");
 }
 
+console.log("\n— a street stays a street: the head word in the value is kept, the name comes from the street pool —");
+{
+  /* The model's place span often holds the street word itself («רחוב הנביאים 22»), not only the name after it.
+     placeKind looked only at the text before the span, found nothing, and fakePlace gave a town: «מרחוב משה שרת 94»
+     went out as «מערד 94», and «רחוב הנביאים 22» as «מנצרת» with the house number gone (the hunt of 1.11).
+     Every example is invented. */
+  const crypto = require("crypto");
+  const KEYS = Array.from({ length: 50 }, (_, i) => crypto.createHash("sha256").update("street-key-" + i).digest("hex"));
+  const isTown = (w) => !!C.PLACE_BY[w] || C.PLACES.some((p) => p.n === w);
+  const cases = [
+    ["רחוב הנחושת", /^רחוב (\S.*)$/],
+    ["רחוב הנביאים 22", /^רחוב (\S.*?) 22$/],
+    ["רחוב משה שרת 94", /^רחוב (\S.*?) 94$/],
+    ["רח' ביאליק 31א", /^רח' (\S.*?) 31א$/],
+    ["שדרות התאנים 7", /^שדרות (\S.*?) 7$/],
+    ["שד' הגבורה", /^שד' (\S.*)$/],
+    ["דרך השלום 120", /^דרך (\S.*?) 120$/],
+    ["ברחוב הנביאים 22", /^ברחוב (\S.*?) 22$/],
+    ["מרחוב משה שרת 94", /^מרחוב (\S.*?) 94$/],
+    ["ורחוב הזמיר", /^ורחוב (\S.*)$/],
+    ["שכונת הפרחים", /^שכונת (\S.*)$/],
+  ];
+  const bad = [];
+  for (const key of KEYS) {
+    C.setAliasKey(key);
+    for (const [v, rx] of cases) {
+      const f = C.fakePlace(v, new Set(), new Set());
+      const m = rx.exec(f || "");
+      if (!m) { bad.push(v + " → " + f); continue; }
+      if (isTown(m[1]) || m[1].split(" ").every((w) => v.split(/\s+/).includes(w))) bad.push(v + " → " + f + " (name «" + m[1] + "»)");
+    }
+    // the number and street only: a town after a comma gets a town, never the real one
+    const t = C.fakePlace("רחוב הנביאים 22, הרצליה", new Set(), new Set());
+    if (!/^רחוב \S.*? 22, \S/.test(t || "") || /הרצליה|הנביאים/.test(t)) bad.push("with town → " + t);
+    // a town is still a town, also one whose name is a head word (שדרות) or starts like one
+    for (const town of ["הרצליה", "שדרות", "רחובות"]) {
+      const g = C.fakePlace(town, new Set(), new Set());
+      if (!g || /^(?:רחוב|רח'|שדרות|שד'|דרך|שכונת)\s/.test(g) || !isTown(g) || g === town) bad.push(town + " → " + g);
+    }
+  }
+  C.setAliasKey(null);
+  ok(bad.length === 0, "streets keep their head and number, towns stay towns, over 50 keys: " + bad.slice(0, 6).join(" | "));
+}
+
+console.log("\n— only a house number of up to four digits right after the street name is kept: never a zip code or a P.O. box —");
+{
+  /* The house number was the LAST number of the span, of any length: «רחוב הנביאים 22 הרצליה 4652201» went out as
+     «רחוב השקד 4652201», the zip code reached the AI and the final check stayed green (the review of 2.11). Every
+     example is invented. */
+  const crypto = require("crypto");
+  const KEYS = Array.from({ length: 20 }, (_, i) => crypto.createHash("sha256").update("zip-key-" + i).digest("hex"));
+  const cases = [
+    ["רחוב הנביאים 22 הרצליה 4652201", "22", null], ["רחוב הנביאים 22 4652201", "22", null], ["רחוב הנביאים 4652201", null, null],
+    ["רחוב הנביאים 22 ת.ד. 4521", "22", null], ["דרך מנחם בגין 132 תל אביב 6701101", "132", null], ["שדרות רוטשילד 22 תל אביב 6688218", "22", null],
+    ["רחוב הנביאים 22, הרצליה 4652201", "22", "town"], ["ברחוב הנביאים 22/3, הרצליה", "22/3", "town"], ["רחוב הנביאים 1234", "1234", null],
+    ["רחוב הנביאים 12345", null, null], ["רחוב הנביאים, ת.ד. 4521", null, null],
+  ];
+  const bad = [];
+  for (const key of KEYS) {
+    C.setAliasKey(key);
+    for (const [v, no, town] of cases) {
+      const f = C.fakePlace(v, new Set(), new Set()) || "";
+      const realNums = (v.match(/\d+/g) || []).filter((n) => n !== no && !(no || "").split("/").includes(n));
+      const own = ["הנביאים", "רוטשילד", "בגין", "הרצליה", "תל אביב"].filter((w) => v.includes(w));
+      if (!/^ב?(?:רחוב|דרך|שדרות) /.test(f) || realNums.some((n) => f.includes(n)) || /\d{5}/.test(f) || own.some((w) => f.includes(w))) bad.push(v + " → " + f);
+      else if (no && !new RegExp(" " + no.replace("/", "\\/") + "(?:[, ]|$)").test(f)) bad.push(v + " → " + f + " (number " + no + " lost)");
+      else if (!no && /\d/.test(f)) bad.push(v + " → " + f + " (a number kept)");
+      else if (town && !/, \S/.test(f)) bad.push(v + " → " + f + " (town lost)");
+    }
+    // the street word from the text before the span, the number inside it: the same rule
+    for (const [v, no] of [["הנביאים 22 4652201", "22"], ["הנביאים 22 ת.ד. 4521", "22"], ["הנביאים 4652201", null]]) {
+      const f = C.fakePlace(v, new Set(), new Set(), "רחוב") || "";
+      if (/4652201|4521/.test(f) || /הנביאים/.test(f) || (no && !f.endsWith(" " + no)) || (!no && /\d/.test(f))) bad.push("רחוב + " + v + " → " + f);
+    }
+  }
+  C.setAliasKey(null);
+  ok(bad.length === 0, "no zip code or P.O. box goes out as a house number, over 20 keys: " + bad.slice(0, 6).join(" | "));
+}
+
 console.log("\n— the ambiguous list holds only names that really are something else —");
 {
   /* A row said לוד — "also an ordinary word", but Lod is a city name and

@@ -1,6 +1,6 @@
 # Benchmark results
 
-43 documents, 335 keyed entities: 272 identifying details the tool must replace, and 63 traps and public bodies it must leave alone. Model on (q8, same artifact as the browser). Generated 2026-10-18.
+43 documents, 335 keyed entities: 272 identifying details the tool must replace, and 63 traps and public bodies it must leave alone. Model on (q8, same artifact as the browser).
 
 ## Per category
 
@@ -104,50 +104,50 @@ Counted, not optimised for: the list is read, accept-all is not how the tool is 
 - x1 · trap: ordinary word that is also a locality name (קדימה, לשם, גבעות) · לשם: suggested as «קדימה [flagged]»; altered: קדימה
 - x2 · trap: ordinary word that is also a locality name (קדימה, לשם, גבעות) · אורה: suggested as «עלי [flagged]»; altered: עלי
 
-## Timing
+## Per document
 
-| doc | genre | ms | rules confirmed | unlisted |
-|---|---|---|---|---|
-| m1 | meeting | 204 | 9 | 1 |
-| m2 | meeting | 104 | 11 | 1 |
-| m3 | meeting | 65 | 6 | 0 |
-| m4 | meeting | 107 | 8 | 0 |
-| f1 | filing | 131 | 14 | 2 |
-| f2 | filing | 130 | 13 | 1 |
-| f3 | filing | 102 | 8 | 0 |
-| f4 | filing | 112 | 11 | 3 |
-| t1 | transcript | 89 | 7 | 0 |
-| t2 | transcript | 90 | 13 | 1 |
-| t3 | transcript | 102 | 11 | 1 |
-| t4 | transcript | 91 | 11 | 1 |
-| w1 | welfare | 64 | 4 | 0 |
-| w2 | welfare | 64 | 5 | 0 |
-| w3 | welfare | 74 | 5 | 0 |
-| w4 | welfare | 75 | 5 | 1 |
-| h1 | medical | 77 | 6 | 2 |
-| h2 | medical | 68 | 5 | 1 |
-| h3 | medical | 80 | 6 | 2 |
-| p1 | police | 68 | 4 | 0 |
-| p2 | police | 64 | 4 | 2 |
-| p3 | police | 75 | 2 | 0 |
-| p4 | police | 61 | 3 | 0 |
-| b1 | bank | 64 | 5 | 2 |
-| b2 | bank | 42 | 2 | 0 |
-| b3 | bank | 51 | 2 | 0 |
-| c1 | chat | 57 | 4 | 0 |
-| c2 | chat | 66 | 5 | 1 |
-| c3 | chat | 66 | 2 | 0 |
-| c4 | chat | 66 | 4 | 0 |
-| x1 | position | 103 | 7 | 1 |
-| x2 | position | 73 | 5 | 0 |
-| x3 | position | 72 | 5 | 0 |
-| a1 | audio | 80 | 7 | 0 |
-| a2 | audio | 75 | 7 | 0 |
-| a3 | audio | 66 | 7 | 1 |
-| a4 | audio | 59 | 6 | 0 |
-| v1 | interview | 82 | 3 | 0 |
-| v2 | interview | 76 | 5 | 0 |
-| v3 | interview | 61 | 3 | 0 |
-| s1 | structure | 86 | 4 | 2 |
-| s2 | structure | 87 | 5 | 2 |
-| s3 | structure | 92 | 5 | 2 |
+| doc | genre | rules confirmed | unlisted |
+|---|---|---|---|
+| m1 | meeting | 9 | 1 |
+| m2 | meeting | 11 | 1 |
+| m3 | meeting | 6 | 0 |
+| m4 | meeting | 8 | 0 |
+| f1 | filing | 14 | 2 |
+| f2 | filing | 13 | 1 |
+| f3 | filing | 8 | 0 |
+| f4 | filing | 11 | 3 |
+| t1 | transcript | 7 | 0 |
+| t2 | transcript | 13 | 1 |
+| t3 | transcript | 11 | 1 |
+| t4 | transcript | 11 | 1 |
+| w1 | welfare | 4 | 0 |
+| w2 | welfare | 5 | 0 |
+| w3 | welfare | 5 | 0 |
+| w4 | welfare | 5 | 1 |
+| h1 | medical | 6 | 2 |
+| h2 | medical | 5 | 1 |
+| h3 | medical | 6 | 2 |
+| p1 | police | 4 | 0 |
+| p2 | police | 4 | 2 |
+| p3 | police | 2 | 0 |
+| p4 | police | 3 | 0 |
+| b1 | bank | 5 | 2 |
+| b2 | bank | 2 | 0 |
+| b3 | bank | 2 | 0 |
+| c1 | chat | 4 | 0 |
+| c2 | chat | 5 | 1 |
+| c3 | chat | 2 | 0 |
+| c4 | chat | 4 | 0 |
+| x1 | position | 7 | 1 |
+| x2 | position | 5 | 0 |
+| x3 | position | 5 | 0 |
+| a1 | audio | 7 | 0 |
+| a2 | audio | 7 | 0 |
+| a3 | audio | 7 | 1 |
+| a4 | audio | 6 | 0 |
+| v1 | interview | 3 | 0 |
+| v2 | interview | 5 | 0 |
+| v3 | interview | 3 | 0 |
+| s1 | structure | 4 | 2 |
+| s2 | structure | 5 | 2 |
+| s3 | structure | 5 | 2 |

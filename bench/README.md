@@ -95,9 +95,11 @@ not a name (ID number, phone, email, bank account, plate, date of birth),
 with valid check digits where the detector verifies them. The corpus is
 committed under `corpus/` with a `.txt` beside each `.docx` for reading.
 
-`engine.js` loads `redact-engine.js` into Node with its full export list;
-`.engine.cjs` is its generated output and is ignored. `engine.js.load(patches)`
-returns the same engine with textual patches applied, for the sweep.
+`engine.js` hands over `scripts/engine-node.js`, the one way Node loads
+`redact-engine.js` (the suites use it too): every top-level name, written once per
+text of the engine to the system's temp folder. `engine.js.load({ patches })`
+returns the same engine with textual patches applied, each matching exactly once,
+for the sweep.
 
 ## The gate
 
@@ -114,3 +116,40 @@ baseline (outside review, 12.10). A change that is meant to make an entity worse
 names it in `gate-accepted.json` with a reason, a sentence, and updates the
 baseline in the same change; once that is on main, the entry matches nothing and
 the gate reports it as stale, to be removed.
+
+## The result lock
+
+`lock.js` runs the engine at a base commit and the engine in the working tree side
+by side, on the same documents with the same choices, and compares everything a
+person or the page could see: every field of `redactDocx`'s result (what was
+replaced and flagged, the preview, the final check and the second scan, the map,
+the date offset), every part of the output file byte for byte, and for the corpus
+also what the reader and `discover` found and the restore. The golden outputs keep
+only the redacted text, and the gate counts entities; a change that moves code
+without meaning to change behaviour proves it here.
+
+Each corpus document runs the benchmark's chain without the model (`lib.js`
+`runDoc`): a first run with what `discover` offered, and a second with every
+suggestion, near miss and flagged item accepted, each with the kind the benchmark
+gives it (a flagged item, its label's where `LABEL_KIND` has the label).
+`tests/lock_t.js` runs both chains on three documents that hold every kind of item
+and checks that they hand the engine the same.
+
+The choices are not the benchmark's but the lock's five sets: four on `lib.js`
+`OPT`, which turns on five detectors only (the ID number, a mobile phone, an
+e-mail address, the place list, a street address), and the page's own defaults,
+which turn on every detector the engine marks on, the date and the case number
+among them. `tests/lock_t.js` checks that set against the page's `opts()`, so the
+two cannot drift apart.
+
+    npm run lock                          # against main: the corpus, 5 sets of choices
+    node bench/lock.js --base=<ref>       # against another commit
+    node bench/lock.js --suites           # also every document the Node suites build
+    node bench/lock.js --self             # against itself: the lock sees no noise
+
+`--suites` runs `tests/run.js` with `LOCK_RECORD` set, so the loader writes every
+document a suite hands to `redactDocx`, and gives each to both engines: about 1,700
+documents built to test pictures, links, fields and the other parts the corpus does
+not have. In CI the `lock` job runs it against the PR's base. It blocks a PR that
+ticks "No behaviour change" in its description, and only reports on any other,
+since a fix or a feature is meant to change results.

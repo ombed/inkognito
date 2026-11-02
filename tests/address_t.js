@@ -17,10 +17,12 @@ const ok = (c, m) => { c ? pass++ : (fail++, console.log("  ✗ " + m)); };
 
 const ROOT = path.join(__dirname, "..");
 const H = "\\u0590-\\u05FF";
-// everything whose text reaches the screen, the report or the downloaded package, and the issue form a
-// user fills in to report a leak (it said «אם לחצת» until 6.10)
-const FILES = ["index.html", "redact-engine.js", "page-logic.js", "pdf-text.js", "text-to-docx.js", "support.js", "sw.js", "manifest.webmanifest",
-  ".github/ISSUE_TEMPLATE/leak.yml"];
+// everything whose text reaches the screen, the report or the downloaded package: every file the page ships
+// (tests/shipped.js; page-component.js, where most of the messages live, was missing from a hand-kept list from
+// 13.10 to 18.10), the worker and the manifest, and the issue form a user fills in to report a leak (it said
+// «אם לחצת» until 6.10)
+const FILES = [...new Set([...require("./shipped.js")(ROOT).filter((f) => /\.(js|html)$/.test(f)), "sw.js", "manifest.webmanifest",
+  ".github/ISSUE_TEMPLATE/leak.yml"])];
 // comments are for developers and may quote the old words; "//" after ":" is a URL, not a comment. The list of common
 // Hebrew words (engine/05-common.js) is data, not a sentence: it holds «שלך» and «עליך» as words, said to no one
 const strip = (t) => t.replace(/<!--[\s\S]*?-->/g, " ").replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:\\])\/\/[^\n]*/g, "$1")

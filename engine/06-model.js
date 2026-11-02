@@ -1012,6 +1012,14 @@ function placeKind(text,s){
    האמיתי — «ערערה» ("המבקשת ערערה"), «קדימה», «פתח תקווה». בכל מאגר: לפי סוג ("מושב" נתן נחלים וצופית, "קיבוץ"
    נתן עין השופט ומגן), הכללי, ומפת המרחקים (הביקורת של 11.10) */
 const placeSubOK=n=>!!n&&!AMBIG.has(n)&&!placeCond(n);
+/* השם שלפיו נקבע אופי היישוב (ATLAS_TAGS). שם של כמה חלקים מוחלף כולו (הציד של 11.10), ואופיו הוא של העיר שבראשו:
+   «מודיעין-מכבים-רעות» כמו «מודיעין»; וקודם השם עצמו במקף במקום רווח: «מגדל-העמק» הוא «מגדל העמק», לא המושבה
+   «מגדל» (הביקורת של 2.11) */
+function atlasName(v){
+  if(!v||typeof ATLAS_TAGS==="undefined"||ATLAS_TAGS[v])return v;
+  const sp=v.replace(/\s*-\s*/g," "), h=v.split(/\s*-\s*/)[0];
+  return ATLAS_TAGS[sp]?sp:ATLAS_TAGS[h]?h:v;
+}
 function placePool(kind,value){
   const gaz=(typeof GAZ!=="undefined"&&Array.isArray(GAZ))?GAZ:[];
   const all=PLACES.map(p=>p.n).concat(gaz);
@@ -1025,9 +1033,7 @@ function placePool(kind,value){
   // ירושלים הפכה ל"משמר הנגב" ומודיעין ל"אמונים" כי המאגר הגדול אינו יודע מה הם.
   // יישוב מתויג מקבל יישוב מאותו אופי (אוכלוסייה, דת, עירוני/כפרי); הגודל רשאי לזוז.
   const base=PLACES.map(p=>p.n).filter(n=>n&&n.length>=3&&placeSubOK(n));
-  let v=norm(String(value||"")).trim();
-  // שם של כמה חלקים מוחלף כולו (הציד של 11.10), ואופיו הוא של העיר שבראשו: «מודיעין-מכבים-רעות» כמו «מודיעין»
-  if(v&&typeof ATLAS_TAGS!=="undefined"&&!ATLAS_TAGS[v]){const h=v.split(/\s*-\s*/)[0]; if(h!==v&&ATLAS_TAGS[h])v=h;}
+  const v=atlasName(norm(String(value||"")).trim());
   if(v&&typeof ATLAS_TAGS!=="undefined"&&ATLAS_TAGS[v]&&typeof atlasPenalty==="function"){
     // הקרובים ביותר באופי: לפחות שישה, כדי שיהיה מבחר, ובלי אוכלוסייה שונה לעולם
     const scored=base.filter(n=>n!==v).map(n=>[n,atlasPenalty(v,n)]).filter(x=>x[1]!==Infinity).sort((a,b)=>a[1]-b[1]);
@@ -1035,8 +1041,79 @@ function placePool(kind,value){
   }
   return base;
 }
-function fakePlace(value,used,forbidden,kind){
-  const pool=placePool(kind||null,value);
+/* רחוב נשאר רחוב (הציד של 1.11). כשמילת הסוג בתוך הערך עצמו («רחוב הנביאים 22», כך המודל מסמן כתובת), placeKind לא
+   מצא אותה בטקסט שלפני הערך, והתחליף נלקח ממאגר היישובים: «מרחוב משה שרת 94» יצא «מערד 94», ו«רחוב הנביאים 22» יצא
+   «מנצרת» בלי מספר הבית. כאן מילת הסוג, ואות השימוש שלפניה, נשארות כמו שנכתבו, השם נלקח ממאגר הרחובות או השכונות,
+   מספר הבית נשאר, ויישוב אחרי פסיק מקבל יישוב. זה לא סותר את Q11 בגרסה 2: שם מילת הסוג מחוץ לערך ואינה חלק מהתחליף,
+   וכאן היא בתוכו. tests/places_t.js */
+const PLACE_HEAD_IN=/^((?:[בהולמכש]|ו[בהלמכ]|כש)?)(רחוב|רח'|שדרות|שד'|שדרת|סמטת|סמטה|דרך|שכונת|שכונה)\s+(\S.*)$/u;
+/* מה שנשאר מהכתובת: שם הרחוב (בלי ספרות), מספר בית של עד ארבע ספרות שבא מיד אחריו («22», «31א», «22/3», «12-14»),
+   ויישוב — אחרי פסיק, או יישוב מוכר מיד אחרי המספר. כל השאר יורד. עד הביקורת של 2.11 מספר הבית היה המספר האחרון בערך,
+   בכל אורך: «רחוב הנביאים 22 הרצליה 4652201» יצא «רחוב השקד 4652201», המיקוד הגיע ל-AI והבדיקה האחרונה עברה; וכך תא
+   דואר («ת.ד. 4521»). מספר של חמש ספרות ומעלה לעולם אינו נשאר. tests/places_t.js */
+function streetParts(rest){
+  const s=String(rest||"").trim(), m=/^([^\d,]*[^\s\d,])/u.exec(s);
+  if(!m)return {name:s.replace(/[\d,./]+/g," ").trim()||s,no:"",town:"",sep:""};
+  let tail=s.slice(m[1].length), no="", town="", sep="";
+  const n=/^\s+(\d{1,4}[א-ת]?(?:[/-]\d{1,4}[א-ת]?)?)(?![\d/-])/u.exec(tail);
+  if(n){no=n[1]; tail=tail.slice(n[0].length);}
+  // יישוב רק כשהוא יישוב מוכר: «רחוב הרצל 5, דירה 3, תל אביב» נתן ל«דירה» יישוב בדוי (הביקורת של 2.11)
+  const known=x=>typeof PLACE_IX!=="undefined"&&PLACE_IX.keys.has(placeKey(x));
+  const c=/^\s*,\s*([^\d,]*[^\s\d,.])/u.exec(tail);
+  if(c&&known(c[1])){town=c[1]; sep=", ";}
+  else if(no&&!c){
+    const t=/^\s+([^\d,]*[^\s\d,.])/u.exec(tail);
+    if(t&&known(t[1])){town=t[1]; sep=" ";}
+  }
+  return {name:m[1],no,town,sep};
+}
+/* townOf: התחליף של יישוב (Engine.townFake), כדי שהיישוב של כתובת יקבל את התחליף של אותו יישוב כשהוא כתוב לבד */
+function fakeStreet(raw,nv,m,used,forbidden,townOf){
+  const k=/^שכונ/.test(m[2])?"שכונה":"רחוב";
+  const hd=raw.slice(0,m[1].length+m[2].length);
+  const p=streetParts(m[3]);
+  const taken=(...not)=>({has:n=>not.includes(n)||!!(used&&used.has(n))});
+  const name=pickPlace(nv,taken(p.name),forbidden,k);
+  if(!name)return null;
+  const town=p.town?(townOf?townOf(p.town):pickPlace(p.town,taken(name,p.town),forbidden,null)):"";
+  return hd+" "+name+(p.no?" "+p.no:"")+(town?p.sep+town:"");
+}
+function fakePlace(value,used,forbidden,kind,townOf){
+  const raw=String(value||"").trim(), nv=norm(raw);
+  const m=PLACE_HEAD_IN.exec(nv);
+  if(m)return fakeStreet(raw,nv,m,used,forbidden,townOf);
+  if(kind==="רחוב"||kind==="שכונה"){
+    // מילת הסוג לפני הערך, ומספר הבית בתוכו («רחוב» + «הנביאים 22»): המספר נשאר, באותו כלל (streetParts)
+    const p=streetParts(nv);
+    if(p.no){ const name=pickPlace(nv,used,forbidden,kind); return name?name+" "+p.no:null; }
+  }
+  return pickPlace(value,used,forbidden,kind);
+}
+/* המאגר של הסוג, ואחריו המאגר הכללי: היישובים הקרובים באופי, וכשכולם תפוסים (הבחירות נרשמות, וכך שבעה יישובים מאותו
+   אופי במסמך אחד מיצו אותם) — כל היישובים המתויגים (Q7 בגרסה 3: לעולם לא המאגר הלא-מתויג). עד הביקורת של 2.11 יישוב
+   שמאגרו נגמר קיבל «[מקום ז׳]», בניגוד ל-Q11 בגרסה 2 («לעולם לא לתווית»). tests/towns_t.js */
+/* כל היישובים מאותו אופי, לא רק הקרובים ביותר: כשהבחירות נרשמות, שלוש ערים מעורבות או שישה יישובים ערביים במסמך אחד
+   מיצו את המאגר הקרוב, והנפילה הישירה לכל המתויגים נתנה לרמלה מושב ולרהט יישוב יהודי, בניגוד ל-Q7 בגרסה 3 («בלי
+   אוכלוסייה שונה לעולם»). כשגם אלה תפוסים (יש רק 7 יישובים בדואיים ו-8 ערים מעורבות, וחמישה במסמך אחד מיצו אותם) —
+   יישוב דובר ערבית לבדואי, לדרוזי ולערבי, ועיר (סוג «עיר») לעיר מעורבת (החלטה של 2.11 בהרשאת הבעלים: עדיף על תחליף
+   משותף, שההחזרה לא יודעת לפרק), ורק אחריהם כל המתויגים. הביקורת של 2.11, tests/towns_t.js */
+const ARABIC_POPS=new Set(["ערבי","בדואי","דרוזי"]);
+function popPools(value){
+  const v=atlasName(norm(String(value||"")).trim());
+  if(!v||typeof ATLAS_TAGS==="undefined"||!ATLAS_TAGS[v]||typeof atlasPenalty!=="function")return [];
+  const base=PLACES.map(p=>p.n).filter(n=>n&&n!==v&&n.length>=3&&placeSubOK(n)), pop=n=>(ATLAS_TAGS[n]||"").split("|")[1];
+  const same=base.filter(n=>atlasPenalty(v,n)!==Infinity);
+  if(ARABIC_POPS.has(pop(v)))return [same,base.filter(n=>ARABIC_POPS.has(pop(n)))];
+  if(pop(v)==="מעורב")return [same,base.filter(n=>(ATLAS_TAGS[n]||"").split("|")[0]==="עיר")];
+  return [same];
+}
+function pickPlace(value,used,forbidden,kind){
+  const pools=kind?[placePool(kind,value)]:[];
+  pools.push(placePool(null,value),...popPools(value),PLACES.map(p=>p.n).filter(n=>n&&n.length>=3&&placeSubOK(n)));
+  for(const pool of pools){ const got=pickIn(pool,value,used,forbidden); if(got)return got; }
+  return null;
+}
+function pickIn(pool,value,used,forbidden){
   if(!pool.length)return null;
   const free=n=>{
     if(used&&used.has(n))return false;
@@ -1047,6 +1124,10 @@ function fakePlace(value,used,forbidden,kind){
       if(!w)continue;
       if(forbidden.has(w))return false;
       for(const p of "בלמוהשכ") if(forbidden.has(p+w))return false;
+      // ולא מילה של המסמך עם אות שימוש לפניה («הרימון» ליד חברה בשם «רימון»), ולא סוד של המסמך בתוכו («הרצליה» ליד
+      // «רחוב הרצל»: holdsDocWord). הציד של 1.11
+      if(w.length>=5&&"בלמוהשכ".includes(w[0])&&forbidden.has(w.slice(1)))return false;
+      if(holdsDocWord(w,forbidden))return false;
     }
     return true;
   };
@@ -1055,8 +1136,7 @@ function fakePlace(value,used,forbidden,kind){
     const cand=pool[(start+k)%pool.length];
     if(free(cand))return cand;
   }
-  // המאגר של הסוג נגמר (או שכל שמותיו במסמך): נופלים למאגר הכללי, לא לתווית
-  return kind?fakePlace(value,used,forbidden,null):null;
+  return null;
 }
 
 /* שם יישוב בכל כתיב רגיל (הציד של 11.10). עד כאן השמות נתפסו רק כפי שנכתבו ברשימה, ולכן «בתל-אביב»,

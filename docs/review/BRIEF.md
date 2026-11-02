@@ -201,8 +201,8 @@ Facts, listed because they belong to the privacy lens:
 - `CHANGELOG.md` has an entry per version, in Hebrew, describing what changed
   and why.
 - `docs/QUALITY-PLAN.md` is the current quality programme: seven layers, six
-  done. `docs/PLAN-v18.md` records earlier settled decisions. `docs/ROADMAP.md`
-  and `docs/HANDOVER.md` hold older plans. `docs/measurements.md` records
+  done. `docs/PLAN-v18.md` records earlier settled decisions. `docs/archive/ROADMAP.md`
+  and `docs/archive/HANDOVER.md` hold older plans. `docs/measurements.md` records
   experiments, such as the model quantization choice and a parameter sweep.
 
 ## 9. Measurements taken for this review

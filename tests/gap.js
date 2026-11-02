@@ -9,12 +9,7 @@ global.DOMParser=xd.DOMParser; global.XMLSerializer=xd.XMLSerializer;
 const zlib=require('zlib'),fs=require('fs');
 global.__deflate=b=>new Uint8Array(zlib.deflateRawSync(Buffer.from(b)));
 global.__inflate=b=>new Uint8Array(zlib.inflateRawSync(Buffer.from(b)));
-let js=fs.readFileSync('app.html','utf8').split('<script>')[1].split('</script>')[0]
- .replace('const inflate=u8=>pipe(u8,DecompressionStream,"deflate-raw");','const inflate=async u8=>global.__inflate(u8);')
- .replace('const deflate=u8=>pipe(u8,CompressionStream,"deflate-raw");','const deflate=async u8=>global.__deflate(u8);');
-const cut=js.indexOf('/* ══════════════════════════ ממשק ══════════════════════════ */');
-fs.writeFileSync('gap-core.js',js.slice(0,cut)+"\nmodule.exports={redactDocx,discover,bodyNames,unzip,parseXML,TEXTPART,acceptTracked,flatten,TXT};\n");
-const E=require('./gap-core.js');
+const E = require("./core.js");
 const {mkzip}=require('./mkzip.js');
 const W='xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"';
 const mk=ps=>mkzip([

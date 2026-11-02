@@ -20,13 +20,7 @@ const zlib = require("zlib"), fs = require("fs"), path = require("path");
 global.__deflate = (b) => new Uint8Array(zlib.deflateRawSync(Buffer.from(b)));
 global.__inflate = (b) => new Uint8Array(zlib.inflateRawSync(Buffer.from(b)));
 const HERE = __dirname;
-const js = fs.readFileSync(path.join(HERE, "app.html"), "utf8").split("<script>")[1].split("</script>")[0]
-  .replace('const inflate=u8=>pipe(u8,DecompressionStream,"deflate-raw");', "const inflate=async u8=>global.__inflate(u8);")
-  .replace('const deflate=u8=>pipe(u8,CompressionStream,"deflate-raw");', "const deflate=async u8=>global.__deflate(u8);");
-const cut = js.indexOf("/* ══════════════════════════ ממשק ══════════════════════════ */");
-const a = js.indexOf("function pseudoRX(p){"), b = js.indexOf("function livePairs(){");
-fs.writeFileSync(path.join(HERE, "poolwords-core.js"), js.slice(0, cut) + "\n" + js.slice(a, b) + "\nmodule.exports={redactDocx,restoreNames};\n");
-const E = require("./poolwords-core.js");
+const E = require("./core.js");
 const C = require("./core.js");
 const { mkzip } = require("./mkzip.js");
 const { P, R, doc, base } = require("./structure-lib.js");
@@ -50,7 +44,11 @@ console.log("\n— what the pool hands out, for 4,000 invented people of each sh
   ok(words.length === 0, "no invented name, and no part of a double surname, is an everyday word: " + [...new Set(words)].slice(0, 12).join(" "));
   // 61 first names and 55 surnames before the filter, 52 and 46 after; adding names instead would change every
   // person's invented name (the pick is indexed by the pool's length), filtering moves only those whose pick was a word
-  ok(firsts.size >= 45 && surs.size >= 40, `and the pool still varies: ${firsts.size} first names, ${surs.size} surnames`);
+  // since the owner's decision of 2.11 the nine Russian first names of the pools go only to a Russian first name, so a
+  // Hebrew name draws from 43 first names, not 52 (tests/aliaskey_t.js)
+  ok(firsts.size >= 40 && surs.size >= 40, `and the pool still varies: ${firsts.size} first names, ${surs.size} surnames`);
+  const ru = [...firsts].filter((f) => ["סרגיי", "ולדימיר", "דמיטרי", "אלכס", "אנה", "סבטלנה", "אירינה", "לודמילה", "אולגה"].includes(f));
+  ok(ru.length === 0, "and none of them is a Russian first name: " + ru.join(" "));
 }
 
 (async () => {

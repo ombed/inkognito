@@ -103,5 +103,45 @@ console.log("\n— no text spells out one computer's folders —");
   ok(!!repo && repo.url === "https://github.com/ombed/inkognito", "package.json's repository is https://github.com/ombed/inkognito: " + (repo && repo.url));
 }
 
+/* The figures README quotes, against what measures them. The outside review of 18.10 found two that had drifted:
+   the second scan's 28 where the measurement was 27, and test counts months old. The corpus and the leak figures
+   come from the key and the gate's baselines, which the gate holds to every run; the test counts are lower bounds,
+   true on main and on the hosted branch, which has more. The second scan needs a run of the chain, so CI checks it
+   (bench/second-scan.js --claims README.md), as it checks the blind test's (bench/protocol-claims.js). */
+console.log("\n— the figures README quotes —");
+{
+  const md = read("README.md");
+  const key = JSON.parse(read("bench/key.json"));
+  const ents = key.docs.flatMap((d) => d.entities), must = ents.filter((e) => e.must).length;
+  const corpus = /(\d+) invented documents with (\d+) keyed entries: (\d+) identifying details the tool must replace and (\d+) traps/.exec(md);
+  const corpusWant = [key.docs.length, ents.length, must, ents.length - must];
+  ok(!!corpus && corpus.slice(1).map(Number).join() === corpusWant.join(), `the corpus: README says ${corpus && corpus.slice(1).join("/")}, the key holds ${corpusWant.join("/")}`);
+  const leaks = (f) => JSON.parse(read(f)).rows.filter((r) => r.leaked && r.found !== null);
+  const rules = leaks("bench/baseline-no-model.json"), model = leaks("bench/baseline-model.json");
+  const recall = /the rules alone leave (\d+) of the (\d+) details somewhere in the output, in (\d+) of the documents; with the model, (\d+)\./.exec(md);
+  const recallWant = [rules.length, must, new Set(rules.map((r) => r.doc)).size, model.length];
+  ok(!!recall && recall.slice(1).map(Number).join() === recallWant.join(), `recall: README says ${recall && recall.slice(1).join("/")}, the gate's baselines ${recallWant.join("/")}`);
+  const num = (s) => Number(String(s).replace(/,/g, ""));
+  const tests = /more than ([\d,]+) Node checks and ([\d,]+) Playwright browser tests/.exec(md);
+  const floors = Object.values(JSON.parse(read("tests/floors.json"))).reduce((a, b) => a + b, 0);
+  const said = tests ? `README says more than ${tests[1]} and ${tests[2]}` : "README has no sentence \"more than <n> Node checks and <m> Playwright browser tests\"";
+  ok(!!tests && floors > num(tests[1]), `Node checks: ${said}; the suites' floors add up to ${floors}`);
+  const list = require("child_process").spawnSync(process.execPath, [require.resolve("@playwright/test/cli"), "test", "--list", "--reporter=json"],
+    { cwd: ROOT, encoding: "utf8", maxBuffer: 1 << 26 });
+  let browser = 0;
+  try {
+    const walk = (s) => { for (const sp of s.specs || []) browser += (sp.tests || []).length; for (const c of s.suites || []) walk(c); };
+    for (const s of JSON.parse(list.stdout).suites) walk(s);
+  } catch (_) { browser = -1; }
+  ok(!!tests && browser >= num(tests[2]), `browser tests: ${said}; Playwright lists ${browser}`);
+  // the export password's rounds, and the model's download, as the code and the files have them
+  const rounds = /PBKDF2 with ([\d,]+) rounds/.exec(md), iter = Number((/\biter:\s*(\d+)/.exec(read("page-logic.js")) || [])[1]);
+  ok(!!rounds && num(rounds[1]) === iter, `the export password's rounds: README says ${rounds && rounds[1]}, page-logic.js uses ${iter}`);
+  const files = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => e.isDirectory() ? files(path.join(d, e.name)) : [path.join(d, e.name)]);
+  const weights = files(path.join(ROOT, "models")).filter((f) => /\.onnx(\.part\d+)?$/.test(f)).reduce((n, f) => n + fs.statSync(f).size, 0);
+  const mb = /The model is a (\d+) MB download/.exec(md);
+  ok(!!mb && num(mb[1]) === Math.round(weights / 1e6), `the model: README says ${mb && mb[1]} MB, its files hold ${(weights / 1e6).toFixed(1)} MB`);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exitCode = fail ? 1 : 0;

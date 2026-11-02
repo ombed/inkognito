@@ -91,6 +91,28 @@ test("a spotlight off its target is reported", async ({ page }) => {
   expect(await rules(page)).toContain("spotlight-drift");
 });
 
+test("a tip off its name is reported", async ({ page }) => {
+  test.info().annotations.push({ type: "no-self-check" });
+  await H.serveEngineWithStub(page);
+  await H.boot(page);
+  await page.getByRole("checkbox").first().uncheck();
+  await H.upload(page, "case.docx", DOC);
+  await H.startScan(page);
+  await expect(H.goButton(page)).toBeVisible({ timeout: 10000 });
+  await page.locator('span[data-tip="1"]').filter({ hasText: "רחל פרידמן" }).first().click();
+  await expect(page.locator('[data-tip="panel"]')).toBeVisible();
+  expect(await rules(page)).not.toContain("tip-drift");
+  await page.evaluate(() => { document.querySelector('[data-tip="panel"]').style.top = "5px"; });
+  expect(await rules(page)).toContain("tip-drift");
+});
+
+test("a name the engine replaced but calls not found is reported", async ({ page }) => {
+  // an engine that loses a name it replaced from its list of hits, so the name is also shown as "not in the document"
+  await toWork(page, `{ const r = redactDocx; redactDocx = async function (...a) { const out = await r.apply(this, a); out.flagged.push({ value: "רחל פרידמן", label: "לא נמצא", part: "המסמך", review: true, src: "nohit", ctx: "", why: "" }); return out; }; }`);
+  expect(await rules(page)).toContain("nohit-but-present");
+  expect((await check(page)).find((v) => v.rule === "nohit-but-present").detail).toBe("רחל פרידמן");
+});
+
 test("without detail, the report carries rule names only — safe for a session log", async ({ page }) => {
   await toWork(page, `{ const d = Engine.prototype.detect; Engine.prototype.detect = function (t) { return d.call(this, t).filter((h) => h.base !== "אבנר שטרן"); }; }`);
   const bare = await page.evaluate(() => window.__pib.check(false));

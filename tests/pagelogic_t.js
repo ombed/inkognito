@@ -111,9 +111,14 @@ ok("model span bounds classified", s4.layers.model && s4.layers.model.bounds ===
   const reads = (file, rx) => new Set([...fsx.readFileSync(pathx.join(__dirname, "..", file), "utf8").matchAll(rx)].map((m) => m[1]));
   const missing = [...reads("page-logic.js", /\bE\.([A-Za-z_]+)/g)].filter((k) => !exported.has(k));
   ok("every engine name page-logic.js reads is one the engine exports: missing " + missing.join(","), missing.length === 0);
-  // the same class in the page itself: E, and E2 where a handler takes a second copy of it
-  const missingUI = [...reads("index.html", /\bE2?\.([A-Za-z_]+)/g)].filter((k) => !exported.has(k));
-  ok("every engine name index.html reads is one the engine exports: missing " + missingUI.join(","), missingUI.length === 0);
+  // the same class in the page itself: E, and E2 where a handler takes a second copy of it, in every file the page
+  // ships but the engine (tests/shipped.js). Until 18.10 this read index.html alone, which has held none of the
+  // page's code since 13.10, so it checked nothing; it now also counts what it read, so it cannot go empty again
+  const pageFiles = require("./shipped.js")(pathx.join(__dirname, "..")).filter((f) => /\.(js|html)$/.test(f) && f !== "redact-engine.js");
+  const readUI = new Set(pageFiles.flatMap((f) => [...reads(f, /\bE2?\.([A-Za-z_]+)/g)]));
+  const missingUI = [...readUI].filter((k) => !exported.has(k));
+  ok("the page reads the engine's names in its own code: " + readUI.size, readUI.size >= 30);
+  ok("every engine name the page reads is one the engine exports: missing " + missingUI.join(","), missingUI.length === 0);
   const REAL = Object.fromEntries(Object.entries(E).filter(([k]) => exported.has(k)));
   const say = [{ text: "פרוטוקול", part: "body" }, { text: "העדה אמרה רונית כהן הגיעה.", part: "body" }];
   ok("a speech verb before the name is a verb with the shipped engine", PL.leakShape(REAL, say, "רונית כהן", {}).before === "verb");

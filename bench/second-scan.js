@@ -40,4 +40,18 @@ const words = (s) => n(s).split(/\s+/).filter(Boolean);
   console.log(`people the cleaning left (leaked): ${leakedPeople.size}; the scan points at ${hitLeaks} of them`);
   console.log(`documents where a person was left: ${docsLeaking}; the status there turns amber instead of green in ${docsAmber}`);
   if (byDoc.length) console.log("\nfalse alarms by document:\n  " + byDoc.join("\n  "));
+  /* --claims README.md: README's "Known limits" quotes these two numbers; they are held to the measurement on
+     every change (CI, beside the blind test's figures), so a change that moves them updates the sentence with it.
+     The outside review of 18.10 found 28 there where the measurement was 27. */
+  const at = process.argv.indexOf("--claims");
+  if (at > 0) {
+    const md = require("fs").readFileSync(process.argv[at + 1], "utf8");
+    const m = /turns (\d+) of the (\d+) benchmark documents that still leak a person amber; the other (\d+) still end green/.exec(md);
+    const want = [docsAmber, docsLeaking, docsLeaking - docsAmber];
+    if (!m) { console.log(`claims: ${process.argv[at + 1]} has no second-scan sentence`); process.exitCode = 1; }
+    else if (m.slice(1).map(Number).join() !== want.join()) {
+      console.log(`claims: README says ${m[1]} of ${m[2]}, the other ${m[3]}; measured ${want[0]} of ${want[1]}, the other ${want[2]}`);
+      process.exitCode = 1;
+    } else console.log(`claims: README's second-scan figures match the measurement (${want[0]} of ${want[1]})`);
+  }
 })().catch((e) => { console.error(e); process.exit(1); });

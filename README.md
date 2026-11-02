@@ -26,13 +26,13 @@ The interface is in Hebrew; the Hebrew documentation follows this section.
 - No build step for the page: plain JavaScript, with the interface drawn by React 18 through a small template runtime (`support.js`). The engine is plain files concatenated into one script. On inkognito.co.il every library, font and the model are served from the site itself.
 - Name recognition: the NER head of DictaBERT-parse, exported to ONNX, quantized to 8 bits and run in the browser with transformers.js. It is served from this site and checked against a pinned SHA-256 before use.
 - Rules, Hebrew prefix handling and a gazetteer run alongside the model; the model only adds suggestions.
-- Tests: about 7,800 Node checks and 348 Playwright browser tests in CI, WebKit and Firefox before each release that changes the page, plus the benchmark gates above.
+- Tests: more than 8,500 Node checks and 350 Playwright browser tests in CI, WebKit and Firefox before each release that changes the page, plus the benchmark gates above.
 - Developed with Claude Code as the coding agent. Each decision is recorded with its reasons: the model choice in [docs/model-eval/](docs/model-eval/README.md), the rest in the changelog and the code. Who does what, and what the owner catches that the agent and the tests miss: [docs/HOW-IT-WAS-BUILT.md](docs/HOW-IT-WAS-BUILT.md). How real documents are handled while it is built: [docs/DATA-GOVERNANCE.md](docs/DATA-GOVERNANCE.md).
 
 ## Known limits
 
 - **Recall depends on the model.** On the 43 benchmark documents the rules alone leave 64 of the 272 details somewhere in the output, in 33 of the documents; with the model, 2. The model is a 185 MB download that the browser keeps after the first time. If it cannot load, the tool says so and the rules still run.
-- **The second scan is a net, not a guarantee.** It reads the finished text for what the list missed (ID-like numbers, known first names, a listed name's word on its own). Without the model it turns 10 of the 28 benchmark documents that still leak a person amber; the other 18 still end green. The review screen, and the person reading it, remain the check.
+- **The second scan is a net, not a guarantee.** It reads the finished text for what the list missed (ID-like numbers, known first names, a listed name's word on its own). Without the model it turns 10 of the 27 benchmark documents that still leak a person amber; the other 17 still end green. The review screen, and the person reading it, remain the check.
 - **What is not read:** text inside pictures (scans, photos, screenshots), a PDF without a text layer, and descriptions that identify someone without a name ("the only notary in the village"). The tool counts the pictures it did not read.
 - **It replaces some things it could leave:** 9 of the 18 public bodies in the Knesset transcript are replaced too, which costs the AI context but leaks nothing.
 - **Saved cases** (each case's map of real and invented names) are kept in the browser's storage unencrypted, under each account's own key, by decision for now. A case file exported as a backup is encrypted with a password (AES-GCM, PBKDF2 with 600,000 rounds). On a shared computer, «ניקוי התיקים מהמחשב» removes them.
@@ -61,8 +61,9 @@ https://ombed.github.io/inkognito/, מגישה מ-main את דף ההעברה ש
 השירות של הכלי, מוחק את המטמונים שלו ואת המודל, ומסיר את עצמו. התיקים השמורים נשארים
 במקומם. `.github/workflows/pages.yml` בונה את התיקייה, מריץ עליה את
 `e2e/moved.spec.js`, מפרסם אותה, ובודק שהכתובת החיה מגישה את דף ההעברה, גם לקישור
-ישן, ואת עובד השירות שלו. לדף ההעברה אין גרסה ואין לו תג `live/vNN`: הגרסאות והתגים
-שייכים מעכשיו לפריסות של inkognito.co.il.
+ישן, ואת עובד השירות שלו. לדף ההעברה אין גרסה ואין לו תג `live/vNN`: כל פריסה של
+inkognito.co.il מתויגת `ink/vNN` בענף `inkognito`. הקצב והבדיקות לפני גרסה:
+`docs/RELEASING.md`; החזרה לאחור: `docs/ROLLBACK.md`.
 
 קבצי הכלי עצמו יושבים יחד תחת אותה כתובת `https`:
 
@@ -137,13 +138,13 @@ GitHub Pages או כל אירוח סטטי מספיק. **כתובת `https` הי
 
 | קובץ | שורה | המחרוזת | תפקיד |
 |---|---|---|---|
-| `index.html` | 1416 | `<div id="ver">גרסה v76.1</div>` | השבב התחתון — מה שנראה על המסך |
-| `index.html` | 297 | `console.log("… גרסה v76.1")` | שורת הפתיחה בקונסול |
-| `index.html` | 350 | `if(served==="v76.1") return;` | **בדיקת ההשוואה** מול מה שהעובד מגיש |
-| `index.html` | 351 | `el.innerHTML='גרסה v76.1 · …'` | תווית האזהרה שמוצגת כשיש פער |
-| `sw.js` | 8 | `const V="hedact-v76.1";` | מפתח המטמון |
+| `index.html` | 1416 | `<div id="ver">גרסה v76.2</div>` | השבב התחתון — מה שנראה על המסך |
+| `index.html` | 297 | `console.log("… גרסה v76.2")` | שורת הפתיחה בקונסול |
+| `index.html` | 350 | `if(served==="v76.2") return;` | **בדיקת ההשוואה** מול מה שהעובד מגיש |
+| `index.html` | 351 | `el.innerHTML='גרסה v76.2 · …'` | תווית האזהרה שמוצגת כשיש פער |
+| `sw.js` | 8 | `const V="hedact-v76.2";` | מפתח המטמון |
 
-מספרי השורות נכונים לגרסה v76.1 והם עזר בלבד — לחפש את המחרוזת, לא לסמוך
+מספרי השורות נכונים לגרסה v76.2 והם עזר בלבד — לחפש את המחרוזת, לא לסמוך
 על המספר.
 
 **בדיקת ההשוואה (`if(served===…)`, השורה השלישית בטבלה) היא הכי קלה לפספוס, והפספוס שקט-למחצה.** אם השבב והקונסול

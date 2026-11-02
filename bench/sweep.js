@@ -130,7 +130,7 @@ async function main() {
     if (ONLY && P.key !== ONLY) continue;
     md.push(`## ${P.key} — ${P.title}`, "", stamp, "", "| value | leaks | missed | fp | junk | ms |", "|---|---|---|---|---|---|");
     for (const [label, patches, opt] of P.points) {
-      const Ev = patches.length ? E.load(patches) : E;
+      const Ev = patches.length ? E.load({ patches }) : E;
       const B = makeBench(Ev, opt);
       const t0 = Date.now();
       const r = await B.runAll(pipe);

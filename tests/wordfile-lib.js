@@ -13,17 +13,9 @@ global.__inflate = (b) => new Uint8Array(zlib.inflateRawSync(Buffer.from(b)));
 const { mkzip } = require("./mkzip.js");
 const HERE = __dirname;
 
-// the engine as the page loads it, cut from app.html like tests/structure_t.js does
-function core(name) {
-  const js = fs.readFileSync(path.join(HERE, "app.html"), "utf8").split("<script>")[1].split("</script>")[0]
-    .replace('const inflate=u8=>pipe(u8,DecompressionStream,"deflate-raw");', "const inflate=async u8=>global.__inflate(u8);")
-    .replace('const deflate=u8=>pipe(u8,CompressionStream,"deflate-raw");', "const deflate=async u8=>global.__deflate(u8);");
-  const cut = js.indexOf("/* ══════════════════════════ ממשק ══════════════════════════ */");
-  const a = js.indexOf("function pseudoRX(p){"), b = js.indexOf("function livePairs(){");
-  const file = path.join(HERE, name + "-core.js");
-  fs.writeFileSync(file, js.slice(0, cut) + "\n" + js.slice(a, b) +
-    "\nmodule.exports={redactDocx,readBlocks,unzip,zip,ENC,TXT,verify,hiddenPart,restoreNames,PAT,parseDate};\n");
-  return require(file);
+// the engine, as every suite loads it (scripts/engine-node.js); it reads the parser above when it parses
+function core() {
+  return require("./core.js");
 }
 // text-to-docx.js, the page's converter for pasted text and PDF text, with the engine it asks for
 function textToDocxOf(E) {
@@ -82,12 +74,12 @@ function docx(o) {
   return mkzip(files);
 }
 
-// the page's options (index.html opts()), with the place list on
+// the page's options (page-component.js opts()), with the place list on
 const optsOf = (E, extra) => ({ on: new Set(E.PAT.filter((p) => p.on).map((p) => p.n).concat("PLACES")), flag: new Set(E.PAT.filter((p) => !p.on).map((p) => p.n).concat("NAME_ANCHORED")),
   mode: "real", near: true, body: true, prefixes: "normal", styles: { "*": "blank", DATE: "name" }, ...(extra || {}) });
-// the text «העתקה ל־AI» copies (index.html redactedText)
+// the text «העתקה ל־AI» copies (page-component.js redactedText)
 const copyOf = (E, res) => res.preview.filter((b) => !E.hiddenPart(b.part)).map((b) => b.text).join("\n").replace(/\n{3,}/g, "\n\n").trim();
-// the bar (index.html): red when the final check failed, green only when nothing is open
+// the bar (page-component.js): red when the final check failed, green only when nothing is open
 const bar = (v) => !v.passed ? "red" : v.complete ? "green" : "open";
 
 // every part of the file she downloads, as text

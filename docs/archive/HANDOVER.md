@@ -1,5 +1,8 @@
 # Handover — the night of 2026-09-05/06
 
+> **Archived, 2026-10-18.** Kept for its history; it no longer describes the code. How the code works
+> today starts at the [README](../../README.md).
+
 > **Note, 2026-09-20.** This is a dated record and is left as written. One thing in it is no longer
 > true: the licence. It was MIT that night; it has been **PolyForm Shield 1.0.0** since the decision
 > recorded as Q6 in `docs/PLAN-v18.md`, and `LICENSE` and `package.json` say so.
