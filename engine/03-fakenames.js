@@ -216,9 +216,27 @@ function docWordsByLength(words){
   }
   return ix;
 }
+/* שגיאת כתיב של שם בדוי: אות אהו"י אחת שנוספה, נשמטה או התחלפה באחרת מהן («לנדא» של «לנדאו», «סרגי» של «סרגיי»,
+   «ביטן» של «ביטון»), או אות סופית במקום רגילה («פרצ»). עיצור אחר הוא מילה אחרת: «ביטול» אינו «ביטון», «בעיה» אינה
+   «בתיה» (הביקורת של 2.11: מילים רגילות של ה-AI סומנו בהחזרה ב-8 מ-24 תשובות). כאן ובהחזרה (leftOver) אותו כלל */
+const MATRES=new Set(["א","ה","ו","י"]);
+// אות אהו"י אחת שהתחלפה באחרת מהן, באותו אורך
+function vowelSwap(a,b){
+  const d=[...a].map((c,i)=>i).filter(i=>a[i]!==b[i]);
+  return d.length===1&&MATRES.has(a[d[0]])&&MATRES.has(b[d[0]]);
+}
+// אות אהו"י אחת שנוספה לקצר (s) ונותנת את הארוך (l)
+const vowelAdded=(s,l)=>[...l].some((c,i)=>MATRES.has(c)&&l.slice(0,i)+l.slice(i+1)===s);
+function vowelSlip(a,b){
+  if(a===b||Math.abs(a.length-b.length)>1)return false;
+  if(finToPlain(a)===finToPlain(b))return true;
+  if(a.length<4||b.length<4)return false;
+  if(a.length===b.length)return vowelSwap(a,b);
+  return a.length<b.length?vowelAdded(a,b):vowelAdded(b,a);
+}
 function nearDocWord(words){
   const ix=docWordsByLength(words);
-  const close=(x,n)=>x!==n&&(finToPlain(x)===finToPlain(n)||(n.length>=4&&x.length>=4&&lev(x,n)===1));
+  const close=(x,n)=>vowelSlip(x,n);
   const hit=n=>{ for(let L=n.length-1;L<=n.length+1;L++)for(const x of ix.get(L)||[])if(close(x,n))return true; return false; };
   // וגם השם בלי אות שימוש בראשו, כמו שההחזרה קוראת אותו: «וקנין» נקרא «קנין», אות אחת מ«הקניין»
   const memo=new Map();

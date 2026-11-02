@@ -2937,8 +2937,8 @@ function leftOver(txt,took,{conflict,held,bad,reals,seen,partial,toks,dates,word
     for(const [k,c] of cands){
       const w=norm(c).trim(); if(nearOf.has(w)||wordish(w,toks))continue;
       for(const [sw,real] of nearOf){
-        const near=w.length>=4&&Math.abs(w.length-sw.length)<=1&&lev(w,sw)===1;
-        if(!near&&!(w!==sw&&fin(w)===fin(sw)))continue;
+        // שגיאת כתיב של שם בדוי, לא מילה אחרת (vowelSlip: אות אהו"י או אות סופית; הביקורת של 2.11)
+        if(!vowelSlip(w,sw))continue;
         add(c,real,m.index+k,m.index+tok.length,m.index+k); done=true; break;
       }
       if(done)break;
