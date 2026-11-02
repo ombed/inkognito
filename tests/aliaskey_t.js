@@ -68,6 +68,11 @@ for (const [v, want] of [["יואב ברקוביץ'", "he"], ["דנה ברקוב
 for (const [v, want] of [["שושן ושות'", "he"], ["בוזגלו ושות׳", "he"], ["כהן, לוי ושות'", "he"], ["ז'אנה שושן", "he"], ["ז'ק אמסלם", "he"],
   ["סאמר מרעי", "ar"], ["ואסים נסאר", "ar"], ["נדים חורי", "ar"], ["עלא סלאמה", "ar"], ["ח'אלד עבאס", "ar"], ["ת'אמר עודה", "ar"], ["חוסאם ח'טיב ושות'", "ar"]])
   ok(C.origin(v) === want, `origin(«${v}») = ${C.origin(v)}, want ${want}`);
+/* A surname that Jewish families carry too («חורי», «סלאמה», «עודה») does not outweigh a Hebrew or Russian first name
+   (the review of 2.11): «חיים חורי» got an Arab fake. Alone, or with an Arabic first name, it is still Arabic. */
+for (const [v, want] of [["חיים חורי", "he"], ["יעקב חורי", "he"], ["רחל סלאמה", "he"], ["שמעון עודה", "he"], ["בוריס חורי", "he"], ["משה סלאמה", "he"],
+  ["נדים חורי", "ar"], ["עלא סלאמה", "ar"], ["חורי", "ar"], ["מוחמד עודה", "ar"], ["סאמר חורי", "ar"]])
+  ok(C.origin(v) === want, `origin(«${v}») = ${C.origin(v)}, want ${want}`);
 
 console.log("\n— a Russian first name only for a Russian first name; no first name a reader takes for ו + a name —");
 {

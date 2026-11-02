@@ -2632,12 +2632,17 @@ function wordForms(w){
 /* האם לזוג יש צורות של שם אדם (restoreForms). חברה בלי הסיומת (החלטת הבעלים, 2.11, Q6): השם הבדוי שומר על «בע"מ»,
    וה-AI כותב «חברת גרניט», «לגרניט». זה השם הקצר של אותה חברה, כמו שהשם הקצר המוגדר שלה מקבל אותו בלי הסיומת
    (Engine.orgShort), והוא נוסף כאן במקום צורות של אדם. ורחוב אינו אדם: אין לו ראשי תיבות, ושני רחובות בדויים
-   («רחוב הרצל», «רחוב השקד») חלקו «רחוב ה.». tests/orgs_t.js */
+   («רחוב הרצל», «רחוב השקד») חלקו «רחוב ה.». tests/orgs_t.js
+   ורחוב עם מספר בית חוזר גם כשה-AI כותב אותו בלי המספר («רחוב הירדן» ← «רחוב ביאליק», הביקורת של 2.11). tests/towns_t.js */
+const HOUSE_TAIL=/\s+\d{1,4}[א-ת]?(?:[/-]\d{1,4}[א-ת]?)?$/u;
 function personForms(real,fake,add){
   if(!real||!fake||fake==="███")return false;
-  const f=String(fake).trim(), r=String(real).trim(), ft=ORG_TAIL.exec(norm(f)), rt=ORG_TAIL.exec(norm(r));
-  if(ft&&rt&&ft.index>0&&rt.index>0){add(r.slice(0,rt.index).trim(),f.slice(0,ft.index).trim());return false}
-  if(PLACE_HEAD_IN.test(norm(f)))return false;
+  const f=String(fake).trim(), r=String(real).trim(), fc=orgCore(f), rc=orgCore(r);
+  if(fc&&rc){add(rc,fc);return false}
+  if(PLACE_HEAD_IN.test(norm(f))){
+    if(HOUSE_TAIL.test(f)&&HOUSE_TAIL.test(r)&&PLACE_HEAD_IN.test(norm(r)))add(r.replace(HOUSE_TAIL,""),f.replace(HOUSE_TAIL,""));
+    return false;
+  }
   return f.split(/\s+/).length===2&&r.split(/\s+/).length>=2&&nameParts(fake,real).length>0;
 }
 function restoreForms(pairs){
@@ -2703,6 +2708,8 @@ function backDates(txt,took,known,off,today){
   }
   return out;
 }
+// אותו ערך בשני כתיבים: אותו יום (sameDay) או אותו מקום (samePlaceSpelling, הביקורת של 2.11)
+const sameValue=(a,b)=>a===b||sameDay(dateParts(a),dateParts(b))||samePlaceSpelling(a,b);
 function restoreNames(txt,pairs,earlier,dateOpt){
   // כל צורה של כל אדם (restoreForms). "מה לא נמצא" נשאר של הזוגות עצמם
   const own=new Set(pairs.map(p=>p[1])); pairs=restoreForms(pairs);
@@ -2710,8 +2717,9 @@ function restoreNames(txt,pairs,earlier,dateOpt){
   for(const [real,pseudo] of pairs){
     if(!real||!pseudo||pseudo==="███")continue;
     // אותו יום בשני כתיבים ("12 במרץ 2026", "12 במרס 2026") הוא ערך אחד, לא כינוי של שניים: עד כאן לא הוחזר
-    // כלל, ונרשם "שייך ליותר מאדם אחד"
-    if(seen.has(pseudo)){if(seen.get(pseudo)!==real&&!sameDay(dateParts(seen.get(pseudo)),dateParts(real)))conflict.add(pseudo)}
+    // כלל, ונרשם "שייך ליותר מאדם אחד". וכך מקום אחד בשני כתיבים («תל אביב», «תל אביב-יפו»: samePlaceSpelling, הביקורת
+    // של 2.11): חוזר הכתיב הראשון. tests/towns_t.js
+    if(seen.has(pseudo)){if(!sameValue(seen.get(pseudo),real))conflict.add(pseudo)}
     else seen.set(pseudo,real);
   }
   for(const k of conflict)seen.delete(k);
@@ -2949,4 +2957,4 @@ export {nerLast, hiddenPart, nerForget, VRB, COMMON, KNOWN_FIRST, NW, NWE, crc32
   discover, PLACES, PLACE_BY, geoMap, geoNames, placesFound, examplesOf, findPlaces, fakePlace,
   atlasTags, atlasDiff, atlasPenalty, placeKind, nerEnv, nerCached, nerPersist, nerLoad, nerText, nerRun,
   TITLE_RX, ORG_RX, likelyOrg, cleanEntry, trimEdges, pseudoRX, restoreNames, restorePairs, STOP, gender, origin, readBlocks, isTextPart, setAliasKey, hmac32, stripImageMeta, secondScan, OBJ_NOTE,
-  citeSpans, citeKept, citeKey, citeSpansIn, citeOnly, citeListKeys, ORG_TAIL, commonWord, worthAsking};
+  citeSpans, citeKept, citeKey, citeSpansIn, citeOnly, citeListKeys, ORG_TAIL, commonWord, worthAsking, samePlaceSpelling};

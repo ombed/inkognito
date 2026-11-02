@@ -2731,6 +2731,16 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
       seen.add(k); this.log.add("self-check",{rule, screen, n, ms});
     }
   }
+  // הבטחה 4 של הבדיקה העצמית: כינוי ששני ערכים חולקים. מקום אחד בשני כתיבים («תל אביב», «תל אביב-יפו») חולק כינוי
+  // בכוונה, והוא חוזר (samePlaceSpelling במנוע, הביקורת של 2.11)
+  sharedPseudonyms(E,n){
+    const byPseudo=new Map(), out=[], samePlace=(a,b)=>typeof E.samePlaceSpelling==="function"&&E.samePlaceSpelling(a,b);
+    for(const [v,p] of Object.entries(this.currentMap())){ const k=n(p); if(!k) continue;
+      const was=byPseudo.get(k);
+      if(was===undefined) byPseudo.set(k,v);
+      else if(n(was)!==n(v)&&!samePlace(was,v)) out.push(was+" / "+v); }
+    return out;
+  }
   selfCheck(verbose){
     const S=this.state, E=S.E, out=[], add=(rule,detail)=>out.push(verbose?{rule,detail}:{rule});
     if(!E) return out;
@@ -2764,9 +2774,7 @@ ${clean.length?`<h2>נוקה מהקובץ</h2><table>${clean.map(([l,n])=>`<tr><
       for(const f of S.res.flagged.filter(r=>r.src==="nohit")) if(present(f.value)&&!allowed.has(n(f.value))) add("nohit-but-present", f.value);
       // הבטחה 4: שני אנשים אינם חולקים כינוי. אם כן, התשובה מה-AI אינה יכולה לחזור אליהם
       // (restoreNames מוותר על כינוי משותף). אותה מפה שמסך ההחזרה משתמש בה; מיזוג "אותו אדם" כבר יצא ממנה.
-      const byPseudo=new Map();
-      for(const [v,p] of Object.entries(this.currentMap())){ const k=n(p); if(!k) continue;
-        if(byPseudo.has(k)&&n(byPseudo.get(k))!==n(v)) add("pseudonym-shared", byPseudo.get(k)+" / "+v); else byPseudo.set(k,v); }
+      for(const d of this.sharedPseudonyms(E,n)) add("pseudonym-shared", d);
     }
     // שכבות צמודות למה שהן מצביעות עליו
     const near=(a,b)=>Math.abs(a-b)<=1.5;

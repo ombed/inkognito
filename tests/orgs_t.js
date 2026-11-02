@@ -88,7 +88,7 @@ console.log("\n— a company fake keeps its legal suffix, and its name is not a 
 {
   const cases = [
     ['מרלין השקעות בע"מ', ' בע"מ'], ['טרבלון מערכות בקרה בע"מ', ' בע"מ'], ["זיו ושות'", " ושות'"], ["ברקת ושות׳", " ושות'"],
-    ['גלבוע תעשיות (2019) בע"מ', ' בע"מ'], ['טרילון ייזום בע"מ (2019)', ' בע"מ (2019)'], ["Norlux Ltd", " Ltd"],
+    ['גלבוע תעשיות (2019) בע"מ', ' (2019) בע"מ'], ['טרילון ייזום בע"מ (2019)', ' בע"מ (2019)'], ["Norlux Ltd", " Ltd"],
   ];
   const bad = [];
   for (const key of KEYS) {
@@ -157,6 +157,15 @@ console.log("\n— every written form of a company gets the same fake, and its d
     for (const h of shortHits) { const r = eng.repFor(h); if (!(r.endsWith(stem) || (stem[0] === "ה" && r.endsWith(stem.slice(1)))) || /בע"מ/.test(r)) bad.push(h.text + " → " + r + " (want " + stem + ")"); }
   }
   ok(bad.length === 0, "the full name in seven prefixed forms and the short name, over 20 keys: " + bad.slice(0, 4).join(" | "));
+  // with a year before the suffix: the full fake keeps «(2019) בע"מ», the defined short name drops both
+  const yf = 'גלבוע תעשיות (2019) בע"מ', ys = "גלבוע תעשיות", yt = yf + ' (להלן: "' + ys + '") חתמה, ו' + ys + " תשלם.";
+  const ybad = [];
+  for (const key of KEYS.slice(0, 10)) {
+    const eng = new C.Engine([{ value: yf, kind: "ORG", replacement: "" }, { value: ys, kind: "ORG", replacement: "", sameAs: yf }], [], { ...OPT2, aliasKey: key }, yt);
+    const o = {}; for (const h of eng.detect(yt)) if (h.apply && !(h.base in o)) o[h.base] = eng.repFor({ ...h, pre: "" });
+    if (!/^\S+ \(2019\) בע"מ$/.test(o[yf] || "") || o[ys] !== (o[yf] || "").replace(/ \(2019\) בע"מ$/, "")) ybad.push(JSON.stringify(o));
+  }
+  ok(ybad.length === 0, "a year before the suffix is kept in the full fake and dropped from the short name: " + ybad.slice(0, 2).join(" | "));
 }
 
 console.log("\n— the paste-back returns a company the AI wrote without its suffix —");
@@ -166,6 +175,9 @@ console.log("\n— the paste-back returns a company the AI wrote without its suf
   const r = C.restoreNames("חברת גרניט חתמה, ולגרניט אין חוב. משרד קוורץ ייצג. גרניט בע\"מ תשלם. מיכל לוי גרה ברחוב הזית 22.", pairs, []);
   ok(r.text === "חברת מרלין השקעות חתמה, ולמרלין השקעות אין חוב. משרד זיו ייצג. מרלין השקעות בע\"מ תשלם. דנה כהן גרה ברחוב הנביאים 22.", "restored: " + r.text);
   ok(!r.conflict.length, "two streets are not people: no initials form «רחוב ה.» shared by both: " + JSON.stringify(r.conflict));
+  // a year before the suffix is part of it (Q6): «גלבוע תעשיות (2019) בע"מ» ← «טופז (2019) בע"מ», and the AI's «חברת טופז» is the company
+  const y = C.restoreNames("חברת טופז חתמה. טופז (2019) בע\"מ תשלם.", [['גלבוע תעשיות (2019) בע"מ', 'טופז (2019) בע"מ']], []);
+  ok(y.text === "חברת גלבוע תעשיות חתמה. גלבוע תעשיות (2019) בע\"מ תשלם.", "the year before the suffix: " + y.text);
 }
 
 console.log("\n— a law firm in the list of names is still a firm —");

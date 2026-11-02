@@ -47,6 +47,9 @@ const AR_NAMES=new Set([...POOL.ar_f,...POOL.ar_m,...POOL.ar_s,"מוחמד","א�
  "עומאר","סאלח","ג'מיל","נאדר","איאד","ריאד","סועאד","אימאן","ח'ליל","נעים","רימא",
  // שמות ערביים נפוצים שחסרו, ו«סאמר מרעי» קיבל שם בדוי עברי (הציד של 1.11)
  "חטיב","חורי","ח'ורי","סלאמה","נדים","ואסים","סאמר","עלא","חוסאם","עודה","עבאס","מחאמיד"]);
+/* שמות משפחה שגם משפחות יהודיות נושאות: לבד, או עם שם פרטי ערבי, הם ערביים; אחרי שם פרטי עברי או רוסי מוכר («חיים
+   חורי», «בוריס חורי») השם הפרטי מכריע (הביקורת של 2.11). tests/aliaskey_t.js */
+const AR_SHARED=new Set(["חורי","סלאמה","עודה"]);
 /* שמות פרטיים רוסיים (החלטת הבעלים, 2.11): שם בדוי רוסי («ולדימיר», «סבטלנה») רק למי ששמו הפרטי האמיתי רוסי. מאגרי
    השמות העבריים מחזיקים אותם, ו«אורי זכאי» יצא «ולדימיר ברקוביץ» ברוב המפתחות. המאגר עצמו לא משתנה, כי FEM נבנה
    ממנו. tests/aliaskey_t.js */
@@ -67,7 +70,8 @@ const MASC=new Set(POOL.he_m.concat(POOL.ar_m));
 function origin(v){
   let s=norm(String(v||"")).trim(); const t=ORG_TAIL.exec(s); if(t)s=s.slice(0,t.index).trim();
   const w=s.split(/[\s,-]+/);
-  if(w.some(x=>AR_HINT.has(x)||AR_NAMES.has(x)))return "ar";
+  const heFirst=w.length>1&&(POOL.he_m.includes(w[0])||POOL.he_f.includes(w[0])||WORDLIKE.has(w[0])||RU_REAL.has(w[0]));
+  if(w.some(x=>AR_HINT.has(x)||(AR_NAMES.has(x)&&!(heFirst&&AR_SHARED.has(x)))))return "ar";
   if(/[חתדטע]'(?=[א-ת])/.test(s))return "ar";
   return "he"}
 // המגדר נקבע קודם כל לפי מה שכתוב במסמך ("הנתבעת", "גב'"), ורק אחר כך
@@ -234,13 +238,24 @@ const ORG_TAILS=["גרניט","בזלת","קוורץ","טופז","אמטיסט",
   "השקמה","התאנה","צפצפה","ברושים","קטלב","טורקיז","אופל","פנינים","יהלום"];
 /* מילה של המסמך בתוך מילה בדויה ארוכה ממנה (הציד של 1.11). הבדיקה האחרונה (verify) קוראת סוד בכל מקום בטקסט, גם בתוך
    מילה: «בנק צאלון» הכשיל אותה במכתב שבו אדם בשם «אלון», והפס האדום אסר להעתיק; וכך «הרימון» ליד חברה בשם «רימון», ו«הרצליה»
-   ליד «רחוב הרצל». רק חלק של ארבע אותיות לפחות. tests/forbidden_t.js */
+   ליד «רחוב הרצל». רק חלק של ארבע אותיות לפחות. tests/forbidden_t.js
+   ומה שהבדיקה קוראת הוא הסודות, הערכים שמוחלפים, לא כל מילה (הביקורת של 2.11): מילה רגילה של המסמך בתוך יישוב בדוי
+   אינה דליפה («קלון» בתוך «אשקלון», «ציון» בתוך «ראשון לציון»), והפסילה לפי כל מילה רוקנה את מאגר היישובים הקרובים
+   עד לתווית. המנוע מחזיק את מילות הסודות ב-forbidden.secrets (Engine.noteSecret); בלעדיו, כל מילות המסמך. tests/towns_t.js */
 function holdsDocWord(w,forbidden){
   if(!forbidden||w.length<5)return false;
-  for(let i=0;i<w.length;i++)for(let j=i+4;j<=w.length;j++) if(j-i<w.length&&forbidden.has(w.slice(i,j)))return true;
+  const pool=forbidden.secrets||forbidden;
+  for(let i=0;i<w.length;i++)for(let j=i+4;j<=w.length;j++) if(j-i<w.length&&pool.has(w.slice(i,j)))return true;
   return false;
 }
 function orgHead(v){ const m=ORG_HEADS.exec(norm(v).trim()); return m?m[0]:null; }
+// שם החברה בלי הסיומת ובלי שנה שלפניה («גלבוע תעשיות (2019) בע"מ» ← «גלבוע תעשיות»), או null כשאין סיומת או שאין שם לפניה
+function orgCore(v){
+  const s=String(v||"").trim(), tm=ORG_TAIL.exec(norm(s));
+  if(!tm||tm.index<=0)return null;
+  const c=s.slice(0,tm.index).trim().replace(/\s*\(\d{4}\)$/u,"").trim();
+  return c||null;
+}
 /* החברה הבדויה שומרת על הסיומת המשפטית של האמיתית (Q6): «מרלין השקעות בע"מ» ← «גרניט בע"מ», «זיו ושות'» ← «… ושות'»,
    «… בע"מ (2019)» ← «… בע"מ (2019)». המילה הבדויה עצמה לא ניתנת לשני גופים באותו מסמך (used, גם לבדה: ה-AI כותב
    «גרניט» בלי הסיומת), ואינה מילה של המסמך בשום צורה שלה, גם עם אות שימוש. עד כאן הבחירה לא נרשמה, ושני הבנקים
@@ -249,11 +264,14 @@ function fakeOrg(value,used,forbidden){
   const head=orgHead(value);
   const seed=aliasSeed(norm(value).trim());
   const v=value.trim(), nv=norm(v);
-  const tm=ORG_TAIL.exec(nv), suffix=tm?v.slice(tm.index).trim():"";
-  const raw=v.split(/\s+/);
+  // ושנה בסוגריים שלפני הסיומת היא חלק ממנה (Q6): «גלבוע תעשיות (2019) בע"מ» ← «טופז (2019) בע"מ» (הביקורת של 2.11)
+  const tm=ORG_TAIL.exec(nv), yr=tm?/\s*\(\d{4}\)\s*$/u.exec(nv.slice(0,tm.index)):null;
+  const suffix=tm?v.slice(tm.index-(yr?yr[0].length:0)).trim():"";
+  const raw=v.slice(0,v.length-suffix.length).trim().split(/\s+/);
   const headWords=head?head.split(/\s+/).length:0;
   const pre=head?raw.slice(0,headWords).join(" "):"";
-  const taken=w=>!!forbidden&&(forbidden.has(w)||[..."בלמוהשכ"].some(p=>forbidden.has(p+w))||holdsDocWord(w,forbidden));
+  const taken=w=>!!forbidden&&(forbidden.has(w)||[..."בלמוהשכ"].some(p=>forbidden.has(p+w))||
+    (w.length>=5&&"בלמוהשכ".includes(w[0])&&forbidden.has(w.slice(1)))||holdsDocWord(w,forbidden));
   for(const strict of [true,false])
     for(let k=0;k<ORG_TAILS.length;k++){
       const tail=ORG_TAILS[(seed+k)%ORG_TAILS.length];

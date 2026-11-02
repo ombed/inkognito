@@ -65,22 +65,47 @@ function ckey(t,x){const f=(CANON[t]||[t])[0],v=unseen(norm(x)).trim();
   if(f==="PLACE")return "PLACE|"+placeKeyOf(v);
   return f+"|"+v}
 /* מקום אחד בכל כתיב שלו מקבל תחליף אחד (הציד של 1.11): «תל אביב» שמצאה שכבת היישובים ו«תל אביב-יפו» מהרשימה היו
-   שני מפתחות, ובאותו עותק נכתב «כפר סבא» בשורה אחת ו«חולון» בשורה הבאה; וכך «רחוב ביאליק» ו«רח' ביאליק». הצורה
-   הקנונית: «רח'» ו«שד'» במלואן, ויישוב ששמו השני אחרי מקף («תל אביב-יפו», «מודיעין-מכבים-רעות») הוא היישוב שבראשו.
-   placeCanon נותן גם את הערך שממנו נגזר התחליף, כדי שיהיה אותו תחליף בכל מסמך, לא משנה איזה כתיב בא ראשון.
+   שני מפתחות, ובאותו עותק נכתב «כפר סבא» בשורה אחת ו«חולון» בשורה הבאה. placeKey משווה רווח, מקף, מקף עברי ולוכסן
+   («תל-אביב-יפו», «תל אביב/יפו»), ושם של עירייה אחת שחלקו השני אחרי מקף הוא העירייה שבראשו — רק השמות שב-PLACE_ONE.
+   עד הביקורת של 2.11 כל «<יישוב מוכר>-<כל דבר>» קופל לראשו, ושני מקומות שונים חלקו תחליף בכל מפתח: «ערערה» ו«ערערה-בנגב»,
+   «מגדל» ו«מגדל-העמק», «נווה-שאנן» ו«נווה-יעקב» («נווה» הוא יישוב במאגר). placeCanon נותן גם את הערך שממנו נגזר
+   התחליף, כדי שיהיה אותו תחליף לא משנה איזה כתיב בא ראשון. רחוב אינו מקופל כאן: לכל כתיב שלו מפתח משלו (streetCore).
    tests/towns_t.js */
+const PLACE_ONE=["תל אביב-יפו","מודיעין-מכבים-רעות","יהוד-מונוסון","פרדס חנה-כרכור","מעלות-תרשיחא","קדימה-צורן",
+  "כוכב יאיר-צור יגאל","בנימינה-גבעת עדה","בית יצחק-שער חפר","בועיינה-נוג'ידאת"];
+let PLACE_ONE_IX=null;
 function placeCanon(x){
-  let v=norm(String(x||"")).replace(/\u0000/g,"").trim().replace(/\s+/g," ");
-  v=v.replace(/^רח'\s*/,"רחוב ").replace(/^שד'\s*/,"שדרות ");
-  if(typeof PLACE_HEAD_IN!=="undefined"&&PLACE_HEAD_IN.test(v))return v;
-  const parts=v.split(/\s*-\s*/);
-  if(parts.length>1){
-    const h=parts[0], known=n=>(typeof PLACE_BY!=="undefined"&&!!PLACE_BY[n])||(typeof GAZ!=="undefined"&&GAZ.includes(n));
-    if(known(h))return h;
-  }
-  return v;
+  const v=norm(String(x||"")).replace(/\u0000/g,"").trim().replace(/\s+/g," ");
+  if(typeof placeKey!=="function"||(typeof PLACE_HEAD_IN!=="undefined"&&PLACE_HEAD_IN.test(v)))return v;
+  if(!PLACE_ONE_IX){PLACE_ONE_IX=new Map(); for(const n of PLACE_ONE)PLACE_ONE_IX.set(placeKey(n),n.split("-")[0].trim());}
+  return PLACE_ONE_IX.get(placeKey(v))||v;
 }
 function placeKeyOf(x){ const c=placeCanon(x); return typeof placeKey==="function"?placeKey(c):c; }
+/* רחוב אחד בכמה כתיבים («רחוב ביאליק 31», «רח' ביאליק 31», «ברחוב ביאליק 31»): אותו שם בדוי ואותו מספר, ומילת הסוג ואות
+   השימוש כמו שנכתבו בכל אחד («רחוב הירדן 31», «רח' הירדן 31»). כך ה-AI רואה רחוב אחד, וההחזרה מחזירה כל כתיב לעצמו:
+   כשלשני הכתיבים היה תחליף אחד, «שייך ליותר מאחד» השאיר את שניהם מסומנים בכל מפתח (הביקורת של 2.11). streetCore: המפתח
+   המשותף (מילת הסוג במלואה, בלי אות שימוש), או null למה שאינו רחוב. tests/towns_t.js */
+const STREET_FULL={"רח'":"רחוב","שד'":"שדרות","שדרת":"שדרות","סמטת":"סמטה","שכונת":"שכונה"};
+function streetCore(x){
+  if(typeof PLACE_HEAD_IN==="undefined")return null;
+  const m=PLACE_HEAD_IN.exec(norm(String(x||"")).replace(/\u0000/g,"").trim().replace(/\s+/g," "));
+  return m?(STREET_FULL[m[2]]||m[2])+"|"+(typeof placeKey==="function"?placeKey(m[3]):m[3]):null;
+}
+// התחליף של רחוב, עם מילת הסוג ואות השימוש של הכתיב האמיתי
+function reHead(real,fake){
+  const r=String(real||"").trim(), f=String(fake||"").trim(), c=PLACE_HEAD_IN.exec(norm(r)), g=PLACE_HEAD_IN.exec(norm(f));
+  return c&&g?r.slice(0,c[1].length+c[2].length)+" "+f.slice(g[1].length+g[2].length).trim():fake;
+}
+/* שני כתיבים של מקום אחד (restoreNames, והבדיקה העצמית בדף): אותו רחוב, או אותו יישוב מוכר. כינוי ששני ערכים כאלה חולקים
+   אינו «שייך ליותר מאחד», וחוזר הכתיב הראשון. שני אנשים, או שני יישובים, לעולם אינם אחד כאן */
+function samePlaceSpelling(a,b){
+  if(typeof placeKey!=="function"||!a||!b)return false;
+  const sa=streetCore(a), sb=streetCore(b);
+  if(sa||sb)return sa===sb;
+  const ka=placeKeyOf(a);
+  if(ka!==placeKeyOf(b))return false;
+  return (typeof PLACE_IX!=="undefined"&&PLACE_IX.keys.has(ka))||(typeof GAZ!=="undefined"&&GAZ.some(g=>placeKey(g)===ka));
+}
 
 function resolve(hits){
   const rk={list:0,pattern:1};
@@ -266,6 +291,7 @@ class Engine{
       const nr=norm(s.replacement).trim();
       this.used.add(nr); for(const w of nr.split(/\s+/)) if(w) this.used.add(w);
     }
+    this.seedSecrets(subs);
     for(const s of subs){
       if(!s.replacement||!nd)continue;
       if(new RegExp(NW+flex(s.replacement)+NWE,"u").test(nd)){
@@ -360,7 +386,8 @@ class Engine{
      השם האמיתי על הכינוי (הביקורת החיצונית של 18.10, F7). סימני כיוון אינם ניקוד ונשארים מחוץ להחלפה */
   detect(text,addr,more){
     // סימן מצטרף שהוא גם תו שאיש אינו רואה (מצרף הגרפמות, INVIS) נשאר מחוץ, כמו סימני הכיוון (tests/invisible_t.js)
-    const marks=hits=>{ for(const h of hits){ let e=h.e; while(e<text.length&&/\p{M}/u.test(text[e])&&!INVIS.test(text[e]))e++; if(e!==h.e){h.e=e; h.text=text.slice(h.s,e)} } return hits; };
+    const marks=hits=>{ for(const h of hits){ let e=h.e; while(e<text.length&&/\p{M}/u.test(text[e])&&!INVIS.test(text[e]))e++; if(e!==h.e){h.e=e; h.text=text.slice(h.s,e)}
+      if(h.apply)this.noteSecret(h.dtext||h.base||h.text); } return hits; };
     const q=squeeze(text);
     if(!q) return marks(this.detectSeen(text,addr,more&&more.map(h=>({...h}))));
     const seen=x=>seenAt(q,x);
@@ -547,8 +574,44 @@ class Engine{
      (החלטת הבעלים, 2.11, Q6): «גרניט בע"מ», ובקיצור «גרניט». tests/orgs_t.js */
   orgShort(h,out,style){
     if(style!=="name"||!h.base||!this.alias[h.base]||(CANON[h.type]||[h.type])[0]!=="ORG"||ORG_TAIL.test(norm(h.base).trim()))return out;
-    const s=String(out).trim(), tm=ORG_TAIL.exec(norm(s));
-    return tm&&tm.index>0?s.slice(0,tm.index).trim():out;
+    // וגם בלי שנה שלפני הסיומת: «טופז (2019) בע"מ», ובקיצור «טופז» (orgCore)
+    return orgCore(out)||out;
+  }
+  /* מילות הסודות, מה שהבדיקה האחרונה קוראת גם בתוך מילה (holdsDocWord): מהרשימה, ומכל ממצא שיוחלף (detect, repFor).
+     ורחוב שכבר יש לו תחליף (מהתיק) נותן את שמו הבדוי גם לכתיב אחר שלו (streetCore) */
+  seedSecrets(subs){
+    this.secrets=new Set(); this.forbidden.secrets=this.secrets; this.streets=new Map();
+    for(const s of subs){
+      this.noteSecret(s.value);
+      const c=s.kind==="PLACE"&&s.replacement&&streetCore(s.value);
+      if(c&&!this.streets.has(c))this.streets.set(c,s.replacement);
+    }
+  }
+  // מילות ערך שיוחלף, לבדיקה שתחליף אינו מחזיק אותן בתוכו (holdsDocWord); רק מילים של ארבע אותיות ומעלה נבדקות שם
+  noteSecret(v){
+    for(const w of norm(String(v||"")).replace(/\u0000/g,"").split(/[\s\-,./()]+/)){
+      const b=w.replace(/['"׳״]+$/,"");
+      if(b.length>=4){this.secrets.add(b); if(PFX.has(b[0])&&b.length>=5)this.secrets.add(b.slice(1));}
+    }
+  }
+  // תחליף למקום; כתיב אחר של רחוב שכבר קיבל תחליף: אותו תחליף, עם מילת הסוג של הכתיב הזה (streetCore)
+  placeBase(canonical,kind){
+    const core=streetCore(canonical), had=core&&this.streets.get(core);
+    if(had)return reHead(canonical,had);
+    const base=fakePlace(placeCanon(canonical),this.used,this.forbidden,kind,t=>this.townFake(t));
+    if(core&&base)this.streets.set(core,base);
+    return base;
+  }
+  /* היישוב שאחרי פסיק בכתובת («רחוב הנביאים 22, הרצליה») מקבל את התחליף של אותו יישוב כשהוא כתוב לבד, ולהפך (הביקורת
+     של 2.11): עד כאן נבחר לו יישוב בנפרד, ונרשם רק מילה-מילה, והוא יכול היה להיות התחליף של יישוב אחר — «… 22, כפר סבא»
+     ליד «חולון» ← «כפר סבא», וההחזרה נתנה את «כפר סבא» שה-AI כתב לחולון. tests/towns_t.js */
+  townFake(t){
+    const k=ckey("PLACE",t);
+    if(this.map[k])return this.map[k];
+    const pin=this.subs.find(s=>s.kind==="PLACE"&&s.replacement&&ckey("PLACE",s.value)===k);
+    const f=pin?pin.replacement:fakePlace(placeCanon(t),this.used,this.forbidden,null);
+    if(f){this.noteFake("PLACE",f,true); this.map[k]=f;}
+    return f;
   }
   repFor(h){
     // התאום הלועזי: האיות הלועזי של השם הבדוי של בן הזוג העברי שלו (twins)
@@ -561,6 +624,7 @@ class Engine{
     // המפתח לפי הערך הבסיסי, לא לפי הטקסט שנתפס — אחרת
     // "מאורי בן-שחר" מקבל כינוי אחר מ"אורי בן-שחר".
     const canonical=(h.base&&this.alias[h.base])||h.base||h.text;
+    this.noteSecret(canonical);
     const k=ckey(h.type==="NAME_ANCHORED"?"NAME":h.type,canonical);
     let base=h.rep||this.map[k];
     if(!base){
@@ -582,7 +646,7 @@ class Engine{
       // מקום מהרשימה (סוג PLACE) מקבל שם לפי סוגו — שכונה, רחוב, מושב — ולא תווית (Q11 בגרסה 2)
       else if(real&&typeof fakePlace==="function"&&
               (h.type==="PLACE"||h.type==="PLACE_CITY"||(h.type==="PLACE_VENUE"&&h.label==="יישוב")))
-        base=fakePlace(placeCanon(canonical),this.used,this.forbidden,h.kind)||`[${lab} ${hord(n)}]`;
+        base=this.placeBase(canonical,h.kind)||`[${lab} ${hord(n)}]`;
       // גוף שאושר מקבל שם בדוי שמשאיר את מילת הסוג ("מכון אורנים"), לא "[גוף א׳]"
       else if(fam==="ORG"&&real&&typeof fakeOrg==="function")
         base=fakeOrg(canonical,this.used,this.forbidden)||`[${lab} ${hord(n)}]`;

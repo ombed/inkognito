@@ -70,9 +70,12 @@ console.log("\n— an invented place is not a word of the document with a prefix
 /* Nor a word of the document inside a longer word. The final check reads a secret anywhere in the text, so «בנק צאלון»
    failed it in a letter that named a man «אלון» (the hunt of 1.11), and the bar went red. A town «הרצליה» beside a real
    «רחוב הרצל» is the same trap. Invented examples. */
-console.log("\n— an invented company or town does not hold a word of the document inside it —");
+console.log("\n— an invented company or town does not hold a secret of the document inside it —");
 {
-  const f = forbiddenOf("העד היה הלום קרב. המשרד ברחוב הרצל 5. השופט רענן כספי.");
+  /* what the check reads is the secrets, the values replaced, not every word: «הלום» and «הרצל» are secrets here (an
+     ordinary word inside a fake is no leak, and removing such fakes ran the pools out: tests/towns_t.js) */
+  const f = new C.Engine([{ value: "דניאל הלום", kind: "NAME", replacement: "" }, { value: "רחוב הרצל 5", kind: "PLACE", replacement: "" }], [], OPT,
+    "העד דניאל הלום העיד. המשרד ברחוב הרצל 5. השופט רענן כספי.").forbidden;
   let org = 0, town = 0;
   for (let i = 0; i < 50; i++) {
     C.setAliasKey(crypto.createHash("sha256").update("forb3-key-" + i).digest("hex"));
