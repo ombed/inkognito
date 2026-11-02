@@ -564,10 +564,10 @@ console.log("\n— many towns of one character in one document: every one gets a
   // or Druze town gets another Arabic-speaking town and a mixed city another city (the owner-authorized decision of 2.11).
   const ARABIC = new Set(["ערבי", "בדואי", "דרוזי"]);
   const pop = (n) => (C.ATLAS_TAGS[n] || "").split("|")[1] || "?";
-  // an Arab town keeps its own population here; a Bedouin or Druze one may move within ARABIC; a mixed city, whose
+  // an Arab, Bedouin or Druze town may move within ARABIC (never to a Jewish town); a mixed city, whose
   // three free peers run out at four, to another city (never a kibbutz or a moshav)
   const kind = (n) => (C.ATLAS_TAGS[n] || "").split("|")[0];
-  const group = (t, f) => pop(t) === pop(f) || (pop(t) !== "ערבי" && ARABIC.has(pop(t)) && ARABIC.has(pop(f))) ||
+  const group = (t, f) => pop(t) === pop(f) || (ARABIC.has(pop(t)) && ARABIC.has(pop(f))) ||
     (pop(t) === "מעורב" && kind(f) === "עיר");
   for (const towns of [["ירושלים", "חיפה", "לוד", "רמלה"], ["רהט", "כסייפה", "תל שבע", "ערוער", "לקיה"],
     ["דאלית אל-כרמל", "עוספיא", "מג'אר", "ירכא"], ["נצרת", "שפרעם", "טמרה", "סח'נין", "עראבה", "טייבה"]]) {
@@ -579,6 +579,20 @@ console.log("\n— many towns of one character in one document: every one gets a
       for (const t of towns) { if (!o[t]) continue; n++; if (!group(t, o[t])) { off++; odd.add(t + "→" + o[t]); } }
     }
     ok(n > 0 && off === 0, towns.length + " towns from «" + towns[0] + "»: every fake keeps the population: " + off + "/" + n + " off " + [...odd].slice(0, 4).join(", "));
+  }
+  // a city stays a city when the nearest few run out (the review of 2.11: «ראשון לציון» became «כפר עזה» with six Gush Dan
+  // cities in one document), and twelve Arab towns stay Arabic-speaking
+  for (const towns of [["תל אביב", "רמת גן", "חולון", "ראשון לציון", "פתח תקווה", "הרצליה"],
+    ["תל אביב", "רמת גן", "חולון", "ראשון לציון", "פתח תקווה", "הרצליה", "נתניה", "בת ים", "רחובות", "כפר סבא", "רעננה"],
+    ["נצרת", "אום אל-פחם", "טירה", "טייבה", "טמרה", "סח'נין", "שפרעם", "כפר קאסם", "קלנסווה", "באקה אל-גרביה", "כפר כנא", "עראבה"]]) {
+    const text = "הסניפים פועלים ב" + towns.join(", ב") + ".";
+    let n = 0, off = 0; const odd = new Set();
+    for (const key of KEYS) {
+      const eng = new C.Engine(towns.map((v) => ({ value: v, kind: "PLACE", replacement: "" })), [], { ...O, aliasKey: key }, text);
+      const o = {}; for (const h of eng.detect(text)) if (h.apply) o[h.base] = eng.repFor({ ...h, pre: "" });
+      for (const t of towns) { if (!o[t]) continue; n++; if (!group(t, o[t]) || (kind(t) === "עיר" && C.ATLAS_RURAL.has(kind(o[t])))) { off++; odd.add(t + "→" + o[t]); } }
+    }
+    ok(n > 0 && off === 0, towns.length + " towns from «" + towns[0] + "»: a city stays a city, the population is kept: " + off + "/" + n + " off " + [...odd].slice(0, 4).join(", "));
   }
   // an ordinary word of the document inside a town's name does not remove the town («קלון» in «אשקלון»); a secret does
   const plain = new C.Engine([], [], O, "העבירה שבה הורשע יש עמה קלון, וציון הדיון נדחה.").forbidden;
@@ -879,12 +893,35 @@ const leaksOf = (res) => JSON.stringify((res.verification.leaks || []).map((l) =
       if (!m || !town) { bad.push("map " + JSON.stringify(map)); continue; }
       for (const [ai, want] of [["המשרד ברחוב " + m[1] + " 22.", "המשרד ברחוב הנביאים 22."], ["המשרד ברחוב " + m[1] + ".", "המשרד ברחוב הנביאים."],
         ["המשרד ברח' " + m[1] + " 22.", "המשרד ברח' הנביאים 22."], ["המשרד ברח' " + m[1] + ", " + town + ".", "המשרד ברח' הנביאים, הרצליה."],
-        ["המשרד ברחוב " + m[1] + " 22 ב" + town + ".", "המשרד ברחוב הנביאים 22 בהרצליה."], ["המשרד ב" + m[1] + " 22.", "המשרד בהנביאים 22."]]) {
+        ["המשרד ברחוב " + m[1] + " 22 ב" + town + ".", "המשרד ברחוב הנביאים 22 בהרצליה."]]) {
         const back = E.restoreNames(ai, pairs, []);
         if (back.text !== want) bad.push(ai + " ⇒ " + back.text);
       }
     }
     ok(bad.length === 0, "a street fake without its town, its number or its head word, or with «רח'», comes back, over 10 keys: " + bad.length + " " + bad.slice(0, 3).join(" | "));
+  }
+
+  /* Two streets never share a fake, also a fake of two words: noteFake records the words of a fake, and «בן גוריון» was
+     free for a second street (the review of 2.11). And the name and number without «רחוב» is not a form: «העצמאות 12»
+     caught «העצמאות 12.5 מיליון». Every example is invented. */
+  console.log("\n— many streets in one document, each its own fake; no bare name-and-number form —");
+  {
+    const crypto = require("crypto");
+    const streets = ["רחוב המסגר 4", "רחוב ז'בוטינסקי 33", "רחוב הסדנאות 9", "רחוב הארבעה 12", "רחוב המלאכה 7", "רחוב הנביאים 22",
+      "רחוב החשמונאים 90", "רחוב הברזל 3", "רחוב העמל 15", "רחוב הנחושת 6"];
+    const text = "המשרדים ב" + streets.join(", ב") + ".";
+    let dup = 0, ex = "", bare = 0;
+    for (let i = 0; i < 20; i++) {
+      const key = crypto.createHash("sha256").update("streets-key-" + i).digest("hex");
+      const eng = new C.Engine(streets.map((v) => ({ value: v, kind: "PLACE", replacement: "" })), [], { ...OPT, styles: {}, aliasKey: key }, text);
+      const o = {}; for (const h of eng.detect(text)) if (h.apply) o[h.base] = eng.repFor({ ...h, pre: "" });
+      const names = Object.values(o).map((f) => f.replace(/^רחוב\s+/, "").replace(/\s+\d+$/, ""));
+      if (new Set(names).size !== names.length) { dup++; ex = JSON.stringify(o); }
+      const f = o["רחוב הארבעה 12"], nm = f && f.replace(/^רחוב\s+/, "").replace(/\s+\d+$/, "");
+      if (nm && C.restoreNames("הסכום הוא " + nm + " 12.5 מיליון.", Object.entries(C.restorePairs({}, o)), []).text !== "הסכום הוא " + nm + " 12.5 מיליון.") bare++;
+    }
+    ok(dup === 0, "ten streets, 20 keys: no two share a fake street name: " + dup + " " + ex.slice(0, 200));
+    ok(bare === 0, "the fake name and number without «רחוב», before «.5 מיליון», is not restored: " + bare);
   }
 
   console.log("\n— the final check still sees a word-town left where the text says it is a place —");

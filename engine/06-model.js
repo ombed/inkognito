@@ -1072,7 +1072,10 @@ function fakeStreet(raw,nv,m,used,forbidden,townOf){
   const k=/^שכונ/.test(m[2])?"שכונה":"רחוב";
   const hd=raw.slice(0,m[1].length+m[2].length);
   const p=streetParts(m[3]);
-  const taken=(...not)=>({has:n=>not.includes(n)||!!(used&&used.has(n))});
+  // שם של שתי מילים שכל מילותיו כבר בשימוש כבר ניתן (noteFake רושם את המילים, לא את השם לבד): «בן גוריון» ניתן לשני
+  // רחובות (הביקורת של 2.11). tests/towns_t.js
+  const usedAll=n=>!!used&&/\s/.test(n)&&n.split(/\s+/).every(w=>used.has(w));
+  const taken=(...not)=>({has:n=>not.includes(n)||!!(used&&used.has(n))||usedAll(n)});
   const name=pickPlace(nv,taken(p.name),forbidden,k);
   if(!name)return null;
   const town=p.town?(townOf?townOf(p.town):pickPlace(p.town,taken(name,p.town),forbidden,null)):"";
@@ -1102,10 +1105,11 @@ function popPools(value){
   const v=atlasName(norm(String(value||"")).trim());
   if(!v||typeof ATLAS_TAGS==="undefined"||!ATLAS_TAGS[v]||typeof atlasPenalty!=="function")return [];
   const base=PLACES.map(p=>p.n).filter(n=>n&&n!==v&&n.length>=3&&placeSubOK(n)), pop=n=>(ATLAS_TAGS[n]||"").split("|")[1];
-  const same=base.filter(n=>atlasPenalty(v,n)!==Infinity);
-  if(ARABIC_POPS.has(pop(v)))return [same,base.filter(n=>ARABIC_POPS.has(pop(n)))];
-  if(pop(v)==="מעורב")return [same,base.filter(n=>(ATLAS_TAGS[n]||"").split("|")[0]==="עיר")];
-  return [same];
+  // קודם מאותו סוג (עירוני או כפרי: קנס קטן מ-60), כדי שעיר לא תצא קיבוץ («ראשון לציון» → «כפר עזה», הביקורת של 2.11)
+  const same=base.filter(n=>atlasPenalty(v,n)!==Infinity), close=same.filter(n=>atlasPenalty(v,n)<60);
+  if(ARABIC_POPS.has(pop(v)))return [close,same,base.filter(n=>ARABIC_POPS.has(pop(n)))];
+  if(pop(v)==="מעורב")return [close,same,base.filter(n=>(ATLAS_TAGS[n]||"").split("|")[0]==="עיר")];
+  return [close,same];
 }
 function pickPlace(value,used,forbidden,kind){
   const pools=kind?[placePool(kind,value)]:[];
@@ -1132,9 +1136,11 @@ function pickIn(pool,value,used,forbidden){
     return true;
   };
   const start=(typeof aliasSeed==="function"?aliasSeed:hash32)(norm(String(value||"")).trim())%pool.length;
-  for(let k=0;k<pool.length;k++){
+  // ושם קרוב למילה של המסמך («השיטה» ליד «השליטה») רק כשאין אחר: ההחזרה מסמנת את המילה (הביקורת של 2.11)
+  const near=n=>!!(forbidden&&forbidden.near&&forbidden.near(n));
+  for(const pref of [true,false])for(let k=0;k<pool.length;k++){
     const cand=pool[(start+k)%pool.length];
-    if(free(cand))return cand;
+    if(free(cand)&&!(pref&&near(cand)))return cand;
   }
   return null;
 }

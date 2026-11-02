@@ -740,10 +740,12 @@ function nearDocWord(words){
   const close=(x,n)=>x!==n&&(finToPlain(x)===finToPlain(n)||(n.length>=4&&x.length>=4&&lev(x,n)===1));
   const hit=n=>{ for(let L=n.length-1;L<=n.length+1;L++)for(const x of ix.get(L)||[])if(close(x,n))return true; return false; };
   // וגם השם בלי אות שימוש בראשו, כמו שההחזרה קוראת אותו: «וקנין» נקרא «קנין», אות אחת מ«הקניין»
+  const memo=new Map();
   return v=>{
     const n=norm(String(v||""));
     if(n.length<3||!/^[א-ת]+$/.test(n))return false;
-    return hit(n)||(n.length>=4&&PFX.has(n[0])&&hit(n.slice(1)));
+    if(!memo.has(n))memo.set(n,hit(n)||(n.length>=4&&PFX.has(n[0])&&hit(n.slice(1))));
+    return memo.get(n);
   };
 }
 const nearForbidden=(forbidden,v)=>!!(forbidden.near&&forbidden.near(v));
@@ -753,10 +755,12 @@ const poolNameOK=v=>!WORDLIKE.has(v)&&!WORDISH.has(v)&&!(/-/.test(v)&&v.split("-
 function pickFrom(arr,seed,used,forbidden){
   const n=arr.length;
   let step=7; while(gcd(step,n)!==1) step++;
-  for(let k=0;k<n;k++){
+  const ok=v=>!used.has(v)&&!forbidden.has(v)&&poolNameOK(v);
+  /* הקרבה למילה של המסמך היא העדפה, לא איסור: במסמך ארוך היא מיצתה את המאגר, ואנשים קיבלו שם ממוספר («תומר 60 גבאי»)
+     שה-AI כותב בצורות שאינן חוזרות (הביקורת של 2.11). שם קרוב עדיף על שם ממוספר. tests/forbidden_t.js */
+  for(const near of [true,false])for(let k=0;k<n;k++){
     const v=arr[(seed+k*step+((seed>>>8)%3))%n];
-    if(used.has(v)||forbidden.has(v)||nearForbidden(forbidden,v)||!poolNameOK(v))continue;
-    return v}
+    if(ok(v)&&!(near&&nearForbidden(forbidden,v)))return v}
   for(let j=0;j<89;j++){ const v=arr[seed%n]+" "+(((seed+j)%89)+11); if(!used.has(v)) return v; }
   return arr[seed%n]+" "+((seed%89)+11)+"-"+(used.size+1)}
 // שם פרטי לבד או שם משפחה לבד — נשמר אותו סוג, אחרת "כהן" הופך ל"יעל"
@@ -2620,7 +2624,10 @@ function fakeStreet(raw,nv,m,used,forbidden,townOf){
   const k=/^שכונ/.test(m[2])?"שכונה":"רחוב";
   const hd=raw.slice(0,m[1].length+m[2].length);
   const p=streetParts(m[3]);
-  const taken=(...not)=>({has:n=>not.includes(n)||!!(used&&used.has(n))});
+  // שם של שתי מילים שכל מילותיו כבר בשימוש כבר ניתן (noteFake רושם את המילים, לא את השם לבד): «בן גוריון» ניתן לשני
+  // רחובות (הביקורת של 2.11). tests/towns_t.js
+  const usedAll=n=>!!used&&/\s/.test(n)&&n.split(/\s+/).every(w=>used.has(w));
+  const taken=(...not)=>({has:n=>not.includes(n)||!!(used&&used.has(n))||usedAll(n)});
   const name=pickPlace(nv,taken(p.name),forbidden,k);
   if(!name)return null;
   const town=p.town?(townOf?townOf(p.town):pickPlace(p.town,taken(name,p.town),forbidden,null)):"";
@@ -2650,10 +2657,11 @@ function popPools(value){
   const v=atlasName(norm(String(value||"")).trim());
   if(!v||typeof ATLAS_TAGS==="undefined"||!ATLAS_TAGS[v]||typeof atlasPenalty!=="function")return [];
   const base=PLACES.map(p=>p.n).filter(n=>n&&n!==v&&n.length>=3&&placeSubOK(n)), pop=n=>(ATLAS_TAGS[n]||"").split("|")[1];
-  const same=base.filter(n=>atlasPenalty(v,n)!==Infinity);
-  if(ARABIC_POPS.has(pop(v)))return [same,base.filter(n=>ARABIC_POPS.has(pop(n)))];
-  if(pop(v)==="מעורב")return [same,base.filter(n=>(ATLAS_TAGS[n]||"").split("|")[0]==="עיר")];
-  return [same];
+  // קודם מאותו סוג (עירוני או כפרי: קנס קטן מ-60), כדי שעיר לא תצא קיבוץ («ראשון לציון» → «כפר עזה», הביקורת של 2.11)
+  const same=base.filter(n=>atlasPenalty(v,n)!==Infinity), close=same.filter(n=>atlasPenalty(v,n)<60);
+  if(ARABIC_POPS.has(pop(v)))return [close,same,base.filter(n=>ARABIC_POPS.has(pop(n)))];
+  if(pop(v)==="מעורב")return [close,same,base.filter(n=>(ATLAS_TAGS[n]||"").split("|")[0]==="עיר")];
+  return [close,same];
 }
 function pickPlace(value,used,forbidden,kind){
   const pools=kind?[placePool(kind,value)]:[];
@@ -2680,9 +2688,11 @@ function pickIn(pool,value,used,forbidden){
     return true;
   };
   const start=(typeof aliasSeed==="function"?aliasSeed:hash32)(norm(String(value||"")).trim())%pool.length;
-  for(let k=0;k<pool.length;k++){
+  // ושם קרוב למילה של המסמך («השיטה» ליד «השליטה») רק כשאין אחר: ההחזרה מסמנת את המילה (הביקורת של 2.11)
+  const near=n=>!!(forbidden&&forbidden.near&&forbidden.near(n));
+  for(const pref of [true,false])for(let k=0;k<pool.length;k++){
     const cand=pool[(start+k)%pool.length];
-    if(free(cand))return cand;
+    if(free(cand)&&!(pref&&near(cand)))return cand;
   }
   return null;
 }
@@ -6548,7 +6558,7 @@ function wordForms(w){
    (Engine.orgShort), והוא נוסף כאן במקום צורות של אדם. ורחוב אינו אדם: אין לו ראשי תיבות, ושני רחובות בדויים
    («רחוב הרצל», «רחוב השקד») חלקו «רחוב ה.». tests/orgs_t.js
    ורחוב חוזר גם בצורות שה-AI כותב (הביקורת של 2.11): בלי היישוב שאחרי הפסיק, בלי מספר הבית, «רח'» במקום «רחוב»
-   (ולהפך), ושם ומספר בלי מילת הסוג. כל צורה חוזרת לאותה צורה של הרחוב האמיתי. tests/towns_t.js */
+   (ולהפך). לא שם ומספר בלי מילת הסוג: «העצמאות 12» תפס «העצמאות 12.5 מיליון». כל צורה חוזרת לאותה צורה של הרחוב האמיתי. tests/towns_t.js */
 const STREET_HEADS=[["רחוב","רח'"],["שדרות","שד'","שדרת"]];
 function streetOf(s){
   const m=PLACE_HEAD_IN.exec(s)||PLACE_HEAD_IN.exec(norm(s));
@@ -6561,7 +6571,6 @@ function streetForms(r,f,add){
   if(!R||!F||!R.name||!F.name||R.no!==F.no)return;
   const nos=F.no?[" "+F.no,""]:[""], towns=streetTowns(R,F);
   for(const h of headsOf(F.head))for(const no of nos)for(const [rt,ft] of towns)add(h+" "+R.name+no+rt,h+" "+F.name+no+ft);
-  if(F.no)add(R.name+" "+R.no,F.name+" "+F.no);
 }
 function personForms(real,fake,add){
   if(!real||!fake||fake==="███")return false;

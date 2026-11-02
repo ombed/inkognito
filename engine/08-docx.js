@@ -2634,7 +2634,7 @@ function wordForms(w){
    (Engine.orgShort), והוא נוסף כאן במקום צורות של אדם. ורחוב אינו אדם: אין לו ראשי תיבות, ושני רחובות בדויים
    («רחוב הרצל», «רחוב השקד») חלקו «רחוב ה.». tests/orgs_t.js
    ורחוב חוזר גם בצורות שה-AI כותב (הביקורת של 2.11): בלי היישוב שאחרי הפסיק, בלי מספר הבית, «רח'» במקום «רחוב»
-   (ולהפך), ושם ומספר בלי מילת הסוג. כל צורה חוזרת לאותה צורה של הרחוב האמיתי. tests/towns_t.js */
+   (ולהפך). לא שם ומספר בלי מילת הסוג: «העצמאות 12» תפס «העצמאות 12.5 מיליון». כל צורה חוזרת לאותה צורה של הרחוב האמיתי. tests/towns_t.js */
 const STREET_HEADS=[["רחוב","רח'"],["שדרות","שד'","שדרת"]];
 function streetOf(s){
   const m=PLACE_HEAD_IN.exec(s)||PLACE_HEAD_IN.exec(norm(s));
@@ -2647,7 +2647,6 @@ function streetForms(r,f,add){
   if(!R||!F||!R.name||!F.name||R.no!==F.no)return;
   const nos=F.no?[" "+F.no,""]:[""], towns=streetTowns(R,F);
   for(const h of headsOf(F.head))for(const no of nos)for(const [rt,ft] of towns)add(h+" "+R.name+no+rt,h+" "+F.name+no+ft);
-  if(F.no)add(R.name+" "+R.no,F.name+" "+F.no);
 }
 function personForms(real,fake,add){
   if(!real||!fake||fake==="███")return false;

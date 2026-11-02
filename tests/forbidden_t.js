@@ -109,6 +109,21 @@ console.log("\n— no fake name one letter away from a word of the document —"
   }
   C.setAliasKey(null);
   ok(bad.length === 0, "60 keys, no fake name part one letter away from a word of the document: " + bad.length + " " + [...new Set(bad)].slice(0, 6).join(", "));
+  /* The rule is a preference, not a ban (the review of 2.11): in a long document it ran the pools out, and people got
+     numbered names («תומר 60 גבאי») whose AI forms never came back. Here the document holds a word one letter from every
+     name of the Hebrew pools, so every name is near; still no one gets a number. */
+  const near1 = (w) => w + "ה";
+  const crowd = ["he_f", "he_m", "he_s"].flatMap((k) => C.POOL[k]).map(near1).join(" ");
+  const people = ["שרית גולן", "מיכל ברק", "דורית שמש", "יעל נבון", "אבי דגן", "רון אלון", "עידו סער", "גיל רז", "נועה פז", "תמר גל"];
+  let numbered = 0, ex2 = "";
+  for (let i = 0; i < 20; i++) {
+    const key = crypto.createHash("sha256").update("crowd-key-" + i).digest("hex");
+    const t = people.join(", ") + ". " + crowd;
+    const eng = new C.Engine(people.map((v) => ({ value: v, kind: "NAME", replacement: "" })), [], { ...OPT, aliasKey: key }, t);
+    for (const h of eng.detect(t)) if (h.apply) { const f = String(eng.repFor({ ...h, pre: "" })); if (/\d/.test(f)) { numbered++; ex2 = f; } }
+  }
+  C.setAliasKey(null);
+  ok(numbered === 0, "every pool name near a word of the document: still no numbered name, over 20 keys: " + numbered + " " + ex2);
 }
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exitCode = fail ? 1 : 0;
