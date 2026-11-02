@@ -10,3 +10,6 @@ declare const STOP: Set<string>;
 declare const COMMON: Set<string>;
 declare const KNOWN_FIRST: Set<string>;
 declare const PLACE_BY: Record<string, unknown>;
+// the near-word rule of the fake names (nearDocWord): the prefix letters (06-model.js) and the edit distance (08-docx.js)
+declare const PFX: Set<string>;
+declare function lev(a: string, b: string): number;
