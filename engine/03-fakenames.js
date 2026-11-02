@@ -221,10 +221,12 @@ function nearDocWord(words){
   const close=(x,n)=>x!==n&&(finToPlain(x)===finToPlain(n)||(n.length>=4&&x.length>=4&&lev(x,n)===1));
   const hit=n=>{ for(let L=n.length-1;L<=n.length+1;L++)for(const x of ix.get(L)||[])if(close(x,n))return true; return false; };
   // וגם השם בלי אות שימוש בראשו, כמו שההחזרה קוראת אותו: «וקנין» נקרא «קנין», אות אחת מ«הקניין»
+  const memo=new Map();
   return v=>{
     const n=norm(String(v||""));
     if(n.length<3||!/^[א-ת]+$/.test(n))return false;
-    return hit(n)||(n.length>=4&&PFX.has(n[0])&&hit(n.slice(1)));
+    if(!memo.has(n))memo.set(n,hit(n)||(n.length>=4&&PFX.has(n[0])&&hit(n.slice(1))));
+    return memo.get(n);
   };
 }
 const nearForbidden=(forbidden,v)=>!!(forbidden.near&&forbidden.near(v));
@@ -234,10 +236,12 @@ const poolNameOK=v=>!WORDLIKE.has(v)&&!WORDISH.has(v)&&!(/-/.test(v)&&v.split("-
 function pickFrom(arr,seed,used,forbidden){
   const n=arr.length;
   let step=7; while(gcd(step,n)!==1) step++;
-  for(let k=0;k<n;k++){
+  const ok=v=>!used.has(v)&&!forbidden.has(v)&&poolNameOK(v);
+  /* הקרבה למילה של המסמך היא העדפה, לא איסור: במסמך ארוך היא מיצתה את המאגר, ואנשים קיבלו שם ממוספר («תומר 60 גבאי»)
+     שה-AI כותב בצורות שאינן חוזרות (הביקורת של 2.11). שם קרוב עדיף על שם ממוספר. tests/forbidden_t.js */
+  for(const near of [true,false])for(let k=0;k<n;k++){
     const v=arr[(seed+k*step+((seed>>>8)%3))%n];
-    if(used.has(v)||forbidden.has(v)||nearForbidden(forbidden,v)||!poolNameOK(v))continue;
-    return v}
+    if(ok(v)&&!(near&&nearForbidden(forbidden,v)))return v}
   for(let j=0;j<89;j++){ const v=arr[seed%n]+" "+(((seed+j)%89)+11); if(!used.has(v)) return v; }
   return arr[seed%n]+" "+((seed%89)+11)+"-"+(used.size+1)}
 // שם פרטי לבד או שם משפחה לבד — נשמר אותו סוג, אחרת "כהן" הופך ל"יעל"
