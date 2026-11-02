@@ -203,15 +203,39 @@ function latinOf(s){
    הראשון לא משתנה. ואם כולם תפוסים, השם עם המספר נבדק גם הוא מול התפוסים: עד 12.10 שני אנשים יכלו לקבל אותו שם בדוי,
    וההחזרה לא ידעה למי להחזיר (הביקורת ההנדסית). tests/aliaskey_t.js */
 const gcd=(a,b)=>{while(b){[a,b]=[b,a%b]}return a};
+/* מילות המסמך לפי אורך, גם בלי עד שתי אותיות שימוש בראשן (Engine: forbidden.near). שם בדוי שרחוק אות אחת ממילה כזאת,
+   או שונה ממנה רק באות סופית, אינו נבחר: ההחזרה מסמנת מילה כזאת כשם בדוי ששובש (nearOf), ו«הקניין» של ההסכם סומן ליד
+   שם משפחה בדוי «קנין». הביקורת של 2.11, tests/forbidden_t.js */
+const finToPlain=x=>x.replace(/[ךםןףץ]/g,c=>({"ך":"כ","ם":"מ","ן":"נ","ף":"פ","ץ":"צ"})[c]);
+function docWordsByLength(words){
+  const ix=new Map(), put=w=>{ if(!ix.has(w.length))ix.set(w.length,new Set()); ix.get(w.length).add(w); };
+  for(const w0 of words){
+    if(!/^[א-ת]{3,}$/.test(w0))continue;
+    put(w0);
+    for(let k=1;k<=2&&w0.length-k>=3&&PFX.has(w0[k-1]);k++)put(w0.slice(k));
+  }
+  return ix;
+}
+function nearDocWord(words){
+  const ix=docWordsByLength(words);
+  const close=(x,n)=>x!==n&&(finToPlain(x)===finToPlain(n)||(n.length>=4&&x.length>=4&&lev(x,n)===1));
+  return v=>{
+    const n=norm(String(v||""));
+    if(n.length<3||!/^[א-ת]+$/.test(n))return false;
+    for(let L=n.length-1;L<=n.length+1;L++)for(const x of ix.get(L)||[])if(close(x,n))return true;
+    return false;
+  };
+}
+const nearForbidden=(forbidden,v)=>!!(forbidden.near&&forbidden.near(v));
+// שם מהמאגר שאינו מילה, מילת קישור או יישוב (pickFrom)
+const poolNameOK=v=>!WORDLIKE.has(v)&&!WORDISH.has(v)&&!(/-/.test(v)&&v.split("-").some(poolWordy))&&
+  !(typeof PLACE_BY!=="undefined"&&PLACE_BY[v])&&!STOP.has(v);
 function pickFrom(arr,seed,used,forbidden){
   const n=arr.length;
   let step=7; while(gcd(step,n)!==1) step++;
   for(let k=0;k<n;k++){
     const v=arr[(seed+k*step+((seed>>>8)%3))%n];
-    if(used.has(v)||forbidden.has(v)||WORDLIKE.has(v))continue;
-    if(WORDISH.has(v)||(/-/.test(v)&&v.split("-").some(poolWordy)))continue;
-    if(typeof PLACE_BY!=="undefined"&&PLACE_BY[v])continue;
-    if(STOP.has(v))continue;
+    if(used.has(v)||forbidden.has(v)||nearForbidden(forbidden,v)||!poolNameOK(v))continue;
     return v}
   for(let j=0;j<89;j++){ const v=arr[seed%n]+" "+(((seed+j)%89)+11); if(!used.has(v)) return v; }
   return arr[seed%n]+" "+((seed%89)+11)+"-"+(used.size+1)}
@@ -282,6 +306,9 @@ function fakeOrg(value,used,forbidden){
     }
   return null;
 }
+// מה שאסור כשם פרטי בדוי: מילות המסמך וקרובותיהן (near), שם שמתחיל ב-ו, ושם רוסי לשם שאינו רוסי
+const firstForbid=(forbidden,ruOK)=>({has:w=>!!(forbidden&&forbidden.has(w))||/^ו/.test(w)||(!ruOK&&RU_FAKE.has(w)),
+  near:forbidden?forbidden.near:undefined});
 function fakeName(value,hint,used,forbidden,firstish){
   const org=origin(value), g=gender(value,hint);
   const parts=value.trim().split(/\s+/);
@@ -290,7 +317,7 @@ function fakeName(value,hint,used,forbidden,firstish){
   /* השם הפרטי הבדוי: רוסי רק לשם פרטי רוסי (RU_FAKE, החלטת הבעלים 2.11), ולא שם שמתחיל ב-ו («ואאל», «וורוד»): ה-AI
      כותב «וואאל», וההחזרה קוראת ו + השם. tests/aliaskey_t.js */
   const ruOK=RU_REAL.has(norm(parts[0]));
-  const fForb={has:w=>!!(forbidden&&forbidden.has(w))||/^ו/.test(w)||(!ruOK&&RU_FAKE.has(w))};
+  const fForb=firstForbid(forbidden,ruOK);
   if(parts.length===1){
     // מילה אחת: שם פרטי כשהיא שם פרטי מוכר, או כשהמסמך מציג אותה אחרי מילת
     // תפקיד או קרבה ("הקטין עמרי", "התובעת: שלהבת"); אחרת שם משפחה.

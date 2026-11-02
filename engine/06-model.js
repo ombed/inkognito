@@ -1057,10 +1057,12 @@ function streetParts(rest){
   let tail=s.slice(m[1].length), no="", town="", sep="";
   const n=/^\s+(\d{1,4}[א-ת]?(?:[/-]\d{1,4}[א-ת]?)?)(?![\d/-])/u.exec(tail);
   if(n){no=n[1]; tail=tail.slice(n[0].length);}
+  // יישוב רק כשהוא יישוב מוכר: «רחוב הרצל 5, דירה 3, תל אביב» נתן ל«דירה» יישוב בדוי (הביקורת של 2.11)
+  const known=x=>typeof PLACE_IX!=="undefined"&&PLACE_IX.keys.has(placeKey(x));
   const c=/^\s*,\s*([^\d,]*[^\s\d,.])/u.exec(tail);
-  if(c){town=c[1]; sep=", ";}
-  else if(no){
-    const t=/^\s+([^\d,]*[^\s\d,.])/u.exec(tail), known=x=>typeof PLACE_IX!=="undefined"&&PLACE_IX.keys.has(placeKey(x));
+  if(c&&known(c[1])){town=c[1]; sep=", ";}
+  else if(no&&!c){
+    const t=/^\s+([^\d,]*[^\s\d,.])/u.exec(tail);
     if(t&&known(t[1])){town=t[1]; sep=" ";}
   }
   return {name:m[1],no,town,sep};
@@ -1090,9 +1092,24 @@ function fakePlace(value,used,forbidden,kind,townOf){
 /* המאגר של הסוג, ואחריו המאגר הכללי: היישובים הקרובים באופי, וכשכולם תפוסים (הבחירות נרשמות, וכך שבעה יישובים מאותו
    אופי במסמך אחד מיצו אותם) — כל היישובים המתויגים (Q7 בגרסה 3: לעולם לא המאגר הלא-מתויג). עד הביקורת של 2.11 יישוב
    שמאגרו נגמר קיבל «[מקום ז׳]», בניגוד ל-Q11 בגרסה 2 («לעולם לא לתווית»). tests/towns_t.js */
+/* כל היישובים מאותו אופי, לא רק הקרובים ביותר: כשהבחירות נרשמות, שלוש ערים מעורבות או שישה יישובים ערביים במסמך אחד
+   מיצו את המאגר הקרוב, והנפילה הישירה לכל המתויגים נתנה לרמלה מושב ולרהט יישוב יהודי, בניגוד ל-Q7 בגרסה 3 («בלי
+   אוכלוסייה שונה לעולם»). כשגם אלה תפוסים (יש רק 7 יישובים בדואיים ו-8 ערים מעורבות, וחמישה במסמך אחד מיצו אותם) —
+   יישוב דובר ערבית לבדואי, לדרוזי ולערבי, ועיר (סוג «עיר») לעיר מעורבת (החלטה של 2.11 בהרשאת הבעלים: עדיף על תחליף
+   משותף, שההחזרה לא יודעת לפרק), ורק אחריהם כל המתויגים. הביקורת של 2.11, tests/towns_t.js */
+const ARABIC_POPS=new Set(["ערבי","בדואי","דרוזי"]);
+function popPools(value){
+  const v=atlasName(norm(String(value||"")).trim());
+  if(!v||typeof ATLAS_TAGS==="undefined"||!ATLAS_TAGS[v]||typeof atlasPenalty!=="function")return [];
+  const base=PLACES.map(p=>p.n).filter(n=>n&&n!==v&&n.length>=3&&placeSubOK(n)), pop=n=>(ATLAS_TAGS[n]||"").split("|")[1];
+  const same=base.filter(n=>atlasPenalty(v,n)!==Infinity);
+  if(ARABIC_POPS.has(pop(v)))return [same,base.filter(n=>ARABIC_POPS.has(pop(n)))];
+  if(pop(v)==="מעורב")return [same,base.filter(n=>(ATLAS_TAGS[n]||"").split("|")[0]==="עיר")];
+  return [same];
+}
 function pickPlace(value,used,forbidden,kind){
   const pools=kind?[placePool(kind,value)]:[];
-  pools.push(placePool(null,value),PLACES.map(p=>p.n).filter(n=>n&&n.length>=3&&placeSubOK(n)));
+  pools.push(placePool(null,value),...popPools(value),PLACES.map(p=>p.n).filter(n=>n&&n.length>=3&&placeSubOK(n)));
   for(const pool of pools){ const got=pickIn(pool,value,used,forbidden); if(got)return got; }
   return null;
 }

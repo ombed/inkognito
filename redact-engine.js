@@ -722,15 +722,39 @@ function latinOf(s){
    הראשון לא משתנה. ואם כולם תפוסים, השם עם המספר נבדק גם הוא מול התפוסים: עד 12.10 שני אנשים יכלו לקבל אותו שם בדוי,
    וההחזרה לא ידעה למי להחזיר (הביקורת ההנדסית). tests/aliaskey_t.js */
 const gcd=(a,b)=>{while(b){[a,b]=[b,a%b]}return a};
+/* מילות המסמך לפי אורך, גם בלי עד שתי אותיות שימוש בראשן (Engine: forbidden.near). שם בדוי שרחוק אות אחת ממילה כזאת,
+   או שונה ממנה רק באות סופית, אינו נבחר: ההחזרה מסמנת מילה כזאת כשם בדוי ששובש (nearOf), ו«הקניין» של ההסכם סומן ליד
+   שם משפחה בדוי «קנין». הביקורת של 2.11, tests/forbidden_t.js */
+const finToPlain=x=>x.replace(/[ךםןףץ]/g,c=>({"ך":"כ","ם":"מ","ן":"נ","ף":"פ","ץ":"צ"})[c]);
+function docWordsByLength(words){
+  const ix=new Map(), put=w=>{ if(!ix.has(w.length))ix.set(w.length,new Set()); ix.get(w.length).add(w); };
+  for(const w0 of words){
+    if(!/^[א-ת]{3,}$/.test(w0))continue;
+    put(w0);
+    for(let k=1;k<=2&&w0.length-k>=3&&PFX.has(w0[k-1]);k++)put(w0.slice(k));
+  }
+  return ix;
+}
+function nearDocWord(words){
+  const ix=docWordsByLength(words);
+  const close=(x,n)=>x!==n&&(finToPlain(x)===finToPlain(n)||(n.length>=4&&x.length>=4&&lev(x,n)===1));
+  return v=>{
+    const n=norm(String(v||""));
+    if(n.length<3||!/^[א-ת]+$/.test(n))return false;
+    for(let L=n.length-1;L<=n.length+1;L++)for(const x of ix.get(L)||[])if(close(x,n))return true;
+    return false;
+  };
+}
+const nearForbidden=(forbidden,v)=>!!(forbidden.near&&forbidden.near(v));
+// שם מהמאגר שאינו מילה, מילת קישור או יישוב (pickFrom)
+const poolNameOK=v=>!WORDLIKE.has(v)&&!WORDISH.has(v)&&!(/-/.test(v)&&v.split("-").some(poolWordy))&&
+  !(typeof PLACE_BY!=="undefined"&&PLACE_BY[v])&&!STOP.has(v);
 function pickFrom(arr,seed,used,forbidden){
   const n=arr.length;
   let step=7; while(gcd(step,n)!==1) step++;
   for(let k=0;k<n;k++){
     const v=arr[(seed+k*step+((seed>>>8)%3))%n];
-    if(used.has(v)||forbidden.has(v)||WORDLIKE.has(v))continue;
-    if(WORDISH.has(v)||(/-/.test(v)&&v.split("-").some(poolWordy)))continue;
-    if(typeof PLACE_BY!=="undefined"&&PLACE_BY[v])continue;
-    if(STOP.has(v))continue;
+    if(used.has(v)||forbidden.has(v)||nearForbidden(forbidden,v)||!poolNameOK(v))continue;
     return v}
   for(let j=0;j<89;j++){ const v=arr[seed%n]+" "+(((seed+j)%89)+11); if(!used.has(v)) return v; }
   return arr[seed%n]+" "+((seed%89)+11)+"-"+(used.size+1)}
@@ -801,6 +825,9 @@ function fakeOrg(value,used,forbidden){
     }
   return null;
 }
+// מה שאסור כשם פרטי בדוי: מילות המסמך וקרובותיהן (near), שם שמתחיל ב-ו, ושם רוסי לשם שאינו רוסי
+const firstForbid=(forbidden,ruOK)=>({has:w=>!!(forbidden&&forbidden.has(w))||/^ו/.test(w)||(!ruOK&&RU_FAKE.has(w)),
+  near:forbidden?forbidden.near:undefined});
 function fakeName(value,hint,used,forbidden,firstish){
   const org=origin(value), g=gender(value,hint);
   const parts=value.trim().split(/\s+/);
@@ -809,7 +836,7 @@ function fakeName(value,hint,used,forbidden,firstish){
   /* השם הפרטי הבדוי: רוסי רק לשם פרטי רוסי (RU_FAKE, החלטת הבעלים 2.11), ולא שם שמתחיל ב-ו («ואאל», «וורוד»): ה-AI
      כותב «וואאל», וההחזרה קוראת ו + השם. tests/aliaskey_t.js */
   const ruOK=RU_REAL.has(norm(parts[0]));
-  const fForb={has:w=>!!(forbidden&&forbidden.has(w))||/^ו/.test(w)||(!ruOK&&RU_FAKE.has(w))};
+  const fForb=firstForbid(forbidden,ruOK);
   if(parts.length===1){
     // מילה אחת: שם פרטי כשהיא שם פרטי מוכר, או כשהמסמך מציג אותה אחרי מילת
     // תפקיד או קרבה ("הקטין עמרי", "התובעת: שלהבת"); אחרת שם משפחה.
@@ -2577,10 +2604,12 @@ function streetParts(rest){
   let tail=s.slice(m[1].length), no="", town="", sep="";
   const n=/^\s+(\d{1,4}[א-ת]?(?:[/-]\d{1,4}[א-ת]?)?)(?![\d/-])/u.exec(tail);
   if(n){no=n[1]; tail=tail.slice(n[0].length);}
+  // יישוב רק כשהוא יישוב מוכר: «רחוב הרצל 5, דירה 3, תל אביב» נתן ל«דירה» יישוב בדוי (הביקורת של 2.11)
+  const known=x=>typeof PLACE_IX!=="undefined"&&PLACE_IX.keys.has(placeKey(x));
   const c=/^\s*,\s*([^\d,]*[^\s\d,.])/u.exec(tail);
-  if(c){town=c[1]; sep=", ";}
-  else if(no){
-    const t=/^\s+([^\d,]*[^\s\d,.])/u.exec(tail), known=x=>typeof PLACE_IX!=="undefined"&&PLACE_IX.keys.has(placeKey(x));
+  if(c&&known(c[1])){town=c[1]; sep=", ";}
+  else if(no&&!c){
+    const t=/^\s+([^\d,]*[^\s\d,.])/u.exec(tail);
     if(t&&known(t[1])){town=t[1]; sep=" ";}
   }
   return {name:m[1],no,town,sep};
@@ -2610,9 +2639,24 @@ function fakePlace(value,used,forbidden,kind,townOf){
 /* המאגר של הסוג, ואחריו המאגר הכללי: היישובים הקרובים באופי, וכשכולם תפוסים (הבחירות נרשמות, וכך שבעה יישובים מאותו
    אופי במסמך אחד מיצו אותם) — כל היישובים המתויגים (Q7 בגרסה 3: לעולם לא המאגר הלא-מתויג). עד הביקורת של 2.11 יישוב
    שמאגרו נגמר קיבל «[מקום ז׳]», בניגוד ל-Q11 בגרסה 2 («לעולם לא לתווית»). tests/towns_t.js */
+/* כל היישובים מאותו אופי, לא רק הקרובים ביותר: כשהבחירות נרשמות, שלוש ערים מעורבות או שישה יישובים ערביים במסמך אחד
+   מיצו את המאגר הקרוב, והנפילה הישירה לכל המתויגים נתנה לרמלה מושב ולרהט יישוב יהודי, בניגוד ל-Q7 בגרסה 3 («בלי
+   אוכלוסייה שונה לעולם»). כשגם אלה תפוסים (יש רק 7 יישובים בדואיים ו-8 ערים מעורבות, וחמישה במסמך אחד מיצו אותם) —
+   יישוב דובר ערבית לבדואי, לדרוזי ולערבי, ועיר (סוג «עיר») לעיר מעורבת (החלטה של 2.11 בהרשאת הבעלים: עדיף על תחליף
+   משותף, שההחזרה לא יודעת לפרק), ורק אחריהם כל המתויגים. הביקורת של 2.11, tests/towns_t.js */
+const ARABIC_POPS=new Set(["ערבי","בדואי","דרוזי"]);
+function popPools(value){
+  const v=atlasName(norm(String(value||"")).trim());
+  if(!v||typeof ATLAS_TAGS==="undefined"||!ATLAS_TAGS[v]||typeof atlasPenalty!=="function")return [];
+  const base=PLACES.map(p=>p.n).filter(n=>n&&n!==v&&n.length>=3&&placeSubOK(n)), pop=n=>(ATLAS_TAGS[n]||"").split("|")[1];
+  const same=base.filter(n=>atlasPenalty(v,n)!==Infinity);
+  if(ARABIC_POPS.has(pop(v)))return [same,base.filter(n=>ARABIC_POPS.has(pop(n)))];
+  if(pop(v)==="מעורב")return [same,base.filter(n=>(ATLAS_TAGS[n]||"").split("|")[0]==="עיר")];
+  return [same];
+}
 function pickPlace(value,used,forbidden,kind){
   const pools=kind?[placePool(kind,value)]:[];
-  pools.push(placePool(null,value),PLACES.map(p=>p.n).filter(n=>n&&n.length>=3&&placeSubOK(n)));
+  pools.push(placePool(null,value),...popPools(value),PLACES.map(p=>p.n).filter(n=>n&&n.length>=3&&placeSubOK(n)));
   for(const pool of pools){ const got=pickIn(pool,value,used,forbidden); if(got)return got; }
   return null;
 }
@@ -3429,6 +3473,9 @@ class Engine{
     };
     const parts=w=>[w].concat(w.includes("-")?w.split("-").filter(p=>p.length>1):[]);
     if(docText)for(const w of wordsOf(norm(docText))) parts(w).forEach(forbid);
+    /* ושם בדוי שרחוק אות אחת ממילה של המסמך (גם בלי עד שתי אותיות שימוש): ההחזרה מסמנת מילה כזאת כשם בדוי ששובש
+       (nearOf), ו«הקניין» של ההסכם סומן ליד שם משפחה בדוי «קנין», «שימור» ליד שם פרטי. הביקורת של 2.11, tests/forbidden_t.js */
+    this.forbidden.near=nearDocWord(this.forbidden);
     this.gmap={}; for(const s of subs) if(s.g)this.gmap[s.value]=s.g;
     // מה המסמך אומר על מילה בודדת: אחרי "הקטין", "האם", "מר", "התובעת:" היא שם
     // פרטי, והמילה שלפניה מסגירה גם מגדר. זה מכריע שם פרטי מול שם משפחה בשם
@@ -6499,16 +6546,27 @@ function wordForms(w){
    וה-AI כותב «חברת גרניט», «לגרניט». זה השם הקצר של אותה חברה, כמו שהשם הקצר המוגדר שלה מקבל אותו בלי הסיומת
    (Engine.orgShort), והוא נוסף כאן במקום צורות של אדם. ורחוב אינו אדם: אין לו ראשי תיבות, ושני רחובות בדויים
    («רחוב הרצל», «רחוב השקד») חלקו «רחוב ה.». tests/orgs_t.js
-   ורחוב עם מספר בית חוזר גם כשה-AI כותב אותו בלי המספר («רחוב הירדן» ← «רחוב ביאליק», הביקורת של 2.11). tests/towns_t.js */
-const HOUSE_TAIL=/\s+\d{1,4}[א-ת]?(?:[/-]\d{1,4}[א-ת]?)?$/u;
+   ורחוב חוזר גם בצורות שה-AI כותב (הביקורת של 2.11): בלי היישוב שאחרי הפסיק, בלי מספר הבית, «רח'» במקום «רחוב»
+   (ולהפך), ושם ומספר בלי מילת הסוג. כל צורה חוזרת לאותה צורה של הרחוב האמיתי. tests/towns_t.js */
+const STREET_HEADS=[["רחוב","רח'"],["שדרות","שד'","שדרת"]];
+function streetOf(s){
+  const m=PLACE_HEAD_IN.exec(s)||PLACE_HEAD_IN.exec(norm(s));
+  return m?{head:m[2],...streetParts(m[3])}:null;
+}
+const headsOf=h=>[...new Set([h,...(STREET_HEADS.find(x=>x.includes(h))||[])])];
+const streetTowns=(R,F)=>F.town&&R.town?[["",""],[", "+R.town,", "+F.town]]:[["",""]];
+function streetForms(r,f,add){
+  const R=streetOf(r), F=streetOf(f);
+  if(!R||!F||!R.name||!F.name||R.no!==F.no)return;
+  const nos=F.no?[" "+F.no,""]:[""], towns=streetTowns(R,F);
+  for(const h of headsOf(F.head))for(const no of nos)for(const [rt,ft] of towns)add(h+" "+R.name+no+rt,h+" "+F.name+no+ft);
+  if(F.no)add(R.name+" "+R.no,F.name+" "+F.no);
+}
 function personForms(real,fake,add){
   if(!real||!fake||fake==="███")return false;
   const f=String(fake).trim(), r=String(real).trim(), fc=orgCore(f), rc=orgCore(r);
   if(fc&&rc){add(rc,fc);return false}
-  if(PLACE_HEAD_IN.test(norm(f))){
-    if(HOUSE_TAIL.test(f)&&HOUSE_TAIL.test(r)&&PLACE_HEAD_IN.test(norm(r)))add(r.replace(HOUSE_TAIL,""),f.replace(HOUSE_TAIL,""));
-    return false;
-  }
+  if(PLACE_HEAD_IN.test(norm(f))){streetForms(r,f,add);return false}
   return f.split(/\s+/).length===2&&r.split(/\s+/).length>=2&&nameParts(fake,real).length>0;
 }
 function restoreForms(pairs){

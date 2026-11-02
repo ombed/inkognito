@@ -251,6 +251,9 @@ class Engine{
     };
     const parts=w=>[w].concat(w.includes("-")?w.split("-").filter(p=>p.length>1):[]);
     if(docText)for(const w of wordsOf(norm(docText))) parts(w).forEach(forbid);
+    /* ושם בדוי שרחוק אות אחת ממילה של המסמך (גם בלי עד שתי אותיות שימוש): ההחזרה מסמנת מילה כזאת כשם בדוי ששובש
+       (nearOf), ו«הקניין» של ההסכם סומן ליד שם משפחה בדוי «קנין», «שימור» ליד שם פרטי. הביקורת של 2.11, tests/forbidden_t.js */
+    this.forbidden.near=nearDocWord(this.forbidden);
     this.gmap={}; for(const s of subs) if(s.g)this.gmap[s.value]=s.g;
     // מה המסמך אומר על מילה בודדת: אחרי "הקטין", "האם", "מר", "התובעת:" היא שם
     // פרטי, והמילה שלפניה מסגירה גם מגדר. זה מכריע שם פרטי מול שם משפחה בשם

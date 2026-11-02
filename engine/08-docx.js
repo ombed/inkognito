@@ -2633,16 +2633,27 @@ function wordForms(w){
    וה-AI כותב «חברת גרניט», «לגרניט». זה השם הקצר של אותה חברה, כמו שהשם הקצר המוגדר שלה מקבל אותו בלי הסיומת
    (Engine.orgShort), והוא נוסף כאן במקום צורות של אדם. ורחוב אינו אדם: אין לו ראשי תיבות, ושני רחובות בדויים
    («רחוב הרצל», «רחוב השקד») חלקו «רחוב ה.». tests/orgs_t.js
-   ורחוב עם מספר בית חוזר גם כשה-AI כותב אותו בלי המספר («רחוב הירדן» ← «רחוב ביאליק», הביקורת של 2.11). tests/towns_t.js */
-const HOUSE_TAIL=/\s+\d{1,4}[א-ת]?(?:[/-]\d{1,4}[א-ת]?)?$/u;
+   ורחוב חוזר גם בצורות שה-AI כותב (הביקורת של 2.11): בלי היישוב שאחרי הפסיק, בלי מספר הבית, «רח'» במקום «רחוב»
+   (ולהפך), ושם ומספר בלי מילת הסוג. כל צורה חוזרת לאותה צורה של הרחוב האמיתי. tests/towns_t.js */
+const STREET_HEADS=[["רחוב","רח'"],["שדרות","שד'","שדרת"]];
+function streetOf(s){
+  const m=PLACE_HEAD_IN.exec(s)||PLACE_HEAD_IN.exec(norm(s));
+  return m?{head:m[2],...streetParts(m[3])}:null;
+}
+const headsOf=h=>[...new Set([h,...(STREET_HEADS.find(x=>x.includes(h))||[])])];
+const streetTowns=(R,F)=>F.town&&R.town?[["",""],[", "+R.town,", "+F.town]]:[["",""]];
+function streetForms(r,f,add){
+  const R=streetOf(r), F=streetOf(f);
+  if(!R||!F||!R.name||!F.name||R.no!==F.no)return;
+  const nos=F.no?[" "+F.no,""]:[""], towns=streetTowns(R,F);
+  for(const h of headsOf(F.head))for(const no of nos)for(const [rt,ft] of towns)add(h+" "+R.name+no+rt,h+" "+F.name+no+ft);
+  if(F.no)add(R.name+" "+R.no,F.name+" "+F.no);
+}
 function personForms(real,fake,add){
   if(!real||!fake||fake==="███")return false;
   const f=String(fake).trim(), r=String(real).trim(), fc=orgCore(f), rc=orgCore(r);
   if(fc&&rc){add(rc,fc);return false}
-  if(PLACE_HEAD_IN.test(norm(f))){
-    if(HOUSE_TAIL.test(f)&&HOUSE_TAIL.test(r)&&PLACE_HEAD_IN.test(norm(r)))add(r.replace(HOUSE_TAIL,""),f.replace(HOUSE_TAIL,""));
-    return false;
-  }
+  if(PLACE_HEAD_IN.test(norm(f))){streetForms(r,f,add);return false}
   return f.split(/\s+/).length===2&&r.split(/\s+/).length>=2&&nameParts(fake,real).length>0;
 }
 function restoreForms(pairs){

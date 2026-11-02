@@ -86,5 +86,28 @@ console.log("\n— an invented company or town does not hold a secret of the doc
   ok(org === 0, "200 invented companies over 50 keys, none holding «הלום»: " + org);
   ok(town === 0, "400 invented towns over 50 keys, none holding «הרצל»: " + town);
 }
+/* Nor a fake one letter away from a word of the document. The paste-back marks such a word as a fake the AI garbled
+   (nearOf), so in an agreement that says «הקניין», «שימור» and «נחתם», a fake surname «קנין» left «הקניין» marked in the
+   AI's answer, in 13 of 40 keys (the review of 2.11). Invented examples. */
+console.log("\n— no fake name one letter away from a word of the document —");
+{
+  const text = "הקניין במניות יושלם במועד ההשלמה. מענק שימור ישולם לעובדים. ההסכם נחתם בין הצדדים. הקונה ושלומית ברנר, " +
+    "יואב קדמי, רינה אפשטיין, אסף מזרחי ונגה טל חתמו. המניות, המחאות, ההתחייבויות והמסמכים נמסרו.";
+  const names = ["שלומית ברנר", "יואב קדמי", "רינה אפשטיין", "אסף מזרחי", "נגה טל"];
+  const near = (a, b) => { if (a === b || Math.abs(a.length - b.length) > 1 || a.length < 4 || b.length < 4) return false; const d = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+    for (let j = 1; j <= b.length; j++) d[0][j] = j;
+    for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    return d[a.length][b.length] === 1; };
+  const docWords = new Set(); for (const w of text.match(/[א-ת]{3,}/g)) { docWords.add(w); if ("בלמוהשכ".includes(w[0])) docWords.add(w.slice(1)); if (w.length > 4 && "בלמוהשכ".includes(w[0]) && "בלמוהשכ".includes(w[1])) docWords.add(w.slice(2)); }
+  const bad = [];
+  for (let i = 0; i < 60; i++) {
+    const key = crypto.createHash("sha256").update("near-key-" + i).digest("hex");
+    const eng = new C.Engine(names.map((v) => ({ value: v, kind: "NAME", replacement: "" })), [], { ...OPT, aliasKey: key }, text);
+    for (const h of eng.detect(text)) if (h.apply) for (const part of String(eng.repFor({ ...h, pre: "" })).split(/\s+/))
+      for (const w of docWords) if (near(part, w)) bad.push(part + "~" + w);
+  }
+  C.setAliasKey(null);
+  ok(bad.length === 0, "60 keys, no fake name part one letter away from a word of the document: " + bad.length + " " + [...new Set(bad)].slice(0, 6).join(", "));
+}
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exitCode = fail ? 1 : 0;
