@@ -41,7 +41,13 @@ console.log("\n— a short surname of the document, written with a prefix letter
     const v = f + " " + s, fake = reps(v + " הגיש תביעה.", [R(v)])[v] || "", sur = fake.split(/\s+/).slice(-1)[0];
     if (sur.length === 3 && /^[א-ת]+$/.test(sur)) found = { v, fake, sur };
   }
-  ok(!!found, "(some invented person gets a three-letter invented surname to test with)");
+  /* Since 2.11 the picker prefers surnames of four letters or more (tests/surname_t.js), so a three-letter one is rare and
+     the search above may find none. The guard itself is checked directly for every three-letter surname of the pool: with
+     «ו<surname>» in the document, the surname is forbidden as an invented name. */
+  const short = C.POOL.he_s.filter((s) => s.length === 3 && /^[א-ת]+$/.test(s));
+  const open = short.filter((s) => !new C.Engine([], [], OPT, "העד ו" + s + " השיב לשאלות.").forbidden.has(s));
+  ok(short.length > 0, "(the pool holds three-letter surnames to check: " + short.length + ")");
+  ok(open.length === 0, "every three-letter pool surname met only as «ו<surname>» is forbidden: open " + open.join(" "));
   if (found) {
     const text = found.v + " הגיש תביעה. העד ו" + found.sur + " השיב לשאלות.";
     const fake = reps(text, [R(found.v)])[found.v] || "";

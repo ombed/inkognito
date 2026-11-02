@@ -45,8 +45,11 @@ console.log("\n— what the pool hands out, for 4,000 invented people of each sh
   // 61 first names and 55 surnames before the filter, 52 and 46 after; adding names instead would change every
   // person's invented name (the pick is indexed by the pool's length), filtering moves only those whose pick was a word
   // since the owner's decision of 2.11 the nine Russian first names of the pools go only to a Russian first name, so a
-  // Hebrew name draws from 43 first names, not 52 (tests/aliaskey_t.js)
-  ok(firsts.size >= 40 && surs.size >= 40, `and the pool still varies: ${firsts.size} first names, ${surs.size} surnames`);
+  // Hebrew name draws from 43 first names, not 52 (tests/aliaskey_t.js). And since the review of 2.11 a name of three
+  // letters («רחל», «נדב») is drawn only after the longer ones: alone in the AI's answer («4,000 של רחל») it came back
+  // marked, because a short part comes back alone only after a title (tests/surname_t.js). Over 4,000 people that leaves
+  // one first name fewer in use: 39, from 40. A deliberate trade, owner-authorized on 2.11.
+  ok(firsts.size >= 39 && surs.size >= 40, `and the pool still varies: ${firsts.size} first names, ${surs.size} surnames`);
   const ru = [...firsts].filter((f) => ["סרגיי", "ולדימיר", "דמיטרי", "אלכס", "אנה", "סבטלנה", "אירינה", "לודמילה", "אולגה"].includes(f));
   ok(ru.length === 0, "and none of them is a Russian first name: " + ru.join(" "));
 }
