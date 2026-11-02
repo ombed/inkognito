@@ -104,7 +104,8 @@ console.log("\n— no fake name one letter away from a word of the document —"
     const key = crypto.createHash("sha256").update("near-key-" + i).digest("hex");
     const eng = new C.Engine(names.map((v) => ({ value: v, kind: "NAME", replacement: "" })), [], { ...OPT, aliasKey: key }, text);
     for (const h of eng.detect(text)) if (h.apply) for (const part of String(eng.repFor({ ...h, pre: "" })).split(/\s+/))
-      for (const w of docWords) if (near(part, w)) bad.push(part + "~" + w);
+      for (const w of docWords) for (const p of [part].concat("בלמוהשכ".includes(part[0]) && part.length >= 4 ? [part.slice(1)] : []))
+        if (near(p, w)) bad.push(part + "~" + w);
   }
   C.setAliasKey(null);
   ok(bad.length === 0, "60 keys, no fake name part one letter away from a word of the document: " + bad.length + " " + [...new Set(bad)].slice(0, 6).join(", "));

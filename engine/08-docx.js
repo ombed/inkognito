@@ -2721,6 +2721,10 @@ function backDates(txt,took,known,off,today){
 }
 // אותו ערך בשני כתיבים: אותו יום (sameDay) או אותו מקום (samePlaceSpelling, הביקורת של 2.11)
 const sameValue=(a,b)=>a===b||sameDay(dateParts(a),dateParts(b))||samePlaceSpelling(a,b);
+/* שם מלא דבוק (restoreNames, held): בלי גבול מילה בכוונה («אלירן כהןים»). אבל אות ראשונה של ראשי תיבות היא מילה
+   לבדה: «ב' גבאי» של «בתיה גבאי» נמצא בתוך «גב' גבאי» (הגברת גבאי), סומן, ושם המשפחה לא חזר (הביקורת של 2.11).
+   tests/restoreforms_t.js */
+const heldRX=p=>new RegExp((/^[א-ת]['׳’.]/u.test(p)?"(?<![א-ת])":"")+pseudoPat(p),"gu");
 function restoreNames(txt,pairs,earlier,dateOpt){
   // כל צורה של כל אדם (restoreForms). "מה לא נמצא" נשאר של הזוגות עצמם
   const own=new Set(pairs.map(p=>p[1])); pairs=restoreForms(pairs);
@@ -2829,7 +2833,7 @@ function restoreNames(txt,pairs,earlier,dateOpt){
   // שם מלא שנמצא בטקסט ולא נלקח — דבוק לאותיות שאינן אותיות שימוש, או עם סיומת — שומר על החלקים שלו
   for(const [,pseudo] of pairs){
     const p=typeof pseudo==="string"?pseudo.trim():"";
-    if(/\s/.test(p))for(const m of txt.matchAll(new RegExp(pseudoPat(p),"gu")))held.push([m.index,m.index+m[0].length,p]);
+    if(/\s/.test(p))for(const m of txt.matchAll(heldRX(p)))held.push([m.index,m.index+m[0].length,p]);
   }
   /* חלק לבד: קודם אחרי תואר ("מר כהן"), ואחר כך בלי תואר — רק כשאינו מילה רגילה, ברשימות, במאגר או בתשובה הזאת
      עצמה (rwordy). תואר ממין אחר ("השופטת לוי" לשם בדוי של גבר) או אות ראשונה אחרת ("ר' לוי" ל«סרגיי לוי») הם אדם אחר,

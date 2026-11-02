@@ -219,11 +219,12 @@ function docWordsByLength(words){
 function nearDocWord(words){
   const ix=docWordsByLength(words);
   const close=(x,n)=>x!==n&&(finToPlain(x)===finToPlain(n)||(n.length>=4&&x.length>=4&&lev(x,n)===1));
+  const hit=n=>{ for(let L=n.length-1;L<=n.length+1;L++)for(const x of ix.get(L)||[])if(close(x,n))return true; return false; };
+  // וגם השם בלי אות שימוש בראשו, כמו שההחזרה קוראת אותו: «וקנין» נקרא «קנין», אות אחת מ«הקניין»
   return v=>{
     const n=norm(String(v||""));
     if(n.length<3||!/^[א-ת]+$/.test(n))return false;
-    for(let L=n.length-1;L<=n.length+1;L++)for(const x of ix.get(L)||[])if(close(x,n))return true;
-    return false;
+    return hit(n)||(n.length>=4&&PFX.has(n[0])&&hit(n.slice(1)));
   };
 }
 const nearForbidden=(forbidden,v)=>!!(forbidden.near&&forbidden.near(v));
