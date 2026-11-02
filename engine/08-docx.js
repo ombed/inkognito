@@ -2629,13 +2629,38 @@ function wordForms(w){
   return [...out].filter(v=>!COMMON.has(v)&&!STOP.has(v)&&!(typeof VRB!=="undefined"&&VRB.has(v)));
 }
 // הזוגות ועוד הצורות של כל אדם בשתי מילים; צורה מסומנת (שלישי), ואינה נותנת חלקים לבד (restoreNames)
+/* האם לזוג יש צורות של שם אדם (restoreForms). חברה בלי הסיומת (החלטת הבעלים, 2.11, Q6): השם הבדוי שומר על «בע"מ»,
+   וה-AI כותב «חברת גרניט», «לגרניט». זה השם הקצר של אותה חברה, כמו שהשם הקצר המוגדר שלה מקבל אותו בלי הסיומת
+   (Engine.orgShort), והוא נוסף כאן במקום צורות של אדם. ורחוב אינו אדם: אין לו ראשי תיבות, ושני רחובות בדויים
+   («רחוב הרצל», «רחוב השקד») חלקו «רחוב ה.». tests/orgs_t.js
+   ורחוב חוזר גם בצורות שה-AI כותב (הביקורת של 2.11): בלי היישוב שאחרי הפסיק, בלי מספר הבית, «רח'» במקום «רחוב»
+   (ולהפך). לא שם ומספר בלי מילת הסוג: «העצמאות 12» תפס «העצמאות 12.5 מיליון». כל צורה חוזרת לאותה צורה של הרחוב האמיתי. tests/towns_t.js */
+const STREET_HEADS=[["רחוב","רח'"],["שדרות","שד'","שדרת"]];
+function streetOf(s){
+  const m=PLACE_HEAD_IN.exec(s)||PLACE_HEAD_IN.exec(norm(s));
+  return m?{head:m[2],...streetParts(m[3])}:null;
+}
+const headsOf=h=>[...new Set([h,...(STREET_HEADS.find(x=>x.includes(h))||[])])];
+const streetTowns=(R,F)=>F.town&&R.town?[["",""],[", "+R.town,", "+F.town]]:[["",""]];
+function streetForms(r,f,add){
+  const R=streetOf(r), F=streetOf(f);
+  if(!R||!F||!R.name||!F.name||R.no!==F.no)return;
+  const nos=F.no?[" "+F.no,""]:[""], towns=streetTowns(R,F);
+  for(const h of headsOf(F.head))for(const no of nos)for(const [rt,ft] of towns)add(h+" "+R.name+no+rt,h+" "+F.name+no+ft);
+}
+function personForms(real,fake,add){
+  if(!real||!fake||fake==="███")return false;
+  const f=String(fake).trim(), r=String(real).trim(), fc=orgCore(f), rc=orgCore(r);
+  if(fc&&rc){add(rc,fc);return false}
+  if(PLACE_HEAD_IN.test(norm(f))){streetForms(r,f,add);return false}
+  return f.split(/\s+/).length===2&&r.split(/\s+/).length>=2&&nameParts(fake,real).length>0;
+}
 function restoreForms(pairs){
   const out=pairs.map(p=>[p[0],p[1]]), have=new Set(pairs.map(p=>p[1]));
   const add=(r,f)=>{if(f&&!have.has(f)){have.add(f);out.push([r,f,1])}};
   for(const [real,fake] of pairs){
-    if(!real||!fake||fake==="███")continue;
+    if(!personForms(real,fake,add))continue;
     const fw=String(fake).trim().split(/\s+/), rw=String(real).trim().split(/\s+/);
-    if(fw.length!==2||rw.length<2||!nameParts(fake,real).length)continue;
     for(let i=0;i<2;i++)for(const v of wordForms(fw[i]))add(real,i?fw[0]+" "+v:v+" "+fw[1]);
     // באנגלית: האיות הלועזי של שם מהמאגר (LATIN), לא תעתיק מנוחש
     if(fw.every(w=>w.split("-").every(p=>LATIN[p.replace(/׳/g,"'")])))add(real,latinOf(fake));
@@ -2693,6 +2718,12 @@ function backDates(txt,took,known,off,today){
   }
   return out;
 }
+// אותו ערך בשני כתיבים: אותו יום (sameDay) או אותו מקום (samePlaceSpelling, הביקורת של 2.11)
+const sameValue=(a,b)=>a===b||sameDay(dateParts(a),dateParts(b))||samePlaceSpelling(a,b);
+/* שם מלא דבוק (restoreNames, held): בלי גבול מילה בכוונה («אלירן כהןים»). אבל אות ראשונה של ראשי תיבות היא מילה
+   לבדה: «ב' גבאי» של «בתיה גבאי» נמצא בתוך «גב' גבאי» (הגברת גבאי), סומן, ושם המשפחה לא חזר (הביקורת של 2.11).
+   tests/restoreforms_t.js */
+const heldRX=p=>new RegExp((/^[א-ת]['׳’.]/u.test(p)?"(?<![א-ת])":"")+pseudoPat(p),"gu");
 function restoreNames(txt,pairs,earlier,dateOpt){
   // כל צורה של כל אדם (restoreForms). "מה לא נמצא" נשאר של הזוגות עצמם
   const own=new Set(pairs.map(p=>p[1])); pairs=restoreForms(pairs);
@@ -2700,8 +2731,9 @@ function restoreNames(txt,pairs,earlier,dateOpt){
   for(const [real,pseudo] of pairs){
     if(!real||!pseudo||pseudo==="███")continue;
     // אותו יום בשני כתיבים ("12 במרץ 2026", "12 במרס 2026") הוא ערך אחד, לא כינוי של שניים: עד כאן לא הוחזר
-    // כלל, ונרשם "שייך ליותר מאדם אחד"
-    if(seen.has(pseudo)){if(seen.get(pseudo)!==real&&!sameDay(dateParts(seen.get(pseudo)),dateParts(real)))conflict.add(pseudo)}
+    // כלל, ונרשם "שייך ליותר מאדם אחד". וכך מקום אחד בשני כתיבים («תל אביב», «תל אביב-יפו»: samePlaceSpelling, הביקורת
+    // של 2.11): חוזר הכתיב הראשון. tests/towns_t.js
+    if(seen.has(pseudo)){if(!sameValue(seen.get(pseudo),real))conflict.add(pseudo)}
     else seen.set(pseudo,real);
   }
   for(const k of conflict)seen.delete(k);
@@ -2800,7 +2832,7 @@ function restoreNames(txt,pairs,earlier,dateOpt){
   // שם מלא שנמצא בטקסט ולא נלקח — דבוק לאותיות שאינן אותיות שימוש, או עם סיומת — שומר על החלקים שלו
   for(const [,pseudo] of pairs){
     const p=typeof pseudo==="string"?pseudo.trim():"";
-    if(/\s/.test(p))for(const m of txt.matchAll(new RegExp(pseudoPat(p),"gu")))held.push([m.index,m.index+m[0].length,p]);
+    if(/\s/.test(p))for(const m of txt.matchAll(heldRX(p)))held.push([m.index,m.index+m[0].length,p]);
   }
   /* חלק לבד: קודם אחרי תואר ("מר כהן"), ואחר כך בלי תואר — רק כשאינו מילה רגילה, ברשימות, במאגר או בתשובה הזאת
      עצמה (rwordy). תואר ממין אחר ("השופטת לוי" לשם בדוי של גבר) או אות ראשונה אחרת ("ר' לוי" ל«סרגיי לוי») הם אדם אחר,
@@ -2905,8 +2937,8 @@ function leftOver(txt,took,{conflict,held,bad,reals,seen,partial,toks,dates,word
     for(const [k,c] of cands){
       const w=norm(c).trim(); if(nearOf.has(w)||wordish(w,toks))continue;
       for(const [sw,real] of nearOf){
-        const near=w.length>=4&&Math.abs(w.length-sw.length)<=1&&lev(w,sw)===1;
-        if(!near&&!(w!==sw&&fin(w)===fin(sw)))continue;
+        // שגיאת כתיב של שם בדוי, לא מילה אחרת (vowelSlip: אות אהו"י או אות סופית; הביקורת של 2.11)
+        if(!vowelSlip(w,sw))continue;
         add(c,real,m.index+k,m.index+tok.length,m.index+k); done=true; break;
       }
       if(done)break;
@@ -2939,4 +2971,4 @@ export {nerLast, hiddenPart, nerForget, VRB, COMMON, KNOWN_FIRST, NW, NWE, crc32
   discover, PLACES, PLACE_BY, geoMap, geoNames, placesFound, examplesOf, findPlaces, fakePlace,
   atlasTags, atlasDiff, atlasPenalty, placeKind, nerEnv, nerCached, nerPersist, nerLoad, nerText, nerRun,
   TITLE_RX, ORG_RX, likelyOrg, cleanEntry, trimEdges, pseudoRX, restoreNames, restorePairs, STOP, gender, origin, readBlocks, isTextPart, setAliasKey, hmac32, stripImageMeta, secondScan, OBJ_NOTE,
-  citeSpans, citeKept, citeKey, citeSpansIn, citeOnly, citeListKeys, ORG_TAIL, commonWord, worthAsking};
+  citeSpans, citeKept, citeKey, citeSpansIn, citeOnly, citeListKeys, ORG_TAIL, commonWord, worthAsking, samePlaceSpelling};

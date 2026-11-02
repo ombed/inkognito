@@ -34,6 +34,13 @@ eq(back("I, Ilana Mizrahi, ask that Sergei Levi pay support.").text, "I, נור�
 console.log("\n— initials —");
 eq(back("א. מזרחי טענה כי ס. לוי לא שילם.").text, "נ. אלמגור טענה כי ע. אלמגור לא שילם.", "an initial before the invented surname");
 eq(back("לדברי אילנה מ., המצב השתפר.").text, "לדברי נורית א., המצב השתפר.", "the invented first name and the surname's initial");
+/* An initial is a word of its own (the review of 2.11): the initials form «ב' גבאי» of the invented «בתיה גבאי» sits
+   inside «גב' גבאי», the AI's «Ms. Gabai». It was held as a glued full name, left marked, and the surname did not
+   come back, in 8 of 40 keys of an invented agreement (every woman whose invented first name starts with ב). */
+for (const [fake, title] of [["בתיה גבאי", "גב'"], ["ברכה עמר", "גב׳"], ["בלהה נחמיאס", "הגב'"]]) {
+  const r = back("לפי הסיכום, " + title + " " + fake.split(" ")[1] + " חתמה.", [["דנה פלדמן", fake]]);
+  eq(r.text + " " + JSON.stringify(r.left), "לפי הסיכום, " + title + " פלדמן חתמה. []", "«" + title + " " + fake.split(" ")[1] + "» is the surname after a title, not the initials of «" + fake + "»");
+}
 
 console.log("\n— a first name the AI misspelled, right before the invented surname —");
 {
